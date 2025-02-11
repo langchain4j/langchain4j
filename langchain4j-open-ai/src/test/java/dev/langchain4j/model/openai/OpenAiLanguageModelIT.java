@@ -17,6 +17,7 @@ class OpenAiLanguageModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_3_5_TURBO_INSTRUCT)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -37,25 +38,5 @@ class OpenAiLanguageModelIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_use_enum_as_model_name() {
-
-        // given
-        LanguageModel model = OpenAiLanguageModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_INSTRUCT)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        // when
-        String response = model.generate("What is the capital of Germany?").content();
-
-        // then
-        assertThat(response).containsIgnoringCase("Berlin");
     }
 }

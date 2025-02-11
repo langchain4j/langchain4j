@@ -41,8 +41,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .readTimeout(getOrDefault(getOrDefault(builder.readTimeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
 
-        if (builder.logRequests || builder.logResponses || builder.logStreamingResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses || builder.logStreamingResponses); // TODO
+        if (builder.logRequests || builder.logResponses) {
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
         } else {
             this.httpClient = httpClient;
         }

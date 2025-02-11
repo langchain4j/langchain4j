@@ -18,11 +18,8 @@ import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
-import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -36,37 +33,31 @@ public class OpenAiModerationModel implements ModerationModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    public OpenAiModerationModel(HttpClientBuilder httpClientBuilder,
-                                 String baseUrl,
-                                 String apiKey,
-                                 String organizationId,
-                                 String modelName,
-                                 Duration timeout,
-                                 Integer maxRetries,
-                                 Boolean logRequests,
-                                 Boolean logResponses,
-                                 Map<String, String> customHeaders) {
-
-        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
-        }
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
+    public OpenAiModerationModel(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            String apiKey,
+            String organizationId,
+            String modelName,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses,
+            Map<String, String> customHeaders
+    ) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(httpClientBuilder)
+                .baseUrl(getOrDefault(baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(apiKey)
-                .baseUrl(baseUrl)
                 .organizationId(organizationId)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
+                .connectTimeout(getOrDefault(timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
-        this.modelName = getOrDefault(modelName, TEXT_MODERATION_LATEST);
+        this.modelName = modelName;
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 

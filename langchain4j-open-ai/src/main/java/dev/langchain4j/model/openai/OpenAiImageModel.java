@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
@@ -72,15 +72,13 @@ public class OpenAiImageModel implements ImageModel {
             Path persistTo,
             Map<String, String> customHeaders
     ) {
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
         OpenAiClient.Builder cBuilder = OpenAiClient.builder()
                 .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+                .baseUrl(getOrDefault(baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
+                .connectTimeout(getOrDefault(timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)

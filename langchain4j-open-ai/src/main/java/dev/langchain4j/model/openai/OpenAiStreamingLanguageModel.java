@@ -19,9 +19,8 @@ import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
@@ -38,34 +37,33 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     private final Double temperature;
     private final Tokenizer tokenizer;
 
-    public OpenAiStreamingLanguageModel(HttpClientBuilder httpClientBuilder,
-                                        String baseUrl,
-                                        String apiKey,
-                                        String organizationId,
-                                        String modelName,
-                                        Double temperature,
-                                        Duration timeout,
-                                        Boolean logRequests,
-                                        Boolean logResponses,
-                                        Tokenizer tokenizer,
-                                        Map<String, String> customHeaders) {
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
+    public OpenAiStreamingLanguageModel(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            String apiKey,
+            String organizationId,
+            String modelName,
+            Double temperature,
+            Duration timeout,
+            Boolean logRequests,
+            Boolean logResponses,
+            Tokenizer tokenizer,
+            Map<String, String> customHeaders
+    ) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+                .baseUrl(getOrDefault(baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
+                .connectTimeout(getOrDefault(timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
+                .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
-        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.modelName = modelName;
+        this.temperature = temperature;
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
     }
 

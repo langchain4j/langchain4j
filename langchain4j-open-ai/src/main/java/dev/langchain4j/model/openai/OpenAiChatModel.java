@@ -33,10 +33,8 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertResponse;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
@@ -65,51 +63,45 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final List<ChatModelListener> listeners;
 
-    public OpenAiChatModel(HttpClientBuilder httpClientBuilder,
-                           String baseUrl,
-                           String apiKey,
-                           String organizationId,
-                           ChatRequestParameters defaultRequestParameters,
-                           String modelName,
-                           Double temperature,
-                           Double topP,
-                           List<String> stop,
-                           Integer maxTokens,
-                           Integer maxCompletionTokens,
-                           Double presencePenalty,
-                           Double frequencyPenalty,
-                           Map<String, Integer> logitBias,
-                           String responseFormat,
-                           Boolean strictJsonSchema,
-                           Integer seed,
-                           String user,
-                           Boolean strictTools,
-                           Boolean parallelToolCalls,
-                           Boolean store,
-                           Map<String, String> metadata,
-                           String serviceTier,
-                           Duration timeout,
-                           Integer maxRetries,
-                           Boolean logRequests,
-                           Boolean logResponses,
-                           Tokenizer tokenizer,
-                           Map<String, String> customHeaders,
-                           List<ChatModelListener> listeners) {
-
-        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
-        }
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
+    public OpenAiChatModel(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            String apiKey,
+            String organizationId,
+            ChatRequestParameters defaultRequestParameters,
+            String modelName,
+            Double temperature,
+            Double topP,
+            List<String> stop,
+            Integer maxTokens,
+            Integer maxCompletionTokens,
+            Double presencePenalty,
+            Double frequencyPenalty,
+            Map<String, Integer> logitBias,
+            String responseFormat,
+            Boolean strictJsonSchema,
+            Integer seed,
+            String user,
+            Boolean strictTools,
+            Boolean parallelToolCalls,
+            Boolean store,
+            Map<String, String> metadata,
+            String serviceTier,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses,
+            Tokenizer tokenizer,
+            Map<String, String> customHeaders,
+            List<ChatModelListener> listeners
+    ) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(httpClientBuilder)
+                .baseUrl(getOrDefault(baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(apiKey)
-                .baseUrl(baseUrl)
                 .organizationId(organizationId)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
+                .connectTimeout(getOrDefault(timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
@@ -179,7 +171,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>();
-        if ("json_schema".equals(responseFormat)) {
+        if ("json_schema".equals(responseFormat)) { // TODO
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
@@ -306,7 +298,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
-
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;

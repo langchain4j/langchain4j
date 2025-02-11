@@ -32,8 +32,8 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
@@ -58,47 +58,46 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     private final List<ChatModelListener> listeners;
 
-    public OpenAiStreamingChatModel(HttpClientBuilder httpClientBuilder,
-                                    String baseUrl,
-                                    String apiKey,
-                                    String organizationId,
-                                    ChatRequestParameters defaultRequestParameters,
-                                    String modelName,
-                                    Double temperature,
-                                    Double topP,
-                                    List<String> stop,
-                                    Integer maxTokens,
-                                    Integer maxCompletionTokens,
-                                    Double presencePenalty,
-                                    Double frequencyPenalty,
-                                    Map<String, Integer> logitBias,
-                                    String responseFormat,
-                                    Boolean strictJsonSchema,
-                                    Integer seed,
-                                    String user,
-                                    Boolean strictTools,
-                                    Boolean parallelToolCalls,
-                                    Boolean store,
-                                    Map<String, String> metadata,
-                                    String serviceTier,
-                                    Duration timeout,
-                                    Boolean logRequests,
-                                    Boolean logResponses,
-                                    Tokenizer tokenizer,
-                                    Map<String, String> customHeaders,
-                                    List<ChatModelListener> listeners) {
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
+    public OpenAiStreamingChatModel(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            String apiKey,
+            String organizationId,
+            ChatRequestParameters defaultRequestParameters,
+            String modelName,
+            Double temperature,
+            Double topP,
+            List<String> stop,
+            Integer maxTokens,
+            Integer maxCompletionTokens,
+            Double presencePenalty,
+            Double frequencyPenalty,
+            Map<String, Integer> logitBias,
+            String responseFormat,
+            Boolean strictJsonSchema,
+            Integer seed,
+            String user,
+            Boolean strictTools,
+            Boolean parallelToolCalls,
+            Boolean store,
+            Map<String, String> metadata,
+            String serviceTier,
+            Duration timeout,
+            Boolean logRequests,
+            Boolean logResponses,
+            Tokenizer tokenizer,
+            Map<String, String> customHeaders,
+            List<ChatModelListener> listeners
+    ) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+                .baseUrl(getOrDefault(baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
+                .connectTimeout(getOrDefault(timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
+                .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();

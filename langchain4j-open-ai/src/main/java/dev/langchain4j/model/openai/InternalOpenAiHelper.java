@@ -80,11 +80,7 @@ import static java.util.stream.Collectors.toList;
 
 public class InternalOpenAiHelper {
 
-    static final String OPENAI_URL = "https://api.openai.com/v1";
-
-    static final String OPENAI_DEMO_API_KEY = "demo";
-    static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
-
+    static final String DEFAULT_OPENAI_URL = "https://api.openai.com/v1";
     static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {

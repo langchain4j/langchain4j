@@ -49,13 +49,12 @@ public abstract class OpenAiClient {
         public String apiVersion;
         public String openAiApiKey;
         public String azureApiKey;
-        public Duration connectTimeout = Duration.ofSeconds(60); // TODO remove default?
-        public Duration readTimeout = Duration.ofSeconds(60); // TODO remove default?
+        public Duration connectTimeout;
+        public Duration readTimeout;
         public String userAgent;
         public boolean logRequests;
         public boolean logResponses;
-        public boolean logStreamingResponses;
-        public Path persistTo;
+        public Path persistTo; // TODO
         public Map<String, String> customHeaders;
 
         public abstract T build();
@@ -159,14 +158,6 @@ public abstract class OpenAiClient {
                 logResponses = false;
             }
             this.logResponses = logResponses;
-            return (B) this;
-        }
-
-        public B logStreamingResponses(Boolean logStreamingResponses) {
-            if (logStreamingResponses == null) {
-                logStreamingResponses = false;
-            }
-            this.logStreamingResponses = logStreamingResponses;
             return (B) this;
         }
 
