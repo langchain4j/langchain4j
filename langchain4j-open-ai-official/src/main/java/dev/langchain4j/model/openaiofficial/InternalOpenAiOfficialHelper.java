@@ -3,6 +3,7 @@ package dev.langchain4j.model.openaiofficial;
 import com.openai.core.JsonValue;
 import com.openai.models.ChatCompletion;
 import com.openai.models.ChatCompletionAssistantMessageParam;
+import com.openai.models.ChatCompletionChunk;
 import com.openai.models.ChatCompletionContentPart;
 import com.openai.models.ChatCompletionContentPartImage;
 import com.openai.models.ChatCompletionContentPartInputAudio;
@@ -34,6 +35,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -41,6 +43,7 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 
@@ -68,11 +71,11 @@ public class InternalOpenAiOfficialHelper {
 
     static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
 
-    public static List<ChatCompletionMessageParam> toOpenAiMessages(List<ChatMessage> messages) {
+    static List<ChatCompletionMessageParam> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream().map(InternalOpenAiOfficialHelper::toOpenAiMessage).collect(toList());
     }
 
-    public static ChatCompletionMessageParam toOpenAiMessage(ChatMessage message) {
+    static ChatCompletionMessageParam toOpenAiMessage(ChatMessage message) {
         if (message instanceof SystemMessage systemMessage) {
             return ChatCompletionMessageParam.ofSystem(
                     ChatCompletionSystemMessageParam.builder()
@@ -132,10 +135,10 @@ public class InternalOpenAiOfficialHelper {
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-                return ChatCompletionMessageParam.ofTool(ChatCompletionToolMessageParam.builder()
-                        .toolCallId(toolExecutionResultMessage.id())
-                        .content(toolExecutionResultMessage.text())
-                        .build());
+            return ChatCompletionMessageParam.ofTool(ChatCompletionToolMessageParam.builder()
+                    .toolCallId(toolExecutionResultMessage.id())
+                    .content(toolExecutionResultMessage.text())
+                    .build());
         }
 
         throw illegalArgument("Unknown message type: " + message.type());
@@ -149,7 +152,7 @@ public class InternalOpenAiOfficialHelper {
                         ChatCompletionContentPartText.builder()
                                 .text(textContent.text())
                                 .build()
-                                ));
+                ));
             } else if (content instanceof ImageContent imageContent) {
                 if (imageContent.image().url() == null) {
                     throw new UnsupportedFeatureException("Image URL is not present. " +
@@ -179,7 +182,7 @@ public class InternalOpenAiOfficialHelper {
         return parts;
     }
 
-    public static List<ChatCompletionTool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
+    static List<ChatCompletionTool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
         if (toolSpecifications == null) {
             return null;
         }
@@ -236,7 +239,7 @@ public class InternalOpenAiOfficialHelper {
         }
     }
 
-    public static AiMessage aiMessageFrom(ChatCompletion chatCompletion) {
+    static AiMessage aiMessageFrom(ChatCompletion chatCompletion) {
         ChatCompletionMessage assistantMessage = chatCompletion.choices().get(0).message();
         Optional<String> text = assistantMessage.content();
 
@@ -267,7 +270,7 @@ public class InternalOpenAiOfficialHelper {
                 .build();
     }
 
-    public static OpenAiOfficialTokenUsage tokenUsageFrom(Optional<CompletionUsage> openAiUsage) {
+    static OpenAiOfficialTokenUsage tokenUsageFrom(Optional<CompletionUsage> openAiUsage) {
         if (openAiUsage.isEmpty()) {
             return null;
         }
@@ -293,7 +296,7 @@ public class InternalOpenAiOfficialHelper {
                 .build();
     }
 
-    public static FinishReason finishReasonFrom(ChatCompletion.Choice.FinishReason openAiFinishReason) {
+    static FinishReason finishReasonFrom(ChatCompletion.Choice.FinishReason openAiFinishReason) {
         if (openAiFinishReason == null) {
             return null;
         }
@@ -310,6 +313,13 @@ public class InternalOpenAiOfficialHelper {
         } else {
             return null;
         }
+    }
+
+    static FinishReason finishReasonFrom(ChatCompletionChunk.Choice.FinishReason openAiFinishReason) {
+        if (openAiFinishReason == null) {
+            return null;
+        }
+        return finishReasonFrom(ChatCompletion.Choice.FinishReason.of(openAiFinishReason.value().toString()));
     }
 
     static ResponseFormatJsonObject toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
@@ -340,7 +350,7 @@ public class InternalOpenAiOfficialHelper {
         }
     }
 
-    public static ChatCompletionToolChoiceOption toOpenAiToolChoice(ToolChoice toolChoice) {
+    static ChatCompletionToolChoiceOption toOpenAiToolChoice(ToolChoice toolChoice) {
         if (toolChoice == null) {
             return null;
         }
@@ -351,11 +361,31 @@ public class InternalOpenAiOfficialHelper {
         };
     }
 
-    public static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
+    static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
         return Response.from(
                 chatResponse.aiMessage(),
                 chatResponse.metadata().tokenUsage(),
                 chatResponse.metadata().finishReason());
+    }
+
+    static StreamingChatResponseHandler convertHandler(StreamingResponseHandler<AiMessage> handler) {
+        return new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                handler.onNext(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                handler.onComplete(convertResponse(completeResponse));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
     }
 
     static void validate(ChatRequestParameters parameters) {
