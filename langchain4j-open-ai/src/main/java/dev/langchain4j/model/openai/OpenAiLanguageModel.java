@@ -42,6 +42,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
                 .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
@@ -110,6 +111,8 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private String projectId;
+
         private String modelName;
         private Double temperature;
         private Duration timeout;
@@ -150,6 +153,11 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
         public OpenAiLanguageModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder projectId(String projectId) {
+            this.projectId = projectId;
             return this;
         }
 

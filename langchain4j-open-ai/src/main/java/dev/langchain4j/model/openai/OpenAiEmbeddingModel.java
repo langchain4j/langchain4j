@@ -56,6 +56,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
                 .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
@@ -168,6 +169,8 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private String projectId;
+
         private String modelName;
         private Integer dimensions;
         private String user;
@@ -210,6 +213,11 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
         public OpenAiEmbeddingModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder projectId(String projectId) {
+            this.projectId = projectId;
             return this;
         }
 

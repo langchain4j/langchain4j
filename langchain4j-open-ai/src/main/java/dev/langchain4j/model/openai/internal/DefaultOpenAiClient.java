@@ -55,6 +55,9 @@ public class DefaultOpenAiClient extends OpenAiClient {
         if (builder.organizationId != null) {
             defaultHeaders.put("OpenAI-Organization", builder.organizationId);
         }
+        if (builder.projectId != null) {
+            defaultHeaders.put("OpenAI-Project", builder.projectId);
+        }
         if (builder.userAgent != null) {
             defaultHeaders.put("User-Agent", builder.userAgent);
         }

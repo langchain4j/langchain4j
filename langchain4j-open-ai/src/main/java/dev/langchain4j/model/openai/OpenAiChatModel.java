@@ -77,6 +77,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
                 .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
@@ -255,6 +256,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private String projectId;
 
         private ChatRequestParameters defaultRequestParameters;
         private String modelName;
@@ -325,6 +327,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         public OpenAiChatModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder projectId(String projectId) {
+            this.projectId = projectId;
             return this;
         }
 

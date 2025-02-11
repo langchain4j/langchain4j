@@ -63,6 +63,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
                 .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
@@ -253,6 +254,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private String projectId;
 
         private ChatRequestParameters defaultRequestParameters;
         private String modelName;
@@ -322,6 +324,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         public OpenAiStreamingChatModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder projectId(String projectId) {
+            this.projectId = projectId;
             return this;
         }
 

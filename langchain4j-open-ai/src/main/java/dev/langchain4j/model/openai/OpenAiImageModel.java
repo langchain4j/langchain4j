@@ -45,6 +45,7 @@ public class OpenAiImageModel implements ImageModel {
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
                 .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
@@ -100,6 +101,8 @@ public class OpenAiImageModel implements ImageModel {
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private String projectId;
+
         private String modelName;
         private String size;
         private String quality;
@@ -143,6 +146,11 @@ public class OpenAiImageModel implements ImageModel {
 
         public OpenAiImageModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder projectId(String projectId) {
+            this.projectId = projectId;
             return this;
         }
 

@@ -44,6 +44,7 @@ public abstract class OpenAiClient {
         public HttpClientBuilder httpClientBuilder;
         public String baseUrl;
         public String organizationId;
+        public String projectId;
         public String openAiApiKey;
         public Duration connectTimeout;
         public Duration readTimeout;
@@ -72,11 +73,22 @@ public abstract class OpenAiClient {
         }
 
         /**
-         * @param organizationId The organizationId for OpenAI: https://platform.openai.com/docs/api-reference/organization-optional
+         * @param organizationId The OpenAI Organization ID.
+         *                       More info <a href="https://platform.openai.com/docs/api-reference/organizations-and-projects-optional">here</a>.
          * @return builder
          */
         public B organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return (B) this;
+        }
+
+        /**
+         * @param projectId The OpenAI Project ID.
+         *                  More info <a href="https://platform.openai.com/docs/api-reference/organizations-and-projects-optional">here</a>.
+         * @return builder
+         */
+        public B projectId(String projectId) {
+            this.projectId = projectId;
             return (B) this;
         }
 

@@ -47,6 +47,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
                 .openAiApiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
                 .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
@@ -120,6 +121,8 @@ public class OpenAiModerationModel implements ModerationModel {
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private String projectId;
+
         private String modelName;
         private Duration timeout;
         private Integer maxRetries;
@@ -158,6 +161,11 @@ public class OpenAiModerationModel implements ModerationModel {
 
         public OpenAiModerationModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder projectId(String projectId) {
+            this.projectId = projectId;
             return this;
         }
 
