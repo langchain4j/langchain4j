@@ -118,6 +118,6 @@ OpenAiChatModel model = OpenAiChatModel.builder()
 ```
 Now, it is time to chat!
 ```java
-String answer = model.generate("Say 'Hello World'");
+String answer = model.chat("Say 'Hello World'");
 System.out.println(answer); // Hello World
 ```
