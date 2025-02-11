@@ -1,5 +1,12 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.convertHandler;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.core.http.StreamResponse;
 import com.openai.credential.Credential;
@@ -23,7 +30,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.spi.OpenAiOfficialStreamingChatModelBuilderFactory;
-
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -32,47 +38,42 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
 
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.convertHandler;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
+        implements StreamingChatLanguageModel, TokenCountEstimator {
 
-public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
-
-    public OpenAiOfficialStreamingChatModel(String baseUrl,
-                                            String apiKey,
-                                            String azureApiKey,
-                                            Credential credential,
-                                            String azureDeploymentName,
-                                            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
-                                            String organizationId,
-                                            ChatRequestParameters defaultRequestParameters,
-                                            String modelName,
-                                            Double temperature,
-                                            Double topP,
-                                            List<String> stop,
-                                            Integer maxCompletionTokens,
-                                            Double presencePenalty,
-                                            Double frequencyPenalty,
-                                            Map<String, Integer> logitBias,
-                                            String responseFormat,
-                                            Boolean strictJsonSchema,
-                                            Integer seed,
-                                            String user,
-                                            Boolean strictTools,
-                                            Boolean parallelToolCalls,
-                                            Boolean store,
-                                            Map<String, String> metadata,
-                                            String serviceTier,
-                                            Duration timeout,
-                                            Integer maxRetries,
-                                            Proxy proxy,
-                                            Tokenizer tokenizer,
-                                            Map<String, String> customHeaders,
-                                            List<ChatModelListener> listeners,
-                                            Set<Capability> capabilities) {
+    public OpenAiOfficialStreamingChatModel(
+            String baseUrl,
+            String apiKey,
+            String azureApiKey,
+            Credential credential,
+            String azureDeploymentName,
+            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
+            String organizationId,
+            ChatRequestParameters defaultRequestParameters,
+            String modelName,
+            Double temperature,
+            Double topP,
+            List<String> stop,
+            Integer maxCompletionTokens,
+            Double presencePenalty,
+            Double frequencyPenalty,
+            Map<String, Integer> logitBias,
+            String responseFormat,
+            Boolean strictJsonSchema,
+            Integer seed,
+            String user,
+            Boolean strictTools,
+            Boolean parallelToolCalls,
+            Boolean store,
+            Map<String, String> metadata,
+            String serviceTier,
+            Duration timeout,
+            Integer maxRetries,
+            Proxy proxy,
+            Tokenizer tokenizer,
+            Map<String, String> customHeaders,
+            List<ChatModelListener> listeners,
+            Set<Capability> capabilities) {
 
         init(
                 baseUrl,
@@ -106,22 +107,20 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 tokenizer,
                 customHeaders,
                 listeners,
-                capabilities
-        );
+                capabilities);
     }
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .build();
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
         chat(chatRequest, convertHandler(handler));
     }
 
     @Override
-    public void generate(List<ChatMessage> messages,
-                         List<ToolSpecification> toolSpecifications,
-                         StreamingResponseHandler<AiMessage> handler) {
+    public void generate(
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecifications,
+            StreamingResponseHandler<AiMessage> handler) {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
                 .parameters(ChatRequestParameters.builder()
@@ -132,9 +131,10 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
     }
 
     @Override
-    public void generate(List<ChatMessage> messages,
-                         ToolSpecification toolSpecification,
-                         StreamingResponseHandler<AiMessage> handler) {
+    public void generate(
+            List<ChatMessage> messages,
+            ToolSpecification toolSpecification,
+            StreamingResponseHandler<AiMessage> handler) {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
                 .parameters(ChatRequestParameters.builder()
@@ -153,88 +153,94 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
         if (this.useAzure) {
             if (!parameters.modelName().equals(this.azureModelName)) {
-                throw new UnsupportedFeatureException("On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
+                throw new UnsupportedFeatureException(
+                        "On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
             }
         }
 
-        ChatCompletionCreateParams chatCompletionCreateParams =
-                toOpenAiChatCompletionCreateParams(chatRequest, parameters, strictTools, strictJsonSchema)
-                        .streamOptions(ChatCompletionStreamOptions.builder()
-                                .includeUsage(true)
-                                .build())
-                        .build();
+        ChatCompletionCreateParams chatCompletionCreateParams = toOpenAiChatCompletionCreateParams(
+                        chatRequest, parameters, strictTools, strictJsonSchema)
+                .streamOptions(
+                        ChatCompletionStreamOptions.builder().includeUsage(true).build())
+                .build();
 
-        try (StreamResponse<ChatCompletionChunk> response = client
-                .chat()
-                .completions()
-                .createStreaming(chatCompletionCreateParams)) {
+        try (StreamResponse<ChatCompletionChunk> response =
+                client.chat().completions().createStreaming(chatCompletionCreateParams)) {
 
-            OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder = OpenAiOfficialChatResponseMetadata.builder();
+            OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder =
+                    OpenAiOfficialChatResponseMetadata.builder();
             StringBuffer text = new StringBuffer();
             List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
 
-            response.stream()
-                    .forEach(chatCompletionChunk -> {
-                        responseMetadataBuilder.id(chatCompletionChunk.id());
-                        responseMetadataBuilder.modelName(chatCompletionChunk.model());
-                        responseMetadataBuilder.tokenUsage(tokenUsageFrom(chatCompletionChunk.usage()));
-                        responseMetadataBuilder.created(chatCompletionChunk.created());
-                        responseMetadataBuilder.serviceTier(chatCompletionChunk.serviceTier().isPresent() ? chatCompletionChunk.serviceTier().get().toString() : null);
-                        responseMetadataBuilder.systemFingerprint(chatCompletionChunk.systemFingerprint().isPresent() ? chatCompletionChunk.systemFingerprint().get() : null);
-                        chatCompletionChunk.choices().forEach(choice -> {
-                            if (choice.delta().content().isPresent()) {
-                                text.append(choice.delta().content().get());
-                                handler.onPartialResponse(choice.delta().content().get());
-                            }
-                            if (choice.delta().toolCalls().isPresent()) {
-                                choice.delta().toolCalls().get().forEach(toolCall -> {
-                                    if (toolCall.function().isPresent()) {
-                                        final ChatCompletionChunk.Choice.Delta.ToolCall.Function function = toolCall.function().get();
-                                        final String functionId;
-                                        final String functionName;
-                                        final String functionArguments;
-                                        if (toolCall.id().isPresent()) {
-                                            functionId = toolCall.id().get();
-                                        } else {
-                                            functionId = "";
-                                        }
-                                        if (function.name().isPresent()) {
-                                            functionName = function.name().get();
-                                        } else {
-                                            functionName = "";
-                                        }
-                                        if (function.arguments().isPresent()) {
-                                            functionArguments = function.arguments().get();
-                                        } else {
-                                            functionArguments = "";
-                                        }
-                                        if (!functionId.isEmpty()) {
-                                            // A new function is called
-                                            toolExecutionRequests.add(ToolExecutionRequest.builder()
-                                                    .id(functionId)
-                                                    .name(functionName)
-                                                    .arguments(functionArguments)
-                                                    .build());
-                                        } else {
-                                            // This chunk is part of the previous function call
-                                            ToolExecutionRequest lastToolExecutionRequest = toolExecutionRequests.get(toolExecutionRequests.size() - 1);
-                                            toolExecutionRequests.remove(lastToolExecutionRequest);
-                                            ToolExecutionRequest toolExecutionRequest =
-                                                    ToolExecutionRequest.builder()
-                                                            .id(functionId)
-                                                            .name(lastToolExecutionRequest.name() + functionName)
-                                                            .arguments(lastToolExecutionRequest.arguments() + functionArguments)
-                                                            .build();
-                                            toolExecutionRequests.add(toolExecutionRequest);
-                                        }
-                                    }
-                                });
-                            }
-                            if (choice.finishReason().isPresent()) {
-                                responseMetadataBuilder.finishReason(finishReasonFrom(choice.finishReason().get()));
+            response.stream().forEach(chatCompletionChunk -> {
+                responseMetadataBuilder.id(chatCompletionChunk.id());
+                responseMetadataBuilder.modelName(chatCompletionChunk.model());
+                responseMetadataBuilder.tokenUsage(tokenUsageFrom(chatCompletionChunk.usage()));
+                responseMetadataBuilder.created(chatCompletionChunk.created());
+                responseMetadataBuilder.serviceTier(
+                        chatCompletionChunk.serviceTier().isPresent()
+                                ? chatCompletionChunk.serviceTier().get().toString()
+                                : null);
+                responseMetadataBuilder.systemFingerprint(
+                        chatCompletionChunk.systemFingerprint().isPresent()
+                                ? chatCompletionChunk.systemFingerprint().get()
+                                : null);
+                chatCompletionChunk.choices().forEach(choice -> {
+                    if (choice.delta().content().isPresent()) {
+                        text.append(choice.delta().content().get());
+                        handler.onPartialResponse(choice.delta().content().get());
+                    }
+                    if (choice.delta().toolCalls().isPresent()) {
+                        choice.delta().toolCalls().get().forEach(toolCall -> {
+                            if (toolCall.function().isPresent()) {
+                                final ChatCompletionChunk.Choice.Delta.ToolCall.Function function =
+                                        toolCall.function().get();
+                                final String functionId;
+                                final String functionName;
+                                final String functionArguments;
+                                if (toolCall.id().isPresent()) {
+                                    functionId = toolCall.id().get();
+                                } else {
+                                    functionId = "";
+                                }
+                                if (function.name().isPresent()) {
+                                    functionName = function.name().get();
+                                } else {
+                                    functionName = "";
+                                }
+                                if (function.arguments().isPresent()) {
+                                    functionArguments = function.arguments().get();
+                                } else {
+                                    functionArguments = "";
+                                }
+                                if (!functionId.isEmpty()) {
+                                    // A new function is called
+                                    toolExecutionRequests.add(ToolExecutionRequest.builder()
+                                            .id(functionId)
+                                            .name(functionName)
+                                            .arguments(functionArguments)
+                                            .build());
+                                } else {
+                                    // This chunk is part of the previous function call
+                                    ToolExecutionRequest lastToolExecutionRequest =
+                                            toolExecutionRequests.get(toolExecutionRequests.size() - 1);
+                                    toolExecutionRequests.remove(lastToolExecutionRequest);
+                                    ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                                            .id(functionId)
+                                            .name(lastToolExecutionRequest.name() + functionName)
+                                            .arguments(lastToolExecutionRequest.arguments() + functionArguments)
+                                            .build();
+                                    toolExecutionRequests.add(toolExecutionRequest);
+                                }
                             }
                         });
-                    });
+                    }
+                    if (choice.finishReason().isPresent()) {
+                        responseMetadataBuilder.finishReason(
+                                finishReasonFrom(choice.finishReason().get()));
+                    }
+                });
+            });
 
             AiMessage aiMessage;
             if (text.toString().isEmpty() && !toolExecutionRequests.isEmpty()) {
@@ -259,7 +265,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
     }
 
     public static OpenAiOfficialStreamingChatModelBuilder builder() {
-        for (OpenAiOfficialStreamingChatModelBuilderFactory factory : loadFactories(OpenAiOfficialStreamingChatModelBuilderFactory.class)) {
+        for (OpenAiOfficialStreamingChatModelBuilderFactory factory :
+                loadFactories(OpenAiOfficialStreamingChatModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OpenAiOfficialStreamingChatModelBuilder();
@@ -352,7 +359,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             return this;
         }
 
-        public OpenAiOfficialStreamingChatModelBuilder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+        public OpenAiOfficialStreamingChatModelBuilder azureOpenAIServiceVersion(
+                AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }
@@ -483,7 +491,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 // Using Azure OpenAI
                 if (this.defaultRequestParameters != null && this.defaultRequestParameters.modelName() != null) {
                     if (!this.defaultRequestParameters.modelName().equals(this.modelName)) {
-                        throw new UnsupportedFeatureException("On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
+                        throw new UnsupportedFeatureException(
+                                "On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
                     }
                 }
             }
@@ -520,8 +529,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                     this.tokenizer,
                     this.customHeaders,
                     this.listeners,
-                    this.capabilities
-            );
+                    this.capabilities);
         }
 
         @Override

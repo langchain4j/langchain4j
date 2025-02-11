@@ -1,16 +1,15 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.quoted;
+
 import com.openai.models.ChatModel;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-
 import java.util.Map;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.quoted;
 
 @Experimental
 public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParameters {
@@ -111,34 +110,32 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
                 store,
                 metadata,
                 serviceTier,
-                reasoningEffort
-        );
+                reasoningEffort);
     }
 
     @Override
     public String toString() {
-        return "OpenAiChatRequestParameters{" +
-                "modelName=" + quoted(modelName()) +
-                ", temperature=" + temperature() +
-                ", topP=" + topP() +
-                ", topK=" + topK() +
-                ", frequencyPenalty=" + frequencyPenalty() +
-                ", presencePenalty=" + presencePenalty() +
-                ", maxOutputTokens=" + maxOutputTokens() +
-                ", stopSequences=" + stopSequences() +
-                ", toolSpecifications=" + toolSpecifications() +
-                ", toolChoice=" + toolChoice() +
-                ", responseFormat=" + responseFormat() +
-                ", maxCompletionTokens=" + maxCompletionTokens +
-                ", logitBias=" + logitBias +
-                ", parallelToolCalls=" + parallelToolCalls +
-                ", seed=" + seed +
-                ", user=" + quoted(user) +
-                ", store=" + store +
-                ", metadata=" + metadata +
-                ", serviceTier=" + quoted(serviceTier) +
-                ", reasoningEffort=" + quoted(reasoningEffort) +
-                '}';
+        return "OpenAiChatRequestParameters{" + "modelName="
+                + quoted(modelName()) + ", temperature="
+                + temperature() + ", topP="
+                + topP() + ", topK="
+                + topK() + ", frequencyPenalty="
+                + frequencyPenalty() + ", presencePenalty="
+                + presencePenalty() + ", maxOutputTokens="
+                + maxOutputTokens() + ", stopSequences="
+                + stopSequences() + ", toolSpecifications="
+                + toolSpecifications() + ", toolChoice="
+                + toolChoice() + ", responseFormat="
+                + responseFormat() + ", maxCompletionTokens="
+                + maxCompletionTokens + ", logitBias="
+                + logitBias + ", parallelToolCalls="
+                + parallelToolCalls + ", seed="
+                + seed + ", user="
+                + quoted(user) + ", store="
+                + store + ", metadata="
+                + metadata + ", serviceTier="
+                + quoted(serviceTier) + ", reasoningEffort="
+                + quoted(reasoningEffort) + '}';
     }
 
     public static Builder builder() {

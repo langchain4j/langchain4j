@@ -1,5 +1,13 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.aiMessageFrom;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.convertResponse;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.credential.Credential;
 import com.openai.models.ChatCompletion;
@@ -19,7 +27,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openaiofficial.spi.OpenAiOfficialChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
@@ -27,48 +34,42 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
 
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.aiMessageFrom;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.convertResponse;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
+        implements ChatLanguageModel, TokenCountEstimator {
 
-public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel implements ChatLanguageModel, TokenCountEstimator {
-
-    public OpenAiOfficialChatModel(String baseUrl,
-                                   String apiKey,
-                                   String azureApiKey,
-                                   Credential credential,
-                                   String azureDeploymentName,
-                                   AzureOpenAIServiceVersion azureOpenAIServiceVersion,
-                                   String organizationId,
-                                   ChatRequestParameters defaultRequestParameters,
-                                   String modelName,
-                                   Double temperature,
-                                   Double topP,
-                                   List<String> stop,
-                                   Integer maxCompletionTokens,
-                                   Double presencePenalty,
-                                   Double frequencyPenalty,
-                                   Map<String, Integer> logitBias,
-                                   String responseFormat,
-                                   Boolean strictJsonSchema,
-                                   Integer seed,
-                                   String user,
-                                   Boolean strictTools,
-                                   Boolean parallelToolCalls,
-                                   Boolean store,
-                                   Map<String, String> metadata,
-                                   String serviceTier,
-                                   Duration timeout,
-                                   Integer maxRetries,
-                                   Proxy proxy,
-                                   Tokenizer tokenizer,
-                                   Map<String, String> customHeaders,
-                                   List<ChatModelListener> listeners,
-                                   Set<Capability> capabilities) {
+    public OpenAiOfficialChatModel(
+            String baseUrl,
+            String apiKey,
+            String azureApiKey,
+            Credential credential,
+            String azureDeploymentName,
+            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
+            String organizationId,
+            ChatRequestParameters defaultRequestParameters,
+            String modelName,
+            Double temperature,
+            Double topP,
+            List<String> stop,
+            Integer maxCompletionTokens,
+            Double presencePenalty,
+            Double frequencyPenalty,
+            Map<String, Integer> logitBias,
+            String responseFormat,
+            Boolean strictJsonSchema,
+            Integer seed,
+            String user,
+            Boolean strictTools,
+            Boolean parallelToolCalls,
+            Boolean store,
+            Map<String, String> metadata,
+            String serviceTier,
+            Duration timeout,
+            Integer maxRetries,
+            Proxy proxy,
+            Tokenizer tokenizer,
+            Map<String, String> customHeaders,
+            List<ChatModelListener> listeners,
+            Set<Capability> capabilities) {
 
         init(
                 baseUrl,
@@ -102,15 +103,12 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                 tokenizer,
                 customHeaders,
                 listeners,
-                capabilities
-        );
+                capabilities);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .build();
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
         ChatResponse chatResponse = chat(chatRequest);
         return convertResponse(chatResponse);
     }
@@ -146,14 +144,17 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
         if (this.useAzure) {
             if (!parameters.modelName().equals(this.azureModelName)) {
-                throw new UnsupportedFeatureException("On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
+                throw new UnsupportedFeatureException(
+                        "On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
             }
         }
 
-        ChatCompletionCreateParams chatCompletionCreateParams =
-                toOpenAiChatCompletionCreateParams(chatRequest, parameters, strictTools, strictJsonSchema).build();
+        ChatCompletionCreateParams chatCompletionCreateParams = toOpenAiChatCompletionCreateParams(
+                        chatRequest, parameters, strictTools, strictJsonSchema)
+                .build();
 
-        // Unlike other LangChain4j modules, this doesn't use the `withRetry` method because the OpenAI SDK already has retry logic included
+        // Unlike other LangChain4j modules, this doesn't use the `withRetry` method because the OpenAI SDK already has
+        // retry logic included
         ChatCompletion chatCompletion = client.chat().completions().create(chatCompletionCreateParams);
 
         OpenAiOfficialChatResponseMetadata responseMetadata = OpenAiOfficialChatResponseMetadata.builder()
@@ -162,8 +163,14 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                 .tokenUsage(tokenUsageFrom(chatCompletion.usage()))
                 .finishReason(finishReasonFrom(chatCompletion.choices().get(0).finishReason()))
                 .created(chatCompletion.created())
-                .serviceTier(chatCompletion.serviceTier().isPresent() ? chatCompletion.serviceTier().get().toString() : null)
-                .systemFingerprint(chatCompletion.systemFingerprint().isPresent() ? chatCompletion.systemFingerprint().get() : null)
+                .serviceTier(
+                        chatCompletion.serviceTier().isPresent()
+                                ? chatCompletion.serviceTier().get().toString()
+                                : null)
+                .systemFingerprint(
+                        chatCompletion.systemFingerprint().isPresent()
+                                ? chatCompletion.systemFingerprint().get()
+                                : null)
                 .build();
 
         return ChatResponse.builder()
@@ -173,7 +180,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
     }
 
     public static OpenAiOfficialChatModelBuilder builder() {
-        for (OpenAiOfficialChatModelBuilderFactory factory : loadFactories(OpenAiOfficialChatModelBuilderFactory.class)) {
+        for (OpenAiOfficialChatModelBuilderFactory factory :
+                loadFactories(OpenAiOfficialChatModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OpenAiOfficialChatModelBuilder();
@@ -266,7 +274,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+        public OpenAiOfficialChatModelBuilder azureOpenAIServiceVersion(
+                AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }
@@ -397,7 +406,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                 // Using Azure OpenAI
                 if (this.defaultRequestParameters != null && this.defaultRequestParameters.modelName() != null) {
                     if (!this.defaultRequestParameters.modelName().equals(this.modelName)) {
-                        throw new UnsupportedFeatureException("On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
+                        throw new UnsupportedFeatureException(
+                                "On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
                     }
                 }
             }
@@ -434,8 +444,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                     this.tokenizer,
                     this.customHeaders,
                     this.listeners,
-                    this.capabilities
-            );
+                    this.capabilities);
         }
 
         @Override

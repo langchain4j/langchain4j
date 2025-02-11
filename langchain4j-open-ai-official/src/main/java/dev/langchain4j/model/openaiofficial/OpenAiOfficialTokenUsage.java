@@ -2,29 +2,25 @@ package dev.langchain4j.model.openaiofficial;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.Objects;
 
 @Experimental
 public class OpenAiOfficialTokenUsage extends TokenUsage {
 
     @Experimental
-    public record InputTokensDetails(
-            Long cachedTokens
-    ) {
-    }
+    public record InputTokensDetails(Long cachedTokens) {}
 
     @Experimental
-    public record OutputTokensDetails(
-            Long reasoningTokens
-    ) {
-    }
+    public record OutputTokensDetails(Long reasoningTokens) {}
 
     private final InputTokensDetails inputTokensDetails;
     private final OutputTokensDetails outputTokensDetails;
 
     private OpenAiOfficialTokenUsage(Builder builder) {
-        super(builder.inputTokenCount.intValue(), builder.outputTokenCount.intValue(), builder.totalTokenCount.intValue());
+        super(
+                builder.inputTokenCount.intValue(),
+                builder.outputTokenCount.intValue(),
+                builder.totalTokenCount.intValue());
         this.inputTokensDetails = builder.inputTokensDetails;
         this.outputTokensDetails = builder.outputTokensDetails;
     }
@@ -56,13 +52,12 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
 
     @Override
     public String toString() {
-        return "OpenAiTokenUsage{" +
-                " inputTokenCount = " + inputTokenCount() +
-                ", inputTokensDetails=" + inputTokensDetails +
-                ", outputTokenCount = " + outputTokenCount() +
-                ", outputTokensDetails=" + outputTokensDetails +
-                ", totalTokenCount = " + totalTokenCount() +
-                '}';
+        return "OpenAiTokenUsage{" + " inputTokenCount = "
+                + inputTokenCount() + ", inputTokensDetails="
+                + inputTokensDetails + ", outputTokenCount = "
+                + outputTokenCount() + ", outputTokensDetails="
+                + outputTokensDetails + ", totalTokenCount = "
+                + totalTokenCount() + '}';
     }
 
     public static Builder builder() {

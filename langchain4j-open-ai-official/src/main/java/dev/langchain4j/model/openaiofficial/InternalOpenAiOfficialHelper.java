@@ -1,5 +1,12 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static java.util.stream.Collectors.toList;
+
 import com.openai.core.JsonValue;
 import com.openai.models.ChatCompletion;
 import com.openai.models.ChatCompletionAssistantMessageParam;
@@ -46,7 +53,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -54,13 +60,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
-import static java.util.stream.Collectors.toList;
 
 public class InternalOpenAiOfficialHelper {
 
@@ -72,14 +71,16 @@ public class InternalOpenAiOfficialHelper {
     static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
 
     static List<ChatCompletionMessageParam> toOpenAiMessages(List<ChatMessage> messages) {
-        return messages.stream().map(InternalOpenAiOfficialHelper::toOpenAiMessage).collect(toList());
+        return messages.stream()
+                .map(InternalOpenAiOfficialHelper::toOpenAiMessage)
+                .collect(toList());
     }
 
     static ChatCompletionMessageParam toOpenAiMessage(ChatMessage message) {
         if (message instanceof SystemMessage systemMessage) {
-            return ChatCompletionMessageParam.ofSystem(
-                    ChatCompletionSystemMessageParam.builder()
-                            .content(systemMessage.text()).build());
+            return ChatCompletionMessageParam.ofSystem(ChatCompletionSystemMessageParam.builder()
+                    .content(systemMessage.text())
+                    .build());
         }
 
         if (message instanceof UserMessage userMessage) {
@@ -108,13 +109,12 @@ public class InternalOpenAiOfficialHelper {
             if (toolExecutionRequest.id() == null) {
 
                 return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
-                        .addToolCall(
-                                ChatCompletionMessageToolCall.builder()
-                                        .function(ChatCompletionMessageToolCall.Function.builder()
-                                                .name(toolExecutionRequest.name())
-                                                .arguments(toolExecutionRequest.arguments())
-                                                .build())
+                        .addToolCall(ChatCompletionMessageToolCall.builder()
+                                .function(ChatCompletionMessageToolCall.Function.builder()
+                                        .name(toolExecutionRequest.name())
+                                        .arguments(toolExecutionRequest.arguments())
                                         .build())
+                                .build())
                         .build());
             }
 
@@ -148,33 +148,29 @@ public class InternalOpenAiOfficialHelper {
         List<ChatCompletionContentPart> parts = new ArrayList<>();
         for (Content content : contents) {
             if (content instanceof TextContent textContent) {
-                parts.add(ChatCompletionContentPart.ofText(
-                        ChatCompletionContentPartText.builder()
-                                .text(textContent.text())
-                                .build()
-                ));
+                parts.add(ChatCompletionContentPart.ofText(ChatCompletionContentPartText.builder()
+                        .text(textContent.text())
+                        .build()));
             } else if (content instanceof ImageContent imageContent) {
                 if (imageContent.image().url() == null) {
-                    throw new UnsupportedFeatureException("Image URL is not present. " +
-                            "Base64 encoded images are not supported at the moment.");
+                    throw new UnsupportedFeatureException(
+                            "Image URL is not present. " + "Base64 encoded images are not supported at the moment.");
                 }
-                ChatCompletionContentPartImage.ImageUrl.Builder imageUrlBuilder = ChatCompletionContentPartImage.ImageUrl.builder();
-                parts.add(ChatCompletionContentPart.ofImageUrl(
-                        ChatCompletionContentPartImage.builder()
-                                .imageUrl(imageUrlBuilder.build())
-                                .build()));
+                ChatCompletionContentPartImage.ImageUrl.Builder imageUrlBuilder =
+                        ChatCompletionContentPartImage.ImageUrl.builder();
+                parts.add(ChatCompletionContentPart.ofImageUrl(ChatCompletionContentPartImage.builder()
+                        .imageUrl(imageUrlBuilder.build())
+                        .build()));
             } else if (content instanceof AudioContent audioContent) {
-                parts.add(ChatCompletionContentPart.ofInputAudio(
-                        ChatCompletionContentPartInputAudio.builder()
-                                .inputAudio(
-                                        ChatCompletionContentPartInputAudio.builder()
-                                                .inputAudio(
-                                                        ChatCompletionContentPartInputAudio.InputAudio.builder()
-                                                                .data(ensureNotBlank(audioContent.audio().base64Data(), "audio.base64Data"))
-                                                                .build())
-                                                .build().inputAudio())
+                parts.add(ChatCompletionContentPart.ofInputAudio(ChatCompletionContentPartInputAudio.builder()
+                        .inputAudio(ChatCompletionContentPartInputAudio.builder()
+                                .inputAudio(ChatCompletionContentPartInputAudio.InputAudio.builder()
+                                        .data(ensureNotBlank(
+                                                audioContent.audio().base64Data(), "audio.base64Data"))
+                                        .build())
                                 .build()
-                ));
+                                .inputAudio())
+                        .build()));
             } else {
                 throw illegalArgument("Unknown content type: " + content);
             }
@@ -204,11 +200,11 @@ public class InternalOpenAiOfficialHelper {
         }
 
         return ChatCompletionTool.builder()
-                .function(functionDefinitionBuilder.build()).build();
+                .function(functionDefinitionBuilder.build())
+                .build();
     }
 
-    private static FunctionParameters toOpenAiParameters(
-            ToolSpecification toolSpecification, boolean strict) {
+    private static FunctionParameters toOpenAiParameters(ToolSpecification toolSpecification, boolean strict) {
 
         FunctionParameters.Builder parametersBuilder = FunctionParameters.builder();
 
@@ -216,12 +212,15 @@ public class InternalOpenAiOfficialHelper {
         parametersBuilder.putAdditionalProperty("type", JsonValue.from("object"));
 
         if (parameters != null) {
-            parametersBuilder.putAdditionalProperty("properties", JsonValue.from(toMap(parameters.properties(), strict)));
+            parametersBuilder.putAdditionalProperty(
+                    "properties", JsonValue.from(toMap(parameters.properties(), strict)));
 
             if (strict) {
                 // when strict, all fields must be required:
                 // https://platform.openai.com/docs/guides/structured-outputs/all-fields-must-be-required
-                parametersBuilder.putAdditionalProperty("required", JsonValue.from(new ArrayList<>(parameters.properties().keySet())));
+                parametersBuilder.putAdditionalProperty(
+                        "required",
+                        JsonValue.from(new ArrayList<>(parameters.properties().keySet())));
                 // when strict, additionalProperties must be false:
                 // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects
                 parametersBuilder.putAdditionalProperty("additionalProperties", JsonValue.from(false));
@@ -275,16 +274,22 @@ public class InternalOpenAiOfficialHelper {
             return null;
         }
 
-        Optional<CompletionUsage.PromptTokensDetails> promptTokensDetails = openAiUsage.get().promptTokensDetails();
+        Optional<CompletionUsage.PromptTokensDetails> promptTokensDetails =
+                openAiUsage.get().promptTokensDetails();
         OpenAiOfficialTokenUsage.InputTokensDetails inputTokensDetails = null;
-        if (promptTokensDetails.isPresent() && promptTokensDetails.get().cachedTokens().isPresent()) {
-            inputTokensDetails = new OpenAiOfficialTokenUsage.InputTokensDetails(promptTokensDetails.get().cachedTokens().get());
+        if (promptTokensDetails.isPresent()
+                && promptTokensDetails.get().cachedTokens().isPresent()) {
+            inputTokensDetails = new OpenAiOfficialTokenUsage.InputTokensDetails(
+                    promptTokensDetails.get().cachedTokens().get());
         }
 
-        Optional<CompletionUsage.CompletionTokensDetails> completionTokensDetails = openAiUsage.get().completionTokensDetails();
+        Optional<CompletionUsage.CompletionTokensDetails> completionTokensDetails =
+                openAiUsage.get().completionTokensDetails();
         OpenAiOfficialTokenUsage.OutputTokensDetails outputTokensDetails = null;
-        if (completionTokensDetails.isPresent() && completionTokensDetails.get().reasoningTokens().isPresent()) {
-            outputTokensDetails = new OpenAiOfficialTokenUsage.OutputTokensDetails(completionTokensDetails.get().reasoningTokens().get());
+        if (completionTokensDetails.isPresent()
+                && completionTokensDetails.get().reasoningTokens().isPresent()) {
+            outputTokensDetails = new OpenAiOfficialTokenUsage.OutputTokensDetails(
+                    completionTokensDetails.get().reasoningTokens().get());
         }
 
         return OpenAiOfficialTokenUsage.builder()
@@ -319,7 +324,8 @@ public class InternalOpenAiOfficialHelper {
         if (openAiFinishReason == null) {
             return null;
         }
-        return finishReasonFrom(ChatCompletion.Choice.FinishReason.of(openAiFinishReason.value().toString()));
+        return finishReasonFrom(
+                ChatCompletion.Choice.FinishReason.of(openAiFinishReason.value().toString()));
     }
 
     static ResponseFormatJsonObject toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
@@ -409,8 +415,8 @@ public class InternalOpenAiOfficialHelper {
             Boolean strictJsonSchema) {
 
         // OpenAI-specific parameters
-        ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
-                .model(parameters.modelName());
+        ChatCompletionCreateParams.Builder builder =
+                ChatCompletionCreateParams.builder().model(parameters.modelName());
 
         if (parameters.maxOutputTokens() != null && parameters.maxCompletionTokens() == null) {
             builder.maxTokens(parameters.maxOutputTokens());
@@ -420,11 +426,9 @@ public class InternalOpenAiOfficialHelper {
         }
 
         if (parameters.logitBias() != null) {
-            builder.logitBias(ChatCompletionCreateParams
-                    .LogitBias.builder()
+            builder.logitBias(ChatCompletionCreateParams.LogitBias.builder()
                     .putAllAdditionalProperties(parameters.logitBias().entrySet().stream()
-                            .collect(Collectors.toMap(
-                                    Map.Entry::getKey, entry -> JsonValue.from(entry.getValue()))))
+                            .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonValue.from(entry.getValue()))))
                     .build());
         }
 
@@ -447,8 +451,7 @@ public class InternalOpenAiOfficialHelper {
         if (parameters.metadata() != null) {
             builder.metadata(Metadata.builder()
                     .putAllAdditionalProperties(parameters.metadata().entrySet().stream()
-                            .collect(Collectors.toMap(
-                                    Map.Entry::getKey, entry -> JsonValue.from(entry.getValue()))))
+                            .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonValue.from(entry.getValue()))))
                     .build());
         }
 
