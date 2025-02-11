@@ -50,10 +50,6 @@ public class DefaultOpenAiClient extends OpenAiClient {
         this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
         this.apiVersion = builder.apiVersion;
 
-        if (builder.openAiApiKey == null && builder.azureApiKey == null) {
-            // TODO
-            throw new IllegalArgumentException("openAiApiKey OR azureApiKey must be defined");
-        }
         if (builder.openAiApiKey != null && builder.azureApiKey != null) {
             // TODO
             throw new IllegalArgumentException("openAiApiKey AND azureApiKey cannot both be defined at the same time");

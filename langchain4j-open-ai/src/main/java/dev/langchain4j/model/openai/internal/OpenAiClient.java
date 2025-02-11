@@ -74,7 +74,7 @@ public abstract class OpenAiClient {
             if (baseUrl == null || baseUrl.trim().isEmpty()) {
                 throw new IllegalArgumentException("baseUrl cannot be null or empty");
             }
-            this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+            this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/"; // TODO?
             return (B) this;
         }
 
@@ -102,11 +102,6 @@ public abstract class OpenAiClient {
          * @return builder
          */
         public B openAiApiKey(String openAiApiKey) {
-            if (openAiApiKey == null || openAiApiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException(
-                        "openAiApiKey cannot be null or empty. API keys can be generated here: https://platform.openai.com/account/api-keys"
-                );
-            }
             this.openAiApiKey = openAiApiKey;
             return (B) this;
         }
@@ -118,7 +113,7 @@ public abstract class OpenAiClient {
          */
         public B azureApiKey(String azureApiKey) {
             if (azureApiKey == null || azureApiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException("azureApiKey cannot be null or empty");
+                throw new IllegalArgumentException("azureApiKey cannot be null or empty"); // TODO?
             }
             this.azureApiKey = azureApiKey;
             return (B) this;
