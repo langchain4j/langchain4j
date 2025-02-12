@@ -45,7 +45,7 @@ public abstract class OpenAiClient {
         public String baseUrl;
         public String organizationId;
         public String projectId;
-        public String openAiApiKey;
+        public String apiKey;
         public Duration connectTimeout;
         public Duration readTimeout;
         public String userAgent;
@@ -90,12 +90,12 @@ public abstract class OpenAiClient {
         }
 
         /**
-         * @param openAiApiKey OpenAI API key.
-         *                     Will be injected in HTTP headers like this: "Authorization: Bearer ${openAiApiKey}"
+         * @param apiKey OpenAI API key.
+         *               Will be injected in HTTP headers like this: "Authorization: Bearer ${openAiApiKey}"
          * @return builder
          */
-        public B openAiApiKey(String openAiApiKey) {
-            this.openAiApiKey = openAiApiKey;
+        public B apiKey(String apiKey) {
+            this.apiKey = apiKey;
             return (B) this;
         }
 

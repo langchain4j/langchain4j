@@ -49,8 +49,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
         this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
 
         Map<String, String> defaultHeaders = new HashMap<>();
-        if (builder.openAiApiKey != null) {
-            defaultHeaders.put("Authorization", "Bearer " + builder.openAiApiKey);
+        if (builder.apiKey != null) {
+            defaultHeaders.put("Authorization", "Bearer " + builder.apiKey);
         }
         if (builder.organizationId != null) {
             defaultHeaders.put("OpenAI-Organization", builder.organizationId);

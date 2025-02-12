@@ -61,7 +61,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
-                .openAiApiKey(builder.apiKey)
+                .apiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
                 .projectId(builder.projectId)
                 .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
