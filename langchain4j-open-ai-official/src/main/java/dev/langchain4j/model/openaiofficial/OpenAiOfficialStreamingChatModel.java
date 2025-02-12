@@ -186,7 +186,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                 ? chatCompletionChunk.systemFingerprint().get()
                                 : null);
                 chatCompletionChunk.choices().forEach(choice -> {
-                    if (choice.delta().content().isPresent() && !choice.delta().content().get().isEmpty()) {
+                    if (choice.delta().content().isPresent()
+                            && !choice.delta().content().get().isEmpty()) {
                         text.append(choice.delta().content().get());
                         handler.onPartialResponse(choice.delta().content().get());
                     }
