@@ -3,6 +3,12 @@ package dev.langchain4j.service.common.openai;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -16,8 +22,10 @@ import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -159,14 +167,13 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         // given
         OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
+                .maxCompletionTokens(123)
                 .seed(12345)
                 .user("Klaus")
                 .store(true)
-                .metadata(Map.of(
-                        "one", "1",
-                        "two", "2"
-                ))
+                .metadata(Map.of("key", "value"))
                 .serviceTier("default")
+                .reasoningEffort("medium")
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -174,18 +181,70 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
+        AtomicReference<String> httpRequestBody = new AtomicReference<>();
+
+        HttpClient spyingHttpClient = new HttpClient() {
+
+            @Override
+            public SuccessfulHttpResponse execute(HttpRequest request) {
+                httpRequestBody.set(request.body());
+                return null;
+            }
+
+            @Override
+            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+                httpRequestBody.set(request.body());
+            }
+        };
+
+        HttpClientBuilder spyingHttpClientBuilder = new HttpClientBuilder() {
+
+            @Override
+            public Duration connectTimeout() {
+                return null;
+            }
+
+            @Override
+            public HttpClientBuilder connectTimeout(Duration timeout) {
+                return this;
+            }
+
+            @Override
+            public Duration readTimeout() {
+                return null;
+            }
+
+            @Override
+            public HttpClientBuilder readTimeout(Duration timeout) {
+                return this;
+            }
+
+            @Override
+            public HttpClient build() {
+                return spyingHttpClient;
+            }
+        };
+
         ChatLanguageModel chatModel = defaultModelBuilder()
-                .logRequests(true) // verifying manually in the logs for now
-                .logResponses(true) // verifying manually in the logs for now
+                .httpClientBuilder(spyingHttpClientBuilder)
+                .maxRetries(1) // it will fail, so no need to retry
                 .build();
 
         // when
-        ChatResponse chatResponse = chatModel.chat(chatRequest);
+        try {
+            chatModel.chat(chatRequest);
+        } catch (Exception e) {
+            // it fails because HttpClient.execute() returns null
+        }
 
         // then
-        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
-
-        // TODO verify that parameters are propagated after https://github.com/langchain4j/langchain4j/issues/1044
+        assertThat(httpRequestBody.get())
+                .containsIgnoringWhitespaces("\"seed\": 12345")
+                .containsIgnoringWhitespaces("\"user\": \"Klaus\"")
+                .containsIgnoringWhitespaces("\"store\": true")
+                .containsIgnoringWhitespaces("\"metadata\": {\"key\": \"value\"}")
+                .containsIgnoringWhitespaces("\"service_tier\": \"default\"")
+                .containsIgnoringWhitespaces("\"reasoning_effort\": \"medium\"");
     }
 
     @Test
