@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -60,6 +61,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
     protected final String options;
     protected final Map<Integer, ContentRetriever> idToRetriever;
     protected final FallbackStrategy fallbackStrategy;
+    protected final FilterRouterChain filterRouterChain;
 
     public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
                                     Map<ContentRetriever, String> retrieverToDescription) {
@@ -73,7 +75,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         ensureNotEmpty(retrieverToDescription, "retrieverToDescription");
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
-
+        this.filterRouterChain = new FilterRouterChain();
         Map<Integer, ContentRetriever> idToRetriever = new HashMap<>();
         StringBuilder optionsBuilder = new StringBuilder();
         int id = 1;
@@ -103,11 +105,16 @@ public class LanguageModelQueryRouter implements QueryRouter {
         Prompt prompt = createPrompt(query);
         try {
             String response = chatLanguageModel.generate(prompt.text());
+            response = filterRouterChain.doFilter(response);
             return parse(response);
         } catch (Exception e) {
             log.warn("Failed to route query '{}'", query.text(), e);
             return fallback(query, e);
         }
+    }
+
+    public void addFilterRouter(FilterRouter filterRouter) {
+        filterRouterChain.addFilterRouter(filterRouter);
     }
 
     protected Collection<ContentRetriever> fallback(Query query, Exception e) {

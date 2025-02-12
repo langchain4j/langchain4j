@@ -2,9 +2,14 @@ package dev.langchain4j.rag.query.router;
 
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.content.aggregator.ContentAggregator;
+import dev.langchain4j.rag.content.aggregator.DefaultContentAggregator;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
+import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
+import dev.langchain4j.rag.query.transformer.QueryTransformer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -17,6 +22,8 @@ import java.util.Map;
 
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -290,5 +297,59 @@ class LanguageModelQueryRouterTest {
         assertThatThrownBy(() -> router.route(query))
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Something went wrong");
+    }
+
+    @Test
+    void should_support_Deepseek_in_ollama_remove_thinking_tags_success(){
+        //DeepSeek model answer
+        String choices ="<think>\n" +
+                "Okay, I need to figure out which data source is best for the user's query. The user asked, \"今天新增了哪些商品\" which translates to \"What new products have been added today?\" \n" +
+                "\n" +
+                "Looking at the options, there are two knowledge bases available: 订单知识库 (Order Knowledge Base) and 商品知识库 (Product Knowledge Base). \n" +
+                "\n" +
+                "The Order Knowledge Base would likely contain information related to orders, such as purchase history, order status, customer details, etc. It's focused on transactions rather than product listings or updates.\n" +
+                "\n" +
+                "On the other hand, the Product Knowledge Base is more suited for storing and managing product data. This includes product names, descriptions, specifications, prices, availability, and any updates regarding new products added to the inventory.\n" +
+                "\n" +
+                "Since the user is specifically asking about newly added items today, they are interested in product information rather than order details. Therefore, the most appropriate source to retrieve this information would be 商品知识库 (Product Knowledge Base).\n" +
+                "</think>\n" +
+                "\n" +
+                "2";
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+
+        LanguageModelQueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+        router.addFilterRouter(new DeepSeekFilter());
+        String test = router.filterRouterChain.doFilter(choices);
+        router.parse(test);
+    }
+
+    @Test
+    void should_support_Deepseek_in_ollama_remove_thinking_tags_failed(){
+        //DeepSeek model answer
+        String choices ="<think>\n" +
+                "Okay, I need to figure out which data source is best for the user's query. The user asked, \"今天新增了哪些商品\" which translates to \"What new products have been added today?\" \n" +
+                "\n" +
+                "Looking at the options, there are two knowledge bases available: 订单知识库 (Order Knowledge Base) and 商品知识库 (Product Knowledge Base). \n" +
+                "\n" +
+                "The Order Knowledge Base would likely contain information related to orders, such as purchase history, order status, customer details, etc. It's focused on transactions rather than product listings or updates.\n" +
+                "\n" +
+                "On the other hand, the Product Knowledge Base is more suited for storing and managing product data. This includes product names, descriptions, specifications, prices, availability, and any updates regarding new products added to the inventory.\n" +
+                "\n" +
+                "Since the user is specifically asking about newly added items today, they are interested in product information rather than order details. Therefore, the most appropriate source to retrieve this information would be 商品知识库 (Product Knowledge Base).\n" +
+                "</think>\n" +
+                "\n" +
+                "2";
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+
+        LanguageModelQueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+        router.parse(choices);
     }
 }
