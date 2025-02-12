@@ -25,9 +25,9 @@ class JlamaStreamingChatModelIT {
         tmpDir.mkdirs();
 
         model = JlamaStreamingChatModel.builder()
-                .modelName("tjake/Meta-Llama-3.1-8B-Instruct-Jlama-Q4")
+                .modelName("tjake/Llama-3.2-1B-Instruct-JQ4")
                 .modelCachePath(tmpDir.toPath())
-                .maxTokens(30)
+                .maxTokens(64)
                 .temperature(0.0f)
                 .build();
     }

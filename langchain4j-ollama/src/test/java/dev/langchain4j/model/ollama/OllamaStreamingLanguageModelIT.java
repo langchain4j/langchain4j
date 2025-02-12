@@ -1,7 +1,9 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -20,7 +23,7 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
         String prompt = "What is the capital of Germany?";
 
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(OllamaImage.TINY_DOLPHIN_MODEL)
                 .temperature(0.0)
                 .build();
@@ -51,7 +54,7 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
         int numPredict = 1; // max output tokens
 
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(OllamaImage.TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
@@ -77,7 +80,7 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
 
         // given
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(OllamaImage.TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)
@@ -103,7 +106,7 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
         String wrongModelName = "banana";
 
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(wrongModelName)
                 .build();
 
@@ -129,7 +132,20 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
         });
 
         // then
-        assertThat(future.get())
-                .isExactlyInstanceOf(NullPointerException.class);
+        Throwable throwable = future.get();
+        assertThat(throwable).isExactlyInstanceOf(HttpException.class);
+
+        HttpException httpException = (HttpException) throwable;
+        assertThat(httpException.statusCode()).isEqualTo(404);
+        assertThat(httpException.getMessage()).contains("banana", "not found");
+    }
+
+    @Test
+    void should_throw_exception_when_format_and_response_format_are_used() {
+        assertThatThrownBy(() -> OllamaStreamingLanguageModel.builder()
+                        .format("json")
+                        .responseFormat(ResponseFormat.JSON)
+                        .build())
+                .isInstanceOf(IllegalStateException.class);
     }
 }

@@ -19,6 +19,10 @@ public interface MistralAiApi {
     @Headers({"Content-Type: application/json"})
     Call<MistralAiEmbeddingResponse> embedding(@Body MistralAiEmbeddingRequest request);
 
+    @POST("moderations")
+    @Headers({"Content-Type: application/json"})
+    Call<MistralAiModerationResponse> moderations(@Body MistralAiModerationRequest request);
+
     @GET("models")
     @Headers({"Content-Type: application/json"})
     Call<MistralAiModelResponse> models();

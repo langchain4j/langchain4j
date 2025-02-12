@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
@@ -16,25 +16,59 @@ import static java.util.Arrays.asList;
 public class ChatRequest {
 
     private final List<ChatMessage> messages;
-    private final List<ToolSpecification> toolSpecifications;
-    private final ResponseFormat responseFormat;
+    private final ChatRequestParameters parameters;
 
-    private ChatRequest(Builder builder) {
+    protected ChatRequest(Builder builder) {
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
-        this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
-        this.responseFormat = builder.responseFormat;
+
+        DefaultChatRequestParameters.Builder<?> parametersBuilder = ChatRequestParameters.builder();
+
+        if (!isNullOrEmpty(builder.toolSpecifications)) {
+            if (builder.parameters != null) {
+                throw new IllegalArgumentException(
+                        "Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
+            }
+            parametersBuilder.toolSpecifications(builder.toolSpecifications);
+        }
+
+        if (builder.responseFormat != null) {
+            if (builder.parameters != null) {
+                throw new IllegalArgumentException(
+                        "Cannot set both 'parameters' and 'responseFormat' on ChatRequest");
+            }
+            parametersBuilder.responseFormat(builder.responseFormat);
+        }
+
+        if (builder.parameters != null) {
+            this.parameters = builder.parameters;
+        } else {
+            this.parameters = parametersBuilder.build();
+        }
     }
 
     public List<ChatMessage> messages() {
         return messages;
     }
 
-    public List<ToolSpecification> toolSpecifications() {
-        return toolSpecifications;
+    @Experimental
+    public ChatRequestParameters parameters() {
+        return parameters;
     }
 
+    /**
+     * @deprecated please use {@link #parameters()} and then {@link ChatRequestParameters#toolSpecifications()} instead
+     */
+    @Deprecated(forRemoval = true)
+    public List<ToolSpecification> toolSpecifications() {
+        return parameters.toolSpecifications();
+    }
+
+    /**
+     * @deprecated please use {@link #parameters()} and then {@link ChatRequestParameters#responseFormat()} instead
+     */
+    @Deprecated(forRemoval = true)
     public ResponseFormat responseFormat() {
-        return responseFormat;
+        return parameters.responseFormat();
     }
 
     @Override
@@ -43,21 +77,19 @@ public class ChatRequest {
         if (o == null || getClass() != o.getClass()) return false;
         ChatRequest that = (ChatRequest) o;
         return Objects.equals(this.messages, that.messages)
-                && Objects.equals(this.toolSpecifications, that.toolSpecifications)
-                && Objects.equals(this.responseFormat, that.responseFormat);
+                && Objects.equals(this.parameters, that.parameters);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(messages, toolSpecifications, responseFormat);
+        return Objects.hash(messages, parameters);
     }
 
     @Override
     public String toString() {
         return "ChatRequest {" +
                 " messages = " + messages +
-                ", toolSpecifications = " + toolSpecifications +
-                ", responseFormat = " + responseFormat +
+                ", parameters = " + parameters +
                 " }";
     }
 
@@ -68,6 +100,7 @@ public class ChatRequest {
     public static class Builder {
 
         private List<ChatMessage> messages;
+        private ChatRequestParameters parameters;
         private List<ToolSpecification> toolSpecifications;
         private ResponseFormat responseFormat;
 
@@ -80,15 +113,33 @@ public class ChatRequest {
             return messages(asList(messages));
         }
 
+        @Experimental
+        public Builder parameters(ChatRequestParameters parameters) {
+            this.parameters = parameters;
+            return this;
+        }
+
+        /**
+         * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#toolSpecifications()} instead
+         */
+        @Deprecated(forRemoval = true)
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return this;
         }
 
+        /**
+         * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#toolSpecifications()} instead
+         */
+        @Deprecated(forRemoval = true)
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
 
+        /**
+         * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#responseFormat()} instead
+         */
+        @Deprecated(forRemoval = true)
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;

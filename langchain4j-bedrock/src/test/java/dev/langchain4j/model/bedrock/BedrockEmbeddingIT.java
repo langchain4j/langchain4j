@@ -7,6 +7,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
 import java.util.Collections;
 import java.util.List;
@@ -83,4 +84,24 @@ class BedrockEmbeddingIT {
         assertThat(embeddingModel.dimension()).isEqualTo(256);
     }
 
+    @Test
+    void testInjectClientToModelBuilder() {
+
+        String serviceName = "custom-service-name";
+
+        BedrockTitanEmbeddingModel model = BedrockTitanEmbeddingModel.builder()
+                .client(new BedrockRuntimeClient() {
+                    @Override
+                    public String serviceName() {
+                        return serviceName;
+                    }
+
+                    @Override
+                    public void close() {
+                    }
+                })
+                .build();
+
+        assertThat(model.getClient().serviceName()).isEqualTo(serviceName);
+    }
 }

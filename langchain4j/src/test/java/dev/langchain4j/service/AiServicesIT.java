@@ -1,19 +1,18 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
-import lombok.Builder;
-import lombok.ToString;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -23,22 +22,33 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.service.AiServicesIT.Ingredient.*;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.*;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.SALT;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.COMFORT_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.MAINTENANCE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIENCE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
-import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.data.MapEntry.entry;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
-public class AiServicesIT {
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+class AiServicesIT {
 
     @Spy
     ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
@@ -63,9 +73,33 @@ public class AiServicesIT {
 
     @AfterEach
     void afterEach() {
-        verifyNoMoreInteractions(chatLanguageModel);
+        verifyNoMoreInteractionsFor(chatLanguageModel);
         verifyNoMoreInteractions(chatMemory);
         verifyNoMoreInteractions(moderationModel);
+    }
+
+    public static void verifyNoMoreInteractionsFor(ChatLanguageModel model) {
+        try {
+            verify(model, atLeastOnce()).doChat(any());
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).defaultRequestParameters();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).supportedCapabilities();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).listeners();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        verifyNoMoreInteractions(model);
     }
 
     interface EggCounter {
@@ -83,10 +117,9 @@ public class AiServicesIT {
         int count = eggCounter.count(sentence);
         assertThat(count).isEqualTo(13);
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Count the number of eggs mentioned in this sentence:\n" +
+        verify(chatLanguageModel).chat(chatRequest("Count the number of eggs mentioned in this sentence:\n" +
                 "|||I have ten eggs in my basket and three in my pocket.|||\n" +
-                "You must answer strictly in the following format: integer number")));
-        verify(chatLanguageModel).supportedCapabilities();
+                "You must answer strictly in the following format: integer number"));
     }
 
 
@@ -105,8 +138,7 @@ public class AiServicesIT {
 
         assertThat(joke).isNotBlank();
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Tell me a joke about AI")));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatLanguageModel).chat(chatRequest("Tell me a joke about AI"));
     }
 
 
@@ -133,10 +165,9 @@ public class AiServicesIT {
 
         assertThat(date).isEqualTo(LocalDate.of(1968, JULY, 4));
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Extract date from " + text + "\n" +
-                        "You must answer strictly in the following format: yyyy-MM-dd")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "You must answer strictly in the following format: yyyy-MM-dd"));
     }
 
     @Test
@@ -150,10 +181,9 @@ public class AiServicesIT {
 
         assertThat(time).isEqualTo(LocalTime.of(23, 45, 0));
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Extract time from " + text + "\n" +
-                        "You must answer strictly in the following format: HH:mm:ss")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "You must answer strictly in the following format: HH:mm:ss"));
     }
 
     @Test
@@ -167,10 +197,9 @@ public class AiServicesIT {
 
         assertThat(dateTime).isEqualTo(LocalDateTime.of(1968, JULY, 4, 23, 45, 0));
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Extract date and time from " + text + "\n" +
-                        "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss"));
     }
 
 
@@ -196,13 +225,12 @@ public class AiServicesIT {
 
         assertThat(sentiment).isEqualTo(POSITIVE);
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Analyze sentiment of:\n|||" + customerReview + "|||\n" +
                         "You must answer strictly with one of these enums:\n" +
                         "POSITIVE\n" +
                         "NEUTRAL\n" +
-                        "NEGATIVE")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "NEGATIVE"));
     }
 
     public enum Weather {
@@ -233,14 +261,13 @@ public class AiServicesIT {
 
         assertThat(weather).isEqualTo(Weather.RAINY);
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Analyze weather forecast for:\n" +
+        verify(chatLanguageModel).chat(chatRequest("Analyze weather forecast for:\n" +
                 "|||" + weatherForecast + "|||\n" +
                 "You must answer strictly with one of these enums:\n" +
                 "SUNNY - A clear day with bright sunlight and few or no clouds\n" +
                 "CLOUDY - The sky is covered with clouds with no rain, often creating a gray and overcast appearance\n" +
                 "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n" +
-                "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions")));
-        verify(chatLanguageModel).supportedCapabilities();
+                "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions"));
     }
 
     public enum Ingredient {
@@ -265,14 +292,13 @@ public class AiServicesIT {
         List<Ingredient> ingredients = ingredientsExtractor.extractIngredients(recipe);
         assertThat(ingredients).isEqualTo(Arrays.asList(SALT, PEPPER, OIL));
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Analyze the following recipe:\n" +
+        verify(chatLanguageModel).chat(chatRequest("Analyze the following recipe:\n" +
                 "|||" + recipe + "|||\n" +
                 "You must answer strictly with zero or more of these enums on a separate line:\n" +
                 "SALT\n" +
                 "PEPPER\n" +
                 "VINEGAR\n" +
-                "OIL")));
-        verify(chatLanguageModel).supportedCapabilities();
+                "OIL"));
     }
 
     public enum IssueCategory {
@@ -313,7 +339,7 @@ public class AiServicesIT {
         List<IssueCategory> issueCategories = hotelReviewIssueAnalyzer.analyzeReview(review);
         assertThat(issueCategories).isEqualTo(Arrays.asList(MAINTENANCE_ISSUE, SERVICE_ISSUE, COMFORT_ISSUE, OVERALL_EXPERIENCE_ISSUE));
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Please analyse the following review: |||" + review + "|||\n" +
+        verify(chatLanguageModel).chat(chatRequest("Please analyse the following review: |||" + review + "|||\n" +
                 "You must answer strictly with zero or more of these enums on a separate line:\n" +
                 "MAINTENANCE_ISSUE - The feedback mentions issues with the hotel's maintenance, such as air conditioning and plumbing problems\n" +
                 "SERVICE_ISSUE - The feedback mentions issues with the service provided, such as slow room service\n" +
@@ -322,23 +348,44 @@ public class AiServicesIT {
                 "CLEANLINESS_ISSUE - The feedback mentions issues with the cleanliness of the hotel, such as dust and stains\n" +
                 "CONNECTIVITY_ISSUE - The feedback mentions issues with internet connectivity, such as unreliable Wi-Fi\n" +
                 "CHECK_IN_ISSUE - The feedback mentions issues with the check-in process, such as it being tedious and time-consuming\n" +
-                "OVERALL_EXPERIENCE_ISSUE - The feedback mentions a general dissatisfaction with the overall hotel experience due to multiple issues")));
-        verify(chatLanguageModel).supportedCapabilities();
+                "OVERALL_EXPERIENCE_ISSUE - The feedback mentions a general dissatisfaction with the overall hotel experience due to multiple issues"));
+
     }
 
-    @ToString
-    static class Address {
-        private Integer streetNumber;
-        private String street;
-        private String city;
+    interface MapExtractor {
+
+        @UserMessage("Return a JSON map with the age of each person in the following text: {{it}}")
+        Map<String, Integer> extractAges(String text);
     }
 
-    @ToString
-    static class Person {
-        private String firstName;
-        private String lastName;
-        private LocalDate birthDate;
-        private Address address;
+    @Test
+    void should_extract_map() {
+
+        MapExtractor mapExtractor = AiServices.create(MapExtractor.class, chatLanguageModel);
+
+        String text = "Klaus is 42 and Francine is 47";
+
+        Map<String, Integer> ages = mapExtractor.extractAges(text);
+
+        assertThat(ages).containsExactly(entry("Klaus", 42), entry("Francine", 47));
+
+        verify(chatLanguageModel).chat(chatRequest(
+                "Return a JSON map with the age of each person in the following text: " + text
+        ));
+    }
+
+    record Address(
+            Integer streetNumber,
+            String street,
+            String city
+    ) {
+    }
+
+    static record Person(
+            String firstName,
+            String lastName,
+            LocalDate birthDate,
+            Address address) {
     }
 
     interface PersonExtractor {
@@ -368,7 +415,7 @@ public class AiServicesIT {
         assertThat(person.address.street).isEqualTo("Whispering Pines Avenue");
         assertThat(person.address.city).isEqualTo("Springfield");
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Extract information about a person from " + text + "\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
@@ -379,8 +426,7 @@ public class AiServicesIT {
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string)\n" +
                         "})\n" +
-                        "}")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "}"));
     }
 
     @Test
@@ -415,7 +461,7 @@ public class AiServicesIT {
         assertThat(person.address.street).isEqualTo("Whispering Pines Avenue");
         assertThat(person.address.city).isEqualTo("Springfield");
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Extract information about a person from " + text + "\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
@@ -426,19 +472,17 @@ public class AiServicesIT {
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string)\n" +
                         "})\n" +
-                        "}")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "}"));
     }
 
 
-    @ToString
-    static class Recipe {
+    static record Recipe(
 
-        private String title;
-        private String description;
-        @Description("each step should be described in 4 words, steps should rhyme")
-        private String[] steps;
-        private Integer preparationTimeMinutes;
+            String title,
+            String description,
+            @Description("each step should be described in 4 words, steps should rhyme")
+            String[] steps,
+            Integer preparationTimeMinutes) {
     }
 
     interface Chef {
@@ -480,15 +524,14 @@ public class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "}"));
     }
 
     @Test
@@ -503,15 +546,14 @@ public class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "}"));
     }
 
     @Test
@@ -526,15 +568,14 @@ public class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "}"));
     }
 
     @Test
@@ -549,15 +590,14 @@ public class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "}"));
     }
 
     interface BadChef {
@@ -600,12 +640,10 @@ public class AiServicesIT {
                 .hasMessage("@UserMessage's template cannot be empty");
     }
 
-    @Builder
     @StructuredPrompt("Create a recipe of a {{dish}} that can be prepared using only {{ingredients}}")
-    static class CreateRecipePrompt {
-
-        private String dish;
-        private List<String> ingredients;
+    record CreateRecipePrompt(
+            String dish,
+            List<String> ingredients) {
     }
 
     @Test
@@ -613,10 +651,10 @@ public class AiServicesIT {
 
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
-        CreateRecipePrompt prompt = CreateRecipePrompt.builder()
-                .dish("salad")
-                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
-                .build();
+        CreateRecipePrompt prompt = new CreateRecipePrompt(
+                "salad",
+                List.of("cucumber", "tomato", "feta", "onion", "olives")
+        );
 
         Recipe recipe = chef.createRecipeFrom(prompt);
 
@@ -625,15 +663,14 @@ public class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(
+        verify(chatLanguageModel).chat(chatRequest(
                 "Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
-        verify(chatLanguageModel).supportedCapabilities();
+                        "}"));
     }
 
     @Test
@@ -641,11 +678,9 @@ public class AiServicesIT {
 
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
-        CreateRecipePrompt prompt = CreateRecipePrompt
-                .builder()
-                .dish("salad")
-                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
-                .build();
+        CreateRecipePrompt prompt = new CreateRecipePrompt(
+                "salad",
+                List.of("cucumber", "tomato", "feta", "onion", "olives"));
 
         Recipe recipe = chef.createRecipeFrom(prompt, "funny");
 
@@ -654,17 +689,18 @@ public class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel).generate(asList(
-                systemMessage("You are very funny chef"),
-                userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"title\": (type: string),\n" +
-                        "\"description\": (type: string),\n" +
-                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")
-        ));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatLanguageModel).chat(
+                ChatRequest.builder().messages(
+                        systemMessage("You are very funny chef"),
+                        userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
+                                "You must answer strictly in the following JSON format: {\n" +
+                                "\"title\": (type: string),\n" +
+                                "\"description\": (type: string),\n" +
+                                "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                                "\"preparationTimeMinutes\": (type: integer)\n" +
+                                "}")
+                ).build()
+        );
     }
 
     @Test
@@ -695,11 +731,9 @@ public class AiServicesIT {
 
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
-        CreateRecipePrompt prompt = CreateRecipePrompt
-                .builder()
-                .dish("salad")
-                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
-                .build();
+        CreateRecipePrompt prompt = new CreateRecipePrompt(
+                "salad",
+                List.of("cucumber", "tomato", "feta", "onion", "olives"));
 
         Recipe recipe = chef.createRecipeFromUsingResource(prompt, "funny");
 
@@ -708,17 +742,18 @@ public class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel).generate(asList(
-                systemMessage("You are very funny chef"),
-                userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"title\": (type: string),\n" +
-                        "\"description\": (type: string),\n" +
-                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")
-        ));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatLanguageModel).chat(
+                ChatRequest.builder().messages(
+                        systemMessage("You are very funny chef"),
+                        userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
+                                "You must answer strictly in the following JSON format: {\n" +
+                                "\"title\": (type: string),\n" +
+                                "\"description\": (type: string),\n" +
+                                "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                                "\"preparationTimeMinutes\": (type: integer)\n" +
+                                "}")
+                ).build()
+        );
     }
 
     interface ProfessionalChef {
@@ -738,11 +773,12 @@ public class AiServicesIT {
 
         assertThat(answer).isNotBlank();
 
-        verify(chatLanguageModel).generate(asList(
-                systemMessage("You are a professional chef. You are friendly, polite and concise."),
-                userMessage(question)
-        ));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatLanguageModel).chat(
+                ChatRequest.builder().messages(
+                        systemMessage("You are a professional chef. You are friendly, polite and concise."),
+                        userMessage(question)
+                ).build()
+        );
     }
 
 
@@ -764,11 +800,12 @@ public class AiServicesIT {
 
         assertThat(translation).isEqualTo("Hallo, wie geht es dir?");
 
-        verify(chatLanguageModel).generate(asList(
-                systemMessage("You are a professional translator into german"),
-                userMessage("Translate the following text: Hello, how are you?")
-        ));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatLanguageModel).chat(
+                ChatRequest.builder().messages(
+                        systemMessage("You are a professional translator into german"),
+                        userMessage("Translate the following text: Hello, how are you?")
+                ).build()
+        );
     }
 
     interface Summarizer {
@@ -790,11 +827,12 @@ public class AiServicesIT {
 
         assertThat(bulletPoints).hasSize(3);
 
-        verify(chatLanguageModel).generate(asList(
-                systemMessage("Summarize every message from user in 3 bullet points. Provide only bullet points."),
-                userMessage(text + "\nYou must put every item on a separate line.")
-        ));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatLanguageModel).chat(
+                ChatRequest.builder().messages(
+                        systemMessage("Summarize every message from user in 3 bullet points. Provide only bullet points."),
+                        userMessage(text + "\nYou must put every item on a separate line.")
+                ).build()
+        );
     }
 
 
@@ -818,8 +856,7 @@ public class AiServicesIT {
                 .isExactlyInstanceOf(ModerationException.class)
                 .hasMessage("Text \"" + message + "\" violates content policy");
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(message)));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatLanguageModel).chat(chatRequest(message));
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -837,8 +874,7 @@ public class AiServicesIT {
 
         assertThat(response).isNotBlank();
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(message)));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatLanguageModel).chat(chatRequest(message));
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -864,15 +900,14 @@ public class AiServicesIT {
 
         TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage).isNotNull();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(result.sources()).isNull();
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(userMessage)));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatLanguageModel).chat(chatRequest(userMessage));
     }
 
 
@@ -904,13 +939,18 @@ public class AiServicesIT {
         assertThat(result.tokenUsage()).isNotNull();
         assertThat(result.sources()).isNull();
 
-        verify(chatLanguageModel).generate(singletonList(
-                userMessage("Give me an example of a booking\n" +
+        verify(chatLanguageModel).chat(chatRequest(
+                "Give me an example of a booking\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"userId\": (type: string),\n" +
                         "\"bookingId\": (type: string)\n" +
                         "}")
-        ));
-        verify(chatLanguageModel).supportedCapabilities();
+        );
+    }
+
+    static ChatRequest chatRequest(String userMessage) {
+        return ChatRequest.builder()
+                .messages(dev.langchain4j.data.message.UserMessage.from(userMessage))
+                .build();
     }
 }

@@ -39,6 +39,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toEmbeddingMatch;
 import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toMongoDbDocument;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -182,16 +183,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
                 .collect(toList());
-        addAllInternal(ids, embeddings, null);
-        return ids;
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAllInternal(ids, embeddings, embedded);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
@@ -298,10 +290,11 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("do not add empty embeddings to Azure CosmosDB  Mongo vCore");
             return;

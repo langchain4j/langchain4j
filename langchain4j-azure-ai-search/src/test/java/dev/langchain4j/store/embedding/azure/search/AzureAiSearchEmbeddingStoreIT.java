@@ -11,9 +11,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
-import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
@@ -25,8 +23,8 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_FIELD_ID;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
 public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
@@ -41,7 +39,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
     private final AzureAiSearchEmbeddingStore embeddingStore = AzureAiSearchEmbeddingStore.builder()
             .endpoint(AZURE_SEARCH_ENDPOINT)
             .apiKey(AZURE_SEARCH_KEY)
-            .indexName(randomUUID())
+            .indexName("ccc" + randomUUID())
             .dimensions(embeddingModel.dimension())
             .build();
 
@@ -55,13 +53,13 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
         return embeddingModel;
     }
 
-    @BeforeEach
-    void beforeEach() throws InterruptedException {
-        Thread.sleep(2_000);
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        deleteIndex();
+        sleep();
     }
 
-    @AfterEach
-    void afterEach() {
+    private void deleteIndex() {
         try {
             embeddingStore.deleteIndex();
         } catch (RuntimeException e) {
@@ -69,13 +67,10 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
         }
     }
 
-    @Override
-    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
-        super.awaitUntilAsserted(assertion);
-        try {
-            Thread.sleep(1000); // TODO figure out why this is needed and remove this hack
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+    private static void sleep() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_AI_SEARCH");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
 
@@ -108,7 +103,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
                 new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
                         new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null, null);
 
-        assertEquals(providedIndexName, store.searchClient.getIndexName());
+        assertThat(store.searchClient.getIndexName()).isEqualTo(providedIndexName);
 
         try {
             new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
@@ -116,7 +111,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
 
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("index and indexName cannot be both defined", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("index and indexName cannot be both defined");
         }
 
         // Clear index
@@ -135,6 +130,6 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
                 null
         );
 
-        assertEquals(DEFAULT_INDEX_NAME, store.searchClient.getIndexName());
+        assertThat(store.searchClient.getIndexName()).isEqualTo(DEFAULT_INDEX_NAME);
     }
 }

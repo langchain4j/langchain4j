@@ -1,7 +1,7 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
@@ -14,20 +14,24 @@ public class OllamaModels {
     private final OllamaClient client;
     private final Integer maxRetries;
 
-    @Builder
-    public OllamaModels(String baseUrl,
+    public OllamaModels(HttpClientBuilder httpClientBuilder,
+                        String baseUrl,
                         Duration timeout,
                         Integer maxRetries,
                         Boolean logRequests,
-                        Boolean logResponses
-                        ) {
+                        Boolean logResponses) {
         this.client = OllamaClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
-                .timeout((getOrDefault(timeout, Duration.ofSeconds(60))))
+                .timeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
         this.maxRetries = getOrDefault(maxRetries, 3);
+    }
+
+    public static OllamaModelsBuilder builder() {
+        return new OllamaModelsBuilder();
     }
 
     public Response<List<OllamaModel>> availableModels() {
@@ -63,5 +67,56 @@ public class OllamaModels {
     public Response<List<RunningOllamaModel>> runningModels() {
         RunningModelsListResponse response = withRetry(client::listRunningModels, maxRetries);
         return Response.from(response.getModels());
+    }
+
+    public static class OllamaModelsBuilder {
+
+        private HttpClientBuilder httpClientBuilder;
+        private String baseUrl;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        /**
+         * TODO
+         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
+         *
+         * @param httpClientBuilder
+         * @return
+         */
+        public OllamaModelsBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public OllamaModelsBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OllamaModelsBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OllamaModelsBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public OllamaModelsBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OllamaModelsBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OllamaModels build() {
+            return new OllamaModels(httpClientBuilder, baseUrl, timeout, maxRetries, logRequests, logResponses);
+        }
     }
 }

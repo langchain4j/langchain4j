@@ -6,7 +6,6 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.IntArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -17,6 +16,12 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.chat.request.json.*;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -29,11 +34,6 @@ import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0125_PR
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_TURBO;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_PREVIEW;
 import static java.util.Collections.singletonList;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Supplier;
 
 /**
  * This class can be used to estimate the cost (in tokens) before calling OpenAI or when using streaming.
@@ -225,13 +225,13 @@ public class AzureOpenAiTokenizer implements Tokenizer {
         return tokenCount;
     }
 
-    private int estimateTokenCountInToolParameters(ToolParameters parameters) {
+    private int estimateTokenCountInToolParameters(JsonObjectSchema parameters) {
         if (parameters == null) {
             return 0;
         }
 
         int tokenCount = 3;
-        Map<String, Map<String, Object>> properties = parameters.properties();
+        Map<String, JsonSchemaElement> properties = parameters.properties();
         if (isOneOfLatestModels()) {
             tokenCount += properties.size() - 1;
         }
@@ -242,28 +242,35 @@ public class AzureOpenAiTokenizer implements Tokenizer {
                 tokenCount += 3;
             }
             tokenCount += estimateTokenCountInText(property);
-            for (Map.Entry<String, Object> entry : properties.get(property).entrySet()) {
-                if ("type".equals(entry.getKey())) {
-                    if ("array".equals(entry.getValue()) && isOneOfLatestModels()) {
-                        tokenCount += 1;
-                    }
-                    // TODO object
-                } else if ("description".equals(entry.getKey())) {
-                    tokenCount += 2;
-                    tokenCount += estimateTokenCountInText(entry.getValue().toString());
-                    if (isOneOfLatestModels() && parameters.required().contains(property)) {
-                        tokenCount += 1;
-                    }
-                } else if ("enum".equals(entry.getKey())) {
-                    if (isOneOfLatestModels()) {
-                        tokenCount -= 2;
-                    } else {
-                        tokenCount -= 3;
-                    }
-                    for (Object enumValue : (Object[]) entry.getValue()) {
-                        tokenCount += 3;
-                        tokenCount += estimateTokenCountInText(enumValue.toString());
-                    }
+
+            JsonSchemaElement element = properties.get(property);
+            if (element instanceof JsonArraySchema && isOneOfLatestModels()) {
+                tokenCount += 1;
+            } else if (element instanceof JsonBooleanSchema || element instanceof JsonIntegerSchema || element instanceof JsonNumberSchema || element instanceof JsonStringSchema) {
+                tokenCount += 2;
+                String value;
+                if (element instanceof JsonBooleanSchema) {
+                    value = ((JsonBooleanSchema) element).description();
+                } else if (element instanceof JsonIntegerSchema) {
+                    value = ((JsonIntegerSchema) element).description();
+                } else if(element instanceof JsonNumberSchema) {
+                    value = ((JsonNumberSchema) element).description();
+                } else {
+                    value = ((JsonStringSchema) element).description();
+                }
+                tokenCount += estimateTokenCountInText(value);
+                if (isOneOfLatestModels() && parameters.required().contains(property)) {
+                    tokenCount += 1;
+                }
+            } else if (element instanceof JsonEnumSchema) {
+                if (isOneOfLatestModels()) {
+                    tokenCount -= 2;
+                } else {
+                    tokenCount -= 3;
+                }
+                for (String value : ((JsonEnumSchema) element).enumValues()) {
+                    tokenCount += 3;
+                    tokenCount += estimateTokenCountInText(value);
                 }
             }
         }

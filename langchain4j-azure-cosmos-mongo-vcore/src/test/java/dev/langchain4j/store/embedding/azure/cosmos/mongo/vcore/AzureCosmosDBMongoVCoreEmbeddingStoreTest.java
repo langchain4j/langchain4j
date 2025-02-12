@@ -14,8 +14,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.in;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
 
@@ -25,7 +24,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
 
     @Test
     void should_fail_if_mongoClient_missing() {
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .mongoClient(null)
                     .build();
@@ -34,13 +33,13 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
 
     @Test
     void should_fail_if_connectionString_missing() {
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString(null)
                     .build();
         });
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("")
                     .build();
@@ -50,21 +49,21 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
     @Test
     void should_fail_if_databaseName_collectionName_missing() {
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName(null)
                     .build();
         });
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName("")
                     .build();
         });
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName("test_database")
@@ -72,7 +71,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
                     .build();
         });
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName("test_database")
@@ -83,7 +82,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
 
     @Test
     void should_fail_if_wrong_vector_index_type() {
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName("test_database")

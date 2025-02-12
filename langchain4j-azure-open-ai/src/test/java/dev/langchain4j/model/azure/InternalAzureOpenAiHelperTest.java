@@ -13,6 +13,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +25,6 @@ import java.util.List;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class InternalAzureOpenAiHelperTest {
@@ -38,7 +38,7 @@ class InternalAzureOpenAiHelperTest {
         Integer maxRetries = 5;
         boolean logRequestsAndResponses = true;
 
-        OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null);
+        OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null, null);
 
         assertThat(client).isNotNull();
     }
@@ -52,7 +52,7 @@ class InternalAzureOpenAiHelperTest {
         Integer maxRetries = 5;
         boolean logRequestsAndResponses = true;
 
-        OpenAIAsyncClient client = InternalAzureOpenAiHelper.setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null);
+        OpenAIAsyncClient client = InternalAzureOpenAiHelper.setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null, null);
 
         assertThat(client).isNotNull();
     }
@@ -98,9 +98,9 @@ class InternalAzureOpenAiHelperTest {
 
         List<ChatCompletionsToolDefinition> tools = InternalAzureOpenAiHelper.toToolDefinitions(toolSpecifications);
 
-        assertEquals(toolSpecifications.size(), tools.size());
+        assertThat(tools).hasSize(toolSpecifications.size());
         assertInstanceOf(ChatCompletionsFunctionToolDefinition.class, tools.get(0));
-        assertEquals(toolSpecifications.iterator().next().name(), ((ChatCompletionsFunctionToolDefinition) tools.get(0)).getFunction().getName());
+        assertThat(((ChatCompletionsFunctionToolDefinition) tools.get(0)).getFunction().getName()).isEqualTo(toolSpecifications.iterator().next().name());
     }
 
     @Test

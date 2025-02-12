@@ -31,10 +31,10 @@ class MistralAiStreamingChatModelIT {
             .addParameter("transactionId", STRING)
             .build();
 
-    StreamingChatLanguageModel mistralLargeStreamingModel = MistralAiStreamingChatModel.builder()
+    StreamingChatLanguageModel ministral3b = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
-            .temperature(0.1)
+            .modelName("ministral-3b-latest")
+            .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -401,7 +401,7 @@ class MistralAiStreamingChatModelIT {
     }
 
     @Test
-    void should_execute_multiple_tools_using_model_large_then_answer() {
+    void should_execute_multiple_tools_then_answer() {
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
@@ -417,7 +417,7 @@ class MistralAiStreamingChatModelIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        mistralLargeStreamingModel.generate(chatMessages, toolSpecifications, handler);
+        ministral3b.generate(chatMessages, toolSpecifications, handler);
         Response<AiMessage> response = handler.get();
 
         // then
@@ -445,7 +445,7 @@ class MistralAiStreamingChatModelIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler2 = new TestStreamingResponseHandler<>();
-        mistralLargeStreamingModel.generate(chatMessages, handler2);
+        ministral3b.generate(chatMessages, handler2);
         Response<AiMessage> response2 = handler2.get();
 
         // then

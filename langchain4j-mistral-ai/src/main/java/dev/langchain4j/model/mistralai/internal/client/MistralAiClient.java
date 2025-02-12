@@ -14,6 +14,8 @@ public abstract class MistralAiClient {
 
     public abstract MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request);
 
+    public abstract MistralAiModerationResponse moderation(MistralAiModerationRequest request);
+
     public abstract MistralAiModelResponse listModels();
 
     @SuppressWarnings("rawtypes")

@@ -2,6 +2,7 @@ package dev.langchain4j.model.jlama;
 
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
+import com.github.tjake.jlama.safetensors.DType;
 import com.github.tjake.jlama.safetensors.prompt.PromptContext;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -31,6 +32,7 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
                                        Integer threadCount,
                                        Boolean quantizeModelAtRuntime,
                                        Path workingDirectory,
+                                       DType workingQuantizedType,
                                        Float temperature,
                                        Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
@@ -39,6 +41,9 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
         JlamaModel.Loader loader = jlamaModel.loader();
         if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
             loader = loader.quantized();
+
+        if (workingQuantizedType != null)
+            loader = loader.workingQuantizationType(workingQuantizedType);
 
         if (threadCount != null)
             loader = loader.threadCount(threadCount);

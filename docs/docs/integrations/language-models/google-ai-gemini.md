@@ -1,5 +1,5 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # Google AI Gemini
@@ -13,13 +13,13 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>0.34.0</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 
 ## API Key
 
-Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key
+Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 ## Models available
 
@@ -69,10 +69,9 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     .topP(0.95)
     .topK(64)
     .maxOutputTokens(8192)
+    .timeout(Duration.ofSeconds(60))
     .candidateCount(1)
-    .responseMimeType("application/json")
-    .responseFormat(ResponseFormat.builder()...build()) // or below
-    .responseSchema(JsonSchema.builder()...build())
+    .responseFormat(ResponseFormat.JSON) // or .responseFormat(ResponseFormat.builder()...build()) 
     .stopSequences(List.of(...))
     .toolConfig(GeminiFunctionCallingConfig.builder()...build()) // or below
     .toolConfig(GeminiMode.ANY, List.of("fnOne", "fnTwo"))
@@ -84,9 +83,34 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 ```
 
 ## GoogleAiGeminiStreamingChatModel
+The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token. The response must be managed by a `StreamingResponseHandler`. 
+```java
+StreamingChatLanguageModel gemini = GoogleAiGeminiStreamingChatModel.builder()
+        .apiKey(System.getenv("GEMINI_AI_KEY"))
+        .modelName("gemini-1.5-flash")
+        .build();
 
-No streaming chat model available yet.
-Please open a feature request if you're interested in a streaming model or if you want to contribute to implement it.
+CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+
+        gemini.generate("Tell me a joke about Java", new StreamingResponseHandler<AiMessage>() {
+    @Override
+    public void onNext(String token) {
+        System.out.print(token);
+    }
+
+    @Override
+    public void onComplete(Response<AiMessage> response) {
+        futureResponse.complete(response);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        futureResponse.completeExceptionally(error);
+    }
+});
+
+        futureResponse.join();
+```
 
 ## Tools
 
@@ -144,88 +168,13 @@ System.out.println("Gemini> " + tokyoWeather);
 //         with a temperature of 32 degrees.
 ```
 
-## Structured output
+## Structured Outputs
 
-### JSON mode
+See more info on Structured Outputs [here](/tutorials/structured-outputs).
 
-You can force Gemini to reply in JSON thanks to the `responseMimeType("application/json")` builder method:
-
-```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
-    .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
-    .responseMimeType("application/json")
-    .build();
-
-String roll = gemini.generate("Roll a 6-sided dice");
-
-System.out.println(roll);
-// {"roll": "3"}
-```
-
-A system prompt can further describe what the JSON output should look like.
-Gemini normally follows the suggested schema, but it is not guaranteed.
-If you want a guaranteed application of a JSON schema, you should define a response format, as explained in the next section.
-
-### Response format / response schema
-
-You can specify:
-* a `ResponseFormat` via the `responseFormat()` builder method, or 
-* a `JsonSchema` via the `responseSchema()` builder method.
-
-Let's have a look at an example to define a JSON schema for a recipe:
-
-```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
-    .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
-    .responseSchema(JsonSchema.builder()
-        .rootElement(JsonObjectSchema.builder()
-            .properties(Map.of(
-                "title", JSON_STRING_SCHEMA,
-                "preparationTimeMinutes", JSON_INTEGER_SCHEMA,
-                "ingredients", JsonArraySchema.builder()
-                    .items(JSON_STRING_SCHEMA)
-                    .build(),
-                "steps", JsonArraySchema.builder()
-                    .items(JSON_STRING_SCHEMA)
-                    .build()
-                ))
-            .build())
-        .build())
-    .build();
-
-String recipeResponse = gemini.generate(
-    "Suggest a dessert recipe with strawberries");
-
-System.out.println(recipeResponse);
-```
-
-When using the `responseFormat()` method, you actually pass the surrounding `ResponseFormat` data structure, but it wraps a JSON schema like the above example:
-
-```java
-.responseFormat(ResponseFormat.builder()
-                    .type(JSON)
-                    .jsonSchema(JsonSchema.builder()...build())
-```
-
-Instead of building the JSON schema yourself, you can also derive a schema from your own Java classes:
-
-```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
-    .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
-    .temperature(2.0)
-    .responseSchema(jsonSchemaFrom(TripItinerary.class).get())
-    .build();
-```
-
-## Type-safe data extraction from free form text
-
+### Type-safe data extraction from free form text
 Large Language Models are great at extracting structured information out of unstructured text.
-
-In the following example, we retrieve a tyoe-safe `WeatherForecast` object from a weather forecast text, thanks to `AiServices`:
-
+In the following example, we retrieve a type-safe `WeatherForecast` object from a weather forecast text, thanks to `AiServices`:
 ```java
 // A type-safe / strongly-typed object 
 // representing the weather forecast
@@ -250,6 +199,7 @@ interface WeatherForecastAssistant {
 ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
+    .responseFormat(ResponseFormat.JSON) // this is required to enable structured outputs feature
     .build();
 
 WeatherForecastAssistant forecastAssistant =
@@ -279,10 +229,87 @@ WeatherForecast forecast = forecastAssistant.extract("""
     """);
 ```
 
+### Response Format / Response Schema
+You can specify a `ResponseFormat` either when creating a `GoogleAiGeminiChatModel` or when calling it.
+Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`:
+```java
+ResponseFormat responseFormat = ResponseFormat.builder()
+        .type(ResponseFormatType.JSON)
+        .jsonSchema(JsonSchema.builder() // see [1] below
+                .rootElement(JsonObjectSchema.builder()
+                        .addStringProperty("title")
+                        .addIntegerProperty("preparationTimeMinutes")
+                        .addProperty("ingredients", JsonArraySchema.builder()
+                                .items(new JsonStringSchema())
+                                .build())
+                        .addProperty("steps", JsonArraySchema.builder()
+                                .items(new JsonStringSchema())
+                                .build())
+                        .build())
+                .build())
+        .build();
+
+ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+        .apiKey(System.getenv("GEMINI_AI_KEY"))
+        .modelName("gemini-1.5-flash")
+        .responseFormat(responseFormat)
+        .build();
+
+String recipeResponse = gemini.generate("Suggest a dessert recipe with strawberries");
+
+System.out.println(recipeResponse);
+```
+Notes:
+- [1] - The `JsonSchema` can be generated automatically from your class using `JsonSchemas.jsonSchemaFrom()` helper method.
+```java
+JsonSchema jsonSchema = JsonSchemas.jsonSchemaFrom(TripItinerary.class).get();
+```
+
+Let's have a look at an example to define a JSON schema for a recipe when calling the `GoogleAiGeminiChatModel`:
+```java
+ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+        .apiKey(System.getenv("GEMINI_AI_KEY"))
+        .modelName("gemini-1.5-flash")
+        .build();
+
+ResponseFormat responseFormat = ...;
+
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Suggest a dessert recipe with strawberries"))
+        .responseFormat(responseFormat)
+        .build();
+
+ChatResponse chatResponse = gemini.chat(chatRequest);
+
+System.out.println(chatResponse.aiMessage().text());
+```
+
+### JSON Mode
+
+You can force Gemini to reply in JSON:
+
+```java
+ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-1.5-flash")
+    .responseFormat(ResponseFormat.JSON)
+    .build();
+
+String roll = gemini.generate("Roll a 6-sided dice");
+
+System.out.println(roll);
+// {"roll": "3"}
+```
+
+A system prompt can further describe what the JSON output should look like.
+Gemini normally follows the suggested schema, but it is not guaranteed.
+If you want a guaranteed application of a JSON schema, you should define a response format, as explained in the previous section.
+
+
 ## Python code execution
 
-Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environement.
-This is particulary interesting for situations where more advanced calculations or logic is needed.
+Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environment.
+This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java
 ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
@@ -313,7 +340,7 @@ Response<AiMessage> mathQuizz = gemini.generate(
 ```
 
 Gemini will craft a Python script, execute it on its server, and return the result.
-Since we asked to see the code and output of the execution, the answer will look as follow:
+Since we asked to see the code and output of the execution, the answer will look as follows:
 
 ~~~
 Code executed:

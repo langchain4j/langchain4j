@@ -2,8 +2,8 @@ package dev.langchain4j.model.localai;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
@@ -67,7 +67,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                 .maxTokens(maxTokens)
                 .build();
 
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(null);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
@@ -78,11 +78,11 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build(null, false);
+                    ChatResponse chatResponse = responseBuilder.build();
                     handler.onComplete(Response.from(
-                            response.content().text(),
-                            response.tokenUsage(),
-                            response.finishReason()
+                            chatResponse.aiMessage().text(),
+                            chatResponse.metadata().tokenUsage(),
+                            chatResponse.metadata().finishReason()
                     ));
                 })
                 .onError(handler::onError)

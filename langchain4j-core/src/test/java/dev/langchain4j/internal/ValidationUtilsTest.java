@@ -6,9 +6,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureEq;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 @SuppressWarnings("ConstantConditions")
 class ValidationUtilsTest implements WithAssertions {
@@ -65,6 +71,29 @@ class ValidationUtilsTest implements WithAssertions {
         {
             assertThatExceptionOfType(IllegalArgumentException.class)
                     .isThrownBy(() -> ValidationUtils.ensureNotEmpty((Collection<?>) null, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+    }
+
+    @Test
+    public void test_ensureNotEmpty_array() {
+        {
+            Object[] array = {new Object()};
+            assertThat(ValidationUtils.ensureNotEmpty(array, "test"))
+                    .isSameAs(array);
+        }
+
+        {
+            Object[] array = {};
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(array, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+
+        {
+            Object[] array = null;
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(array, "test"))
                     .withMessageContaining("test cannot be null or empty");
         }
     }

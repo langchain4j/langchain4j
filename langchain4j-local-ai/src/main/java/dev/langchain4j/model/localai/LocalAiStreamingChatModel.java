@@ -10,15 +10,16 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.localai.spi.LocalAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
-import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertResponse;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -102,7 +103,7 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(null);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
@@ -110,8 +111,8 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
                     handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build(null, false);
-                    handler.onComplete(response);
+                    ChatResponse chatResponse = responseBuilder.build();
+                    handler.onComplete(convertResponse(chatResponse));
                 })
                 .onError(handler::onError)
                 .execute();

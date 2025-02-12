@@ -11,7 +11,7 @@ sidebar_position: 7
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.34.0</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 

@@ -182,6 +182,9 @@ class PartsAndContentsMapper {
 
             String text = part.getText();
             if (text != null && !text.isEmpty()) {
+                if (!fullText.isEmpty()) {
+                    fullText.append("\n\n");
+                }
                 fullText.append(text);
             }
 
@@ -219,9 +222,9 @@ class PartsAndContentsMapper {
                                 .role(GeminiRole.MODEL.toString())
                                 .parts(((AiMessage) msg).toolExecutionRequests().stream()
                                     .map(toolExecutionRequest -> GeminiPart.builder()
-                                        .functionResponse(GeminiFunctionResponse.builder()
+                                        .functionCall(GeminiFunctionCall.builder()
                                             .name(toolExecutionRequest.name())
-                                            .response(GSON.fromJson(toolExecutionRequest.arguments(), Map.class))
+                                            .args(GSON.fromJson(toolExecutionRequest.arguments(), Map.class))
                                             .build())
                                         .build())
                                     .collect(Collectors.toList()))

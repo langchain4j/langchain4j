@@ -1,5 +1,5 @@
 ---
-sidebar_position: 13
+sidebar_position: 18
 ---
 
 # Oracle
@@ -12,7 +12,7 @@ the [AI Vector Search Feature](https://docs.oracle.com/en/database/oracle/oracle
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-oracle</artifactId>
-    <version>0.34.0</version>
+    <version>1.0.0-beta1</version>
 
 </dependency>
 ```
@@ -84,7 +84,49 @@ OracleEmbeddingStore.builder()
     .build();
 ```
 
-The builder provides two other methods that allow to create an index on the 
-embedding column and configure the use of exact or approximate search. 
+The builder allows to create an indexes on the embedding and metadata columns of the
+EmbeddingTable by providing an instance of the Index class. Two builders allow to
+create instances of the Index class: IVFIndexBuilder and JSONIndexBuilder.
+
+*IVFIndexBuilder* allows to configure an **IVF (Inverted File Flat)** index on the embedding
+column of the EmbeddingTable.
+
+```java
+OracleEmbeddingStore embeddingStore =
+    OracleEmbeddingStore.builder()
+        .dataSource(myDataSource)
+        .embeddingTable(EmbeddingTable.builder()
+            .createOption(CreateOption.CREATE_OR_REPLACE) // use NONE if the table already exists
+            .name("my_embedding_table")
+            .idColumn("id_column_name")
+            .embeddingColumn("embedding_column_name")
+            .textColumn("text_column_name")
+            .metadataColumn("metadata_column_name")
+            .build())
+        .index(Index.ivfIndexBuilder().createOption(CreateOption.CREATE_OR_REPLACE).build())
+        .build();
+```
+
+*JSONIndexBuilder* allows to configure a **function-based index** on keys of the metadata
+column of the EmbeddingTable.
+
+```java
+OracleEmbeddingStore.builder()
+    .dataSource(myDataSource)
+    .embeddingTable(EmbeddingTable.builder()
+        .createOption(CreateOption.CREATE_OR_REPLACE) // use NONE if the table already exists
+        .name("my_embedding_table")
+        .idColumn("id_column_name")
+        .embeddingColumn("embedding_column_name")
+        .textColumn("text_column_name")
+        .metadataColumn("metadata_column_name")
+        .build())
+    .index(Index.jsonIndexBuilder()
+        .createOption(CreateOption.CREATE_OR_REPLACE)
+        .key("name", String.class, JSONIndexBuilder.Order.ASC)
+        .key("year", Integer.class, JSONIndexBuilder.Order.DESC)
+        .build())
+    .build();
+```
 
 For more information about Oracle AI Vector Search refer to the [documentation](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/overview-ai-vector-search.html).

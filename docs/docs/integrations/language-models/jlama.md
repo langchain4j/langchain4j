@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 ---
 
 # Jlama
@@ -16,13 +16,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.34.0</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jlama</artifactId>
-    <version>0.34.0</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 
 <dependency>

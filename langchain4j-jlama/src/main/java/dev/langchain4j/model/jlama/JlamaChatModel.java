@@ -2,6 +2,7 @@ package dev.langchain4j.model.jlama;
 
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
+import com.github.tjake.jlama.safetensors.DType;
 import com.github.tjake.jlama.safetensors.prompt.*;
 import com.github.tjake.jlama.util.JsonSupport;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -33,6 +34,7 @@ public class JlamaChatModel implements ChatLanguageModel {
                           Integer threadCount,
                           Boolean quantizeModelAtRuntime,
                           Path workingDirectory,
+                          DType workingQuantizedType,
                           Float temperature,
                           Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
@@ -41,6 +43,9 @@ public class JlamaChatModel implements ChatLanguageModel {
         JlamaModel.Loader loader = jlamaModel.loader();
         if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
             loader = loader.quantized();
+
+        if (workingQuantizedType != null)
+            loader = loader.workingQuantizationType(workingQuantizedType);
 
         if (threadCount != null)
             loader = loader.threadCount(threadCount);
@@ -124,10 +129,6 @@ public class JlamaChatModel implements ChatLanguageModel {
         return Response.from(AiMessage.from(r.responseText), new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
     }
 
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, List.of(toolSpecification));
-    }
 
     public static class JlamaChatModelBuilder {
         public JlamaChatModelBuilder() {

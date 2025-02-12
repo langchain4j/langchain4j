@@ -31,12 +31,12 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 @Getter
 public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> implements EmbeddingModel {
 
+    private volatile BedrockRuntimeClient client;
+
     @Builder.Default
     private final Region region = Region.US_EAST_1;
     @Builder.Default
     private final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.builder().build();
-    @Getter(lazy = true)
-    private final BedrockRuntimeClient client = initClient();
     @Builder.Default
     private final Integer maxRetries = 5;
 
@@ -70,6 +70,17 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
      */
     protected abstract List<Map<String, Object>> getRequestParameters(final List<TextSegment> textSegments);
 
+    public BedrockRuntimeClient getClient() {
+        if (client == null) {
+            synchronized (this) {
+                if (client == null) {
+                    client = initClient();
+                }
+            }
+        }
+        return client;
+    }
+
     /**
      * Get model id
      *
@@ -91,7 +102,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
      * @return invoke model response
      */
     protected InvokeModelResponse invoke(final String body) {
-        // Invoke model
+
         InvokeModelRequest invokeModelRequest = InvokeModelRequest
                 .builder()
                 .modelId(getModelId())

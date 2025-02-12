@@ -69,6 +69,7 @@ class AzureOpenAiLanguageModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(modelNameString)
+                .maxTokens(1) // to save tokens
                 .logRequestsAndResponses(true)
                 .build();
 

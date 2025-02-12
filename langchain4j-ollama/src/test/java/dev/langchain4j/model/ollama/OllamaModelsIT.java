@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
     OllamaModels ollamaModels = OllamaModels.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl(ollama))
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -25,8 +25,16 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         Response<List<OllamaModel>> response = ollamaModels.availableModels();
 
         // then
-        assertThat(response.content().size()).isGreaterThan(0);
-        assertThat(response.content().get(0).getName()).contains(TINY_DOLPHIN_MODEL);
+        List<OllamaModel> ollamaModels = response.content();
+        assertThat(ollamaModels).isNotEmpty();
+        for (OllamaModel ollamaModel : ollamaModels) {
+            assertThat(ollamaModel.getName()).isNotBlank();
+            assertThat(ollamaModel.getSize()).isPositive();
+            assertThat(ollamaModel.getDigest()).isNotBlank();
+            assertThat(ollamaModel.getDetails()).isNotNull(); // TODO assert internals
+            assertThat(ollamaModel.getModel()).isNotBlank();
+            assertThat(ollamaModel.getModifiedAt()).isNotNull();
+        }
     }
 
     @Test
@@ -61,7 +69,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(response.content().getParameters()).isNotBlank();
         assertThat(response.content().getModifiedAt()).isNotNull();
         assertThat(response.content().getModelInfo().keySet().size()).isPositive();
-        assertThat(response.content().getModelInfo().containsKey("general.architecture")).isTrue();
+        assertThat(response.content().getModelInfo()).containsKey("general.architecture");
         assertThat(response.content().getDetails().getFamily()).isEqualTo("llama");
     }
 
@@ -71,7 +79,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // load model
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .temperature(0.0)
                 .numPredict(1)

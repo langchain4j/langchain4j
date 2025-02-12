@@ -9,7 +9,7 @@ LangChain4j provides [Spring Boot starters](https://github.com/langchain4j/langc
 - declarative [AI Services](/tutorials/ai-services)
 
 
-## Spring Boot starters for popular integrations
+## Spring Boot Starters
 
 Spring Boot starters help with creating and configuring
 [language models](/category/language-models),
@@ -17,7 +17,8 @@ Spring Boot starters help with creating and configuring
 [embedding stores](/category/embedding-stores),
 and other core LangChain4j components through properties.
 
-To use one of the Spring Boot starters, import the corresponding dependency.
+To use one of the [Spring Boot starters](https://github.com/langchain4j/langchain4j-spring),
+import the corresponding dependency.
 
 The naming convention for the Spring Boot starter dependency is: `langchain4j-{integration-name}-spring-boot-starter`.
 
@@ -26,7 +27,7 @@ For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `l
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.34.0</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 
@@ -77,7 +78,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>0.34.0</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 
@@ -111,8 +112,161 @@ class AssistantController {
     }
 }
 ```
-More details [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
 
+### Automatic Component Wiring
+The following components will be automatically wired into the AI Service if available in the application context:
+- `ChatLanguageModel`
+- `StreamingChatLanguageModel`
+- `ChatMemory`
+- `ChatMemoryProvider`
+- `ContentRetriever`
+- `RetrievalAugmentor`
+- All methods of any `@Component` or `@Service` class that are annotated with `@Tool`
+An example:
+```java
+@Component
+public class BookingTools {
+
+    private final BookingService bookingService;
+
+    public BookingTools(BookingService bookingService) {
+        this.bookingService = bookingService;
+    }
+
+    @Tool
+    public Booking getBookingDetails(String bookingNumber, String customerName, String customerSurname) {
+        return bookingService.getBookingDetails(bookingNumber, customerName, customerSurname);
+    }
+
+    @Tool
+    public void cancelBooking(String bookingNumber, String customerName, String customerSurname) {
+        bookingService.cancelBooking(bookingNumber, customerName, customerSurname);
+    }
+}
+```
+
+:::note
+If multiple components of the same type are present in the application context, the application will fail to start.
+In this case, use the explicit wiring mode (explained below).
+:::
+
+### Explicit Component Wiring
+
+If you have multiple AI Services and want to wire different LangChain4j components into each of them,
+you can specify which components to use with explicit wiring mode (`@AiService(wiringMode = EXPLICIT)`).
+
+Let's say we have two `ChatLanguageModel`s configured:
+```properties
+# OpenAI
+langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
+langchain4j.open-ai.chat-model.model-name=gpt-4o-mini
+
+# Ollama
+langchain4j.ollama.chat-model.base-url=http://localhost:11434
+langchain4j.ollama.chat-model.model-name=llama3.1
+```
+
+```java
+@AiService(wiringMode = EXPLICIT, chatModel = "openAiChatModel")
+interface OpenAiAssistant {
+
+    @SystemMessage("You are a polite assistant")
+    String chat(String userMessage);
+}
+
+@AiService(wiringMode = EXPLICIT, chatModel = "ollamaChatModel")
+interface OllamaAssistant {
+
+    @SystemMessage("You are a polite assistant")
+    String chat(String userMessage);
+}
+```
+
+:::note
+In this case, you must explicitly specify **all** components.
+:::
+
+More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
+
+### Listening for AI Service Registration Events
+
+After you have completed the development of the AI Service in a declarative manner, you can listen for the
+`AiServiceRegisteredEvent` by implementing the `ApplicationListener<AiServiceRegisteredEvent>` interface.
+This event is triggered when AI Service is registered in the Spring context, 
+allowing you to obtain information about all registered AI services and their tools at runtime. 
+Here is an example:
+```java
+@Component
+class AiServiceRegisteredEventListener implements ApplicationListener<AiServiceRegisteredEvent> {
+
+
+    @Override
+    public void onApplicationEvent(AiServiceRegisteredEvent event) {
+        Class<?> aiServiceClass = event.aiServiceClass();
+        List<ToolSpecification> toolSpecifications = event.toolSpecifications();
+        for (int i = 0; i < toolSpecifications.size(); i++) {
+            System.out.printf("[%s]: [Tool-%s]: %s%n", aiServiceClass.getSimpleName(), i + 1, toolSpecifications.get(i));
+        }
+    }
+}
+```
+
+## Flux
+
+When streaming, you can use `Flux<String>` as a return type of AI Service:
+```java
+@AiService
+interface Assistant {
+
+    @SystemMessage("You are a polite assistant")
+    Flux<String> chat(String userMessage);
+}
+```
+For this, please import `langchain4j-reactor` module.
+See more details [here](/tutorials/ai-services#flux).
+
+
+## Observability
+
+To enable observability for a `ChatLanguageModel` or `StreamingChatLanguageModel`
+bean, you need to declare one or more `ChatModelListener` beans:
+
+```java
+@Configuration
+class MyConfiguration {
+    
+    @Bean
+    ChatModelListener chatModelListener() {
+        return new ChatModelListener() {
+
+            private static final Logger log = LoggerFactory.getLogger(ChatModelListener.class);
+
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                log.info("onRequest(): {}", requestContext.chatRequest());
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                log.info("onResponse(): {}", responseContext.chatResponse());
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                log.info("onError(): {}", errorContext.error().getMessage());
+            }
+        };
+    }
+}
+```
+
+Every `ChatModelListener` bean in the application context will be automatically
+injected into all `ChatLanguageModel` and `StreamingChatLanguageModel` beans
+created by one of our Spring Boot starters.
+
+## Testing
+
+- [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
 
 ## Supported versions
 

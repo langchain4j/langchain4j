@@ -9,15 +9,18 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.Map;
+import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -35,7 +38,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
-    @Builder
     public OpenAiLanguageModel(String baseUrl,
                                String apiKey,
                                String organizationId,
@@ -99,6 +101,12 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         return tokenizer.estimateTokenCountInText(prompt);
     }
 
+    /**
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     * <b>The default values for the model name and temperature will be removed in future releases!</b>
+     */
+    @Deprecated(forRemoval = true)
     public static OpenAiLanguageModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
@@ -110,11 +118,27 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         return new OpenAiLanguageModelBuilder();
     }
 
+    /**
+     * Builder class for constructing instances of {@code OpenAiLanguageModel}.
+     * Provides a fluent interface to configure various parameters for the language model.
+     */
     public static class OpenAiLanguageModelBuilder {
+
+        private String baseUrl;
+        private String apiKey;
+        private String organizationId;
+        private String modelName;
+        private Double temperature;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Proxy proxy;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Tokenizer tokenizer;
+        private Map<String, String> customHeaders;
 
         public OpenAiLanguageModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public OpenAiLanguageModelBuilder modelName(String modelName) {
@@ -125,6 +149,95 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         public OpenAiLanguageModelBuilder modelName(OpenAiLanguageModelName modelName) {
             this.modelName = modelName.toString();
             return this;
+        }
+
+        public OpenAiLanguageModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder organizationId(String organizationId) {
+            this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder tokenizer(Tokenizer tokenizer) {
+            this.tokenizer = tokenizer;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiLanguageModel build() {
+            return new OpenAiLanguageModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.organizationId,
+                    this.modelName,
+                    this.temperature,
+                    this.timeout,
+                    this.maxRetries,
+                    this.proxy,
+                    this.logRequests,
+                    this.logResponses,
+                    this.tokenizer,
+                    this.customHeaders
+            );
+        }
+
+        @Override
+        public String toString() {
+            return new StringJoiner(", ", OpenAiLanguageModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("baseUrl='" + baseUrl + "'")
+                    .add("organizationId='" + organizationId + "'")
+                    .add("modelName='" + modelName + "'")
+                    .add("temperature=" + temperature)
+                    .add("timeout=" + timeout)
+                    .add("maxRetries=" + maxRetries)
+                    .add("proxy=" + proxy)
+                    .add("logRequests=" + logRequests)
+                    .add("logResponses=" + logResponses)
+                    .add("tokenizer=" + tokenizer)
+                    .add("customHeaders=" + customHeaders)
+                    .toString();
         }
     }
 }

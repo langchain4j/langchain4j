@@ -1,6 +1,6 @@
 package dev.langchain4j.model.googleai;
 
-enum GeminiMode {
+public enum GeminiMode {
     AUTO,
     ANY,
     NONE

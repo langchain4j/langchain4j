@@ -6,12 +6,13 @@ import org.slf4j.LoggerFactory;
 import java.util.Random;
 import java.util.concurrent.Callable;
 
-import static java.lang.String.format;
-
 /**
  * Utility class for retrying actions.
  */
 public final class RetryUtils {
+
+    private static final Random RANDOM = new Random();
+
     private RetryUtils() {}
 
     private static final Logger log = LoggerFactory.getLogger(RetryUtils.class);
@@ -143,10 +144,9 @@ public final class RetryUtils {
          * @return The jitter delay in milliseconds.
          */
         public int jitterDelayMillis(int attempt) {
-            Random rand = new Random();
             double delay = rawDelayMs(attempt);
             double jitter = delay * jitterScale;
-            return (int) (delay + rand.nextInt((int) jitter));
+            return (int) (delay + RANDOM.nextInt((int) jitter));
         }
 
         /**
@@ -195,7 +195,7 @@ public final class RetryUtils {
                         throw new RuntimeException(e);
                     }
 
-                    log.warn(format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);
+                    log.warn(String.format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);
 
                     sleep(attempt);
                 }

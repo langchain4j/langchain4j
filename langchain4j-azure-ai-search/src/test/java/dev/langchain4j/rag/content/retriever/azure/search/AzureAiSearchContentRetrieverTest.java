@@ -6,19 +6,34 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.SearchResult;
 import com.azure.search.documents.models.SemanticSearchResult;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.ContentMetadata;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-public class AzureAiSearchContentRetrieverTest {
+class AzureAiSearchContentRetrieverTest {
 
     @Test
-    public void testConstructorMandatoryParameters() {
+    void testConstructorMandatoryParameters() {
         String endpoint = "http://localhost";
         AzureKeyCredential keyCredential = new AzureKeyCredential("TEST");
         TokenCredential tokenCredential = new BasicAuthenticationCredential("TEST", "TEST");
@@ -31,7 +46,7 @@ public class AzureAiSearchContentRetrieverTest {
             new AzureAiSearchContentRetriever(null, keyCredential, tokenCredential, true, dimensions, index, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR, null, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("endpoint cannot be null", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("endpoint cannot be null");
         }
 
         // Test no credentials
@@ -39,7 +54,7 @@ public class AzureAiSearchContentRetrieverTest {
             new AzureAiSearchContentRetriever(endpoint, null, null, true, dimensions, index, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR, null, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("either keyCredential or tokenCredential must be set", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("either keyCredential or tokenCredential must be set");
         }
 
         // Test both credentials
@@ -47,7 +62,7 @@ public class AzureAiSearchContentRetrieverTest {
             new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, true, dimensions, index, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR, null, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("either keyCredential or tokenCredential must be set", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("either keyCredential or tokenCredential must be set");
         }
 
         // Test no dimensions and no index, for a vector search
@@ -55,7 +70,7 @@ public class AzureAiSearchContentRetrieverTest {
             new AzureAiSearchContentRetriever(endpoint, null, tokenCredential, true, 0, null, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR, null, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("dimensions must be set to a positive, non-zero integer between 2 and 3072", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("dimensions must be set to a positive, non-zero integer between 2 and 3072");
         }
 
         // Test dimensions > 0, for a full text search
@@ -63,7 +78,7 @@ public class AzureAiSearchContentRetrieverTest {
             new AzureAiSearchContentRetriever(endpoint, keyCredential, null, true, dimensions, null, null, embeddingModel, 3, 0, AzureAiSearchQueryType.FULL_TEXT, null, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("for full-text search, dimensions must be 0", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("for full-text search, dimensions must be 0");
         }
 
         // Test no embedding model, for a vector search
@@ -71,42 +86,42 @@ public class AzureAiSearchContentRetrieverTest {
             new AzureAiSearchContentRetriever(endpoint, keyCredential, null, true, 0, null, null, null, 3, 0, AzureAiSearchQueryType.VECTOR, null, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("embeddingModel cannot be null", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("embeddingModel cannot be null");
         }
     }
 
     @Test
-    public void testFromAzureScoreToRelevanceScore_VECTOR() {
+    void testFromAzureScoreToRelevanceScore_VECTOR() {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.6);
 
         double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.VECTOR);
 
-        assertEquals(0.6666666666666666, result);
+        assertThat(result).isEqualTo(0.6666666666666666);
     }
 
     @Test
-    public void testFromAzureScoreToRelevanceScore_FULL_TEXT() {
+    void testFromAzureScoreToRelevanceScore_FULL_TEXT() {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.4);
 
         double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.FULL_TEXT);
 
-        assertEquals(0.4, result);
+        assertThat(result).isEqualTo(0.4);
     }
 
     @Test
-    public void testFromAzureScoreToRelevanceScore_HYBRID() {
+    void testFromAzureScoreToRelevanceScore_HYBRID() {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.7);
 
         double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.HYBRID);
 
-        assertEquals(0.7, result);
+        assertThat(result).isEqualTo(0.7);
     }
 
     @Test
-    public void testFromAzureScoreToRelevanceScore_HYBRID_WITH_RERANKING() {
+    void testFromAzureScoreToRelevanceScore_HYBRID_WITH_RERANKING() {
         SearchResult mockResult = mock(SearchResult.class);
         SemanticSearchResult mockSemanticSearchResult = mock(SemanticSearchResult.class);
 
@@ -115,6 +130,51 @@ public class AzureAiSearchContentRetrieverTest {
 
         double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.HYBRID_WITH_RERANKING);
 
-        assertEquals(0.375, result);
+        assertThat(result).isEqualTo(0.375);
     }
+
+    @Test
+    void testRetrieve_Vector() {
+        TextSegment textSegment = mock(TextSegment.class);
+        EmbeddingMatch embeddingMatch = mock(EmbeddingMatch.class);
+        when(embeddingMatch.score()).thenReturn(0.2);
+        when(embeddingMatch.embeddingId()).thenReturn("embedding-123");
+        when(embeddingMatch.embedded()).thenReturn(textSegment);
+
+        EmbeddingSearchResult mockEmbeddingSearchResult = mock(EmbeddingSearchResult.class);
+        when(mockEmbeddingSearchResult.matches()).thenReturn(List.of(embeddingMatch));
+
+        EmbeddingModel mockEmbeddingModel = mock(EmbeddingModel.class);
+        when(mockEmbeddingModel.embed(anyString())).thenReturn(Response.from(mock(Embedding.class)));
+
+        AzureAiSearchContentRetriever retriever = spy(new AzureAiSearchContentRetriever(
+                "http://localhost",
+                new AzureKeyCredential("TEST"),
+                null,
+                false,
+                10,
+                null,
+                "test-index",
+                mockEmbeddingModel,
+                3,
+                0.5,
+                AzureAiSearchQueryType.VECTOR,
+                null,
+                null
+        ));
+
+        doReturn(mockEmbeddingSearchResult)
+                .when(retriever)
+                .search(any(EmbeddingSearchRequest.class));
+
+
+        List<Content> results = retriever.retrieve(Query.from("test"));
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).metadata().get(ContentMetadata.SCORE)).isInstanceOf(Double.class);
+        assertThat(results.get(0).metadata()).containsEntry(ContentMetadata.SCORE,0.2);
+        assertThat(results.get(0).metadata().get(ContentMetadata.EMBEDDING_ID)).isInstanceOf(String.class);
+        assertThat(results.get(0).metadata()).containsEntry(ContentMetadata.EMBEDDING_ID,"embedding-123");
+        assertThat(results.get(0).textSegment()).isEqualTo(textSegment);
+    }
+
 }

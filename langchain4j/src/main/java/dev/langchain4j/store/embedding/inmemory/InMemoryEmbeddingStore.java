@@ -4,19 +4,31 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
-import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.CosineSimilarity;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
@@ -82,16 +94,17 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
-        if (embeddings.size() != embedded.size()) {
-            throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
+        if (ids.size()!= embeddings.size() || embeddings.size() != embedded.size()) {
+            throw new IllegalArgumentException("The list of ids and embeddings and embedded must have the same size");
         }
 
-        List<Entry<Embedded>> newEntries = IntStream.range(0, embeddings.size())
-                .mapToObj(i -> new Entry<>(randomUUID(), embeddings.get(i), embedded.get(i)))
-                .collect(toList());
+        List<Entry<Embedded>> newEntries = new ArrayList<>(ids.size());
 
-        return add(newEntries);
+        for (int i = 0; i < ids.size(); i++) {
+            newEntries.add(new Entry<>(ids.get(i), embeddings.get(i), embedded.get(i)));
+        }
+        add(newEntries);
     }
 
     private List<String> add(List<Entry<Embedded>> newEntries) {

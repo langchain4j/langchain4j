@@ -6,9 +6,11 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.filter.Filter;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Collections.singletonList;
 
@@ -59,7 +61,22 @@ public interface EmbeddingStore<Embedded> {
      * @param embedded   A list of original contents that were embedded.
      * @return A list of auto-generated IDs associated with the added embeddings.
      */
-    List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded);
+    default List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
+        final List<String> ids = generateIds(embeddings.size());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
+    /**
+     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
+     *
+     * @param ids A list of IDs associated with the added embeddings.
+     * @param embeddings A list of embeddings to be added to the store.
+     * @param embedded   A list of original contents that were embedded.
+     */
+    default void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 
     /**
      * Removes a single embedding from the store by ID.
@@ -102,18 +119,35 @@ public interface EmbeddingStore<Embedded> {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+
+    /**
+     * Generates list of UUID strings
+     * @param n  - dimension of list
+     */
+    default List<String> generateIds(int n) {
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            ids.add(randomUUID());
+        }
+        return ids;
+    }
+
     /**
      * Searches for the most similar (closest in the embedding space) {@link Embedding}s.
      * <br>
      * All search criteria are defined inside the {@link EmbeddingSearchRequest}.
      * <br>
-     * {@link EmbeddingSearchRequest#filter()} can be used to filter by user/memory ID.
+     * {@link EmbeddingSearchRequest#filter()} can be used to filter by various metadata entries (e.g., user/memory ID).
      * Please note that not all {@link EmbeddingStore} implementations support {@link Filter}ing.
      *
      * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
      * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
      */
     default EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request) {
+        if (request.filter() != null) {
+            throw new UnsupportedOperationException("EmbeddingSearchRequest.Filter is not supported yet.");
+        }
+
         List<EmbeddingMatch<Embedded>> matches =
                 findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
         return new EmbeddingSearchResult<>(matches);
@@ -130,7 +164,7 @@ public interface EmbeddingStore<Embedded> {
      * ranging from 0 (not relevant) to 1 (highly relevant).
      * @deprecated as of 0.31.0, use {@link #search(EmbeddingSearchRequest)} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults) {
         return findRelevant(referenceEmbedding, maxResults, 0);
     }
@@ -147,7 +181,7 @@ public interface EmbeddingStore<Embedded> {
      * ranging from 0 (not relevant) to 1 (highly relevant).
      * @deprecated as of 0.31.0, use {@link #search(EmbeddingSearchRequest)} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(referenceEmbedding)
@@ -170,7 +204,7 @@ public interface EmbeddingStore<Embedded> {
      * ranging from 0 (not relevant) to 1 (highly relevant).
      * @deprecated as of 0.31.0, use {@link #search(EmbeddingSearchRequest)} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     default List<EmbeddingMatch<Embedded>> findRelevant(
             Object memoryId, Embedding referenceEmbedding, int maxResults) {
         return findRelevant(memoryId, referenceEmbedding, maxResults, 0);
@@ -189,7 +223,7 @@ public interface EmbeddingStore<Embedded> {
      * ranging from 0 (not relevant) to 1 (highly relevant).
      * @deprecated as of 0.31.0, use {@link #search(EmbeddingSearchRequest)} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     default List<EmbeddingMatch<Embedded>> findRelevant(
             Object memoryId, Embedding referenceEmbedding, int maxResults, double minScore) {
         throw new RuntimeException("Not implemented");
