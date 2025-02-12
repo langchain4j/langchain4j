@@ -324,8 +324,19 @@ public class InternalOpenAiOfficialHelper {
         if (openAiFinishReason == null) {
             return null;
         }
-        return finishReasonFrom(
-                ChatCompletion.Choice.FinishReason.of(openAiFinishReason.value().toString()));
+        if (openAiFinishReason.equals(ChatCompletionChunk.Choice.FinishReason.STOP)) {
+            return FinishReason.STOP;
+        } else if (openAiFinishReason.equals(ChatCompletionChunk.Choice.FinishReason.LENGTH)) {
+            return FinishReason.LENGTH;
+        } else if (openAiFinishReason.equals(ChatCompletionChunk.Choice.FinishReason.TOOL_CALLS)) {
+            return FinishReason.TOOL_EXECUTION;
+        } else if (openAiFinishReason.equals(ChatCompletionChunk.Choice.FinishReason.FUNCTION_CALL)) {
+            return FinishReason.TOOL_EXECUTION;
+        } else if (openAiFinishReason.equals(ChatCompletionChunk.Choice.FinishReason.CONTENT_FILTER)) {
+            return FinishReason.CONTENT_FILTER;
+        } else {
+            return null;
+        }
     }
 
     static ResponseFormatJsonObject toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {

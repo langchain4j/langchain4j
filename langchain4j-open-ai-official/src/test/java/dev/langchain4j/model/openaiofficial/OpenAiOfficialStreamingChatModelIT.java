@@ -16,14 +16,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final OpenAiOfficialStreamingChatModel OPEN_AI_CHAT_MODEL = OpenAiOfficialStreamingChatModel.builder()
+    static final OpenAiOfficialStreamingChatModel OPEN_AI_OFFICIAL_STREAMING_CHAT_MODEL = OpenAiOfficialStreamingChatModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
             .azureOpenAIServiceVersion(API_VERSION)
             .modelName(MODEL_NAME)
             .build();
 
-    static final OpenAiOfficialStreamingChatModel OPEN_AI_CHAT_MODEL_STRICT_SCHEMA =
+    static final OpenAiOfficialStreamingChatModel OPEN_AI_OFFICIAL_STREAMING_CHAT_MODEL_STRICT_SCHEMA =
             OpenAiOfficialStreamingChatModel.builder()
                     .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                     .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
@@ -36,8 +36,8 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected List<StreamingChatLanguageModel> models() {
         return List.of(
-                // OPEN_AI_CHAT_MODEL, //TODO FIX this doesn't run reliably when generating JSON (as there is no schema)
-                OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
+                // OPEN_AI_OFFICIAL_STREAMING_CHAT_MODEL, //TODO FIX this doesn't run reliably when generating JSON (as there is no schema)
+                OPEN_AI_OFFICIAL_STREAMING_CHAT_MODEL_STRICT_SCHEMA
                 // TODO Add a model using OpenAI (NOT Azure OpenAI)
                 );
     }
