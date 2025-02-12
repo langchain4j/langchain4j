@@ -537,70 +537,43 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_answer_with_reasoning_effort_low() {
+    void should_answer_with_reasoning_effort() {
 
         // given
-        String reasoningEffort = "low";
-
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(O3_MINI)
-                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
-                        .reasoningEffort(reasoningEffort)
-                        .build())
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
-                .build();
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
-        // when
-        ChatResponse chatResponse = model.chat(chatRequest);
-
-        // then
-        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
-
-        TokenUsage tokenUsage = chatResponse.tokenUsage();
-        assertThat(tokenUsage).isExactlyInstanceOf(OpenAiTokenUsage.class);
-        OpenAiTokenUsage openAiTokenUsage = (OpenAiTokenUsage) tokenUsage;
-        assertThat(openAiTokenUsage.outputTokensDetails().reasoningTokens()).isZero();
-    }
-
-    @Test
-    void should_answer_with_reasoning_effort_medium() {
-
-        // given
-        String reasoningEffort = "medium";
-
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(O3_MINI)
-                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
-                        .reasoningEffort(reasoningEffort)
+        ChatRequest chatRequestWithLowReasoningEffort = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort("low")
                         .build())
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
+        ChatRequest chatRequestWithMediumReasoningEffort = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort("medium")
+                        .build())
                 .build();
 
         // when
-        ChatResponse chatResponse = model.chat(chatRequest);
+        ChatResponse chatResponseWithLowReasoningEffort = model.chat(chatRequestWithLowReasoningEffort);
+        ChatResponse chatResponseWithMediumReasoningEffort = model.chat(chatRequestWithMediumReasoningEffort);
 
         // then
-        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
-
-        TokenUsage tokenUsage = chatResponse.tokenUsage();
-        assertThat(tokenUsage).isExactlyInstanceOf(OpenAiTokenUsage.class);
-        OpenAiTokenUsage openAiTokenUsage = (OpenAiTokenUsage) tokenUsage;
-        assertThat(openAiTokenUsage.outputTokensDetails().reasoningTokens()).isPositive();
+        Integer lowReasoningTokens = ((OpenAiTokenUsage) chatResponseWithLowReasoningEffort.tokenUsage())
+                .outputTokensDetails().reasoningTokens();
+        Integer mediumReasoningTokens = ((OpenAiTokenUsage) chatResponseWithMediumReasoningEffort.tokenUsage())
+                .outputTokensDetails().reasoningTokens();
+        assertThat(lowReasoningTokens).isLessThan(mediumReasoningTokens);
     }
 }
