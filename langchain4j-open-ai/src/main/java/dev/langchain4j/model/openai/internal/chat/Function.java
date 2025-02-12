@@ -24,7 +24,7 @@ public class Function {
     @JsonProperty
     private final JsonObjectSchema parameters;
 
-    private Function(Builder builder) {
+    public Function(Builder builder) {
         this.name = builder.name;
         this.description = builder.description;
         this.strict = builder.strict;
@@ -94,9 +94,6 @@ public class Function {
         private String description;
         private Boolean strict;
         private JsonObjectSchema parameters = JsonObjectSchema.builder().build();
-
-        private Builder() {
-        }
 
         public Builder name(String name) {
             this.name = name;

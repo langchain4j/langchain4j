@@ -36,7 +36,7 @@ public class GenerateImagesRequest {
     @JsonProperty
     private final String responseFormat;
 
-    private GenerateImagesRequest(Builder builder) {
+    public GenerateImagesRequest(Builder builder) {
         this.model = builder.model;
         this.prompt = builder.prompt;
         this.n = builder.n;

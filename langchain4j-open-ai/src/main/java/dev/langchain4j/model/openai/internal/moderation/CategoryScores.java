@@ -37,7 +37,7 @@ public final class CategoryScores {
     @JsonProperty("violence/graphic")
     private final Double violenceGraphic;
 
-    private CategoryScores(Builder builder) {
+    public CategoryScores(Builder builder) {
         this.hate = builder.hate;
         this.hateThreatening = builder.hateThreatening;
         this.selfHarm = builder.selfHarm;
@@ -134,9 +134,6 @@ public final class CategoryScores {
         private Double sexualMinors;
         private Double violence;
         private Double violenceGraphic;
-
-        private Builder() {
-        }
 
         public Builder hate(Double hate) {
             this.hate = hate;

@@ -18,7 +18,7 @@ public final class CompletionTokensDetails {
     @JsonProperty
     private final Integer reasoningTokens;
 
-    private CompletionTokensDetails(Builder builder) {
+    public CompletionTokensDetails(Builder builder) {
         this.reasoningTokens = builder.reasoningTokens;
     }
 
@@ -61,9 +61,6 @@ public final class CompletionTokensDetails {
     public static final class Builder {
 
         private Integer reasoningTokens;
-
-        private Builder() {
-        }
 
         public Builder reasoningTokens(Integer reasoningTokens) {
             this.reasoningTokens = reasoningTokens;

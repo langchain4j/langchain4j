@@ -23,7 +23,7 @@ public class ImageData {
     @JsonProperty
     private final String revisedPrompt;
 
-    private ImageData(Builder builder) {
+    public ImageData(Builder builder) {
         url = builder.url;
         b64Json = builder.b64Json;
         revisedPrompt = builder.revisedPrompt;

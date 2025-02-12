@@ -35,7 +35,7 @@ public final class AssistantMessage implements Message {
     @Deprecated
     private final FunctionCall functionCall;
 
-    private AssistantMessage(Builder builder) {
+    public AssistantMessage(Builder builder) {
         this.content = builder.content;
         this.name = builder.name;
         this.toolCalls = builder.toolCalls;
@@ -129,9 +129,6 @@ public final class AssistantMessage implements Message {
         private Boolean refusal;
         @Deprecated
         private FunctionCall functionCall;
-
-        private Builder() {
-        }
 
         public Builder content(String content) {
             this.content = content;

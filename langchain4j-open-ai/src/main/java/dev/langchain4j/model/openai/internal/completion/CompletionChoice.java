@@ -24,7 +24,7 @@ public final class CompletionChoice {
     @JsonProperty
     private final String finishReason;
 
-    private CompletionChoice(Builder builder) {
+    public CompletionChoice(Builder builder) {
         this.text = builder.text;
         this.index = builder.index;
         this.logprobs = builder.logprobs;
@@ -98,9 +98,6 @@ public final class CompletionChoice {
         private Logprobs logprobs;
         @JsonProperty
         private String finishReason;
-
-        private Builder() {
-        }
 
         public Builder text(String text) {
             this.text = text;

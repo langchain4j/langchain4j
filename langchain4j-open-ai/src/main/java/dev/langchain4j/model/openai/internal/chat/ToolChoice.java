@@ -22,7 +22,7 @@ public class ToolChoice {
     @JsonProperty
     private final Function function;
 
-    private ToolChoice(Builder builder) {
+    public ToolChoice(Builder builder) {
         function = builder.function;
     }
 
@@ -66,9 +66,6 @@ public class ToolChoice {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static final class Builder {
         private Function function;
-
-        private Builder() {
-        }
 
         public Builder function(Function function) {
             this.function = function;

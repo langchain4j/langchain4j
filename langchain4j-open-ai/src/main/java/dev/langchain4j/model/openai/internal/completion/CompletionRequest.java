@@ -56,7 +56,7 @@ public final class CompletionRequest {
     @JsonProperty
     private final String user;
 
-    private CompletionRequest(Builder builder) {
+    public CompletionRequest(Builder builder) {
         this.model = builder.model;
         this.prompt = builder.prompt;
         this.suffix = builder.suffix;
@@ -243,9 +243,6 @@ public final class CompletionRequest {
         private Integer bestOf;
         private Map<String, Integer> logitBias;
         private String user;
-
-        private Builder() {
-        }
 
         public Builder from(CompletionRequest request) {
             model(request.model);

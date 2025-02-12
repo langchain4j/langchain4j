@@ -23,7 +23,7 @@ public final class Embedding {
     @JsonProperty
     private final Integer index;
 
-    private Embedding(Builder builder) {
+    public Embedding(Builder builder) {
         this.embedding = builder.embedding;
         this.index = builder.index;
     }
@@ -75,9 +75,6 @@ public final class Embedding {
 
         private List<Float> embedding;
         private Integer index;
-
-        private Builder() {
-        }
 
         public Builder embedding(List<Float> embedding) {
             if (embedding != null) {

@@ -25,7 +25,7 @@ public final class FunctionMessage implements Message {
     @JsonProperty
     private final String content;
 
-    private FunctionMessage(Builder builder) {
+    public FunctionMessage(Builder builder) {
         this.name = builder.name;
         this.content = builder.content;
     }
@@ -93,9 +93,6 @@ public final class FunctionMessage implements Message {
 
         private String name;
         private String content;
-
-        private Builder() {
-        }
 
         public Builder name(String name) {
             this.name = name;

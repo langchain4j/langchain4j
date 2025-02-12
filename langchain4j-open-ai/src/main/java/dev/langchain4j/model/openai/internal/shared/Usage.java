@@ -26,7 +26,7 @@ public final class Usage {
     @JsonProperty
     private final CompletionTokensDetails completionTokensDetails;
 
-    private Usage(Builder builder) {
+    public Usage(Builder builder) {
         this.totalTokens = builder.totalTokens;
         this.promptTokens = builder.promptTokens;
         this.promptTokensDetails = builder.promptTokensDetails;
@@ -105,9 +105,6 @@ public final class Usage {
         private PromptTokensDetails promptTokensDetails;
         private Integer completionTokens;
         private CompletionTokensDetails completionTokensDetails;
-
-        private Builder() {
-        }
 
         public Builder totalTokens(Integer totalTokens) {
             this.totalTokens = totalTokens;

@@ -37,7 +37,7 @@ public final class Categories {
     @JsonProperty("violence/graphic")
     private final Boolean violenceGraphic;
 
-    private Categories(Builder builder) {
+    public Categories(Builder builder) {
         this.hate = builder.hate;
         this.hateThreatening = builder.hateThreatening;
         this.selfHarm = builder.selfHarm;
@@ -134,9 +134,6 @@ public final class Categories {
         private Boolean sexualMinors;
         private Boolean violence;
         private Boolean violenceGraphic;
-
-        private Builder() {
-        }
 
         public Builder hate(Boolean hate) {
             this.hate = hate;

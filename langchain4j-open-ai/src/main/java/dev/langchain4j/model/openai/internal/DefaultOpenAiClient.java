@@ -30,7 +30,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
     private final String baseUrl;
     private final Map<String, String> defaultHeaders;
 
-    private DefaultOpenAiClient(Builder builder) {
+    public DefaultOpenAiClient(Builder builder) {
 
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);

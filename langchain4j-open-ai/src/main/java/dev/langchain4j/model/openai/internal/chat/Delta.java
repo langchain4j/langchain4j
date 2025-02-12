@@ -28,7 +28,7 @@ public final class Delta {
     @Deprecated
     private final FunctionCall functionCall;
 
-    private Delta(Builder builder) {
+    public Delta(Builder builder) {
         this.role = builder.role;
         this.content = builder.content;
         this.toolCalls = builder.toolCalls;
@@ -100,9 +100,6 @@ public final class Delta {
         private List<ToolCall> toolCalls;
         @Deprecated
         private FunctionCall functionCall;
-
-        private Builder() {
-        }
 
         public Builder role(Role role) {
             this.role = role;

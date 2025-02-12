@@ -28,7 +28,7 @@ public final class EmbeddingRequest {
     @JsonProperty
     private final String user;
 
-    private EmbeddingRequest(Builder builder) {
+    public EmbeddingRequest(Builder builder) {
         this.model = builder.model;
         this.input = builder.input;
         this.dimensions = builder.dimensions;
@@ -98,9 +98,6 @@ public final class EmbeddingRequest {
         private List<String> input;
         private Integer dimensions;
         private String user;
-
-        private Builder() {
-        }
 
         public Builder model(String model) {
             this.model = model;

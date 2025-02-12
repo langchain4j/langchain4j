@@ -29,7 +29,7 @@ public final class UserMessage implements Message {
     @JsonProperty
     private final String name;
 
-    private UserMessage(Builder builder) {
+    public UserMessage(Builder builder) {
         this.content = builder.stringContent != null ? builder.stringContent : builder.content;
         this.name = builder.name;
     }
@@ -102,9 +102,6 @@ public final class UserMessage implements Message {
         private String stringContent; // keeping it for compatibility with other OpenAI-like APIs
         private List<Content> content;
         private String name;
-
-        private Builder() {
-        }
 
         public Builder addText(String text) {
             initializeContent();

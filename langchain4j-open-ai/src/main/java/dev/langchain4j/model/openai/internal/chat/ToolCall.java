@@ -24,7 +24,7 @@ public class ToolCall {
     @JsonProperty
     private final FunctionCall function;
 
-    private ToolCall(Builder builder) {
+    public ToolCall(Builder builder) {
         this.id = builder.id;
         this.index = builder.index;
         this.type = builder.type;
@@ -94,9 +94,6 @@ public class ToolCall {
         private Integer index;
         private ToolType type;
         private FunctionCall function;
-
-        private Builder() {
-        }
 
         public Builder id(String id) {
             this.id = id;

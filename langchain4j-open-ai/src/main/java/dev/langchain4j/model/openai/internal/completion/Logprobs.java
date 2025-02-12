@@ -31,7 +31,7 @@ public final class Logprobs {
     @JsonProperty
     private final List<Integer> textOffset;
 
-    private Logprobs(Builder builder) {
+    public Logprobs(Builder builder) {
         this.tokens = builder.tokens;
         this.tokenLogprobs = builder.tokenLogprobs;
         this.topLogprobs = builder.topLogprobs;
@@ -101,9 +101,6 @@ public final class Logprobs {
         private List<Double> tokenLogprobs;
         private List<Map<String, Double>> topLogprobs;
         private List<Integer> textOffset;
-
-        private Builder() {
-        }
 
         public Builder tokens(List<String> tokens) {
             if (tokens != null) {

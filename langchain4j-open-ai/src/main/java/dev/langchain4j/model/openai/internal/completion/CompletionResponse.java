@@ -30,7 +30,7 @@ public final class CompletionResponse {
     @JsonProperty
     private final Usage usage;
 
-    private CompletionResponse(Builder builder) {
+    public CompletionResponse(Builder builder) {
         this.id = builder.id;
         this.created = builder.created;
         this.model = builder.model;
@@ -116,9 +116,6 @@ public final class CompletionResponse {
         private String model;
         private List<CompletionChoice> choices;
         private Usage usage;
-
-        private Builder() {
-        }
 
         public Builder id(String id) {
             this.id = id;

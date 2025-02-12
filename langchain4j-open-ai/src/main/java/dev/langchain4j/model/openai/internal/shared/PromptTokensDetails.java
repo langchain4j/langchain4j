@@ -18,7 +18,7 @@ public final class PromptTokensDetails {
     @JsonProperty
     private final Integer cachedTokens;
 
-    private PromptTokensDetails(Builder builder) {
+    public PromptTokensDetails(Builder builder) {
         this.cachedTokens = builder.cachedTokens;
     }
 
@@ -61,9 +61,6 @@ public final class PromptTokensDetails {
     public static final class Builder {
 
         private Integer cachedTokens;
-
-        private Builder() {
-        }
 
         public Builder cachedTokens(Integer cachedTokens) {
             this.cachedTokens = cachedTokens;

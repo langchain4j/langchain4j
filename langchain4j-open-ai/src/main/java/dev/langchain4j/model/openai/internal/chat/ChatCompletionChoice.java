@@ -24,7 +24,7 @@ public final class ChatCompletionChoice {
     @JsonProperty
     private final String finishReason;
 
-    private ChatCompletionChoice(Builder builder) {
+    public ChatCompletionChoice(Builder builder) {
         this.index = builder.index;
         this.message = builder.message;
         this.delta = builder.delta;
@@ -94,9 +94,6 @@ public final class ChatCompletionChoice {
         private AssistantMessage message;
         private Delta delta;
         private String finishReason;
-
-        private Builder() {
-        }
 
         public Builder index(Integer index) {
             this.index = index;

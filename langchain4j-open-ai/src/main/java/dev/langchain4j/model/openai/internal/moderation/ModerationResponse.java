@@ -25,7 +25,7 @@ public final class ModerationResponse {
     @JsonProperty
     private final List<ModerationResult> results;
 
-    private ModerationResponse(Builder builder) {
+    public ModerationResponse(Builder builder) {
         this.id = builder.id;
         this.model = builder.model;
         this.results = builder.results;
@@ -86,9 +86,6 @@ public final class ModerationResponse {
         public String id;
         public String model;
         public List<ModerationResult> results;
-
-        private Builder() {
-        }
 
         public Builder id(String id) {
             this.id = id;

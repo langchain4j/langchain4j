@@ -20,7 +20,7 @@ public class FunctionCall {
     @JsonProperty
     private final String arguments;
 
-    private FunctionCall(Builder builder) {
+    public FunctionCall(Builder builder) {
         this.name = builder.name;
         this.arguments = builder.arguments;
     }
@@ -72,9 +72,6 @@ public class FunctionCall {
 
         private String name;
         private String arguments;
-
-        private Builder() {
-        }
 
         public Builder name(String name) {
             this.name = name;

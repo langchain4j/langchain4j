@@ -24,7 +24,7 @@ public class ModerationRequest {
     @JsonProperty
     private final List<String> input;
 
-    private ModerationRequest(Builder builder) {
+    public ModerationRequest(Builder builder) {
         this.model = builder.model;
         this.input = builder.input;
     }
@@ -76,9 +76,6 @@ public class ModerationRequest {
 
         private String model;
         private List<String> input;
-
-        private Builder() {
-        }
 
         public Builder model(String model) {
             this.model = model;

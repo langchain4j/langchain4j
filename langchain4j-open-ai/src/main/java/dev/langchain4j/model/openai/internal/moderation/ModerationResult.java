@@ -22,7 +22,7 @@ public final class ModerationResult {
     @JsonProperty
     private final Boolean flagged;
 
-    private ModerationResult(Builder builder) {
+    public ModerationResult(Builder builder) {
         this.categories = builder.categories;
         this.categoryScores = builder.categoryScores;
         this.flagged = builder.flagged;
@@ -83,9 +83,6 @@ public final class ModerationResult {
         private Categories categories;
         private CategoryScores categoryScores;
         private Boolean flagged;
-
-        private Builder() {
-        }
 
         public Builder categories(Categories categories) {
             this.categories = categories;

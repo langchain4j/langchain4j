@@ -24,7 +24,7 @@ public final class ToolMessage implements Message {
     @JsonProperty
     private final String content;
 
-    private ToolMessage(Builder builder) {
+    public ToolMessage(Builder builder) {
         this.toolCallId = builder.toolCallId;
         this.content = builder.content;
     }
@@ -90,9 +90,6 @@ public final class ToolMessage implements Message {
 
         private String toolCallId;
         private String content;
-
-        private Builder() {
-        }
 
         public Builder toolCallId(String toolCallId) {
             this.toolCallId = toolCallId;

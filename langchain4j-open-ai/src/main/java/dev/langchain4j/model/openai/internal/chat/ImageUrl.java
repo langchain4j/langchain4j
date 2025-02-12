@@ -20,7 +20,7 @@ public class ImageUrl {
     @JsonProperty
     private final ImageDetail detail;
 
-    private ImageUrl(Builder builder) {
+    public ImageUrl(Builder builder) {
         this.url = builder.url;
         this.detail = builder.detail;
     }
@@ -64,9 +64,6 @@ public class ImageUrl {
 
         private String url;
         private ImageDetail detail;
-
-        private Builder() {
-        }
 
         public Builder url(String url) {
             this.url = url;

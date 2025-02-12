@@ -77,7 +77,7 @@ public final class ChatCompletionRequest {
     @Deprecated
     private final FunctionCall functionCall;
 
-    private ChatCompletionRequest(Builder builder) {
+    public ChatCompletionRequest(Builder builder) {
         this.model = builder.model;
         this.messages = builder.messages;
         this.temperature = builder.temperature;
@@ -340,9 +340,6 @@ public final class ChatCompletionRequest {
         private List<Function> functions;
         @Deprecated
         private FunctionCall functionCall;
-
-        private Builder() {
-        }
 
         public Builder from(ChatCompletionRequest instance) {
             model(instance.model);

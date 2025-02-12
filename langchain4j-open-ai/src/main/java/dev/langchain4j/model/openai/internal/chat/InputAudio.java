@@ -15,7 +15,7 @@ public class InputAudio {
     private final String data;
     private final String format;
 
-    private InputAudio(Builder builder) {
+    public InputAudio(Builder builder) {
         data = builder.data;
         format = builder.format;
     }

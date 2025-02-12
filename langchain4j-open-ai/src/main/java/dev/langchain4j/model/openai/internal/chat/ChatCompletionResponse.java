@@ -34,7 +34,7 @@ public final class ChatCompletionResponse {
     @JsonProperty
     private final String serviceTier;
 
-    private ChatCompletionResponse(Builder builder) {
+    public ChatCompletionResponse(Builder builder) {
         this.id = builder.id;
         this.created = builder.created;
         this.model = builder.model;
@@ -138,9 +138,6 @@ public final class ChatCompletionResponse {
         private Usage usage;
         private String systemFingerprint;
         private String serviceTier;
-
-        private Builder() {
-        }
 
         public Builder id(String id) {
             this.id = id;

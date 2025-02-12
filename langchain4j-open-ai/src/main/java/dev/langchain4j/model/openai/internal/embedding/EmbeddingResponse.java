@@ -26,7 +26,7 @@ public final class EmbeddingResponse {
     @JsonProperty
     private final Usage usage;
 
-    private EmbeddingResponse(Builder builder) {
+    public EmbeddingResponse(Builder builder) {
         this.model = builder.model;
         this.data = builder.data;
         this.usage = builder.usage;
@@ -94,9 +94,6 @@ public final class EmbeddingResponse {
         private String model;
         private List<Embedding> data;
         private Usage usage;
-
-        private Builder() {
-        }
 
         public Builder model(String model) {
             this.model = model;

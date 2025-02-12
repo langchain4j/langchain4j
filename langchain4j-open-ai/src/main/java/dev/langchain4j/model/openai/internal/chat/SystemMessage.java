@@ -24,7 +24,7 @@ public final class SystemMessage implements Message {
     @JsonProperty
     private final String name;
 
-    private SystemMessage(Builder builder) {
+    public SystemMessage(Builder builder) {
         this.content = builder.content;
         this.name = builder.name;
     }
@@ -89,9 +89,6 @@ public final class SystemMessage implements Message {
 
         private String content;
         private String name;
-
-        private Builder() {
-        }
 
         public Builder content(String content) {
             this.content = content;
