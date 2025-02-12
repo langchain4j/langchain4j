@@ -53,7 +53,7 @@ class OllamaClient {
                 .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
 
-        if (builder.logRequests != null || builder.logResponses != null) {
+        if (builder.logRequests || builder.logResponses) {
             this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
         } else {
             this.httpClient = httpClient;
@@ -255,8 +255,8 @@ class OllamaClient {
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private Duration timeout;
-        private Boolean logRequests;
-        private Boolean logResponses;
+        private boolean logRequests;
+        private boolean logResponses;
         private Map<String, String> customHeaders;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -275,11 +275,17 @@ class OllamaClient {
         }
 
         Builder logRequests(Boolean logRequests) {
+            if (logRequests == null) {
+                logRequests = false;
+            }
             this.logRequests = logRequests;
             return this;
         }
 
         Builder logResponses(Boolean logResponses) {
+            if (logResponses == null) {
+                logResponses = false;
+            }
             this.logResponses = logResponses;
             return this;
         }

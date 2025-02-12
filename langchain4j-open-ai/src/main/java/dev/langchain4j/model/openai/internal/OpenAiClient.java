@@ -65,10 +65,7 @@ public abstract class OpenAiClient {
          * @return builder
          */
         public B baseUrl(String baseUrl) {
-            if (baseUrl == null || baseUrl.trim().isEmpty()) {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
-            this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/"; // TODO?
+            this.baseUrl = baseUrl;
             return (B) this;
         }
 
@@ -103,17 +100,11 @@ public abstract class OpenAiClient {
         }
 
         public B connectTimeout(Duration connectTimeout) {
-            if (connectTimeout == null) {
-                throw new IllegalArgumentException("connectTimeout cannot be null");
-            }
             this.connectTimeout = connectTimeout;
             return (B) this;
         }
 
         public B readTimeout(Duration readTimeout) {
-            if (readTimeout == null) {
-                throw new IllegalArgumentException("readTimeout cannot be null");
-            }
             this.readTimeout = readTimeout;
             return (B) this;
         }

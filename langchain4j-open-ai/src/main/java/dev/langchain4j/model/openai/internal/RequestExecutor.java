@@ -4,37 +4,39 @@ import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
-class RequestExecutor<Request, Response> implements SyncOrAsyncOrStreaming<Response> {
+class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
 
     private final HttpClient httpClient;
     private final HttpRequest httpRequest;
+    private final HttpRequest streamingHttpRequest;
     private final Class<Response> responseClass;
 
-    private final Supplier<Request> requestWithStreamSupplier;
-
-    RequestExecutor(HttpClient httpClient, HttpRequest httpRequest, Class<Response> responseClass) {
+    RequestExecutor(HttpClient httpClient,
+                    HttpRequest httpRequest,
+                    Class<Response> responseClass
+    ) {
         this.httpClient = httpClient;
         this.httpRequest = httpRequest;
-        this.requestWithStreamSupplier = null;
+        this.streamingHttpRequest = null;
         this.responseClass = responseClass;
     }
 
     RequestExecutor(HttpClient httpClient,
                     HttpRequest httpRequest,
-                    Supplier<Request> requestWithStreamSupplier,
+                    HttpRequest streamingHttpRequest,
                     Class<Response> responseClass
     ) {
         this.httpClient = httpClient;
         this.httpRequest = httpRequest;
-        this.requestWithStreamSupplier = requestWithStreamSupplier;
+        this.streamingHttpRequest = streamingHttpRequest;
         this.responseClass = responseClass;
     }
 
     @Override
     public Response execute() {
-        return new SyncRequestExecutor<>(httpClient, httpRequest, responseClass).execute();
+        SyncRequestExecutor<Response> executor = new SyncRequestExecutor<>(httpClient, httpRequest, responseClass);
+        return executor.execute();
     }
 
     @Override
@@ -44,7 +46,8 @@ class RequestExecutor<Request, Response> implements SyncOrAsyncOrStreaming<Respo
 
     @Override
     public StreamingResponseHandling onPartialResponse(Consumer<Response> partialResponseHandler) {
-        return new StreamingRequestExecutor<>(httpClient, httpRequest, requestWithStreamSupplier, responseClass)
-                .onPartialResponse(partialResponseHandler);
+        StreamingRequestExecutor<Response> executor =
+                new StreamingRequestExecutor<>(httpClient, streamingHttpRequest, responseClass);
+        return executor.onPartialResponse(partialResponseHandler);
     }
 }

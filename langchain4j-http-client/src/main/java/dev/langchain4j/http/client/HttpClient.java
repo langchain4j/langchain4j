@@ -25,7 +25,6 @@ public interface HttpClient {
     SuccessfulHttpResponse execute(HttpRequest request) throws HttpException, RuntimeException;
 
     /**
-     * TODO default parser
      * Executes a given HTTP request asynchronously with server-sent events (SSE) handling.
      * This method returns immediately while processing continues on a separate thread.
      * Events are processed through the provided {@link ServerSentEventListener}.
@@ -33,7 +32,7 @@ public interface HttpClient {
      * The execution flow is as follows:
      * <ol>
      *   <li>The request is initiated asynchronously</li>
-     *   <li>Received SSE data is parsed using the provided parser</li>
+     *   <li>Received SSE data is parsed using the {@link DefaultServerSentEventParser}</li>
      *   <li>Parsed events are delivered to the listener's appropriate methods</li>
      *   <li>If an error occurs, {@link ServerSentEventListener#onError(Throwable)} is called</li>
      * </ol>

@@ -6,24 +6,20 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
-class StreamingRequestExecutor<Request, Response> {
+class StreamingRequestExecutor<Response> {
 
     private final HttpClient httpClient;
-    private final HttpRequest httpRequest;
-    private final Supplier<Request> requestWithStreamSupplier;
+    private final HttpRequest streamingHttpRequest;
     private final Class<Response> responseClass;
 
     StreamingRequestExecutor(
             HttpClient httpClient,
-            HttpRequest httpRequest,
-            Supplier<Request> requestWithStreamSupplier,
+            HttpRequest streamingHttpRequest,
             Class<Response> responseClass
     ) {
         this.httpClient = httpClient;
-        this.httpRequest = httpRequest;
-        this.requestWithStreamSupplier = requestWithStreamSupplier;
+        this.streamingHttpRequest = streamingHttpRequest;
         this.responseClass = responseClass;
     }
 
@@ -113,16 +109,6 @@ class StreamingRequestExecutor<Request, Response> {
             Consumer<Throwable> errorHandler
     ) {
 
-        // TODO is it really required?
-        Request streamingRequest = requestWithStreamSupplier.get();
-
-        HttpRequest streamingHttpRequest = HttpRequest.builder()
-                .method(httpRequest.method())
-                .url(httpRequest.url())
-                .headers(httpRequest.headers())
-                .body(Json.toJson(streamingRequest))
-                .build();
-
         ServerSentEventListener listener = new ServerSentEventListener() {
 
             @Override
@@ -135,7 +121,6 @@ class StreamingRequestExecutor<Request, Response> {
                 try {
                     Response response = Json.fromJson(event.data(), responseClass);
                     if (response != null) {
-                        // TODO?
                         partialResponseHandler.accept(response); // do not handle exception, fail-fast
                     }
                 } catch (Exception e) {
@@ -150,19 +135,12 @@ class StreamingRequestExecutor<Request, Response> {
 
             @Override
             public void onError(Throwable t) {
-
-                // TODO remove this when migrating from okhttp
-                if (t instanceof IllegalArgumentException && "byteCount < 0: -1".equals(t.getMessage())) {
-                    streamingCompletionCallback.run();
-                    return;
-                }
-
                 errorHandler.accept(t);
             }
         };
 
         httpClient.execute(streamingHttpRequest, listener);
 
-        return new ResponseHandle(); // TODO
+        return new ResponseHandle();
     }
 }

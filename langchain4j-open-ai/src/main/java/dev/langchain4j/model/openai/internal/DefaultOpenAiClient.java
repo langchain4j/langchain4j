@@ -80,42 +80,46 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
     @Override
     public SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request) {
-        CompletionRequest syncRequest = CompletionRequest.builder().from(request).stream(false).build();
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "completions")
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(syncRequest))
+                .body(Json.toJson(CompletionRequest.builder().from(request).stream(false).build()))
                 .build();
 
-        return new RequestExecutor<>(
-                httpClient,
-                httpRequest,
-                () -> CompletionRequest.builder().from(request).stream(true).build(),
-                CompletionResponse.class
-        );
+        HttpRequest streamingHttpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "completions")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .body(Json.toJson(CompletionRequest.builder().from(request).stream(true).build()))
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, CompletionResponse.class);
     }
 
     @Override
     public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request) {
-        ChatCompletionRequest syncRequest = ChatCompletionRequest.builder().from(request).stream(false).build();
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(syncRequest))
+                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false).build()))
                 .build();
 
-        return new RequestExecutor<>(
-                httpClient,
-                httpRequest,
-                () -> ChatCompletionRequest.builder().from(request).stream(true).build(),
-                ChatCompletionResponse.class
-        );
+        HttpRequest streamingHttpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "chat/completions")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true).build()))
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, ChatCompletionResponse.class);
     }
 
     @Override

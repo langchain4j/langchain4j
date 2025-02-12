@@ -7,13 +7,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-/**
- * TODO
- */
 @Experimental
 public class DefaultServerSentEventParser implements ServerSentEventParser {
-
-    // TODO review, refactor, test
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
@@ -27,7 +22,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             while ((line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
-                        listener.onEvent(new ServerSentEvent(event, data.toString().trim()));
+                        listener.onEvent(new ServerSentEvent(event, data.toString()));
                         event = null;
                         data.setLength(0);
                     }
@@ -41,12 +36,12 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                     if (!data.isEmpty()) {
                         data.append("\n");
                     }
-                    data.append(content);
+                    data.append(content.trim());
                 }
             }
 
             if (!data.isEmpty()) {
-                listener.onEvent(new ServerSentEvent(event, data.toString().trim()));
+                listener.onEvent(new ServerSentEvent(event, data.toString()));
             }
         } catch (IOException e) {
             listener.onError(e);
