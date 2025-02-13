@@ -105,6 +105,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     private final ResponseFormat responseFormat;
     private final Boolean strictJsonSchema;
+    private final Boolean strictTools;
     private final List<ChatModelListener> listeners;
     private Set<Capability> supportedCapabilities;
 
@@ -370,6 +371,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             throw new IllegalArgumentException("You can't set both chatCompletionsResponseFormat and responseFormat");
         }
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
+        this.strictTools = getOrDefault(strictTools, false);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copyIfNotNull(capabilities);
     }
@@ -443,11 +445,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .setResponseFormat(chatCompletionsResponseFormat);
 
         if (toolThatMustBeExecuted != null) {
-            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
-            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
+            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted), strictTools));
+            options.setToolChoice(toToolChoice(toolThatMustBeExecuted, strictTools));
         }
         if (!isNullOrEmpty(toolSpecifications)) {
-            options.setTools(toToolDefinitions(toolSpecifications));
+            options.setTools(toToolDefinitions(toolSpecifications, strictTools));
         }
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
@@ -533,6 +535,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         private ChatCompletionsResponseFormat chatCompletionsResponseFormat;
         private ResponseFormat responseFormat;
         private Boolean strictJsonSchema;
+        private Boolean strictTools;
         private Duration timeout;
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
@@ -690,6 +693,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return this;
         }
 
+        public Builder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -767,6 +775,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             chatCompletionsResponseFormat,
                             responseFormat,
                             strictJsonSchema,
+                            strictTools,
                             timeout,
                             maxRetries,
                             proxyOptions,
@@ -796,6 +805,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             chatCompletionsResponseFormat,
                             responseFormat,
                             strictJsonSchema,
+                            strictTools,
                             timeout,
                             maxRetries,
                             proxyOptions,
@@ -825,6 +835,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                         chatCompletionsResponseFormat,
                         responseFormat,
                         strictJsonSchema,
+                        strictTools,
                         timeout,
                         maxRetries,
                         proxyOptions,
@@ -852,6 +863,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                         chatCompletionsResponseFormat,
                         responseFormat,
                         strictJsonSchema,
+                        strictTools,
                         listeners,
                         capabilities);
             }
