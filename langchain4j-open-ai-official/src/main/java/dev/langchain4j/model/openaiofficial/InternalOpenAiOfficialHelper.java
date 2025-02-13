@@ -1,13 +1,21 @@
 package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
+import com.openai.azure.AzureOpenAIServiceVersion;
+import com.openai.azure.credential.AzureApiKeyCredential;
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.core.JsonValue;
+import com.openai.credential.Credential;
 import com.openai.models.ChatCompletion;
 import com.openai.models.ChatCompletionAssistantMessageParam;
 import com.openai.models.ChatCompletionChunk;
@@ -26,6 +34,7 @@ import com.openai.models.ChatCompletionToolChoiceOption;
 import com.openai.models.ChatCompletionToolMessageParam;
 import com.openai.models.ChatCompletionUserMessageParam;
 import com.openai.models.CompletionUsage;
+import com.openai.models.CreateEmbeddingResponse;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
 import com.openai.models.Metadata;
@@ -53,8 +62,12 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+
+import java.net.Proxy;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +82,68 @@ public class InternalOpenAiOfficialHelper {
     static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
 
     static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
+
+    static OpenAIClient setupSyncClient(String baseUrl, boolean useAzure, String apiKey, String azureApiKey, Credential credential, String azureDeploymentName, AzureOpenAIServiceVersion azureOpenAIServiceVersion, String organizationId, String modelName, Duration timeout, Integer maxRetries, Proxy proxy, Map<String, String> customHeaders) {
+        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
+
+        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
+        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
+            baseUrl = OPENAI_DEMO_URL;
+        }
+
+        if (useAzure) {
+            // Using Azure OpenAI
+            if (azureDeploymentName == null) {
+                // If the Azure deployment name is not configured, we use the model name instead, as it's the default
+                // deployment name
+                azureDeploymentName = modelName;
+            }
+            ensureNotBlank(azureDeploymentName, "azureDeploymentName");
+            baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+            if (azureOpenAIServiceVersion == null) {
+                azureOpenAIServiceVersion = AzureOpenAIServiceVersion.getV2025_01_01_PREVIEW();
+            }
+            builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
+                    + azureOpenAIServiceVersion.value());
+        } else {
+            // Using OpenAI
+            builder.baseUrl(baseUrl);
+        }
+
+        if (apiKey != null) {
+            builder.apiKey(apiKey);
+        } else if (azureApiKey != null) {
+            builder.credential(AzureApiKeyCredential.create(azureApiKey));
+        } else if (credential != null) {
+            builder.credential(credential);
+        } else {
+            throw new IllegalArgumentException("Either apiKey, azureApiKey or credential must be set to authenticate");
+        }
+
+        builder.organization(organizationId);
+
+        if (azureOpenAIServiceVersion != null) {
+            builder.azureServiceVersion(azureOpenAIServiceVersion);
+        }
+
+        if (proxy != null) {
+            builder.proxy(proxy);
+        }
+
+        if (customHeaders != null) {
+            builder.putAllHeaders(customHeaders.entrySet().stream()
+                    .collect(
+                            Collectors.toMap(Map.Entry::getKey, entry -> Collections.singletonList(entry.getValue()))));
+        }
+        builder.putHeader("User-Agent", DEFAULT_USER_AGENT);
+
+        timeout = getOrDefault(timeout, ofSeconds(60));
+        builder.timeout(timeout);
+
+        builder.maxRetries(getOrDefault(maxRetries, 3));
+
+        return builder.build();
+    }
 
     static List<ChatCompletionMessageParam> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()
@@ -269,13 +344,17 @@ public class InternalOpenAiOfficialHelper {
                 .build();
     }
 
-    static OpenAiOfficialTokenUsage tokenUsageFrom(Optional<CompletionUsage> openAiUsage) {
-        if (openAiUsage.isEmpty()) {
-            return null;
-        }
+    static OpenAiOfficialTokenUsage tokenUsageFrom(CreateEmbeddingResponse.Usage openAiUsage) {
+        return OpenAiOfficialTokenUsage.builder()
+                .inputTokenCount(openAiUsage.promptTokens())
+                .totalTokenCount(openAiUsage.totalTokens())
+                .build();
+    }
+
+    static OpenAiOfficialTokenUsage tokenUsageFrom(CompletionUsage openAiUsage) {
 
         Optional<CompletionUsage.PromptTokensDetails> promptTokensDetails =
-                openAiUsage.get().promptTokensDetails();
+                openAiUsage.promptTokensDetails();
         OpenAiOfficialTokenUsage.InputTokensDetails inputTokensDetails = null;
         if (promptTokensDetails.isPresent()
                 && promptTokensDetails.get().cachedTokens().isPresent()) {
@@ -284,7 +363,7 @@ public class InternalOpenAiOfficialHelper {
         }
 
         Optional<CompletionUsage.CompletionTokensDetails> completionTokensDetails =
-                openAiUsage.get().completionTokensDetails();
+                openAiUsage.completionTokensDetails();
         OpenAiOfficialTokenUsage.OutputTokensDetails outputTokensDetails = null;
         if (completionTokensDetails.isPresent()
                 && completionTokensDetails.get().reasoningTokens().isPresent()) {
@@ -293,11 +372,11 @@ public class InternalOpenAiOfficialHelper {
         }
 
         return OpenAiOfficialTokenUsage.builder()
-                .inputTokenCount(openAiUsage.get().promptTokens())
+                .inputTokenCount(openAiUsage.promptTokens())
                 .inputTokensDetails(inputTokensDetails)
-                .outputTokenCount(openAiUsage.get().completionTokens())
+                .outputTokenCount(openAiUsage.completionTokens())
                 .outputTokensDetails(outputTokensDetails)
-                .totalTokenCount(openAiUsage.get().totalTokens())
+                .totalTokenCount(openAiUsage.totalTokens())
                 .build();
     }
 

@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelIT.API_VERSION;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelIT.MODEL_NAME;
 
 import com.openai.models.ChatModel;
@@ -19,7 +18,6 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
     static final OpenAiOfficialStreamingChatModel OPEN_AI_OFFICIAL_STREAMING_CHAT_MODEL = OpenAiOfficialStreamingChatModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .azureOpenAIServiceVersion(API_VERSION)
             .modelName(MODEL_NAME)
             .build();
 
@@ -27,7 +25,6 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
             OpenAiOfficialStreamingChatModel.builder()
                     .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                     .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                    .azureOpenAIServiceVersion(API_VERSION)
                     .modelName(MODEL_NAME)
                     .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
                     .strictJsonSchema(true)
@@ -48,8 +45,7 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 OpenAiOfficialStreamingChatModel.builder()
                         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                         .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                        .modelName(ChatModel.GPT_4O.toString())
-                        .azureOpenAIServiceVersion(API_VERSION)
+                        .modelName(MODEL_NAME)
                         .maxCompletionTokens(parameters.maxOutputTokens())
                         .defaultRequestParameters(parameters);
 

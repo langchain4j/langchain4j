@@ -175,7 +175,9 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             response.stream().forEach(chatCompletionChunk -> {
                 responseMetadataBuilder.id(chatCompletionChunk.id());
                 responseMetadataBuilder.modelName(chatCompletionChunk.model());
-                responseMetadataBuilder.tokenUsage(tokenUsageFrom(chatCompletionChunk.usage()));
+                if (chatCompletionChunk.usage().isPresent()) {
+                    responseMetadataBuilder.tokenUsage(tokenUsageFrom(chatCompletionChunk.usage().get()));
+                }
                 responseMetadataBuilder.created(chatCompletionChunk.created());
                 responseMetadataBuilder.serviceTier(
                         chatCompletionChunk.serviceTier().isPresent()

@@ -157,25 +157,31 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
         // retry logic included
         ChatCompletion chatCompletion = client.chat().completions().create(chatCompletionCreateParams);
 
-        OpenAiOfficialChatResponseMetadata responseMetadata = OpenAiOfficialChatResponseMetadata.builder()
+        OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder = OpenAiOfficialChatResponseMetadata.builder()
                 .id(chatCompletion.id())
                 .modelName(chatCompletion.model())
-                .tokenUsage(tokenUsageFrom(chatCompletion.usage()))
-                .finishReason(finishReasonFrom(chatCompletion.choices().get(0).finishReason()))
-                .created(chatCompletion.created())
-                .serviceTier(
-                        chatCompletion.serviceTier().isPresent()
-                                ? chatCompletion.serviceTier().get().toString()
-                                : null)
-                .systemFingerprint(
-                        chatCompletion.systemFingerprint().isPresent()
-                                ? chatCompletion.systemFingerprint().get()
-                                : null)
-                .build();
+                .created(chatCompletion.created());
+
+        if (!chatCompletion.choices().isEmpty()) {
+            responseMetadataBuilder
+                    .finishReason(finishReasonFrom(chatCompletion.choices().get(0).finishReason()));
+        }
+        if (chatCompletion.usage().isPresent()) {
+            responseMetadataBuilder
+                    .tokenUsage(tokenUsageFrom(chatCompletion.usage().get()));
+        }
+        if (chatCompletion.serviceTier().isPresent()) {
+            responseMetadataBuilder
+                    .serviceTier(chatCompletion.serviceTier().get().toString());
+        }
+        if (chatCompletion.systemFingerprint().isPresent()) {
+            responseMetadataBuilder
+                    .systemFingerprint(chatCompletion.systemFingerprint().get());
+        }
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(chatCompletion))
-                .metadata(responseMetadata)
+                .metadata(responseMetadataBuilder.build())
                 .build();
     }
 

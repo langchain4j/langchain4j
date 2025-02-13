@@ -17,10 +17,7 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
     private final OutputTokensDetails outputTokensDetails;
 
     private OpenAiOfficialTokenUsage(Builder builder) {
-        super(
-                builder.inputTokenCount.intValue(),
-                builder.outputTokenCount.intValue(),
-                builder.totalTokenCount.intValue());
+        super(builder.inputTokenCount(), builder.outputTokenCount(), builder.totalTokenCount());
         this.inputTokensDetails = builder.inputTokensDetails;
         this.outputTokensDetails = builder.outputTokensDetails;
     }
@@ -71,6 +68,27 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
         private Long outputTokenCount;
         private OutputTokensDetails outputTokensDetails;
         private Long totalTokenCount;
+
+        public Integer inputTokenCount() {
+            if (inputTokenCount == null) {
+                return null;
+            }
+            return inputTokenCount.intValue();
+        }
+
+        public Integer outputTokenCount() {
+            if (outputTokenCount == null) {
+                return null;
+            }
+            return outputTokenCount.intValue();
+        }
+
+        public Integer totalTokenCount() {
+            if (totalTokenCount == null) {
+                return null;
+            }
+            return totalTokenCount.intValue();
+        }
 
         public Builder inputTokenCount(Long inputTokenCount) {
             this.inputTokenCount = inputTokenCount;

@@ -16,19 +16,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
     public static final ChatModel MODEL_NAME = ChatModel.GPT_4O_MINI;
-    public static final AzureOpenAIServiceVersion API_VERSION = AzureOpenAIServiceVersion.getV2024_08_01_PREVIEW();
 
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL = OpenAiOfficialChatModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .azureOpenAIServiceVersion(API_VERSION)
             .modelName(MODEL_NAME)
             .build();
 
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL_STRICT_SCHEMA = OpenAiOfficialChatModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .azureOpenAIServiceVersion(API_VERSION)
             .modelName(MODEL_NAME)
             .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
             .strictJsonSchema(true)
@@ -49,8 +46,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
                 OpenAiOfficialChatModel.builder()
                         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                         .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                        .modelName(ChatModel.GPT_4O.toString())
-                        .azureOpenAIServiceVersion(API_VERSION)
+                        .modelName(MODEL_NAME)
                         .maxCompletionTokens(parameters.maxOutputTokens())
                         .defaultRequestParameters(parameters);
 

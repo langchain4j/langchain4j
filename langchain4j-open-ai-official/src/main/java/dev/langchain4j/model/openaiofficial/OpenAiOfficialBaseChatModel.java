@@ -10,6 +10,7 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.OPENAI_DEMO_URL;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.OPENAI_URL;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
 
@@ -85,68 +86,18 @@ abstract class OpenAiOfficialBaseChatModel implements TokenCountEstimator {
             List<ChatModelListener> listeners,
             Set<Capability> capabilities) {
 
-        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
-
-        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
-        }
-
         if (azureApiKey != null || credential != null) {
             // Using Azure OpenAI
             this.useAzure = true;
             ensureNotBlank(modelName, "modelName");
             this.azureModelName = modelName;
-            // If the Azure deployment name is not configured, we use the model name instead, as it's the default
-            // deployment name
-            if (azureDeploymentName == null) {
-                azureDeploymentName = modelName;
-            }
-            ensureNotBlank(azureDeploymentName, "azureDeploymentName");
-            ensureNotNull(azureOpenAIServiceVersion, "azureOpenAIServiceVersion");
-            baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-            builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
-                    + azureOpenAIServiceVersion.value());
         } else {
             // Using OpenAI
             this.useAzure = false;
             this.azureModelName = null;
-            builder.baseUrl(baseUrl);
         }
 
-        if (apiKey != null) {
-            builder.apiKey(apiKey);
-        } else if (azureApiKey != null) {
-            builder.credential(AzureApiKeyCredential.create(azureApiKey));
-        } else if (credential != null) {
-            builder.credential(credential);
-        } else {
-            throw new IllegalArgumentException("Either apiKey, azureApiKey or credential must be set to authenticate");
-        }
-
-        builder.organization(organizationId);
-
-        if (azureOpenAIServiceVersion != null) {
-            builder.azureServiceVersion(azureOpenAIServiceVersion);
-        }
-
-        if (proxy != null) {
-            builder.proxy(proxy);
-        }
-
-        if (customHeaders != null) {
-            builder.putAllHeaders(customHeaders.entrySet().stream()
-                    .collect(
-                            Collectors.toMap(Map.Entry::getKey, entry -> Collections.singletonList(entry.getValue()))));
-        }
-        builder.putHeader("User-Agent", DEFAULT_USER_AGENT);
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-        builder.timeout(timeout);
-
-        builder.maxRetries(getOrDefault(maxRetries, 3));
-
-        this.client = builder.build();
+        this.client = setupSyncClient(baseUrl, useAzure, apiKey, azureApiKey, credential, azureDeploymentName, azureOpenAIServiceVersion, organizationId, modelName, timeout, maxRetries, proxy, customHeaders);
 
         ChatRequestParameters commonParameters;
         if (defaultRequestParameters != null) {
