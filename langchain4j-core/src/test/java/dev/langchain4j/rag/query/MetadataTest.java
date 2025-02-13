@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class MetadataTest {
 
     @Test
-    void create() {
+    void test_create() {
 
         // given
         UserMessage userMessage = UserMessage.from("user message");
@@ -32,7 +32,7 @@ class MetadataTest {
     }
 
     @Test
-    void equals_hash_code() {
+    void test_equals_hashCode() {
 
         // given
         Metadata metadata1 = Metadata.from(
@@ -57,7 +57,7 @@ class MetadataTest {
     }
 
     @Test
-    void to_string() {
+    void test_toString() {
 
         // given
         Metadata metadata = Metadata.from(
@@ -73,7 +73,7 @@ class MetadataTest {
                 .isEqualTo("Metadata { "
                         + "userMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, "
                         + "chatMemoryId = 42, "
-                        + "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, AiMessage { text = \"Hi, how can I help you today?\" toolExecutionRequests = null }] "
+                        + "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, AiMessage { text = \"Hi, how can I help you today?\" reasoningContent = null toolExecutionRequests = null }] "
                         + "}");
     }
 }
