@@ -1,27 +1,25 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.completion.CompletionChoice;
-import dev.ai4j.openai4j.completion.CompletionRequest;
-import dev.ai4j.openai4j.completion.CompletionResponse;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
+import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
+import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.Map;
-import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
@@ -38,39 +36,24 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
-    public OpenAiLanguageModel(String baseUrl,
-                               String apiKey,
-                               String organizationId,
-                               String modelName,
-                               Double temperature,
-                               Duration timeout,
-                               Integer maxRetries,
-                               Proxy proxy,
-                               Boolean logRequests,
-                               Boolean logResponses,
-                               Tokenizer tokenizer,
-                               Map<String, String> customHeaders) {
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
+    public OpenAiLanguageModel(OpenAiLanguageModelBuilder builder) {
         this.client = OpenAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
-                .openAiApiKey(apiKey)
-                .organizationId(organizationId)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
+                .apiKey(builder.apiKey)
+                .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(customHeaders)
+                .customHeaders(builder.customHeaders)
                 .build();
-        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
-        this.temperature = getOrDefault(temperature, 0.7);
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.modelName = builder.modelName;
+        this.temperature = builder.temperature;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
     }
 
     public String modelName() {
@@ -124,14 +107,16 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
      */
     public static class OpenAiLanguageModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private String projectId;
+
         private String modelName;
         private Double temperature;
         private Duration timeout;
         private Integer maxRetries;
-        private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
         private Tokenizer tokenizer;
@@ -139,6 +124,11 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
         public OpenAiLanguageModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public OpenAiLanguageModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OpenAiLanguageModelBuilder modelName(String modelName) {
@@ -166,6 +156,11 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
             return this;
         }
 
+        public OpenAiLanguageModelBuilder projectId(String projectId) {
+            this.projectId = projectId;
+            return this;
+        }
+
         public OpenAiLanguageModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
@@ -178,11 +173,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
         public OpenAiLanguageModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
-            return this;
-        }
-
-        public OpenAiLanguageModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
             return this;
         }
 
@@ -207,37 +197,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         }
 
         public OpenAiLanguageModel build() {
-            return new OpenAiLanguageModel(
-                    this.baseUrl,
-                    this.apiKey,
-                    this.organizationId,
-                    this.modelName,
-                    this.temperature,
-                    this.timeout,
-                    this.maxRetries,
-                    this.proxy,
-                    this.logRequests,
-                    this.logResponses,
-                    this.tokenizer,
-                    this.customHeaders
-            );
-        }
-
-        @Override
-        public String toString() {
-            return new StringJoiner(", ", OpenAiLanguageModelBuilder.class.getSimpleName() + "[", "]")
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("organizationId='" + organizationId + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("temperature=" + temperature)
-                    .add("timeout=" + timeout)
-                    .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
-                    .add("logRequests=" + logRequests)
-                    .add("logResponses=" + logResponses)
-                    .add("tokenizer=" + tokenizer)
-                    .add("customHeaders=" + customHeaders)
-                    .toString();
+            return new OpenAiLanguageModel(this);
         }
     }
 }

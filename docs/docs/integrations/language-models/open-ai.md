@@ -39,19 +39,24 @@ If you are using Quarkus, please refer to the
 To use OpenAI models, you will need an API key.
 You can create one [here](https://platform.openai.com/api-keys).
 
-:::note
+<details>
+<summary>What if I don't have an API key?</summary>
+
 If you don't have your own OpenAI API key, don't worry.
-You can temporarily use `demo` key, which we provide for free for demonstration purposes:
-
-```java
-String apiKey = "demo";
-```
-
-Be aware that when using the `demo` key, all requests to the OpenAI API go through our proxy,
+You can temporarily use `demo` key, which we provide for free for demonstration purposes.
+Be aware that when using the `demo` key, all requests to the OpenAI API need to go through our proxy,
 which injects the real key before forwarding your request to the OpenAI API.
 We do not collect or use your data in any way.
 The `demo` key has a quota, is restricted to the `gpt-4o-mini` model, and should only be used for demonstration purposes.
-:::
+
+```java
+OpenAiChatModel model = OpenAiChatModel.builder()
+    .baseUrl("http://langchain4j.dev/demo/openai/v1")
+    .apiKey("demo")
+    .modelName("gpt-4o-mini")
+    .build();
+```
+</details>
 
 ## Creating `OpenAiChatModel`
 
@@ -59,9 +64,15 @@ The `demo` key has a quota, is restricted to the `gpt-4o-mini` model, and should
 ```java
 ChatLanguageModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .defaultRequestParameters(ChatRequestParameters.builder()
+        .modelName("gpt-4o-mini")
+        .build();
+
+
+// You can also specify default chat request parameters using ChatRequestParameters or OpenAiChatRequestParameters
+ChatLanguageModel model = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                 .modelName("gpt-4o-mini")
-                .temperature(0.7)
                 .build())
         .build();
 ```
@@ -70,7 +81,11 @@ This will create an instance of `OpenAiChatModel` with the specified default par
 ### Spring Boot
 Add to the `application.properties`:
 ```properties
+# Mandatory properties:
 langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
+langchain4j.open-ai.chat-model.model-name=gpt-4o-mini
+
+# Optional properties:
 langchain4j.open-ai.chat-model.base-url=...
 langchain4j.open-ai.chat-model.custom-headers=...
 langchain4j.open-ai.chat-model.frequency-penalty=...
@@ -81,13 +96,10 @@ langchain4j.open-ai.chat-model.max-retries=...
 langchain4j.open-ai.chat-model.max-completion-tokens=...
 langchain4j.open-ai.chat-model.max-tokens=...
 langchain4j.open-ai.chat-model.metadata=...
-langchain4j.open-ai.chat-model.model-name=...
 langchain4j.open-ai.chat-model.organization-id=...
 langchain4j.open-ai.chat-model.parallel-tool-calls=...
 langchain4j.open-ai.chat-model.presence-penalty=...
-langchain4j.open-ai.chat-model.proxy.host=...
-langchain4j.open-ai.chat-model.proxy.port=...
-langchain4j.open-ai.chat-model.proxy.type=...
+langchain4j.open-ai.chat-model.project-id=...
 langchain4j.open-ai.chat-model.reasoning-effort=...
 langchain4j.open-ai.chat-model.response-format=...
 langchain4j.open-ai.chat-model.seed=...
@@ -101,7 +113,7 @@ langchain4j.open-ai.chat-model.timeout=...
 langchain4j.open-ai.chat-model.top-p=
 langchain4j.open-ai.chat-model.user=...
 ```
-See the description of some of the parameters above [here](https://platform.openai.com/docs/api-reference/chat/create).
+See the description of most of the parameters above [here](https://platform.openai.com/docs/api-reference/chat/create).
 
 This configuration will create an `OpenAiChatModel` bean,
 which can be either used by an [AI Service](https://docs.langchain4j.dev/tutorials/spring-boot-integration/#langchain4j-spring-boot-starter)
@@ -164,9 +176,14 @@ Other return types will be supported in the near future.
 ```java
 StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .defaultRequestParameters(ChatRequestParameters.builder()
+        .modelName("gpt-4o-mini")
+        .build();
+
+// You can also specify default chat request parameters using ChatRequestParameters or OpenAiChatRequestParameters
+StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                 .modelName("gpt-4o-mini")
-                .temperature(0.7)
                 .build())
         .build();
 ```
@@ -174,7 +191,11 @@ StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
 ### Spring Boot
 Add to the `application.properties`:
 ```properties
+# Mandatory properties:
 langchain4j.open-ai.streaming-chat-model.api-key=${OPENAI_API_KEY}
+langchain4j.open-ai.streaming-chat-model.model-name=gpt-4o-mini
+
+# Optional properties:
 langchain4j.open-ai.streaming-chat-model.base-url=...
 langchain4j.open-ai.streaming-chat-model.custom-headers=...
 langchain4j.open-ai.streaming-chat-model.frequency-penalty=...
@@ -185,13 +206,10 @@ langchain4j.open-ai.streaming-chat-model.max-retries=...
 langchain4j.open-ai.streaming-chat-model.max-completion-tokens=...
 langchain4j.open-ai.streaming-chat-model.max-tokens=...
 langchain4j.open-ai.streaming-chat-model.metadata=...
-langchain4j.open-ai.streaming-chat-model.model-name=...
 langchain4j.open-ai.streaming-chat-model.organization-id=...
 langchain4j.open-ai.streaming-chat-model.parallel-tool-calls=...
 langchain4j.open-ai.streaming-chat-model.presence-penalty=...
-langchain4j.open-ai.streaming-chat-model.proxy.host=...
-langchain4j.open-ai.streaming-chat-model.proxy.port=...
-langchain4j.open-ai.streaming-chat-model.proxy.type=...
+langchain4j.open-ai.streaming-chat-model.project-id=...
 langchain4j.open-ai.streaming-chat-model.reasoning-effort=...
 langchain4j.open-ai.streaming-chat-model.response-format=...
 langchain4j.open-ai.streaming-chat-model.seed=...
@@ -213,24 +231,25 @@ langchain4j.open-ai.streaming-chat-model.user=...
 ```java
 ModerationModel model = OpenAiModerationModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        ...
+        .modelName("text-moderation-stable")
         .build();
 ```
 
 ### Spring Boot
 Add to the `application.properties`:
 ```properties
+# Mandatory properties:
 langchain4j.open-ai.moderation-model.api-key=${OPENAI_API_KEY}
+langchain4j.open-ai.moderation-model.model-name=text-moderation-stable
+
+# Optional properties:
 langchain4j.open-ai.moderation-model.base-url=...
 langchain4j.open-ai.moderation-model.custom-headers=...
 langchain4j.open-ai.moderation-model.log-requests=...
 langchain4j.open-ai.moderation-model.log-responses=...
 langchain4j.open-ai.moderation-model.max-retries=...
-langchain4j.open-ai.moderation-model.model-name=...
 langchain4j.open-ai.moderation-model.organization-id=...
-langchain4j.open-ai.moderation-model.proxy.host=...
-langchain4j.open-ai.moderation-model.proxy.port=...
-langchain4j.open-ai.moderation-model.proxy.type=...
+langchain4j.open-ai.moderation-model.project-id=...
 langchain4j.open-ai.moderation-model.timeout=...
 ```
 
@@ -247,6 +266,22 @@ Tokenizer tokenizer = new OpenAiTokenizer("gpt-4o");
 ### Spring Boot
 The `OpenAiTokenizer` bean is created automatically by the Spring Boot starter.
 
+
+## HTTP Client
+
+### Plain Java
+When using the `langchain4j-open-ai` module,
+the JDK's `java.net.http.HttpClient` is used as the default HTTP client.
+
+You can customize it or use any other HTTP client of your choice.
+More information can be found [here](/tutorials/customizable-http-client).
+
+### Spring Boot
+When using the `langchain4j-open-ai-spring-boot-starter` Spring Boot starter,
+the Spring's `RestClient` is used as the default HTTP client.
+
+You can customize it or use any other HTTP client of your choice.
+More information can be found [here](/tutorials/customizable-http-client).
 
 ## Examples
 - [OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/open-ai-examples/src/main/java)
