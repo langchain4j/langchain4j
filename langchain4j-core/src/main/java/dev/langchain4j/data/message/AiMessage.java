@@ -23,6 +23,7 @@ public class AiMessage implements ChatMessage {
     private final String text;
     private final List<ToolExecutionRequest> toolExecutionRequests;
     private final String reasoningContent;
+
     /**
      * Create a new {@link AiMessage} with the given text.
      *
