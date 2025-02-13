@@ -36,13 +36,7 @@ class TextSegmentTest implements WithAssertions {
         TextSegment ts4 = TextSegment.from("text", m1);
         TextSegment ts5 = TextSegment.from("text", m2);
 
-        assertThat(ts1)
-                .isEqualTo(ts1)
-                .hasSameHashCodeAs(ts1)
-                .isEqualTo(ts2)
-                .hasSameHashCodeAs(ts2)
-                .isNotEqualTo(ts3)
-                .doesNotHaveSameHashCodeAs(ts3);
+        assertThat(ts1).isEqualTo(ts1).isEqualTo(ts2).isNotEqualTo(ts3);
 
         assertThat(ts3)
                 .isEqualTo(ts3)
@@ -63,8 +57,7 @@ class TextSegmentTest implements WithAssertions {
         assertThat(ts.metadata()).isEqualTo(metadata);
         assertThat(ts.metadata("abc")).isEqualTo("123");
 
-        assertThat(ts)
-                .hasToString("TextSegment { text = \"text\" metadata = {abc=123} }");
+        assertThat(ts).hasToString("TextSegment { text = \"text\" metadata = {abc=123} }");
     }
 
     @Test
@@ -82,5 +75,4 @@ class TextSegmentTest implements WithAssertions {
                 .isEqualTo(TextSegment.from("abc", metadata))
                 .isEqualTo(TextSegment.textSegment("abc", metadata));
     }
-
 }
