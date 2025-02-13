@@ -1,10 +1,10 @@
 package dev.langchain4j.agent.tool;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Java methods annotated with {@code @Tool} are considered tools/functions that language model can execute/call.
@@ -36,4 +36,10 @@ public @interface Tool {
      * @return description of the tool.
      */
     String[] value() default "";
+
+    /**
+     * Whether to return directly from the tool rather than continuing the agent loop.
+     * Defaults to false.
+     */
+    boolean returnDirect() default false;
 }

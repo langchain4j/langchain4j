@@ -1,13 +1,12 @@
 package dev.langchain4j.agent.tool;
 
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import static dev.langchain4j.internal.Utils.quoted;
+import static java.util.Arrays.asList;
 
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.quoted;
-import static java.util.Arrays.asList;
 
 /**
  * Describes a tool that language model can execute.
@@ -18,7 +17,9 @@ public class ToolSpecification {
 
     private final String name;
     private final String description;
+    private final boolean returnDirect;
     private final JsonObjectSchema parameters;
+
     @Deprecated(forRemoval = true)
     private final ToolParameters toolParameters;
 
@@ -31,9 +32,10 @@ public class ToolSpecification {
         this.name = builder.name;
         this.description = builder.description;
         if (builder.parameters != null && builder.toolParameters != null) {
-            throw new IllegalArgumentException("Both (new) JsonObjectSchema and (old) ToolParameters " +
-                    "are used to specify tool parameters. Please use only (new) JsonObjectSchema.");
+            throw new IllegalArgumentException("Both (new) JsonObjectSchema and (old) ToolParameters "
+                    + "are used to specify tool parameters. Please use only (new) JsonObjectSchema.");
         }
+        this.returnDirect = builder.returnDirect;
         this.parameters = builder.parameters;
         this.toolParameters = builder.toolParameters;
     }
@@ -45,6 +47,15 @@ public class ToolSpecification {
      */
     public String name() {
         return name;
+    }
+
+    /**
+     * Returns the value of returnDirect for the tool.
+     *
+     * @return the value of returnDirect for the tool.
+     */
+    public boolean returnDirect() {
+        return returnDirect;
     }
 
     /**
@@ -76,13 +87,13 @@ public class ToolSpecification {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolSpecification ts
-                && equalTo(ts);
+        return another instanceof ToolSpecification ts && equalTo(ts);
     }
 
     private boolean equalTo(ToolSpecification another) {
         return Objects.equals(name, another.name)
                 && Objects.equals(description, another.description)
+                && Objects.equals(returnDirect, another.returnDirect)
                 && Objects.equals(parameters, another.parameters)
                 && Objects.equals(toolParameters, another.toolParameters);
     }
@@ -92,6 +103,7 @@ public class ToolSpecification {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(name);
         h += (h << 5) + Objects.hashCode(description);
+        h += (h << 5) + Objects.hashCode(returnDirect);
         h += (h << 5) + Objects.hashCode(parameters);
         h += (h << 5) + Objects.hashCode(toolParameters);
         return h;
@@ -102,6 +114,7 @@ public class ToolSpecification {
         return "ToolSpecification {"
                 + " name = " + quoted(name)
                 + ", description = " + quoted(description)
+                + ", returnDirect = " + returnDirect
                 + ", parameters = " + parameters
                 + ", toolParameters = " + toolParameters
                 + " }";
@@ -123,15 +136,16 @@ public class ToolSpecification {
 
         private String name;
         private String description;
+        private boolean returnDirect;
         private JsonObjectSchema parameters;
+
         @Deprecated(forRemoval = true)
         private ToolParameters toolParameters;
 
         /**
          * Creates a {@link Builder}.
          */
-        private Builder() {
-        }
+        private Builder() {}
 
         /**
          * Sets the {@code name}.
@@ -152,6 +166,17 @@ public class ToolSpecification {
          */
         public Builder description(String description) {
             this.description = description;
+            return this;
+        }
+
+        /**
+         * Sets {@code returnDirect}.
+         *
+         * @param returnDirect the {@code returnDirect} parameter
+         * @return {@code this}
+         */
+        public Builder returnDirect(boolean returnDirect) {
+            this.returnDirect = returnDirect;
             return this;
         }
 

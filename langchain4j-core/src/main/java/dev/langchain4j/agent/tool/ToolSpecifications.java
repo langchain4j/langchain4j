@@ -1,9 +1,12 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -14,17 +17,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
-
 /**
  * Utility methods for {@link ToolSpecification}s.
  */
 public class ToolSpecifications {
 
-    private ToolSpecifications() {
-    }
+    private ToolSpecifications() {}
 
     /**
      * Returns {@link ToolSpecification}s for all methods annotated with @{@link Tool} within the specified class.
@@ -58,13 +56,15 @@ public class ToolSpecifications {
      *
      * @param toolSpecifications list of ToolSpecification to be validated.
      */
-    public static void validateSpecifications(List<ToolSpecification> toolSpecifications) throws IllegalArgumentException {
+    public static void validateSpecifications(List<ToolSpecification> toolSpecifications)
+            throws IllegalArgumentException {
 
         // Checks for duplicates methods
         Set<String> names = new HashSet<>();
         for (ToolSpecification toolSpecification : toolSpecifications) {
             if (!names.add(toolSpecification.name())) {
-                throw new IllegalArgumentException(String.format("Tool names must be unique. The tool '%s' appears several times", toolSpecification.name()));
+                throw new IllegalArgumentException(String.format(
+                        "Tool names must be unique. The tool '%s' appears several times", toolSpecification.name()));
             }
         }
     }
@@ -86,11 +86,14 @@ public class ToolSpecifications {
             description = null;
         }
 
+        boolean returnDirect = annotation.returnDirect();
+
         JsonObjectSchema parameters = parametersFrom(method.getParameters());
 
         return ToolSpecification.builder()
                 .name(name)
                 .description(description)
+                .returnDirect(returnDirect)
                 .parameters(parameters)
                 .build();
     }
@@ -135,15 +138,11 @@ public class ToolSpecifications {
                 .build();
     }
 
-    private static JsonSchemaElement jsonSchemaElementFrom(Parameter parameter,
-                                                           Map<Class<?>, JsonSchemaElementHelper.VisitedClassMetadata> visited) {
+    private static JsonSchemaElement jsonSchemaElementFrom(
+            Parameter parameter, Map<Class<?>, JsonSchemaElementHelper.VisitedClassMetadata> visited) {
         P annotation = parameter.getAnnotation(P.class);
         String description = annotation == null ? null : annotation.value();
         return JsonSchemaElementHelper.jsonSchemaElementFrom(
-                parameter.getType(),
-                parameter.getParameterizedType(),
-                description,
-                visited
-        );
+                parameter.getType(), parameter.getParameterizedType(), description, visited);
     }
 }

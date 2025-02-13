@@ -162,6 +162,15 @@ public class ToolService {
                         .result(toolExecutionResultMessage.text())
                         .build());
 
+                ToolSpecification toolSpec = toolSpecifications.stream()
+                        .filter(spec -> spec.name().equals(toolExecutionRequest.name()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (toolSpec != null && toolSpec.returnDirect()) {
+                    return new ToolExecutionResult(chatResponse, toolExecutions, tokenUsageAccumulator);
+                }
+
                 if (chatMemory != null) {
                     chatMemory.add(toolExecutionResultMessage);
                 } else {

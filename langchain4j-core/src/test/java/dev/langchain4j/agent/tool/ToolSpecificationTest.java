@@ -1,12 +1,11 @@
 package dev.langchain4j.agent.tool;
 
+import static java.util.Collections.singletonMap;
+
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import java.util.Collections;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.Collections;
-
-import static java.util.Collections.singletonMap;
 
 class ToolSpecificationTest implements WithAssertions {
     @Test
@@ -39,13 +38,11 @@ class ToolSpecificationTest implements WithAssertions {
         assertThat(ts.name()).isEqualTo("name");
         assertThat(ts.description()).isEqualTo("description");
         assertThat(ts.toolParameters().type()).isEqualTo("object");
-        assertThat(ts.toolParameters().properties().get("req"))
-                .containsEntry("type", "boolean");
+        assertThat(ts.toolParameters().properties().get("req")).containsEntry("type", "boolean");
         assertThat(ts.toolParameters().properties().get("foo"))
                 .containsEntry("type", "string")
                 .containsEntry("description", "description");
-        assertThat(ts.toolParameters().properties().get("bar"))
-                .containsEntry("type", "integer");
+        assertThat(ts.toolParameters().properties().get("bar")).containsEntry("type", "integer");
         assertThat(ts.toolParameters().required()).containsOnly("req");
     }
 
@@ -79,38 +76,38 @@ class ToolSpecificationTest implements WithAssertions {
                 .hasSameHashCodeAs(sp2);
 
         assertThat(ToolSpecification.builder()
-                .name("changed")
-                .description("description")
-                .parameters(ToolParameters.builder()
-                        .type("type")
-                        .properties(singletonMap("foo", singletonMap("bar", "baz")))
-                        .required(Collections.singletonList("foo"))
+                        .name("changed")
+                        .description("description")
+                        .parameters(ToolParameters.builder()
+                                .type("type")
+                                .properties(singletonMap("foo", singletonMap("bar", "baz")))
+                                .required(Collections.singletonList("foo"))
+                                .build())
                         .build())
-                .build())
                 .isNotEqualTo(sp1)
                 .doesNotHaveSameHashCodeAs(sp1);
 
         assertThat(ToolSpecification.builder()
-                .name("name")
-                .description("changed")
-                .parameters(ToolParameters.builder()
-                        .type("type")
-                        .properties(singletonMap("foo", singletonMap("bar", "baz")))
-                        .required(Collections.singletonList("foo"))
+                        .name("name")
+                        .description("changed")
+                        .parameters(ToolParameters.builder()
+                                .type("type")
+                                .properties(singletonMap("foo", singletonMap("bar", "baz")))
+                                .required(Collections.singletonList("foo"))
+                                .build())
                         .build())
-                .build())
                 .isNotEqualTo(sp1)
                 .doesNotHaveSameHashCodeAs(sp1);
 
         assertThat(ToolSpecification.builder()
-                .name("name")
-                .description("description")
-                .parameters(ToolParameters.builder()
-                        .type("type")
-                        .properties(singletonMap("foo", singletonMap("bar", "baz")))
-                        .required(Collections.singletonList("changed"))
+                        .name("name")
+                        .description("description")
+                        .parameters(ToolParameters.builder()
+                                .type("type")
+                                .properties(singletonMap("foo", singletonMap("bar", "baz")))
+                                .required(Collections.singletonList("changed"))
+                                .build())
                         .build())
-                .build())
                 .isNotEqualTo(sp1)
                 .doesNotHaveSameHashCodeAs(sp1);
     }
@@ -120,18 +117,19 @@ class ToolSpecificationTest implements WithAssertions {
         ToolSpecification sp1 = ToolSpecification.builder()
                 .name("name")
                 .description("description")
+                .returnDirect(true)
                 .parameters(JsonObjectSchema.builder()
                         .addStringProperty("foo")
                         .required("foo")
                         .build())
                 .build();
 
-        assertThat(sp1.toString()).isEqualTo(
-                "ToolSpecification { " +
-                        "name = \"name\", " +
-                        "description = \"description\", " +
-                        "parameters = JsonObjectSchema {description = null, properties = {foo=JsonStringSchema {description = null }}, required = [foo], additionalProperties = null, definitions = null }, " +
-                        "toolParameters = null " +
-                        "}");
+        assertThat(sp1.toString())
+                .isEqualTo("ToolSpecification { " + "name = \"name\", "
+                        + "description = \"description\", "
+                        + "returnDirect = true, "
+                        + "parameters = JsonObjectSchema {description = null, properties = {foo=JsonStringSchema {description = null }}, required = [foo], additionalProperties = null, definitions = null }, "
+                        + "toolParameters = null "
+                        + "}");
     }
 }
