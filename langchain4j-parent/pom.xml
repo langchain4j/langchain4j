@@ -101,12 +101,6 @@
         <dependencies>
 
             <dependency>
-                <groupId>dev.ai4j</groupId>
-                <artifactId>openai4j</artifactId>
-                <version>${openai4j.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>com.azure</groupId>
                 <artifactId>azure-ai-openai</artifactId>
                 <version>${azure-ai-openai.version}</version>

@@ -89,27 +89,35 @@ It's recommended to store your API keys in environment variables to reduce the r
 ```java
 String apiKey = System.getenv("OPENAI_API_KEY");
 ```
-:::note
+
+<details>
+<summary>What if I don't have an API key?</summary>
+
 If you don't have your own OpenAI API key, don't worry.
-You can temporarily use `demo` key, which we provide for free for demonstration purposes:
-```java
-String apiKey = "demo";
-```
-Be aware that when using the `demo` key, all requests to the OpenAI API go through our proxy,
+You can temporarily use `demo` key, which we provide for free for demonstration purposes.
+Be aware that when using the `demo` key, all requests to the OpenAI API need to go through our proxy,
 which injects the real key before forwarding your request to the OpenAI API.
 We do not collect or use your data in any way.
 The `demo` key has a quota, is restricted to the `gpt-4o-mini` model, and should only be used for demonstration purposes.
-:::
+
+```java
+OpenAiChatModel model = OpenAiChatModel.builder()
+    .baseUrl("http://langchain4j.dev/demo/openai/v1")
+    .apiKey("demo")
+    .modelName("gpt-4o-mini")
+    .build();
+```
+</details>
 
 Once you've set up the key, let's create an instance of an `OpenAiChatModel`:
 ```java
 OpenAiChatModel model = OpenAiChatModel.builder()
     .apiKey(apiKey)
-    .modelName(GPT_4_O_MINI)
+    .modelName("gpt-4o-mini")
     .build();
 ```
 Now, it is time to chat!
 ```java
-String answer = model.generate("Say 'Hello World'");
+String answer = model.chat("Say 'Hello World'");
 System.out.println(answer); // Hello World
 ```
