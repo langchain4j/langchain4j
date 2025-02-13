@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openaiofficial.spi;
 
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
-
 import java.util.function.Supplier;
 
 /**

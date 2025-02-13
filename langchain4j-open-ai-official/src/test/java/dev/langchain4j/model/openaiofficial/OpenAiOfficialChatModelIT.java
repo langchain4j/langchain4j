@@ -2,7 +2,6 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
-import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;

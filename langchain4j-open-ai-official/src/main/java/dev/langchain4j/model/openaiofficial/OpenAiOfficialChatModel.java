@@ -157,26 +157,27 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
         // retry logic included
         ChatCompletion chatCompletion = client.chat().completions().create(chatCompletionCreateParams);
 
-        OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder = OpenAiOfficialChatResponseMetadata.builder()
-                .id(chatCompletion.id())
-                .modelName(chatCompletion.model())
-                .created(chatCompletion.created());
+        OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder =
+                OpenAiOfficialChatResponseMetadata.builder()
+                        .id(chatCompletion.id())
+                        .modelName(chatCompletion.model())
+                        .created(chatCompletion.created());
 
         if (!chatCompletion.choices().isEmpty()) {
-            responseMetadataBuilder
-                    .finishReason(finishReasonFrom(chatCompletion.choices().get(0).finishReason()));
+            responseMetadataBuilder.finishReason(
+                    finishReasonFrom(chatCompletion.choices().get(0).finishReason()));
         }
         if (chatCompletion.usage().isPresent()) {
-            responseMetadataBuilder
-                    .tokenUsage(tokenUsageFrom(chatCompletion.usage().get()));
+            responseMetadataBuilder.tokenUsage(
+                    tokenUsageFrom(chatCompletion.usage().get()));
         }
         if (chatCompletion.serviceTier().isPresent()) {
-            responseMetadataBuilder
-                    .serviceTier(chatCompletion.serviceTier().get().toString());
+            responseMetadataBuilder.serviceTier(
+                    chatCompletion.serviceTier().get().toString());
         }
         if (chatCompletion.systemFingerprint().isPresent()) {
-            responseMetadataBuilder
-                    .systemFingerprint(chatCompletion.systemFingerprint().get());
+            responseMetadataBuilder.systemFingerprint(
+                    chatCompletion.systemFingerprint().get());
         }
 
         return ChatResponse.builder()

@@ -1,23 +1,23 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.List;
 import java.util.stream.Stream;
-
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialEmbeddingModelIT {
 
-    public static final com.openai.models.EmbeddingModel MODEL_NAME = com.openai.models.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
+    public static final com.openai.models.EmbeddingModel MODEL_NAME =
+            com.openai.models.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
 
     EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -49,10 +49,7 @@ class OpenAiOfficialEmbeddingModelIT {
     void should_embed_multiple_segments() {
 
         // given
-        List<TextSegment> segments = asList(
-                TextSegment.from("hello"),
-                TextSegment.from("world")
-        );
+        List<TextSegment> segments = asList(TextSegment.from("hello"), TextSegment.from("world"));
 
         // when
         Response<List<Embedding>> response = model.embedAll(segments);

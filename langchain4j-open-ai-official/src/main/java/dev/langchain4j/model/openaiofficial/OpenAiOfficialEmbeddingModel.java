@@ -1,5 +1,13 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.stream.Collectors.toList;
+
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
@@ -14,7 +22,6 @@ import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openaiofficial.spi.OpenAiOfficialEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -22,14 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.stream.Collectors.toList;
 
 public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
 
@@ -41,22 +40,23 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
     private final String user;
     private final Integer maxSegmentsPerBatch;
 
-    public OpenAiOfficialEmbeddingModel(String baseUrl,
-                                        String apiKey,
-                                        String azureApiKey,
-                                        Credential credential,
-                                        String azureDeploymentName,
-                                        AzureOpenAIServiceVersion azureOpenAIServiceVersion,
-                                        String organizationId,
-                                        String modelName,
-                                        Integer dimensions,
-                                        String user,
-                                        Integer maxSegmentsPerBatch,
-                                        Duration timeout,
-                                        Integer maxRetries,
-                                        Proxy proxy,
-                                        Tokenizer tokenizer,
-                                        Map<String, String> customHeaders) {
+    public OpenAiOfficialEmbeddingModel(
+            String baseUrl,
+            String apiKey,
+            String azureApiKey,
+            Credential credential,
+            String azureDeploymentName,
+            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
+            String organizationId,
+            String modelName,
+            Integer dimensions,
+            String user,
+            Integer maxSegmentsPerBatch,
+            Duration timeout,
+            Integer maxRetries,
+            Proxy proxy,
+            Tokenizer tokenizer,
+            Map<String, String> customHeaders) {
 
         if (azureApiKey != null || credential != null) {
             // Using Azure OpenAI
@@ -67,7 +67,20 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
             this.useAzure = false;
         }
 
-        this.client = setupSyncClient(baseUrl, useAzure, apiKey, azureApiKey, credential, azureDeploymentName, azureOpenAIServiceVersion, organizationId, modelName, timeout, maxRetries, proxy, customHeaders);
+        this.client = setupSyncClient(
+                baseUrl,
+                useAzure,
+                apiKey,
+                azureApiKey,
+                credential,
+                azureDeploymentName,
+                azureOpenAIServiceVersion,
+                organizationId,
+                modelName,
+                timeout,
+                maxRetries,
+                proxy,
+                customHeaders);
         this.modelName = modelName;
         this.dimensions = dimensions;
         this.tokenizer = tokenizer;
@@ -79,9 +92,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        List<String> texts = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(toList());
+        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
 
         List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
 
@@ -129,13 +140,11 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
             embeddingCreateParamsBuilder.dimensions(dimensions);
         }
 
-
-        final CreateEmbeddingResponse createEmbeddingResponse = client.embeddings().create(embeddingCreateParamsBuilder.build());
+        final CreateEmbeddingResponse createEmbeddingResponse =
+                client.embeddings().create(embeddingCreateParamsBuilder.build());
 
         List<Embedding> embeddings = createEmbeddingResponse.data().stream()
-                .map(embeddingItem -> Embedding.from(embeddingItem
-                        .embedding()
-                        .stream()
+                .map(embeddingItem -> Embedding.from(embeddingItem.embedding().stream()
                         .map(Double::floatValue)
                         .toList()))
                 .toList();
@@ -149,7 +158,8 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
     }
 
     public static OpenAiOfficialEmbeddingModelBuilder builder() {
-        for (OpenAiOfficialEmbeddingModelBuilderFactory factory : loadFactories(OpenAiOfficialEmbeddingModelBuilderFactory.class)) {
+        for (OpenAiOfficialEmbeddingModelBuilderFactory factory :
+                loadFactories(OpenAiOfficialEmbeddingModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OpenAiOfficialEmbeddingModelBuilder();
@@ -208,7 +218,8 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+        public OpenAiOfficialEmbeddingModelBuilder azureOpenAIServiceVersion(
+                AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }

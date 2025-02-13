@@ -3,21 +3,13 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.OPENAI_URL;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
-import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
-import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.OpenAIClient;
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.credential.Credential;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
@@ -29,12 +21,10 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 abstract class OpenAiOfficialBaseChatModel implements TokenCountEstimator {
 
@@ -97,7 +87,20 @@ abstract class OpenAiOfficialBaseChatModel implements TokenCountEstimator {
             this.azureModelName = null;
         }
 
-        this.client = setupSyncClient(baseUrl, useAzure, apiKey, azureApiKey, credential, azureDeploymentName, azureOpenAIServiceVersion, organizationId, modelName, timeout, maxRetries, proxy, customHeaders);
+        this.client = setupSyncClient(
+                baseUrl,
+                useAzure,
+                apiKey,
+                azureApiKey,
+                credential,
+                azureDeploymentName,
+                azureOpenAIServiceVersion,
+                organizationId,
+                modelName,
+                timeout,
+                maxRetries,
+                proxy,
+                customHeaders);
 
         ChatRequestParameters commonParameters;
         if (defaultRequestParameters != null) {

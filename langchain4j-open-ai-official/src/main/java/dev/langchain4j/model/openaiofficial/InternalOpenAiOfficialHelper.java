@@ -3,7 +3,6 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
@@ -62,7 +61,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -83,7 +81,20 @@ public class InternalOpenAiOfficialHelper {
 
     static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
 
-    static OpenAIClient setupSyncClient(String baseUrl, boolean useAzure, String apiKey, String azureApiKey, Credential credential, String azureDeploymentName, AzureOpenAIServiceVersion azureOpenAIServiceVersion, String organizationId, String modelName, Duration timeout, Integer maxRetries, Proxy proxy, Map<String, String> customHeaders) {
+    static OpenAIClient setupSyncClient(
+            String baseUrl,
+            boolean useAzure,
+            String apiKey,
+            String azureApiKey,
+            Credential credential,
+            String azureDeploymentName,
+            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
+            String organizationId,
+            String modelName,
+            Duration timeout,
+            Integer maxRetries,
+            Proxy proxy,
+            Map<String, String> customHeaders) {
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
@@ -353,8 +364,7 @@ public class InternalOpenAiOfficialHelper {
 
     static OpenAiOfficialTokenUsage tokenUsageFrom(CompletionUsage openAiUsage) {
 
-        Optional<CompletionUsage.PromptTokensDetails> promptTokensDetails =
-                openAiUsage.promptTokensDetails();
+        Optional<CompletionUsage.PromptTokensDetails> promptTokensDetails = openAiUsage.promptTokensDetails();
         OpenAiOfficialTokenUsage.InputTokensDetails inputTokensDetails = null;
         if (promptTokensDetails.isPresent()
                 && promptTokensDetails.get().cachedTokens().isPresent()) {
