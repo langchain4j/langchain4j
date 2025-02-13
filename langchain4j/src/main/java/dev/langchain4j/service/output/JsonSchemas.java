@@ -63,6 +63,6 @@ public class JsonSchemas {
         Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
 
         Optional<OutputParser<?>> outputParser = new DefaultOutputParserFactory().get(rawClass, typeArgumentClass);
-        return outputParser.isEmpty();
+        return !outputParser.isPresent();
     }
 }

@@ -89,7 +89,7 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
 
     @Override
     public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        if (model.promptSupport().isEmpty())
+        if (!model.promptSupport().isPresent())
             throw new UnsupportedOperationException("This model does not support chat generation");
 
         PromptSupport.Builder promptBuilder = model.promptSupport().get().builder();
