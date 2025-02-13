@@ -13,7 +13,7 @@ class JdkHttpClientTimeoutIT extends HttpClientTimeoutIT {
     @Override
     protected List<HttpClient> clients(Duration readTimeout) {
         return List.of(
-                new JdkHttpClientBuilder()
+                JdkHttpClient.builder()
                         .readTimeout(readTimeout)
                         .build()
         );
