@@ -3,12 +3,6 @@ package dev.langchain4j.service.common.openai;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.http.client.HttpClient;
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -22,10 +16,8 @@ import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -181,52 +173,10 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
-        AtomicReference<String> httpRequestBody = new AtomicReference<>();
-
-        HttpClient spyingHttpClient = new HttpClient() {
-
-            @Override
-            public SuccessfulHttpResponse execute(HttpRequest request) {
-                httpRequestBody.set(request.body());
-                return null;
-            }
-
-            @Override
-            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-                httpRequestBody.set(request.body());
-            }
-        };
-
-        HttpClientBuilder spyingHttpClientBuilder = new HttpClientBuilder() {
-
-            @Override
-            public Duration connectTimeout() {
-                return null;
-            }
-
-            @Override
-            public HttpClientBuilder connectTimeout(Duration timeout) {
-                return this;
-            }
-
-            @Override
-            public Duration readTimeout() {
-                return null;
-            }
-
-            @Override
-            public HttpClientBuilder readTimeout(Duration timeout) {
-                return this;
-            }
-
-            @Override
-            public HttpClient build() {
-                return spyingHttpClient;
-            }
-        };
+        MockHttpClient mockHttpClient = new MockHttpClient();
 
         ChatLanguageModel chatModel = defaultModelBuilder()
-                .httpClientBuilder(spyingHttpClientBuilder)
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .maxRetries(1) // it will fail, so no need to retry
                 .build();
 
@@ -234,11 +184,11 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         try {
             chatModel.chat(chatRequest);
         } catch (Exception e) {
-            // it fails because HttpClient.execute() returns null
+            // it fails because MockHttpClient.execute() returns null
         }
 
         // then
-        assertThat(httpRequestBody.get())
+        assertThat(mockHttpClient.request().body())
                 .containsIgnoringWhitespaces("\"seed\": 12345")
                 .containsIgnoringWhitespaces("\"user\": \"Klaus\"")
                 .containsIgnoringWhitespaces("\"store\": true")
@@ -322,5 +272,39 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    @Test
+    void should_propagate_custom_http_headers() {
+
+        // given
+        Map<String, String> customHeaders = Map.of(
+                "key1", "value1",
+                "key2", "value2"
+        );
+
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        ChatLanguageModel chatModel = defaultModelBuilder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .customHeaders(customHeaders)
+                .maxRetries(1) // it will fail, so no need to retry
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        try {
+            chatModel.chat(chatRequest);
+        } catch (Exception e) {
+            // it fails because MockHttpClient.execute() returns null
+        }
+
+        // then
+        assertThat(mockHttpClient.request().headers())
+                .containsEntry("key1", List.of("value1"))
+                .containsEntry("key2", List.of("value2"));
     }
 }
