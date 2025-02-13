@@ -91,7 +91,7 @@ public abstract class OpenAiClient {
 
         /**
          * @param apiKey OpenAI API key.
-         *               Will be injected in HTTP headers like this: "Authorization: Bearer ${openAiApiKey}"
+         *               Will be injected in HTTP headers like this: "Authorization: Bearer ${apiKey}"
          * @return builder
          */
         public B apiKey(String apiKey) {
