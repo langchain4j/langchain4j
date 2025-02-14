@@ -182,20 +182,6 @@ class InternalOpenAiOfficialHelper {
                         .build());
             }
 
-            ToolExecutionRequest toolExecutionRequest =
-                    aiMessage.toolExecutionRequests().get(0);
-            if (toolExecutionRequest.id() == null) {
-
-                return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
-                        .addToolCall(ChatCompletionMessageToolCall.builder()
-                                .function(ChatCompletionMessageToolCall.Function.builder()
-                                        .name(toolExecutionRequest.name())
-                                        .arguments(toolExecutionRequest.arguments())
-                                        .build())
-                                .build())
-                        .build());
-            }
-
             List<ChatCompletionMessageToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
                     .map(it -> ChatCompletionMessageToolCall.builder()
                             .id(it.id())
