@@ -18,7 +18,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openaiofficial.spi.OpenAiOfficialEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -29,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
+public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAIClient client;
     private final boolean useAzure;
@@ -133,11 +132,6 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
                 .toList();
 
         return Response.from(embeddings, tokenUsageFrom(createEmbeddingResponse.usage()));
-    }
-
-    @Override
-    public int estimateTokenCount(String text) {
-        return tokenizer.estimateTokenCountInText(text);
     }
 
     public static Builder builder() {

@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
-        implements ChatLanguageModel, TokenCountEstimator {
+        implements ChatLanguageModel {
 
     public OpenAiOfficialChatModel(Builder builder) {
 

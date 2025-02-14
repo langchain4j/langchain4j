@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
-        implements StreamingChatLanguageModel, TokenCountEstimator {
+        implements StreamingChatLanguageModel {
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 

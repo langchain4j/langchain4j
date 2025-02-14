@@ -14,7 +14,6 @@ import com.openai.credential.Credential;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -26,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-abstract class OpenAiOfficialBaseChatModel implements TokenCountEstimator {
+abstract class OpenAiOfficialBaseChatModel {
 
     protected OpenAIClient client;
     protected boolean useAzure;
@@ -163,10 +162,5 @@ abstract class OpenAiOfficialBaseChatModel implements TokenCountEstimator {
 
     public List<ChatModelListener> listeners() {
         return listeners;
-    }
-
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
     }
 }
