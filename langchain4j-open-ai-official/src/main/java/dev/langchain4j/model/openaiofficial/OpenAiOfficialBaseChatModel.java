@@ -3,7 +3,6 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
 import static java.util.Collections.emptyList;
@@ -11,7 +10,6 @@ import static java.util.Collections.emptyList;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -154,9 +152,6 @@ abstract class OpenAiOfficialBaseChatModel {
     }
 
     public Set<Capability> supportedCapabilities() {
-        if ("json_schema".equals(responseFormat) && !this.supportedCapabilities.contains(RESPONSE_FORMAT_JSON_SCHEMA)) {
-            throw new IllegalArgumentException("The model does not support the 'json_schema' response format");
-        }
         return this.supportedCapabilities;
     }
 
