@@ -72,7 +72,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class InternalOpenAiOfficialHelper {
+class InternalOpenAiOfficialHelper {
 
     static final String OPENAI_URL = "https://api.openai.com/v1";
 
