@@ -40,52 +40,36 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
     private final String user;
     private final Integer maxSegmentsPerBatch;
 
-    public OpenAiOfficialEmbeddingModel(
-            String baseUrl,
-            String apiKey,
-            String azureApiKey,
-            Credential credential,
-            String azureDeploymentName,
-            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
-            String organizationId,
-            String modelName,
-            Integer dimensions,
-            String user,
-            Integer maxSegmentsPerBatch,
-            Duration timeout,
-            Integer maxRetries,
-            Proxy proxy,
-            Tokenizer tokenizer,
-            Map<String, String> customHeaders) {
+    public OpenAiOfficialEmbeddingModel(OpenAiOfficialEmbeddingModelBuilder builder) {
 
-        if (azureApiKey != null || credential != null) {
+        if (builder.azureApiKey != null || builder.credential != null) {
             // Using Azure OpenAI
             this.useAzure = true;
-            ensureNotBlank(modelName, "modelName");
+            ensureNotBlank(builder.modelName, "modelName");
         } else {
             // Using OpenAI
             this.useAzure = false;
         }
 
         this.client = setupSyncClient(
-                baseUrl,
+                builder.baseUrl,
                 useAzure,
-                apiKey,
-                azureApiKey,
-                credential,
-                azureDeploymentName,
-                azureOpenAIServiceVersion,
-                organizationId,
-                modelName,
-                timeout,
-                maxRetries,
-                proxy,
-                customHeaders);
-        this.modelName = modelName;
-        this.dimensions = dimensions;
-        this.tokenizer = tokenizer;
-        this.user = user;
-        this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 2048);
+                builder.apiKey,
+                builder.azureApiKey,
+                builder.credential,
+                builder.azureDeploymentName,
+                builder.azureOpenAIServiceVersion,
+                builder.organizationId,
+                builder.modelName,
+                builder.timeout,
+                builder.maxRetries,
+                builder.proxy,
+                builder.customHeaders);
+        this.modelName = builder.modelName;
+        this.dimensions = builder.dimensions;
+        this.tokenizer = builder.tokenizer;
+        this.user = builder.user;
+        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
     }
 
@@ -280,24 +264,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
         }
 
         public OpenAiOfficialEmbeddingModel build() {
-
-            return new OpenAiOfficialEmbeddingModel(
-                    baseUrl,
-                    apiKey,
-                    azureApiKey,
-                    credential,
-                    azureDeploymentName,
-                    azureOpenAIServiceVersion,
-                    organizationId,
-                    modelName,
-                    dimensions,
-                    user,
-                    maxSegmentsPerBatch,
-                    timeout,
-                    maxRetries,
-                    proxy,
-                    tokenizer,
-                    customHeaders);
+            return new OpenAiOfficialEmbeddingModel(this);
         }
 
         @Override

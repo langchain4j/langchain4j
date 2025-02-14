@@ -37,73 +37,41 @@ import java.util.StringJoiner;
 public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
         implements ChatLanguageModel, TokenCountEstimator {
 
-    public OpenAiOfficialChatModel(
-            String baseUrl,
-            String apiKey,
-            String azureApiKey,
-            Credential credential,
-            String azureDeploymentName,
-            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
-            String organizationId,
-            ChatRequestParameters defaultRequestParameters,
-            String modelName,
-            Double temperature,
-            Double topP,
-            List<String> stop,
-            Integer maxCompletionTokens,
-            Double presencePenalty,
-            Double frequencyPenalty,
-            Map<String, Integer> logitBias,
-            String responseFormat,
-            Boolean strictJsonSchema,
-            Integer seed,
-            String user,
-            Boolean strictTools,
-            Boolean parallelToolCalls,
-            Boolean store,
-            Map<String, String> metadata,
-            String serviceTier,
-            Duration timeout,
-            Integer maxRetries,
-            Proxy proxy,
-            Tokenizer tokenizer,
-            Map<String, String> customHeaders,
-            List<ChatModelListener> listeners,
-            Set<Capability> capabilities) {
+    public OpenAiOfficialChatModel(OpenAiOfficialChatModelBuilder builder) {
 
         init(
-                baseUrl,
-                apiKey,
-                azureApiKey,
-                credential,
-                azureDeploymentName,
-                azureOpenAIServiceVersion,
-                organizationId,
-                defaultRequestParameters,
-                modelName,
-                temperature,
-                topP,
-                stop,
-                maxCompletionTokens,
-                presencePenalty,
-                frequencyPenalty,
-                logitBias,
-                responseFormat,
-                strictJsonSchema,
-                seed,
-                user,
-                strictTools,
-                parallelToolCalls,
-                store,
-                metadata,
-                serviceTier,
-                timeout,
-                maxRetries,
-                proxy,
-                tokenizer,
-                customHeaders,
-                listeners,
-                capabilities);
+                builder.baseUrl,
+                builder.apiKey,
+                builder.azureApiKey,
+                builder.credential,
+                builder.azureDeploymentName,
+                builder.azureOpenAIServiceVersion,
+                builder.organizationId,
+                builder.defaultRequestParameters,
+                builder.modelName,
+                builder.temperature,
+                builder.topP,
+                builder.stop,
+                builder.maxCompletionTokens,
+                builder.presencePenalty,
+                builder.frequencyPenalty,
+                builder.logitBias,
+                builder.responseFormat,
+                builder.strictJsonSchema,
+                builder.seed,
+                builder.user,
+                builder.strictTools,
+                builder.parallelToolCalls,
+                builder.store,
+                builder.metadata,
+                builder.serviceTier,
+                builder.timeout,
+                builder.maxRetries,
+                builder.proxy,
+                builder.tokenizer,
+                builder.customHeaders,
+                builder.listeners,
+                builder.capabilities);
     }
 
     @Override
@@ -408,7 +376,6 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
         }
 
         public OpenAiOfficialChatModel build() {
-
             if (azureApiKey != null || credential != null) {
                 // Using Azure OpenAI
                 if (this.defaultRequestParameters != null && this.defaultRequestParameters.modelName() != null) {
@@ -418,40 +385,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
                     }
                 }
             }
-
-            return new OpenAiOfficialChatModel(
-                    this.baseUrl,
-                    this.apiKey,
-                    this.azureApiKey,
-                    this.credential,
-                    this.azureDeploymentName,
-                    this.azureOpenAIServiceVersion,
-                    this.organizationId,
-                    this.defaultRequestParameters,
-                    this.modelName,
-                    this.temperature,
-                    this.topP,
-                    this.stop,
-                    this.maxCompletionTokens,
-                    this.presencePenalty,
-                    this.frequencyPenalty,
-                    this.logitBias,
-                    this.responseFormat,
-                    this.strictJsonSchema,
-                    this.seed,
-                    this.user,
-                    this.strictTools,
-                    this.parallelToolCalls,
-                    this.store,
-                    this.metadata,
-                    this.serviceTier,
-                    this.timeout,
-                    this.maxRetries,
-                    this.proxy,
-                    this.tokenizer,
-                    this.customHeaders,
-                    this.listeners,
-                    this.capabilities);
+            return new OpenAiOfficialChatModel(this);
         }
 
         @Override

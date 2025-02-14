@@ -33,56 +33,39 @@ public class OpenAiOfficialImageModel implements ImageModel {
     private final Duration timeout;
     private final ImageGenerateParams.ResponseFormat responseFormat;
 
-    public OpenAiOfficialImageModel(
-            String baseUrl,
-            String apiKey,
-            String azureApiKey,
-            Credential credential,
-            String azureDeploymentName,
-            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
-            String organizationId,
-            String modelName,
-            ImageGenerateParams.Size size,
-            ImageGenerateParams.Quality quality,
-            ImageGenerateParams.Style style,
-            String user,
-            ImageGenerateParams.ResponseFormat responseFormat,
-            Duration timeout,
-            Integer maxRetries,
-            Proxy proxy,
-            Map<String, String> customHeaders) {
+    public OpenAiOfficialImageModel(OpenAiOfficialImageModelBuilder builder) {
 
-        if (azureApiKey != null || credential != null) {
+        if (builder.azureApiKey != null || builder.credential != null) {
             // Using Azure OpenAI
             this.useAzure = true;
-            ensureNotBlank(modelName, "modelName");
+            ensureNotBlank(builder.modelName, "modelName");
         } else {
             // Using OpenAI
             this.useAzure = false;
         }
 
         this.client = setupSyncClient(
-                baseUrl,
+                builder.baseUrl,
                 useAzure,
-                apiKey,
-                azureApiKey,
-                credential,
-                azureDeploymentName,
-                azureOpenAIServiceVersion,
-                organizationId,
-                modelName,
-                timeout,
-                maxRetries,
-                proxy,
-                customHeaders);
+                builder.apiKey,
+                builder.azureApiKey,
+                builder.credential,
+                builder.azureDeploymentName,
+                builder.azureOpenAIServiceVersion,
+                builder.organizationId,
+                builder.modelName,
+                builder.timeout,
+                builder.maxRetries,
+                builder.proxy,
+                builder.customHeaders);
 
-        this.modelName = modelName;
-        this.size = getOrDefault(size, ImageGenerateParams.Size._1024X1024);
-        this.quality = getOrDefault(quality, ImageGenerateParams.Quality.STANDARD);
-        this.style = getOrDefault(style, ImageGenerateParams.Style.NATURAL);
-        this.user = user;
-        this.timeout = timeout;
-        this.responseFormat = getOrDefault(responseFormat, ImageGenerateParams.ResponseFormat.URL);
+        this.modelName = builder.modelName;
+        this.size = getOrDefault(builder.size, ImageGenerateParams.Size._1024X1024);
+        this.quality = getOrDefault(builder.quality, ImageGenerateParams.Quality.STANDARD);
+        this.style = getOrDefault(builder.style, ImageGenerateParams.Style.NATURAL);
+        this.user = builder.user;
+        this.timeout = builder.timeout;
+        this.responseFormat = getOrDefault(builder.responseFormat, ImageGenerateParams.ResponseFormat.URL);
     }
 
     public String modelName() {
@@ -293,25 +276,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
         }
 
         public OpenAiOfficialImageModel build() {
-
-            return new OpenAiOfficialImageModel(
-                    baseUrl,
-                    apiKey,
-                    azureApiKey,
-                    credential,
-                    azureDeploymentName,
-                    azureOpenAIServiceVersion,
-                    organizationId,
-                    modelName,
-                    size,
-                    quality,
-                    style,
-                    user,
-                    responseFormat,
-                    timeout,
-                    maxRetries,
-                    proxy,
-                    customHeaders);
+            return new OpenAiOfficialImageModel(this);
         }
 
         @Override
