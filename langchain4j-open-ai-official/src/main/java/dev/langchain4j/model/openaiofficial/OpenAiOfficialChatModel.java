@@ -32,12 +32,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringJoiner;
 
 public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
         implements ChatLanguageModel, TokenCountEstimator {
 
-    public OpenAiOfficialChatModel(OpenAiOfficialChatModelBuilder builder) {
+    public OpenAiOfficialChatModel(Builder builder) {
 
         init(
                 builder.baseUrl,
@@ -154,15 +153,15 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
                 .build();
     }
 
-    public static OpenAiOfficialChatModelBuilder builder() {
+    public static Builder builder() {
         for (OpenAiOfficialChatModelBuilderFactory factory :
                 loadFactories(OpenAiOfficialChatModelBuilderFactory.class)) {
             return factory.get();
         }
-        return new OpenAiOfficialChatModelBuilder();
+        return new Builder();
     }
 
-    public static class OpenAiOfficialChatModelBuilder {
+    public static class Builder {
 
         private String baseUrl;
         private String apiKey;
@@ -199,7 +198,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
         private List<ChatModelListener> listeners;
         private Set<Capability> capabilities;
 
-        public OpenAiOfficialChatModelBuilder() {
+        public Builder() {
             // This is public so it can be extended
         }
 
@@ -209,168 +208,168 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
          * When a parameter is set via an individual builder method (e.g., {@link #modelName(String)}),
          * its value takes precedence over the same parameter set via {@link ChatRequestParameters}.
          */
-        public OpenAiOfficialChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
+        public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder modelName(String modelName) {
+        public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder modelName(ChatModel modelName) {
+        public Builder modelName(ChatModel modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder baseUrl(String baseUrl) {
+        public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder apiKey(String apiKey) {
+        public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder azureApiKey(String azureApiKey) {
+        public Builder azureApiKey(String azureApiKey) {
             this.azureApiKey = azureApiKey;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder credential(Credential credential) {
+        public Builder credential(Credential credential) {
             this.credential = credential;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder azureDeploymentName(String azureDeploymentName) {
+        public Builder azureDeploymentName(String azureDeploymentName) {
             this.azureDeploymentName = azureDeploymentName;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder azureOpenAIServiceVersion(
+        public Builder azureOpenAIServiceVersion(
                 AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder organizationId(String organizationId) {
+        public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder temperature(Double temperature) {
+        public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder topP(Double topP) {
+        public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder stop(List<String> stop) {
+        public Builder stop(List<String> stop) {
             this.stop = stop;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder maxCompletionTokens(Integer maxCompletionTokens) {
+        public Builder maxCompletionTokens(Integer maxCompletionTokens) {
             this.maxCompletionTokens = maxCompletionTokens;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder presencePenalty(Double presencePenalty) {
+        public Builder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder frequencyPenalty(Double frequencyPenalty) {
+        public Builder frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder logitBias(Map<String, Integer> logitBias) {
+        public Builder logitBias(Map<String, Integer> logitBias) {
             this.logitBias = logitBias;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder responseFormat(String responseFormat) {
+        public Builder responseFormat(String responseFormat) {
             this.responseFormat = responseFormat;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder strictJsonSchema(Boolean strictJsonSchema) {
+        public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder seed(Integer seed) {
+        public Builder seed(Integer seed) {
             this.seed = seed;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder user(String user) {
+        public Builder user(String user) {
             this.user = user;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder strictTools(Boolean strictTools) {
+        public Builder strictTools(Boolean strictTools) {
             this.strictTools = strictTools;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder parallelToolCalls(Boolean parallelToolCalls) {
+        public Builder parallelToolCalls(Boolean parallelToolCalls) {
             this.parallelToolCalls = parallelToolCalls;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder store(Boolean store) {
+        public Builder store(Boolean store) {
             this.store = store;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder metadata(Map<String, String> metadata) {
+        public Builder metadata(Map<String, String> metadata) {
             this.metadata = metadata;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder serviceTier(String serviceTier) {
+        public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder timeout(Duration timeout) {
+        public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder maxRetries(Integer maxRetries) {
+        public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder proxy(Proxy proxy) {
+        public Builder proxy(Proxy proxy) {
             this.proxy = proxy;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder tokenizer(Tokenizer tokenizer) {
+        public Builder tokenizer(Tokenizer tokenizer) {
             this.tokenizer = tokenizer;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder customHeaders(Map<String, String> customHeaders) {
+        public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder listeners(List<ChatModelListener> listeners) {
+        public Builder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
-        public OpenAiOfficialChatModelBuilder supportedCapabilities(Set<Capability> capabilities) {
+        public Builder supportedCapabilities(Set<Capability> capabilities) {
             this.capabilities = capabilities;
             return this;
         }

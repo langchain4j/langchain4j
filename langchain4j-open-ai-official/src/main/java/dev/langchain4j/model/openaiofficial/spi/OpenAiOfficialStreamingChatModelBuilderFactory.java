@@ -7,4 +7,4 @@ import java.util.function.Supplier;
  * A factory for building {@link dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel} instances.
  */
 public interface OpenAiOfficialStreamingChatModelBuilderFactory
-        extends Supplier<OpenAiOfficialStreamingChatModel.OpenAiOfficialStreamingChatModelBuilder> {}
+        extends Supplier<OpenAiOfficialStreamingChatModel.Builder> {}

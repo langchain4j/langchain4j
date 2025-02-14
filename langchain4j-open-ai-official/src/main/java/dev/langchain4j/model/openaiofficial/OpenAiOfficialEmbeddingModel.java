@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.StringJoiner;
 
 public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
 
@@ -40,7 +39,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
     private final String user;
     private final Integer maxSegmentsPerBatch;
 
-    public OpenAiOfficialEmbeddingModel(OpenAiOfficialEmbeddingModelBuilder builder) {
+    public OpenAiOfficialEmbeddingModel(Builder builder) {
 
         if (builder.azureApiKey != null || builder.credential != null) {
             // Using Azure OpenAI
@@ -141,12 +140,12 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
         return tokenizer.estimateTokenCountInText(text);
     }
 
-    public static OpenAiOfficialEmbeddingModelBuilder builder() {
+    public static Builder builder() {
         for (OpenAiOfficialEmbeddingModelBuilderFactory factory :
                 loadFactories(OpenAiOfficialEmbeddingModelBuilderFactory.class)) {
             return factory.get();
         }
-        return new OpenAiOfficialEmbeddingModelBuilder();
+        return new Builder();
     }
 
     @Override
@@ -158,7 +157,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
         }
     }
 
-    public static class OpenAiOfficialEmbeddingModelBuilder {
+    public static class Builder {
 
         private String baseUrl;
         private String apiKey;
@@ -177,88 +176,88 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
         private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
 
-        public OpenAiOfficialEmbeddingModelBuilder baseUrl(String baseUrl) {
+        public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder apiKey(String apiKey) {
+        public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder azureApiKey(String azureApiKey) {
+        public Builder azureApiKey(String azureApiKey) {
             this.azureApiKey = azureApiKey;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder credential(Credential credential) {
+        public Builder credential(Credential credential) {
             this.credential = credential;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder azureDeploymentName(String azureDeploymentName) {
+        public Builder azureDeploymentName(String azureDeploymentName) {
             this.azureDeploymentName = azureDeploymentName;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder azureOpenAIServiceVersion(
+        public Builder azureOpenAIServiceVersion(
                 AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder organizationId(String organizationId) {
+        public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder modelName(String modelName) {
+        public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder modelName(EmbeddingModel modelName) {
+        public Builder modelName(EmbeddingModel modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder dimensions(Integer dimensions) {
+        public Builder dimensions(Integer dimensions) {
             this.dimensions = dimensions;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder user(String user) {
+        public Builder user(String user) {
             this.user = user;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
+        public Builder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
             this.maxSegmentsPerBatch = maxSegmentsPerBatch;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder timeout(Duration timeout) {
+        public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder maxRetries(Integer maxRetries) {
+        public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder proxy(Proxy proxy) {
+        public Builder proxy(Proxy proxy) {
             this.proxy = proxy;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder tokenizer(Tokenizer tokenizer) {
+        public Builder tokenizer(Tokenizer tokenizer) {
             this.tokenizer = tokenizer;
             return this;
         }
 
-        public OpenAiOfficialEmbeddingModelBuilder customHeaders(Map<String, String> customHeaders) {
+        public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }

@@ -7,4 +7,4 @@ import java.util.function.Supplier;
  * A factory for building {@link OpenAiOfficialImageModel} instances.
  */
 public interface OpenAiOfficialImageModelBuilderFactory
-        extends Supplier<OpenAiOfficialImageModel.OpenAiOfficialImageModelBuilder> {}
+        extends Supplier<OpenAiOfficialImageModel.Builder> {}

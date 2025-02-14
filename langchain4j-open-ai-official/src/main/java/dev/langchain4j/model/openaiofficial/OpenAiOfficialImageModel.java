@@ -19,7 +19,6 @@ import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
 
 public class OpenAiOfficialImageModel implements ImageModel {
 
@@ -33,7 +32,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
     private final Duration timeout;
     private final ImageGenerateParams.ResponseFormat responseFormat;
 
-    public OpenAiOfficialImageModel(OpenAiOfficialImageModelBuilder builder) {
+    public OpenAiOfficialImageModel(Builder builder) {
 
         if (builder.azureApiKey != null || builder.credential != null) {
             // Using Azure OpenAI
@@ -136,15 +135,15 @@ public class OpenAiOfficialImageModel implements ImageModel {
         return imageBuilder.build();
     }
 
-    public static OpenAiOfficialImageModelBuilder builder() {
+    public static Builder builder() {
         for (OpenAiOfficialImageModelBuilderFactory factory :
                 loadFactories(OpenAiOfficialImageModelBuilderFactory.class)) {
             return factory.get();
         }
-        return new OpenAiOfficialImageModelBuilder();
+        return new Builder();
     }
 
-    public static class OpenAiOfficialImageModelBuilder {
+    public static class Builder {
 
         private String baseUrl;
         private String apiKey;
@@ -164,113 +163,113 @@ public class OpenAiOfficialImageModel implements ImageModel {
         private Proxy proxy;
         private Map<String, String> customHeaders;
 
-        public OpenAiOfficialImageModelBuilder baseUrl(String baseUrl) {
+        public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder apiKey(String apiKey) {
+        public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder azureApiKey(String azureApiKey) {
+        public Builder azureApiKey(String azureApiKey) {
             this.azureApiKey = azureApiKey;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder credential(Credential credential) {
+        public Builder credential(Credential credential) {
             this.credential = credential;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder azureDeploymentName(String azureDeploymentName) {
+        public Builder azureDeploymentName(String azureDeploymentName) {
             this.azureDeploymentName = azureDeploymentName;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder azureOpenAIServiceVersion(
+        public Builder azureOpenAIServiceVersion(
                 AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder organizationId(String organizationId) {
+        public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder modelName(String modelName) {
+        public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder modelName(com.openai.models.ImageModel modelName) {
+        public Builder modelName(com.openai.models.ImageModel modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder size(String size) {
+        public Builder size(String size) {
             this.size = ImageGenerateParams.Size.of(size);
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder size(ImageGenerateParams.Size size) {
+        public Builder size(ImageGenerateParams.Size size) {
             this.size = size;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder quality(String quality) {
+        public Builder quality(String quality) {
             this.quality = ImageGenerateParams.Quality.of(quality);
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder quality(ImageGenerateParams.Quality quality) {
+        public Builder quality(ImageGenerateParams.Quality quality) {
             this.quality = quality;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder style(String style) {
+        public Builder style(String style) {
             this.style = ImageGenerateParams.Style.of(style);
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder style(ImageGenerateParams.Style style) {
+        public Builder style(ImageGenerateParams.Style style) {
             this.style = style;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder user(String user) {
+        public Builder user(String user) {
             this.user = user;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder responseFormat(String responseFormat) {
+        public Builder responseFormat(String responseFormat) {
             this.responseFormat = ImageGenerateParams.ResponseFormat.of(responseFormat);
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder responseFormat(ImageGenerateParams.ResponseFormat responseFormat) {
+        public Builder responseFormat(ImageGenerateParams.ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder timeout(Duration timeout) {
+        public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder maxRetries(Integer maxRetries) {
+        public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder proxy(Proxy proxy) {
+        public Builder proxy(Proxy proxy) {
             this.proxy = proxy;
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder customHeaders(Map<String, String> customHeaders) {
+        public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }

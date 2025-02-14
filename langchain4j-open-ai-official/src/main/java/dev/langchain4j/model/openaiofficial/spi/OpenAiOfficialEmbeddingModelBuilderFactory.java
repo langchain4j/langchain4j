@@ -7,4 +7,4 @@ import java.util.function.Supplier;
  * A factory for building {@link OpenAiOfficialEmbeddingModel} instances.
  */
 public interface OpenAiOfficialEmbeddingModelBuilderFactory
-        extends Supplier<OpenAiOfficialEmbeddingModel.OpenAiOfficialEmbeddingModelBuilder> {}
+        extends Supplier<OpenAiOfficialEmbeddingModel.Builder> {}
