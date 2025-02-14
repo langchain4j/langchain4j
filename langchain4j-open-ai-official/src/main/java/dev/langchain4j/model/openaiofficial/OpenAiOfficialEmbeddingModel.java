@@ -62,7 +62,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
                 builder.proxy,
                 builder.customHeaders);
         this.modelName = builder.modelName;
-        this.dimensions = builder.dimensions;
+        this.dimensions = getOrDefault(builder.dimensions, knownDimension());
         this.tokenizer = builder.tokenizer;
         this.user = builder.user;
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
@@ -115,7 +115,6 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         if (user != null) {
             embeddingCreateParamsBuilder.user(user);
         }
-        Integer dimensions = knownDimension();
         if (dimensions != null) {
             embeddingCreateParamsBuilder.dimensions(dimensions);
         }
