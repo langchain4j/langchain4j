@@ -248,8 +248,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
             return this;
         }
 
-        public Builder azureOpenAIServiceVersion(
-                AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+        public Builder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }

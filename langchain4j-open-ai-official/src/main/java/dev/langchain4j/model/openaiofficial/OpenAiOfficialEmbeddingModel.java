@@ -201,8 +201,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
             return this;
         }
 
-        public Builder azureOpenAIServiceVersion(
-                AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+        public Builder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }

@@ -43,13 +43,12 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
-        OpenAiOfficialStreamingChatModel.Builder openAiChatModelBuilder =
-                OpenAiOfficialStreamingChatModel.builder()
-                        .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                        .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                        .modelName(MODEL_NAME)
-                        .maxCompletionTokens(parameters.maxOutputTokens())
-                        .defaultRequestParameters(parameters);
+        OpenAiOfficialStreamingChatModel.Builder openAiChatModelBuilder = OpenAiOfficialStreamingChatModel.builder()
+                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .modelName(MODEL_NAME)
+                .maxCompletionTokens(parameters.maxOutputTokens())
+                .defaultRequestParameters(parameters);
 
         return openAiChatModelBuilder.build();
     }

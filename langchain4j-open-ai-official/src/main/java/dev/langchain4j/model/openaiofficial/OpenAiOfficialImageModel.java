@@ -188,8 +188,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
             return this;
         }
 
-        public Builder azureOpenAIServiceVersion(
-                AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+        public Builder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }

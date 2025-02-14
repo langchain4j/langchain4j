@@ -41,13 +41,12 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
-        OpenAiOfficialChatModel.Builder openAiChatModelBuilder =
-                OpenAiOfficialChatModel.builder()
-                        .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                        .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                        .modelName(MODEL_NAME)
-                        .maxCompletionTokens(parameters.maxOutputTokens())
-                        .defaultRequestParameters(parameters);
+        OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
+                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .modelName(MODEL_NAME)
+                .maxCompletionTokens(parameters.maxOutputTokens())
+                .defaultRequestParameters(parameters);
 
         return openAiChatModelBuilder.build();
     }

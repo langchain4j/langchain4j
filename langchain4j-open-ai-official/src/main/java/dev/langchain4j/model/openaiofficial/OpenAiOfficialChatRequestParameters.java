@@ -2,7 +2,6 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.quoted;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.Experimental;
