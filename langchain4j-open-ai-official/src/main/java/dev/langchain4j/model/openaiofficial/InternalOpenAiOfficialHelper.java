@@ -133,12 +133,12 @@ class InternalOpenAiOfficialHelper {
             builder.proxy(proxy);
         }
 
+        builder.putHeader("User-Agent", DEFAULT_USER_AGENT);
         if (customHeaders != null) {
             builder.putAllHeaders(customHeaders.entrySet().stream()
                     .collect(
                             Collectors.toMap(Map.Entry::getKey, entry -> Collections.singletonList(entry.getValue()))));
         }
-        builder.putHeader("User-Agent", DEFAULT_USER_AGENT);
 
         timeout = getOrDefault(timeout, ofSeconds(60));
         builder.timeout(timeout);
