@@ -1,5 +1,10 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.core.RequestOptions;
@@ -10,17 +15,11 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openaiofficial.spi.OpenAiOfficialImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class OpenAiOfficialImageModel implements ImageModel {
 
@@ -34,23 +33,24 @@ public class OpenAiOfficialImageModel implements ImageModel {
     private final Duration timeout;
     private final ImageGenerateParams.ResponseFormat responseFormat;
 
-    public OpenAiOfficialImageModel( String baseUrl,
-                                     String apiKey,
-                                     String azureApiKey,
-                                     Credential credential,
-                                     String azureDeploymentName,
-                                     AzureOpenAIServiceVersion azureOpenAIServiceVersion,
-                                     String organizationId,
-                                     String modelName,
-                                     ImageGenerateParams.Size size,
-                                     ImageGenerateParams.Quality quality,
-                                     ImageGenerateParams.Style style,
-                                     String user,
-                                     ImageGenerateParams.ResponseFormat responseFormat,
-                                     Duration timeout,
-                                     Integer maxRetries,
-                                     Proxy proxy,
-                                     Map<String, String> customHeaders) {
+    public OpenAiOfficialImageModel(
+            String baseUrl,
+            String apiKey,
+            String azureApiKey,
+            Credential credential,
+            String azureDeploymentName,
+            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
+            String organizationId,
+            String modelName,
+            ImageGenerateParams.Size size,
+            ImageGenerateParams.Quality quality,
+            ImageGenerateParams.Style style,
+            String user,
+            ImageGenerateParams.ResponseFormat responseFormat,
+            Duration timeout,
+            Integer maxRetries,
+            Proxy proxy,
+            Map<String, String> customHeaders) {
 
         if (azureApiKey != null || credential != null) {
             // Using Azure OpenAI
@@ -93,11 +93,9 @@ public class OpenAiOfficialImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
 
         ImageGenerateParams imageGenerateParams =
-                impageGenerateParamsBuilder(prompt)
-                        .build();
+                impageGenerateParamsBuilder(prompt).build();
 
-        ImagesResponse response = client.images()
-                .generate(imageGenerateParams, requestOptions());
+        ImagesResponse response = client.images().generate(imageGenerateParams, requestOptions());
 
         return Response.from(fromOpenAiImage(response.data().get(0)));
     }
@@ -106,18 +104,13 @@ public class OpenAiOfficialImageModel implements ImageModel {
     public Response<List<Image>> generate(String prompt, int n) {
 
         ImageGenerateParams imageGenerateParams =
-                impageGenerateParamsBuilder(prompt)
-                        .n(n)
-                        .build();
+                impageGenerateParamsBuilder(prompt).n(n).build();
 
-        ImagesResponse response = client.images()
-                .generate(imageGenerateParams, requestOptions());
+        ImagesResponse response = client.images().generate(imageGenerateParams, requestOptions());
 
-        return Response.from(
-                response.data()
-                        .stream()
-                        .map(OpenAiOfficialImageModel::fromOpenAiImage)
-                        .toList());
+        return Response.from(response.data().stream()
+                .map(OpenAiOfficialImageModel::fromOpenAiImage)
+                .toList());
     }
 
     private ImageGenerateParams.Builder impageGenerateParamsBuilder(String prompt) {
@@ -161,7 +154,8 @@ public class OpenAiOfficialImageModel implements ImageModel {
     }
 
     public static OpenAiOfficialImageModelBuilder builder() {
-        for (OpenAiOfficialImageModelBuilderFactory factory : loadFactories(OpenAiOfficialImageModelBuilderFactory.class)) {
+        for (OpenAiOfficialImageModelBuilderFactory factory :
+                loadFactories(OpenAiOfficialImageModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OpenAiOfficialImageModelBuilder();
@@ -212,7 +206,8 @@ public class OpenAiOfficialImageModel implements ImageModel {
             return this;
         }
 
-        public OpenAiOfficialImageModelBuilder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+        public OpenAiOfficialImageModelBuilder azureOpenAIServiceVersion(
+                AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
             this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }
@@ -321,7 +316,11 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
         @Override
         public String toString() {
-            return new StringJoiner(", ", OpenAiOfficialEmbeddingModel.OpenAiOfficialEmbeddingModelBuilder.class.getSimpleName() + "[", "]")
+            return new StringJoiner(
+                            ", ",
+                            OpenAiOfficialEmbeddingModel.OpenAiOfficialEmbeddingModelBuilder.class.getSimpleName()
+                                    + "[",
+                            "]")
                     .add("baseUrl='" + baseUrl + "'")
                     .add("credential=" + credential)
                     .add("azureDeploymentName='" + azureDeploymentName + "'")

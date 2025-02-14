@@ -1,24 +1,22 @@
 package dev.langchain4j.model.openaiofficial;
 
-import com.openai.models.ImageGenerateParams;
-import dev.langchain4j.model.image.ImageModel;
-import dev.langchain4j.data.image.Image;
-import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import com.openai.models.ImageGenerateParams;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.output.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 @Disabled("Run manually before release. Expensive to run very often.")
 public class OpenAiOfficialImageModelIT {
 
-    public static final com.openai.models.ImageModel MODEL_NAME =
-            com.openai.models.ImageModel.DALL_E_3;
+    public static final com.openai.models.ImageModel MODEL_NAME = com.openai.models.ImageModel.DALL_E_3;
 
     ImageModel model = OpenAiOfficialImageModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
