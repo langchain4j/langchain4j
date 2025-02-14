@@ -84,7 +84,7 @@ class InternalOpenAiOfficialHelper {
             String azureApiKey,
             Credential credential,
             String azureDeploymentName,
-            AzureOpenAIServiceVersion azureOpenAIServiceVersion,
+            AzureOpenAIServiceVersion azureOpenAiServiceVersion,
             String organizationId,
             String modelName,
             Duration timeout,
@@ -103,11 +103,11 @@ class InternalOpenAiOfficialHelper {
             }
             ensureNotBlank(azureDeploymentName, "azureDeploymentName");
             baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-            if (azureOpenAIServiceVersion == null) {
-                azureOpenAIServiceVersion = AzureOpenAIServiceVersion.getV2025_01_01_PREVIEW();
+            if (azureOpenAiServiceVersion == null) {
+                azureOpenAiServiceVersion = AzureOpenAIServiceVersion.getV2025_01_01_PREVIEW();
             }
             builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
-                    + azureOpenAIServiceVersion.value());
+                    + azureOpenAiServiceVersion.value());
         } else {
             // Using OpenAI
             builder.baseUrl(baseUrl);
@@ -125,8 +125,8 @@ class InternalOpenAiOfficialHelper {
 
         builder.organization(organizationId);
 
-        if (azureOpenAIServiceVersion != null) {
-            builder.azureServiceVersion(azureOpenAIServiceVersion);
+        if (azureOpenAiServiceVersion != null) {
+            builder.azureServiceVersion(azureOpenAiServiceVersion);
         }
 
         if (proxy != null) {
