@@ -110,7 +110,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stream(true)
                 .build();
 
-        client.streamingChat(request, handler, listeners, messages);
+        client.streamingChat(request, handler, listeners, system(), messages);
     }
 
     @Override
@@ -126,11 +126,21 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stream(true)
                 .build();
 
-        client.streamingChat(request, handler, listeners, messages);
+        client.streamingChat(request, handler, listeners, system(), messages);
     }
 
     public Set<Capability> supportedCapabilities() {
         return supportedCapabilities;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public String system() {
+        return "ollama";
     }
 
     public static class OllamaStreamingChatModelBuilder {

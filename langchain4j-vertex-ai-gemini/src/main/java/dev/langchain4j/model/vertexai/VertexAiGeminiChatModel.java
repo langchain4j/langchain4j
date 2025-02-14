@@ -282,7 +282,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             .toolSpecifications(toolSpecifications)
             .build();
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, listenerAttributes);
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, system(), listenerAttributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onRequest(chatModelRequestContext);
@@ -299,7 +299,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             listeners.forEach((listener) -> {
                 try {
                     ChatModelErrorContext chatModelErrorContext =
-                        new ChatModelErrorContext(e, chatModelRequest, null, listenerAttributes);
+                        new ChatModelErrorContext(e, chatModelRequest, null, system(), listenerAttributes);
                     listener.onError(chatModelErrorContext);
                 } catch (Exception t) {
                     logger.warn("Exception while calling model listener (onError)", t);
@@ -348,7 +348,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             .aiMessage(aiMessage)
             .build();
         ChatModelResponseContext chatModelResponseContext = new ChatModelResponseContext(
-            chatModelResponse, chatModelRequest, listenerAttributes);
+            chatModelResponse, chatModelRequest, system(), listenerAttributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onResponse(chatModelResponseContext);

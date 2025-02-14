@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
@@ -49,7 +50,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
         ChatModelRequest modelListenerRequest =
                 createModelListenerRequest(invokeModelRequest, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, system(), attributes);
 
         try {
             InvokeModelResponse invokeModelResponse =
@@ -60,7 +61,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
             Response<AiMessage> responseMessage = toAiMessage(result);
             ChatModelResponse modelListenerResponse = createModelListenerResponse(null, null, responseMessage);
             ChatModelResponseContext responseContext =
-                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, attributes);
+                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, system(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -72,7 +73,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
 
             return responseMessage;
         } catch (RuntimeException e) {
-            listenerErrorResponse(e, modelListenerRequest, attributes);
+            listenerErrorResponse(e, modelListenerRequest, system(), attributes);
             throw e;
         }
     }
@@ -153,5 +154,15 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
                 .credentialsProvider(credentialsProvider)
                 .overrideConfiguration(c -> c.apiCallTimeout(timeout))
                 .build();
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public String system() {
+        return "aws.bedrock";
     }
 }

@@ -16,13 +16,13 @@ public class ListenersUtil {
     }
 
     public static void onRequest(ChatRequest chatRequest,
-                                 String observabilityName,
+                                 String system,
                                  Map<Object, Object> attributes,
                                  List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, observabilityName, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, system, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -35,13 +35,13 @@ public class ListenersUtil {
 
     public static void onResponse(ChatResponse chatResponse,
                                   ChatRequest chatRequest,
-                                  String observabilityName,
+                                  String system,
                                   Map<Object, Object> attributes,
                                   List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
-        ChatModelResponseContext responseContext = new ChatModelResponseContext(chatResponse, chatRequest, observabilityName, attributes);
+        ChatModelResponseContext responseContext = new ChatModelResponseContext(chatResponse, chatRequest, system, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
@@ -54,13 +54,13 @@ public class ListenersUtil {
 
     public static void onError(Throwable error,
                                ChatRequest chatRequest,
-                               String observabilityName,
+                               String system,
                                Map<Object, Object> attributes,
                                List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
-        ChatModelErrorContext errorContext = new ChatModelErrorContext(error, chatRequest, observabilityName, attributes);
+        ChatModelErrorContext errorContext = new ChatModelErrorContext(error, chatRequest, system, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);

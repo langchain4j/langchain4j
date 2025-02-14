@@ -182,7 +182,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, system(), attributes);
 
         listeners.forEach(listener -> {
             try {
@@ -245,6 +245,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                             throwable,
                             requestContext.request(),
                             modelListenerPartialResponse,
+                            system(),
                             requestContext.attributes()
                     );
 
@@ -267,6 +268,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
                             modelListenerResponse,
                             requestContext.request(),
+                            system(),
                             requestContext.attributes()
                     );
                     listeners.forEach(listener -> {

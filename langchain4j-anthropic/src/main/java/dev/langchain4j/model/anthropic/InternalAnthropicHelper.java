@@ -17,6 +17,7 @@ class InternalAnthropicHelper {
 
     static ChatModelErrorContext createErrorContext(Throwable e,
                                                     ChatModelRequest modelListenerRequest,
+                                                    String system,
                                                     Map<Object, Object> attributes) {
         Throwable error;
         if (e.getCause() instanceof AnthropicHttpException) {
@@ -29,6 +30,7 @@ class InternalAnthropicHelper {
                 error,
                 modelListenerRequest,
                 null,
+                system,
                 attributes
         );
     }

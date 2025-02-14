@@ -453,7 +453,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(
-                modelListenerRequest, observabilityName(), attributes);
+                modelListenerRequest, system(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -472,7 +472,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             ChatModelResponse modelListenerResponse =
                     createModelListenerResponse(chatCompletions.getId(), options.getModel(), response);
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse, modelListenerRequest, observabilityName(), attributes);
+                    modelListenerResponse, modelListenerRequest, system(), attributes);
             listeners.forEach(listener -> {
                 try {
                     listener.onResponse(responseContext);
@@ -485,7 +485,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         } catch (Exception exception) {
 
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    exception, modelListenerRequest, null, observabilityName(), attributes);
+                    exception, modelListenerRequest, null, system(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -500,8 +500,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     }
 
     @Override
-    public String observabilityName() {
-        return "az.ai.inference";
+    public String system() {
+        return "az.ai.openai";
     }
 
     @Override

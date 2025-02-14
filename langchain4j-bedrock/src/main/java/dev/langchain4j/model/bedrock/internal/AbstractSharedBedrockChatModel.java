@@ -121,6 +121,7 @@ public abstract class AbstractSharedBedrockChatModel {
 
     protected void listenerErrorResponse(Throwable e,
                                          ChatModelRequest modelListenerRequest,
+                                         String system,
                                          Map<Object, Object> attributes) {
         Throwable error;
         if (e.getCause() instanceof SdkClientException) {
@@ -133,6 +134,7 @@ public abstract class AbstractSharedBedrockChatModel {
                 error,
                 modelListenerRequest,
                 null,
+                system,
                 attributes
         );
 

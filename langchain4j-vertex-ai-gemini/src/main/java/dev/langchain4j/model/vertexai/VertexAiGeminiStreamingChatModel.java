@@ -249,7 +249,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             .toolSpecifications(toolSpecifications)
             .build();
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, listenerAttributes);
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, system(), listenerAttributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onRequest(chatModelRequestContext);
@@ -279,7 +279,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                 .aiMessage(fullResponse.content())
                 .build();
             ChatModelResponseContext chatModelResponseContext = new ChatModelResponseContext(
-                chatModelResponse, chatModelRequest, listenerAttributes);
+                chatModelResponse, chatModelRequest, system(), listenerAttributes);
             listeners.forEach((listener) -> {
                 try {
                     listener.onResponse(chatModelResponseContext);
@@ -295,7 +295,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             listeners.forEach((listener) -> {
                 try {
                     ChatModelErrorContext chatModelErrorContext =
-                        new ChatModelErrorContext(exception, chatModelRequest, null, listenerAttributes);
+                        new ChatModelErrorContext(exception, chatModelRequest, null, system(), listenerAttributes);
                     listener.onError(chatModelErrorContext);
                 } catch (Exception t) {
                     logger.warn("Exception while calling model listener (onError)", t);

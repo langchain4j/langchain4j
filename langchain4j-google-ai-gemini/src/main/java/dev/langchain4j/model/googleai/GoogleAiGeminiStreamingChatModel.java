@@ -66,7 +66,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         ChatModelRequest chatModelRequest = createChatModelRequest(null, messages, toolSpecifications, parameters);
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, listenerAttributes);
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, system(), listenerAttributes);
         notifyListenersOnRequest(chatModelRequestContext);
 
         processGenerateContentRequest(request, handler, chatModelRequest, listenerAttributes);
@@ -89,11 +89,21 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             Response<AiMessage> fullResponse = responseBuilder.build();
             handler.onComplete(fullResponse);
 
-            notifyListenersOnResponse(fullResponse, chatModelRequest, listenerAttributes);
+            notifyListenersOnResponse(fullResponse, chatModelRequest, system(), listenerAttributes);
         } catch (RuntimeException exception) {
-            notifyListenersOnError(exception, chatModelRequest, listenerAttributes);
+            notifyListenersOnError(exception, chatModelRequest, system(), listenerAttributes);
             handler.onError(exception);
         }
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public String system() {
+        return "gemini";
     }
 
     public static class GoogleAiGeminiStreamingChatModelBuilder {

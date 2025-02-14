@@ -1,6 +1,8 @@
 package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 
 import java.util.Map;
@@ -19,13 +21,13 @@ public class ChatModelRequestContext {
     private final ChatRequest chatRequest;
     @Deprecated(forRemoval = true)
     private final ChatModelRequest request;
-    private final String observabilityName;
+    private final String system;
     private final Map<Object, Object> attributes;
 
-    public ChatModelRequestContext(ChatRequest chatRequest, String observabilityName, Map<Object, Object> attributes) {
+    public ChatModelRequestContext(ChatRequest chatRequest, String system, Map<Object, Object> attributes) {
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.request = ChatModelRequest.fromChatRequest(chatRequest);
-        this.observabilityName = ensureNotBlank(observabilityName, "observabilityName");
+        this.system = ensureNotBlank(system, "system");
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
@@ -36,7 +38,7 @@ public class ChatModelRequestContext {
     public ChatModelRequestContext(ChatModelRequest request, Map<Object, Object> attributes) {
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
-        this.observabilityName = null;
+        this.system = null;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
@@ -44,10 +46,10 @@ public class ChatModelRequestContext {
      * @deprecated please use {@link #ChatModelRequestContext(ChatRequest, String, Map)} instead
      */
     @Deprecated(forRemoval = true)
-    public ChatModelRequestContext(ChatModelRequest request, String observabilityName, Map<Object, Object> attributes) {
+    public ChatModelRequestContext(ChatModelRequest request, String system, Map<Object, Object> attributes) {
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
-        this.observabilityName = ensureNotBlank(observabilityName, "observabilityName");
+        this.system = ensureNotBlank(system, "system");
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
@@ -64,12 +66,14 @@ public class ChatModelRequestContext {
     }
 
     /**
-     * TODO
-     *
-     * @return
+     * The name of the GenAI system (LLM provider). By default, each {@link ChatLanguageModel}
+     * and {@link StreamingChatLanguageModel} implementation returns a predefined, OpenTelemetry-compliant name
+     * that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
+     * See more details
+     * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.
      */
-    public String observabilityName() {
-        return observabilityName;
+    public String system() {
+        return system;
     }
 
     /**

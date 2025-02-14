@@ -137,11 +137,11 @@ class OllamaClient {
     }
 
     public void streamingChat(ChatRequest request, StreamingResponseHandler<AiMessage> handler,
-                              List<ChatModelListener> listeners, List<ChatMessage> messages) {
+                              List<ChatModelListener> listeners, String system, List<ChatMessage> messages) {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, new ArrayList<>());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        onListenRequest(listeners, modelListenerRequest, attributes);
+        onListenRequest(listeners, modelListenerRequest, system, attributes);
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -164,14 +164,14 @@ class OllamaClient {
 
                 if (TRUE.equals(chatResponse.getDone())) {
                     Response<AiMessage> response = responseBuilder.build();
-                    onListenResponse(listeners, response, modelListenerRequest, attributes);
+                    onListenResponse(listeners, response, modelListenerRequest, system, attributes);
                     handler.onComplete(response);
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), attributes);
+                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), system, attributes);
                 handler.onError(throwable);
             }
         });

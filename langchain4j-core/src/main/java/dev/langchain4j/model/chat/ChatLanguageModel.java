@@ -53,13 +53,13 @@ public interface ChatLanguageModel {
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-        ListenersUtil.onRequest(finalChatRequest, observabilityName(), attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, system(), attributes, listeners);
         try {
             ChatResponse chatResponse = doChat(finalChatRequest);
-            ListenersUtil.onResponse(chatResponse, finalChatRequest, observabilityName(), attributes, listeners);
+            ListenersUtil.onResponse(chatResponse, finalChatRequest, system(), attributes, listeners);
             return chatResponse;
         } catch (Exception error) {
-            ListenersUtil.onError(error, finalChatRequest, observabilityName(), attributes, listeners);
+            ListenersUtil.onError(error, finalChatRequest, system(), attributes, listeners);
             throw error;
         }
     }
@@ -100,8 +100,15 @@ public interface ChatLanguageModel {
         return Collections.emptyList();
     }
 
-    default String observabilityName() {
-        return "_OTHER";
+    /**
+     * The name of the GenAI system (LLM provider), can be used for observability purposes.
+     * By default, each {@link ChatLanguageModel} implementation returns a predefined,
+     * OpenTelemetry-compliant name that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
+     * See more details
+     * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.
+     */
+    default String system() {
+        return null;
     }
 
     @Experimental

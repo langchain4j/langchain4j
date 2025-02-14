@@ -557,7 +557,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(
-                modelListenerRequest, observabilityName(), attributes);
+                modelListenerRequest, system(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -593,7 +593,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 },
                 throwable -> {
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(throwable, requestContext.request(),
-                            null, observabilityName(), requestContext.attributes());
+                            null, system(), requestContext.attributes());
 
                     listeners.forEach(listener -> {
                         try {
@@ -610,7 +610,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     ChatModelResponse modelListenerResponse =
                             createModelListenerResponse(responseId.get(), options.getModel(), response);
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(modelListenerResponse,
-                            requestContext.request(), observabilityName(), requestContext.attributes());
+                            requestContext.request(), system(), requestContext.attributes());
                     listeners.forEach(listener -> {
                         try {
                             listener.onResponse(responseContext);
@@ -643,7 +643,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             ChatModelResponse modelListenerResponse =
                     createModelListenerResponse(responseId.get(), options.getModel(), response);
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse, requestContext.request(), observabilityName(), requestContext.attributes());
+                    modelListenerResponse, requestContext.request(), system(), requestContext.attributes());
             listeners.forEach(listener -> {
                 try {
                     listener.onResponse(responseContext);
@@ -656,7 +656,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         } catch (Exception exception) {
 
             ChatModelErrorContext errorContext = new ChatModelErrorContext(exception,
-                    requestContext.request(), null, observabilityName(), requestContext.attributes());
+                    requestContext.request(), null, system(), requestContext.attributes());
 
             listeners.forEach(listener -> {
                 try {
@@ -683,8 +683,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     @Override
-    public String observabilityName() {
-        return "az.ai.inference";
+    public String system() {
+        return "az.ai.openai";
     }
 
     @Override

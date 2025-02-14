@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
@@ -56,7 +57,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, system(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -87,6 +88,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
                             modelListenerResponse,
                             modelListenerRequest,
+                            system(),
                             attributes
                     );
 
@@ -100,7 +102,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                     handler.onComplete(response);
                 })
                 .onError(throwable -> {
-                    listenerErrorResponse(throwable, modelListenerRequest, attributes);
+                    listenerErrorResponse(throwable, modelListenerRequest, system(), attributes);
                     handler.onError(throwable);
                 })
                 .build();
@@ -137,6 +139,13 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
         return client;
     }
 
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
 
-
+    @Override
+    public String system() {
+        return "aws.bedrock";
+    }
 }

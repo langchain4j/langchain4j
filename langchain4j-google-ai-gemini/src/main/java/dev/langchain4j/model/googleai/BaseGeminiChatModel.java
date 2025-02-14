@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
@@ -161,8 +162,10 @@ abstract class BaseGeminiChatModel {
         });
     }
 
-    protected void notifyListenersOnResponse(Response<AiMessage> response, ChatModelRequest request,
-                                             ConcurrentHashMap<Object, Object> attributes) {
+    protected void notifyListenersOnResponse(Response<AiMessage> response,
+                                             ChatModelRequest request,
+                                             String system,
+                                             Map<Object, Object> attributes) {
         ChatModelResponse chatModelResponse = ChatModelResponse.builder()
             .model(request.model()) // TODO take actual model from response or return null?
             .tokenUsage(response.tokenUsage())
@@ -170,7 +173,7 @@ abstract class BaseGeminiChatModel {
             .aiMessage(response.content())
             .build();
         ChatModelResponseContext context = new ChatModelResponseContext(
-            chatModelResponse, request, attributes);
+            chatModelResponse, request, system, attributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onResponse(context);
@@ -180,12 +183,14 @@ abstract class BaseGeminiChatModel {
         });
     }
 
-    protected void notifyListenersOnError(Exception exception, ChatModelRequest request,
-                                          ConcurrentHashMap<Object, Object> attributes) {
+    protected void notifyListenersOnError(Exception exception,
+                                          ChatModelRequest request,
+                                          String system,
+                                          Map<Object, Object> attributes) {
         listeners.forEach((listener) -> {
             try {
                 ChatModelErrorContext context = new ChatModelErrorContext(
-                    exception, request, null, attributes);
+                    exception, request, null, system, attributes);
                 listener.onError(context);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener (onError)", e);

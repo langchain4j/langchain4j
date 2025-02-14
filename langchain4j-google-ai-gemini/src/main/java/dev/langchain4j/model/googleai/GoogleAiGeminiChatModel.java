@@ -130,7 +130,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        notifyListenersOnRequest(new ChatModelRequestContext(chatModelRequest, listenerAttributes));
+        notifyListenersOnRequest(new ChatModelRequestContext(chatModelRequest, system(), listenerAttributes));
 
         try {
             GeminiGenerateContentResponse geminiResponse = withRetry(
@@ -140,7 +140,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
             return processResponse(geminiResponse, chatModelRequest, listenerAttributes);
         } catch (RuntimeException e) {
-            notifyListenersOnError(e, chatModelRequest, listenerAttributes);
+            notifyListenersOnError(e, chatModelRequest, system(), listenerAttributes);
             throw e;
         }
     }
@@ -171,7 +171,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         TokenUsage tokenUsage = createTokenUsage(tokenCounts);
 
         Response<AiMessage> response = Response.from(aiMessage, tokenUsage, finishReason);
-        notifyListenersOnResponse(response, chatModelRequest, listenerAttributes);
+        notifyListenersOnResponse(response, chatModelRequest, system(), listenerAttributes);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
@@ -212,6 +212,16 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public String system() {
+        return "gemini";
     }
 
     public static class GoogleAiGeminiChatModelBuilder {

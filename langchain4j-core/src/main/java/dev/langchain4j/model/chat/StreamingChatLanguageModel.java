@@ -64,18 +64,18 @@ public interface StreamingChatLanguageModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                ListenersUtil.onResponse(completeResponse, finalChatRequest, observabilityName(), attributes, listeners);
+                ListenersUtil.onResponse(completeResponse, finalChatRequest, system(), attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ListenersUtil.onError(error, finalChatRequest, observabilityName(), attributes, listeners);
+                ListenersUtil.onError(error, finalChatRequest, system(), attributes, listeners);
                 handler.onError(error);
             }
         };
 
-        ListenersUtil.onRequest(finalChatRequest, observabilityName(), attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, system(), attributes, listeners);
         doChat(finalChatRequest, observingHandler);
     }
 
@@ -103,8 +103,15 @@ public interface StreamingChatLanguageModel {
         return Collections.emptyList();
     }
 
-    default String observabilityName() {
-        return "_OTHER";
+    /**
+     * The name of the GenAI system (LLM provider), can be used for observability purposes.
+     * By default, each {@link StreamingChatLanguageModel} implementation returns a predefined,
+     * OpenTelemetry-compliant name that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
+     * See more details
+     * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.
+     */
+    default String system() {
+        return null;
     }
 
     @Experimental

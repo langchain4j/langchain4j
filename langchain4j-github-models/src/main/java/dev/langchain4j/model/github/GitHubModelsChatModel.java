@@ -160,7 +160,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, system(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -185,6 +185,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
                     modelListenerResponse,
                     modelListenerRequest,
+                    system(),
                     attributes
             );
             listeners.forEach(listener -> {
@@ -203,6 +204,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                     httpResponseException,
                     modelListenerRequest,
                     null,
+                    system(),
                     attributes
             );
 

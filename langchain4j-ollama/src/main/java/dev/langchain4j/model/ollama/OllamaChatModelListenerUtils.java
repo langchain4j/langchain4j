@@ -26,8 +26,8 @@ class OllamaChatModelListenerUtils {
      * @param modelListenerRequest The {@link ChatModelRequest} containing the request details.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
-    static void onListenRequest(List<ChatModelListener> listeners, ChatModelRequest modelListenerRequest, Map<Object, Object> attributes) {
-        ChatModelRequestContext context = new ChatModelRequestContext(modelListenerRequest, attributes);
+    static void onListenRequest(List<ChatModelListener> listeners, ChatModelRequest modelListenerRequest, String system, Map<Object, Object> attributes) {
+        ChatModelRequestContext context = new ChatModelRequestContext(modelListenerRequest, system, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(context);
@@ -45,11 +45,12 @@ class OllamaChatModelListenerUtils {
      * @param modelListenerRequest The original {@link ChatModelRequest} associated with the response.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
-    static void onListenResponse(List<ChatModelListener> listeners, Response<AiMessage> response, ChatModelRequest modelListenerRequest, Map<Object, Object> attributes) {
+    static void onListenResponse(List<ChatModelListener> listeners, Response<AiMessage> response, ChatModelRequest modelListenerRequest, String system, Map<Object, Object> attributes) {
         ChatModelResponse modelListenerResponse = createModelListenerResponse(modelListenerRequest.model(), response);
         ChatModelResponseContext context = new ChatModelResponseContext(
                 modelListenerResponse,
                 modelListenerRequest,
+                system,
                 attributes
         );
         listeners.forEach(listener -> {
@@ -70,12 +71,13 @@ class OllamaChatModelListenerUtils {
      * @param partialResponse      The partial {@link Response} containing cur response details.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
-    static void onListenError(List<ChatModelListener> listeners, Throwable error, ChatModelRequest modelListenerRequest, Response<AiMessage> partialResponse, Map<Object, Object> attributes) {
+    static void onListenError(List<ChatModelListener> listeners, Throwable error, ChatModelRequest modelListenerRequest, Response<AiMessage> partialResponse, String system, Map<Object, Object> attributes) {
         ChatModelResponse partialModelListenerResponse = createModelListenerResponse(modelListenerRequest.model(), partialResponse);
         ChatModelErrorContext context = new ChatModelErrorContext(
                 error,
                 modelListenerRequest,
                 partialModelListenerResponse,
+                system,
                 attributes
         );
         listeners.forEach(listener -> {

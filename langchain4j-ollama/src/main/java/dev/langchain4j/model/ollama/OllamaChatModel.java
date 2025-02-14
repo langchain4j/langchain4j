@@ -154,6 +154,16 @@ public class OllamaChatModel implements ChatLanguageModel {
         return supportedCapabilities;
     }
 
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public String system() {
+        return "ollama";
+    }
+
     private Response<AiMessage> doGenerate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, ResponseFormat responseFormat) {
         ChatRequest request = ChatRequest.builder()
                 .model(modelName)
@@ -166,7 +176,7 @@ public class OllamaChatModel implements ChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        onListenRequest(listeners, modelListenerRequest, attributes);
+        onListenRequest(listeners, modelListenerRequest, system(), attributes);
 
         try {
             ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
@@ -176,11 +186,11 @@ public class OllamaChatModel implements ChatLanguageModel {
                             AiMessage.from(chatResponse.getMessage().getContent()),
                     new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
             );
-            onListenResponse(listeners, response, modelListenerRequest, attributes);
+            onListenResponse(listeners, response, modelListenerRequest, system(), attributes);
 
             return response;
         } catch (Exception e) {
-            onListenError(listeners, e, modelListenerRequest, null, attributes);
+            onListenError(listeners, e, modelListenerRequest, null, system(), attributes);
             throw e;
         }
     }

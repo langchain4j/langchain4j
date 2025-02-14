@@ -56,6 +56,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Tokenizer tokenizer;
 
     private final List<ChatModelListener> listeners;
+    private final String system;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
         this.client = OpenAiClient.builder()
@@ -115,6 +116,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
 
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
+        this.system = getOrDefault(builder.system, "openai");
     }
 
     /**
@@ -227,8 +229,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     @Override
-    public String observabilityName() {
-        return "openai";
+    public String system() {
+        return system;
     }
 
     @Override
@@ -286,6 +288,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
+        private String system;
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -449,6 +452,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         public OpenAiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder system(String system) {
+            this.system = system;
             return this;
         }
 
