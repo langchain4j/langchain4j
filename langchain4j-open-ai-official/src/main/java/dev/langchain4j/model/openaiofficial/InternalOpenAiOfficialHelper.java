@@ -290,7 +290,6 @@ class InternalOpenAiOfficialHelper {
                 parametersBuilder.putAdditionalProperty("additionalProperties", JsonValue.from(false));
             } else {
                 parametersBuilder.putAdditionalProperty("required", JsonValue.from(parameters.required()));
-                parametersBuilder.putAdditionalProperty("additionalProperties", JsonValue.from(false));
             }
             return parametersBuilder.build();
         } else {
