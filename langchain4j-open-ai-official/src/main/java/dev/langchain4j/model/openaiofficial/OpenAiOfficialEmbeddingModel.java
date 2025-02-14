@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
@@ -18,7 +17,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.openaiofficial.spi.OpenAiOfficialEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.Proxy;
@@ -135,10 +133,6 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     public static Builder builder() {
-        for (OpenAiOfficialEmbeddingModelBuilderFactory factory :
-                loadFactories(OpenAiOfficialEmbeddingModelBuilderFactory.class)) {
-            return factory.get();
-        }
         return new Builder();
     }
 

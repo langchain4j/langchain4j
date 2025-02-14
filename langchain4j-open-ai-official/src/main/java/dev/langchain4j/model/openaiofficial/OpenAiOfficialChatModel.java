@@ -6,7 +6,6 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.credential.Credential;
@@ -24,7 +23,6 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.openaiofficial.spi.OpenAiOfficialChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.net.Proxy;
 import java.time.Duration;
@@ -152,10 +150,6 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
     }
 
     public static Builder builder() {
-        for (OpenAiOfficialChatModelBuilderFactory factory :
-                loadFactories(OpenAiOfficialChatModelBuilderFactory.class)) {
-            return factory.get();
-        }
         return new Builder();
     }
 

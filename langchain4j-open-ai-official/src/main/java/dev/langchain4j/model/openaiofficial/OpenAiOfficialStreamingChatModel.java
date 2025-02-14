@@ -5,7 +5,6 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.core.http.StreamResponse;
@@ -28,7 +27,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.openaiofficial.spi.OpenAiOfficialStreamingChatModelBuilderFactory;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -235,10 +233,6 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
     }
 
     public static Builder builder() {
-        for (OpenAiOfficialStreamingChatModelBuilderFactory factory :
-                loadFactories(OpenAiOfficialStreamingChatModelBuilderFactory.class)) {
-            return factory.get();
-        }
         return new Builder();
     }
 

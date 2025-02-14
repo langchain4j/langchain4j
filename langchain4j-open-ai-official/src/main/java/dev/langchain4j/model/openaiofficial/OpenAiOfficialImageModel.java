@@ -3,7 +3,6 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
@@ -13,7 +12,6 @@ import com.openai.models.ImageGenerateParams;
 import com.openai.models.ImagesResponse;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
-import dev.langchain4j.model.openaiofficial.spi.OpenAiOfficialImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.net.Proxy;
 import java.time.Duration;
@@ -136,10 +134,6 @@ public class OpenAiOfficialImageModel implements ImageModel {
     }
 
     public static Builder builder() {
-        for (OpenAiOfficialImageModelBuilderFactory factory :
-                loadFactories(OpenAiOfficialImageModelBuilderFactory.class)) {
-            return factory.get();
-        }
         return new Builder();
     }
 
