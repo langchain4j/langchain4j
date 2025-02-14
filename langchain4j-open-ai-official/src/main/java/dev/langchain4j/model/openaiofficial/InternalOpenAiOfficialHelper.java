@@ -75,10 +75,6 @@ import java.util.stream.Collectors;
 class InternalOpenAiOfficialHelper {
 
     static final String OPENAI_URL = "https://api.openai.com/v1";
-
-    static final String OPENAI_DEMO_API_KEY = "demo";
-    static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
-
     static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
 
     static OpenAIClient setupSyncClient(
@@ -98,10 +94,6 @@ class InternalOpenAiOfficialHelper {
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
-        }
-
         if (useAzure) {
             // Using Azure OpenAI
             if (azureDeploymentName == null) {
