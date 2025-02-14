@@ -20,7 +20,6 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -33,8 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
-        implements ChatLanguageModel {
+public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel implements ChatLanguageModel {
 
     public OpenAiOfficialChatModel(Builder builder) {
 
