@@ -22,7 +22,7 @@ public enum OpenAiOfficialEmbeddingModelName {
         return stringValue;
     }
 
-    public Integer dimension() {
+    Integer dimension() {
         return dimension;
     }
 
@@ -35,7 +35,7 @@ public enum OpenAiOfficialEmbeddingModelName {
         }
     }
 
-    public static Integer knownDimension(String modelName) {
+    static Integer knownDimension(String modelName) {
         return KNOWN_DIMENSION.get(modelName);
     }
 }
