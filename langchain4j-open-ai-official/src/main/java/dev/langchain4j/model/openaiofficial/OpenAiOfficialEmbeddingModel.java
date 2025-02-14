@@ -266,24 +266,5 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel i
         public OpenAiOfficialEmbeddingModel build() {
             return new OpenAiOfficialEmbeddingModel(this);
         }
-
-        @Override
-        public String toString() {
-            return new StringJoiner(", ", OpenAiOfficialEmbeddingModelBuilder.class.getSimpleName() + "[", "]")
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("azureDeploymentName=" + azureDeploymentName)
-                    .add("azureOpenAIServiceVersion='" + azureOpenAIServiceVersion + "'")
-                    .add("organizationId='" + organizationId + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("dimensions=" + dimensions)
-                    .add("user=" + user)
-                    .add("maxSegmentsPerBatch=" + maxSegmentsPerBatch)
-                    .add("timeout=" + timeout)
-                    .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
-                    .add("tokenizer=" + tokenizer)
-                    .add("customHeaders=" + customHeaders)
-                    .toString();
-        }
     }
 }

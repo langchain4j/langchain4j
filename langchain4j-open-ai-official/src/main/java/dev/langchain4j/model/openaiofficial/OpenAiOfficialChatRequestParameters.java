@@ -113,31 +113,6 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
                 reasoningEffort);
     }
 
-    @Override
-    public String toString() {
-        return "OpenAiChatRequestParameters{" + "modelName="
-                + quoted(modelName()) + ", temperature="
-                + temperature() + ", topP="
-                + topP() + ", topK="
-                + topK() + ", frequencyPenalty="
-                + frequencyPenalty() + ", presencePenalty="
-                + presencePenalty() + ", maxOutputTokens="
-                + maxOutputTokens() + ", stopSequences="
-                + stopSequences() + ", toolSpecifications="
-                + toolSpecifications() + ", toolChoice="
-                + toolChoice() + ", responseFormat="
-                + responseFormat() + ", maxCompletionTokens="
-                + maxCompletionTokens + ", logitBias="
-                + logitBias + ", parallelToolCalls="
-                + parallelToolCalls + ", seed="
-                + seed + ", user="
-                + quoted(user) + ", store="
-                + store + ", metadata="
-                + metadata + ", serviceTier="
-                + quoted(serviceTier) + ", reasoningEffort="
-                + quoted(reasoningEffort) + '}';
-    }
-
     public static Builder builder() {
         return new Builder();
     }

@@ -387,39 +387,5 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel
             }
             return new OpenAiOfficialChatModel(this);
         }
-
-        @Override
-        public String toString() {
-            return new StringJoiner(", ", OpenAiOfficialChatModelBuilder.class.getSimpleName() + "[", "]")
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("azureOpenAIServiceVersion=" + azureOpenAIServiceVersion)
-                    .add("organizationId='" + organizationId + "'")
-                    .add("defaultRequestParameters='" + defaultRequestParameters + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("temperature=" + temperature)
-                    .add("topP=" + topP)
-                    .add("stop=" + stop)
-                    .add("maxCompletionTokens=" + maxCompletionTokens)
-                    .add("presencePenalty=" + presencePenalty)
-                    .add("frequencyPenalty=" + frequencyPenalty)
-                    .add("logitBias=" + logitBias)
-                    .add("responseFormat='" + responseFormat + "'")
-                    .add("strictJsonSchema=" + strictJsonSchema)
-                    .add("seed=" + seed)
-                    .add("user='" + user + "'")
-                    .add("strictTools=" + strictTools)
-                    .add("parallelToolCalls=" + parallelToolCalls)
-                    .add("store=" + store)
-                    .add("metadata=" + metadata)
-                    .add("serviceTier=" + serviceTier)
-                    .add("timeout=" + timeout)
-                    .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
-                    .add("tokenizer=" + tokenizer)
-                    .add("customHeaders=" + customHeaders)
-                    .add("listeners=" + listeners)
-                    .add("capabilities=" + capabilities)
-                    .toString();
-        }
     }
 }

@@ -278,30 +278,5 @@ public class OpenAiOfficialImageModel implements ImageModel {
         public OpenAiOfficialImageModel build() {
             return new OpenAiOfficialImageModel(this);
         }
-
-        @Override
-        public String toString() {
-            return new StringJoiner(
-                            ", ",
-                            OpenAiOfficialEmbeddingModel.OpenAiOfficialEmbeddingModelBuilder.class.getSimpleName()
-                                    + "[",
-                            "]")
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("credential=" + credential)
-                    .add("azureDeploymentName='" + azureDeploymentName + "'")
-                    .add("azureOpenAIServiceVersion=" + azureOpenAIServiceVersion)
-                    .add("organizationId='" + organizationId + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("size='" + size + "'")
-                    .add("quality='" + quality + "'")
-                    .add("style='" + style + "'")
-                    .add("user='" + user + "'")
-                    .add("responseFormat='" + responseFormat + "'")
-                    .add("timeout=" + timeout)
-                    .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
-                    .add("customHeaders=" + customHeaders)
-                    .toString();
-        }
     }
 }

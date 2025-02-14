@@ -51,18 +51,6 @@ public class OpenAiOfficialChatResponseMetadata extends ChatResponseMetadata {
         return Objects.hash(super.hashCode(), created, serviceTier, systemFingerprint);
     }
 
-    @Override
-    public String toString() {
-        return "OpenAiChatResponseMetadata{" + "id='"
-                + id() + '\'' + ", modelName='"
-                + modelName() + '\'' + ", tokenUsage="
-                + tokenUsage() + ", finishReason="
-                + finishReason() + ", created="
-                + created + ", serviceTier='"
-                + serviceTier + '\'' + ", systemFingerprint='"
-                + systemFingerprint + '\'' + '}';
-    }
-
     public static Builder builder() {
         return new Builder();
     }

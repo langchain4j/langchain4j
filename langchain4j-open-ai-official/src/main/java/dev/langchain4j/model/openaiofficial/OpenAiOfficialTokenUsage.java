@@ -47,16 +47,6 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
         return Objects.hash(super.hashCode(), inputTokensDetails, outputTokensDetails);
     }
 
-    @Override
-    public String toString() {
-        return "OpenAiTokenUsage{" + " inputTokenCount = "
-                + inputTokenCount() + ", inputTokensDetails="
-                + inputTokensDetails + ", outputTokenCount = "
-                + outputTokenCount() + ", outputTokensDetails="
-                + outputTokensDetails + ", totalTokenCount = "
-                + totalTokenCount() + '}';
-    }
-
     public static Builder builder() {
         return new Builder();
     }
