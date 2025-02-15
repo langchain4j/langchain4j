@@ -1,22 +1,14 @@
-package dev.langchain4j.http.client;
+package dev.langchain4j.http.client.sse;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.ServerSentEventParser;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-/**
- * TODO
- */
 @Experimental
 public class DefaultServerSentEventParser implements ServerSentEventParser {
-
-    // TODO review, refactor, test
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
@@ -44,7 +36,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                     if (!data.isEmpty()) {
                         data.append("\n");
                     }
-                    data.append(content);
+                    data.append(content.trim());
                 }
             }
 
