@@ -15,9 +15,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
@@ -322,7 +324,68 @@ class LanguageModelQueryRouterTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
 
         LanguageModelQueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
-        router.addFilterRouter(new DeepSeekFilter());
+        router.addFilterRouter(new FilterRouter() {
+            @Override
+            public String doFilter(String response) {
+                return response.replaceAll("(?si)<think\\b[^>]*>.*?</think>", "");
+            }
+
+            @Override
+            public int getOrder() {
+                return 0;
+            }
+        });
+        String test = router.filterRouterChain.doFilter(choices);
+        router.parse(test);
+    }
+
+    @Test
+    void should_support_Deepseek_in_ollama_remove_thinking_tags_success2(){
+        //DeepSeek model answer
+        String choices ="<think>\n" +
+                "Okay, I need to figure out which data source is best for the user's query. The user asked, \"今天新增了哪些商品\" which translates to \"What new products have been added today?\" \n" +
+                "\n" +
+                "Looking at the options, there are two knowledge bases available: 订单知识库 (Order Knowledge Base) and 商品知识库 (Product Knowledge Base). \n" +
+                "\n" +
+                "The Order Knowledge Base would likely contain information related to orders, such as purchase history, order status, customer details, etc. It's focused on transactions rather than product listings or updates.\n" +
+                "\n" +
+                "On the other hand, the Product Knowledge Base is more suited for storing and managing product data. This includes product names, descriptions, specifications, prices, availability, and any updates regarding new products added to the inventory.\n" +
+                "\n" +
+                "Since the user is specifically asking about newly added items today, they are interested in product information rather than order details. Therefore, the most appropriate source to retrieve this information would be 商品知识库 (Product Knowledge Base).\n" +
+                "</think>\n" +
+                "\n" +
+                "2";
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+
+        LanguageModelQueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+        List<FilterRouter> filterRouterList = new ArrayList<>();
+        filterRouterList.add(new FilterRouter() {
+            @Override
+            public String doFilter(String response) {
+                return response.replaceAll("(?si)<think\\b[^>]*>.*?</think>", "");
+            }
+
+            @Override
+            public int getOrder() {
+                return 0;
+            }
+        });
+        filterRouterList.add(new FilterRouter() {
+            @Override
+            public String doFilter(final String response) {
+                return response.replace("1","");
+            }
+
+            @Override
+            public int getOrder() {
+                return 2;
+            }
+        });
+        router.filterRouterChain.addFilters(filterRouterList);
         String test = router.filterRouterChain.doFilter(choices);
         router.parse(test);
     }
