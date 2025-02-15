@@ -20,7 +20,7 @@ public class FilterRouterChain {
 
     public void addFilters(List<FilterRouter> filters) {
         this.filterRouters.addAll(filters);
-        sortFilters(); // 添加后排序
+        sortFilters();
     }
 
     private void sortFilters() {
