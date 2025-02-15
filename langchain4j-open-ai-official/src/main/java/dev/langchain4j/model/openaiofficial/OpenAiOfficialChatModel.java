@@ -66,7 +66,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                 builder.tokenizer,
                 builder.customHeaders,
                 builder.listeners,
-                builder.capabilities);
+                builder.capabilities,
+                false);
     }
 
     @Override

@@ -4,11 +4,13 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupASyncClient;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
 import static java.util.Collections.emptyList;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientAsync;
 import com.openai.credential.Credential;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
@@ -26,6 +28,7 @@ import java.util.Set;
 abstract class OpenAiOfficialBaseChatModel {
 
     protected OpenAIClient client;
+    protected OpenAIClientAsync asyncClient;
     protected boolean useAzure;
     protected String azureModelName;
 
@@ -71,7 +74,8 @@ abstract class OpenAiOfficialBaseChatModel {
             Tokenizer tokenizer,
             Map<String, String> customHeaders,
             List<ChatModelListener> listeners,
-            Set<Capability> capabilities) {
+            Set<Capability> capabilities,
+            boolean isAsync) {
 
         if (azureApiKey != null || credential != null) {
             // Using Azure OpenAI
@@ -84,20 +88,37 @@ abstract class OpenAiOfficialBaseChatModel {
             this.azureModelName = null;
         }
 
-        this.client = setupSyncClient(
-                baseUrl,
-                useAzure,
-                apiKey,
-                azureApiKey,
-                credential,
-                azureDeploymentName,
-                azureOpenAIServiceVersion,
-                organizationId,
-                modelName,
-                timeout,
-                maxRetries,
-                proxy,
-                customHeaders);
+        if (isAsync) {
+            this.asyncClient = setupASyncClient(
+                    baseUrl,
+                    useAzure,
+                    apiKey,
+                    azureApiKey,
+                    credential,
+                    azureDeploymentName,
+                    azureOpenAIServiceVersion,
+                    organizationId,
+                    modelName,
+                    timeout,
+                    maxRetries,
+                    proxy,
+                    customHeaders);
+        } else {
+            this.client = setupSyncClient(
+                    baseUrl,
+                    useAzure,
+                    apiKey,
+                    azureApiKey,
+                    credential,
+                    azureDeploymentName,
+                    azureOpenAIServiceVersion,
+                    organizationId,
+                    modelName,
+                    timeout,
+                    maxRetries,
+                    proxy,
+                    customHeaders);
+        }
 
         ChatRequestParameters commonParameters;
         if (defaultRequestParameters != null) {

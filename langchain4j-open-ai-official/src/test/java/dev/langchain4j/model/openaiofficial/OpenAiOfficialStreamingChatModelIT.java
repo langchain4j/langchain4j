@@ -104,10 +104,4 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // OpenAI returns a finish reason of "STOP" and not "TOOL_EXECUTION" as expected
         return false;
     }
-
-    @Override
-    protected boolean assertThreads() {
-        // TODO why would it run in another thread?
-        return false;
-    }
 }

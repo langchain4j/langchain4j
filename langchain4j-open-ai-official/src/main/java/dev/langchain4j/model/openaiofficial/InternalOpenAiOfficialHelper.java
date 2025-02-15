@@ -12,7 +12,9 @@ import static java.util.stream.Collectors.toList;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientAsync;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
 import com.openai.core.JsonValue;
 import com.openai.credential.Credential;
 import com.openai.models.ChatCompletion;
@@ -91,7 +93,80 @@ class InternalOpenAiOfficialHelper {
             Integer maxRetries,
             Proxy proxy,
             Map<String, String> customHeaders) {
+
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
+
+        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
+        if (useAzure) {
+            // Using Azure OpenAI
+            if (azureDeploymentName == null) {
+                // If the Azure deployment name is not configured, we use the model name instead, as it's the default
+                // deployment name
+                azureDeploymentName = modelName;
+            }
+            ensureNotBlank(azureDeploymentName, "azureDeploymentName");
+            baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+            if (azureOpenAiServiceVersion == null) {
+                azureOpenAiServiceVersion = AzureOpenAIServiceVersion.getV2025_01_01_PREVIEW();
+            }
+            builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
+                    + azureOpenAiServiceVersion.value());
+        } else {
+            // Using OpenAI
+            builder.baseUrl(baseUrl);
+        }
+
+        if (apiKey != null) {
+            builder.apiKey(apiKey);
+        } else if (azureApiKey != null) {
+            builder.credential(AzureApiKeyCredential.create(azureApiKey));
+        } else if (credential != null) {
+            builder.credential(credential);
+        } else {
+            throw new IllegalArgumentException("Either apiKey, azureApiKey or credential must be set to authenticate");
+        }
+
+        builder.organization(organizationId);
+
+        if (azureOpenAiServiceVersion != null) {
+            builder.azureServiceVersion(azureOpenAiServiceVersion);
+        }
+
+        if (proxy != null) {
+            builder.proxy(proxy);
+        }
+
+        builder.putHeader("User-Agent", DEFAULT_USER_AGENT);
+        if (customHeaders != null) {
+            builder.putAllHeaders(customHeaders.entrySet().stream()
+                    .collect(
+                            Collectors.toMap(Map.Entry::getKey, entry -> Collections.singletonList(entry.getValue()))));
+        }
+
+        timeout = getOrDefault(timeout, ofSeconds(60));
+        builder.timeout(timeout);
+
+        builder.maxRetries(getOrDefault(maxRetries, 3));
+
+        return builder.build();
+    }
+
+    static OpenAIClientAsync setupASyncClient(
+            String baseUrl,
+            boolean useAzure,
+            String apiKey,
+            String azureApiKey,
+            Credential credential,
+            String azureDeploymentName,
+            AzureOpenAIServiceVersion azureOpenAiServiceVersion,
+            String organizationId,
+            String modelName,
+            Duration timeout,
+            Integer maxRetries,
+            Proxy proxy,
+            Map<String, String> customHeaders) {
+
+        OpenAIOkHttpClientAsync.Builder builder = OpenAIOkHttpClientAsync.builder();
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (useAzure) {

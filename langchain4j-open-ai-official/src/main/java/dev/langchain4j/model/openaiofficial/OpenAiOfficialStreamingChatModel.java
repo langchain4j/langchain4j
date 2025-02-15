@@ -7,7 +7,7 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
-import com.openai.core.http.StreamResponse;
+import com.openai.core.http.AsyncStreamResponse;
 import com.openai.credential.Credential;
 import com.openai.models.ChatCompletionChunk;
 import com.openai.models.ChatCompletionCreateParams;
@@ -32,7 +32,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
         implements StreamingChatLanguageModel {
@@ -71,7 +73,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 builder.tokenizer,
                 builder.customHeaders,
                 builder.listeners,
-                builder.capabilities);
+                builder.capabilities,
+                true);
     }
 
     @Override
@@ -128,108 +131,142 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         ChatCompletionStreamOptions.builder().includeUsage(true).build())
                 .build();
 
-        try (StreamResponse<ChatCompletionChunk> response =
-                client.chat().completions().createStreaming(chatCompletionCreateParams)) {
-
+        try {
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder =
                     OpenAiOfficialChatResponseMetadata.builder();
             StringBuffer text = new StringBuffer();
             List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
 
-            response.stream().forEach(chatCompletionChunk -> {
-                responseMetadataBuilder.id(chatCompletionChunk.id());
-                responseMetadataBuilder.modelName(chatCompletionChunk.model());
-                if (chatCompletionChunk.usage().isPresent()) {
-                    responseMetadataBuilder.tokenUsage(
-                            tokenUsageFrom(chatCompletionChunk.usage().get()));
-                }
-                responseMetadataBuilder.created(chatCompletionChunk.created());
-                responseMetadataBuilder.serviceTier(
-                        chatCompletionChunk.serviceTier().isPresent()
-                                ? chatCompletionChunk.serviceTier().get().toString()
-                                : null);
-                responseMetadataBuilder.systemFingerprint(
-                        chatCompletionChunk.systemFingerprint().isPresent()
-                                ? chatCompletionChunk.systemFingerprint().get()
-                                : null);
-                chatCompletionChunk.choices().forEach(choice -> {
-                    if (choice.delta().content().isPresent()
-                            && !choice.delta().content().get().isEmpty()) {
-                        text.append(choice.delta().content().get());
-                        handler.onPartialResponse(choice.delta().content().get());
-                    }
-                    if (choice.delta().toolCalls().isPresent()) {
-                        choice.delta().toolCalls().get().forEach(toolCall -> {
-                            if (toolCall.function().isPresent()) {
-                                final ChatCompletionChunk.Choice.Delta.ToolCall.Function function =
-                                        toolCall.function().get();
-                                final String functionId;
-                                final String functionName;
-                                final String functionArguments;
-                                if (toolCall.id().isPresent()) {
-                                    functionId = toolCall.id().get();
+            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+
+            AsyncStreamResponse<ChatCompletionChunk> response = asyncClient
+                    .chat()
+                    .completions()
+                    .createStreaming(chatCompletionCreateParams)
+                    .subscribe(new AsyncStreamResponse.Handler<>() {
+
+                        @Override
+                        public void onNext(ChatCompletionChunk completion) {
+                            manageChatCompletionChunks(
+                                    completion, handler, responseMetadataBuilder, text, toolExecutionRequests);
+                        }
+
+                        @Override
+                        public void onComplete(Optional<Throwable> error) {
+                            if (error.isPresent()) {
+                                handler.onError(error.get());
+                            } else {
+                                AiMessage aiMessage;
+                                if (!text.toString().isEmpty()) {
+                                    if (!toolExecutionRequests.isEmpty()) {
+                                        aiMessage = AiMessage.from(text.toString(), toolExecutionRequests);
+                                    } else {
+                                        aiMessage = AiMessage.from(text.toString());
+                                    }
                                 } else {
-                                    functionId = "";
+                                    if (!toolExecutionRequests.isEmpty()) {
+                                        aiMessage = AiMessage.from(toolExecutionRequests);
+                                    } else {
+                                        throw new IllegalArgumentException(
+                                                "No text or toolExecutionRequests found in the response");
+                                    }
                                 }
-                                if (function.name().isPresent()) {
-                                    functionName = function.name().get();
-                                } else {
-                                    functionName = "";
-                                }
-                                if (function.arguments().isPresent()) {
-                                    functionArguments = function.arguments().get();
-                                } else {
-                                    functionArguments = "";
-                                }
-                                if (!functionId.isEmpty()) {
-                                    // A new function is called
-                                    toolExecutionRequests.add(ToolExecutionRequest.builder()
-                                            .id(functionId)
-                                            .name(functionName)
-                                            .arguments(functionArguments)
-                                            .build());
-                                } else {
-                                    // This chunk is part of the previous function call
-                                    ToolExecutionRequest lastToolExecutionRequest =
-                                            toolExecutionRequests.get(toolExecutionRequests.size() - 1);
-                                    toolExecutionRequests.remove(lastToolExecutionRequest);
-                                    ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                                            .id(functionId)
-                                            .name(lastToolExecutionRequest.name() + functionName)
-                                            .arguments(lastToolExecutionRequest.arguments() + functionArguments)
-                                            .build();
-                                    toolExecutionRequests.add(toolExecutionRequest);
-                                }
+
+                                ChatResponse chatResponse = ChatResponse.builder()
+                                        .aiMessage(aiMessage)
+                                        .metadata(responseMetadataBuilder.build())
+                                        .build();
+
+                                handler.onCompleteResponse(chatResponse);
                             }
-                        });
-                    }
-                    if (choice.finishReason().isPresent()) {
-                        responseMetadataBuilder.finishReason(
-                                finishReasonFrom(choice.finishReason().get()));
-                    }
-                });
-            });
+                            completableFuture.complete(null);
+                        }
+                    });
 
-            AiMessage aiMessage;
-            if (text.toString().isEmpty() && !toolExecutionRequests.isEmpty()) {
-                aiMessage = AiMessage.from(toolExecutionRequests);
-            } else if (!text.toString().isEmpty() && toolExecutionRequests.isEmpty()) {
-                aiMessage = AiMessage.from(text.toString());
-            } else if (!text.toString().isEmpty()) {
-                aiMessage = AiMessage.from(text.toString(), toolExecutionRequests);
-            } else {
-                aiMessage = AiMessage.from();
-            }
-
-            ChatResponse chatResponse = ChatResponse.builder()
-                    .aiMessage(aiMessage)
-                    .metadata(responseMetadataBuilder.build())
-                    .build();
-
-            handler.onCompleteResponse(chatResponse);
+            completableFuture.join();
         } catch (Exception e) {
             handler.onError(e);
         }
+    }
+
+    private void manageChatCompletionChunks(
+            ChatCompletionChunk chatCompletionChunk,
+            StreamingChatResponseHandler handler,
+            OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
+            StringBuffer text,
+            List<ToolExecutionRequest> toolExecutionRequests) {
+
+        responseMetadataBuilder.id(chatCompletionChunk.id());
+        responseMetadataBuilder.modelName(chatCompletionChunk.model());
+        if (chatCompletionChunk.usage().isPresent()) {
+            responseMetadataBuilder.tokenUsage(
+                    tokenUsageFrom(chatCompletionChunk.usage().get()));
+        }
+        responseMetadataBuilder.created(chatCompletionChunk.created());
+        responseMetadataBuilder.serviceTier(
+                chatCompletionChunk.serviceTier().isPresent()
+                        ? chatCompletionChunk.serviceTier().get().toString()
+                        : null);
+        responseMetadataBuilder.systemFingerprint(
+                chatCompletionChunk.systemFingerprint().isPresent()
+                        ? chatCompletionChunk.systemFingerprint().get()
+                        : null);
+        chatCompletionChunk.choices().forEach(choice -> {
+            if (choice.delta().content().isPresent()
+                    && !choice.delta().content().get().isEmpty()) {
+                text.append(choice.delta().content().get());
+                handler.onPartialResponse(choice.delta().content().get());
+            }
+            if (choice.delta().toolCalls().isPresent()) {
+                choice.delta().toolCalls().get().forEach(toolCall -> {
+                    if (toolCall.function().isPresent()) {
+                        final ChatCompletionChunk.Choice.Delta.ToolCall.Function function =
+                                toolCall.function().get();
+                        final String functionId;
+                        final String functionName;
+                        final String functionArguments;
+                        if (toolCall.id().isPresent()) {
+                            functionId = toolCall.id().get();
+                        } else {
+                            functionId = "";
+                        }
+                        if (function.name().isPresent()) {
+                            functionName = function.name().get();
+                        } else {
+                            functionName = "";
+                        }
+                        if (function.arguments().isPresent()) {
+                            functionArguments = function.arguments().get();
+                        } else {
+                            functionArguments = "";
+                        }
+                        if (!functionId.isEmpty()) {
+                            // A new function is called
+                            toolExecutionRequests.add(ToolExecutionRequest.builder()
+                                    .id(functionId)
+                                    .name(functionName)
+                                    .arguments(functionArguments)
+                                    .build());
+                        } else {
+                            // This chunk is part of the previous function call
+                            ToolExecutionRequest lastToolExecutionRequest =
+                                    toolExecutionRequests.get(toolExecutionRequests.size() - 1);
+                            toolExecutionRequests.remove(lastToolExecutionRequest);
+                            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                                    .id(functionId)
+                                    .name(lastToolExecutionRequest.name() + functionName)
+                                    .arguments(lastToolExecutionRequest.arguments() + functionArguments)
+                                    .build();
+                            toolExecutionRequests.add(toolExecutionRequest);
+                        }
+                    }
+                });
+            }
+            if (choice.finishReason().isPresent()) {
+                responseMetadataBuilder.finishReason(
+                        finishReasonFrom(choice.finishReason().get()));
+            }
+        });
     }
 
     public static Builder builder() {
