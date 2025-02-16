@@ -219,7 +219,8 @@
                         <version>5.43.4</version>
                         <configuration>
                             <activeRecipes>
-                                <!--<recipe>org.openrewrite.java.OrderImports</recipe>-->
+                                <recipe>org.openrewrite.java.testing.cleanup.TestsShouldNotBePublic</recipe>
+                                <recipe>org.openrewrite.java.testing.cleanup.RemoveTestPrefix</recipe>
                                 <recipe>org.openrewrite.java.testing.assertj.Assertj</recipe>
                             </activeRecipes>
                             <failOnDryRunResults>true</failOnDryRunResults>
