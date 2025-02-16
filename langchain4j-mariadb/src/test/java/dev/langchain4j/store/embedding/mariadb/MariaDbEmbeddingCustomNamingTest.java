@@ -28,7 +28,7 @@ class MariaDbEmbeddingCustomNamingTest {
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeAll
-    public static void beforeAll() {
+    static void beforeAll() {
         mariadbContainer.start();
     }
 
@@ -38,8 +38,7 @@ class MariaDbEmbeddingCustomNamingTest {
         "my_table2,my_id 2,my_embedding 2,my_content 2,`my_meta 2`",
         "`my_ta``ble3`,`my_id3`,`my_embedding3`,`my_content3`,`my_meta3`"
     })
-    void testJsonNaming(
-            String tableName, String idName, String embeddingName, String contentName, String metadataJsonName)
+    void jsonNaming(String tableName, String idName, String embeddingName, String contentName, String metadataJsonName)
             throws SQLException {
         MetadataStorageConfig metadataStorageConfig = DefaultMetadataStorageConfig.builder()
                 .storageMode(MetadataStorageMode.COMBINED_JSON)
@@ -84,7 +83,7 @@ class MariaDbEmbeddingCustomNamingTest {
         "my_table2,my_id 2,my_embedding 2,my_content 2",
         "`my_ta``ble3`,`my_id3`,`my_embedding3`,`my_content3`"
     })
-    void testColsNaming(String tableName, String idName, String embeddingName, String contentName) throws SQLException {
+    void colsNaming(String tableName, String idName, String embeddingName, String contentName) throws SQLException {
         MetadataStorageConfig metadataStorageConfig = DefaultMetadataStorageConfig.builder()
                 .storageMode(MetadataStorageMode.COLUMN_PER_KEY)
                 .columnDefinitions(Arrays.asList("key varchar(255)", "`name` varchar(255)", "`age` float"))

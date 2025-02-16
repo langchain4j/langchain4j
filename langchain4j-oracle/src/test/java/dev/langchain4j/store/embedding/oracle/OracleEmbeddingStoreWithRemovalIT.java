@@ -13,7 +13,7 @@ public class OracleEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemoval
     private final OracleEmbeddingStore embeddingStore = CommonTestOperations.newEmbeddingStore();
 
     @BeforeEach
-    public void clearTable() {
+    void clearTable() {
         //  A removeAll call happens before each test because EmbeddingStoreWithRemovalIT is designed for each test to
         //  begin with an empty store.
         embeddingStore().removeAll();
@@ -30,7 +30,7 @@ public class OracleEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemoval
     }
 
     @AfterAll
-    public static void cleanUp() throws SQLException {
+    static void cleanUp() throws SQLException {
         CommonTestOperations.dropTable();
     }
 }

@@ -5,10 +5,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.output.Response;
+import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 @SuppressWarnings("deprecation")
 class ModerationModelTest implements WithAssertions {
@@ -25,25 +24,23 @@ class ModerationModelTest implements WithAssertions {
     }
 
     @Test
-    public void test_moderate_prompt() {
+    void moderate_prompt() {
         ModerationModel model = new FlagEverythingModel();
         Response<Moderation> response = model.moderate(Prompt.from("Hello, world!"));
         assertThat(response).isEqualTo(Response.from(Moderation.flagged("Hello, world!")));
     }
 
     @Test
-    public void test_moderate_chat_message() {
+    void moderate_chat_message() {
         ModerationModel model = new FlagEverythingModel();
-        Response<Moderation> response = model.moderate(
-                UserMessage.from("Hello, world!"));
+        Response<Moderation> response = model.moderate(UserMessage.from("Hello, world!"));
         assertThat(response).isEqualTo(Response.from(Moderation.flagged("Hello, world!")));
     }
 
     @Test
-    public void test_moderate_TextSegment() {
+    void moderate_text_segment() {
         ModerationModel model = new FlagEverythingModel();
-        Response<Moderation> response = model.moderate(
-                TextSegment.from("Hello, world!"));
+        Response<Moderation> response = model.moderate(TextSegment.from("Hello, world!"));
         assertThat(response).isEqualTo(Response.from(Moderation.flagged("Hello, world!")));
     }
 }

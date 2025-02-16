@@ -7,19 +7,19 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class StreamingChatLanguageModelTest implements WithAssertions {
     public static class StreamingUpperCaseEchoModel implements StreamingChatLanguageModel {
         @Override
         public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
             ChatMessage lastMessage = messages.get(messages.size() - 1);
-            Response<AiMessage> response = new Response<>(new AiMessage(lastMessage.text().toUpperCase(Locale.ROOT)));
+            Response<AiMessage> response =
+                    new Response<>(new AiMessage(lastMessage.text().toUpperCase(Locale.ROOT)));
             handler.onComplete(response);
         }
     }
@@ -44,7 +44,7 @@ class StreamingChatLanguageModelTest implements WithAssertions {
     }
 
     @Test
-    public void test_not_supported() {
+    void not_supported() {
         StreamingUpperCaseEchoModel model = new StreamingUpperCaseEchoModel();
         CollectorResponseHandler<AiMessage> handler = new CollectorResponseHandler<>();
         List<ChatMessage> messages = new ArrayList<>();
@@ -54,12 +54,14 @@ class StreamingChatLanguageModelTest implements WithAssertions {
                 .withMessageContaining("tools are currently not supported by StreamingUpperCaseEchoModel");
 
         assertThatExceptionOfType(UnsupportedFeatureException.class)
-                .isThrownBy(() -> model.generate(messages, ToolSpecification.builder().name("foo").build(), handler))
-                .withMessageContaining("tools and tool choice are currently not supported by StreamingUpperCaseEchoModel");
+                .isThrownBy(() -> model.generate(
+                        messages, ToolSpecification.builder().name("foo").build(), handler))
+                .withMessageContaining(
+                        "tools and tool choice are currently not supported by StreamingUpperCaseEchoModel");
     }
 
     @Test
-    public void test_generate() {
+    void generate() {
         StreamingChatLanguageModel model = new StreamingUpperCaseEchoModel();
 
         {

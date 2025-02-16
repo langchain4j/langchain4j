@@ -12,7 +12,8 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             super(maxSegmentSizeInChars, maxOverlapSizeInChars);
         }
 
-        public ExampleImpl(int maxSegmentSizeInChars, int maxOverlapSizeInChars, HierarchicalDocumentSplitter subSplitter) {
+        public ExampleImpl(
+                int maxSegmentSizeInChars, int maxOverlapSizeInChars, HierarchicalDocumentSplitter subSplitter) {
             super(maxSegmentSizeInChars, maxOverlapSizeInChars, subSplitter);
         }
 
@@ -20,7 +21,11 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer);
         }
 
-        public ExampleImpl(int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, Tokenizer tokenizer, HierarchicalDocumentSplitter subSplitter) {
+        public ExampleImpl(
+                int maxSegmentSizeInTokens,
+                int maxOverlapSizeInTokens,
+                Tokenizer tokenizer,
+                HierarchicalDocumentSplitter subSplitter) {
             super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
         }
 
@@ -41,7 +46,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
     }
 
     @Test
-    void test_constructor() {
+    void constructor() {
         {
             ExampleImpl splitter = new ExampleImpl(1, 1);
             assertThat(splitter.maxSegmentSize).isEqualTo(1);
