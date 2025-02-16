@@ -1,17 +1,16 @@
 package dev.langchain4j.langfuse;
 
-import static java.net.http.HttpRequest.BodyPublishers.ofString;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpMethod;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.langfuse.model.Observation;
 import dev.langchain4j.langfuse.model.Score;
 import dev.langchain4j.langfuse.model.Session;
 import dev.langchain4j.langfuse.model.Trace;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -31,10 +30,18 @@ public class LangfuseClient implements AutoCloseable {
         this.endpoint = builder.endpoint;
         this.publicKey = builder.publicKey;
         this.secretKey = builder.secretKey;
+        this.httpClient = builder.httpClient != null
+                ? builder.httpClient
+                : new JdkHttpClientBuilder()
+                        .readTimeout(Duration.ofSeconds(30))
+                        .connectTimeout(Duration.ofSeconds(30))
+                        .build();
+    }
 
-        this.httpClient =
-                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
-        log.debug("LangfuseClient initialized with endpoint: {}", endpoint);
+    private HttpRequest.Builder baseRequestBuilder() {
+        return HttpRequest.builder()
+                .addHeader("Authorization", "Bearer " + secretKey)
+                .addHeader("Content-Type", "application/json");
     }
 
     public TraceAPI trace() {
@@ -55,196 +62,116 @@ public class LangfuseClient implements AutoCloseable {
 
     public class TraceAPI {
         public void create(Trace trace) throws IOException {
-            log.debug("Creating trace: {}", trace);
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint + "/api/public/traces"))
-                    .header("Authorization", "Bearer " + secretKey)
-                    .header("Content-Type", "application/json")
-                    .POST(ofString(MAPPER.writeValueAsString(trace)))
+            HttpRequest request = baseRequestBuilder()
+                    .method(HttpMethod.POST)
+                    .url(endpoint + "/api/public/traces")
+                    .body(MAPPER.writeValueAsString(trace))
                     .build();
 
-            try {
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() >= 300) {
-                    String errorBody = response.body() != null ? response.body() : "No body";
-                    log.error("Failed to create trace. Response: {}, Body: {}", response, errorBody);
-                    throw new IOException("Failed to create trace: " + response);
-                }
-                log.debug("Trace created successfully: {}", trace.getId());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Failed to create trace", e);
+            SuccessfulHttpResponse response = httpClient.execute(request);
+            if (response.statusCode() >= 300) {
+                throw new IOException("Failed to create trace: " + response.body());
             }
         }
 
         public void update(String traceId, Map<String, Object> output, String status) throws IOException {
-            log.debug("Updating trace {}. Output: {}, Status: {}", traceId, output, status);
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint + "/api/public/traces/" + traceId))
-                    .header("Authorization", "Bearer " + secretKey)
-                    .header("Content-Type", "application/json")
-                    .method(
-                            "PATCH",
-                            ofString(MAPPER.writeValueAsString(Map.of(
-                                    "outputs", output,
-                                    "status", status))))
+            HttpRequest request = baseRequestBuilder()
+                    .method(HttpMethod.POST)
+                    .url(endpoint + "/api/public/traces/" + traceId)
+                    .body(MAPPER.writeValueAsString(Map.of(
+                            "outputs", output,
+                            "status", status)))
                     .build();
 
-            try {
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() >= 300) {
-                    String errorBody = response.body() != null ? response.body() : "No body";
-                    log.error("Failed to update trace {}. Response: {}, Body: {}", traceId, response, errorBody);
-                    throw new IOException("Failed to update trace: " + response);
-                }
-                log.debug("Trace {} updated successfully", traceId);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Failed to update trace", e);
+            SuccessfulHttpResponse response = httpClient.execute(request);
+            if (response.statusCode() >= 300) {
+                throw new IOException("Failed to update trace: " + response.body());
             }
         }
     }
 
     public class ObservationAPI {
         public void createBatch(List<Observation> observations) throws IOException {
-            log.debug("Creating batch of {} observations", observations.size());
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint + "/api/public/observations/batch"))
-                    .header("Authorization", "Bearer " + secretKey)
-                    .header("Content-Type", "application/json")
-                    .POST(ofString(MAPPER.writeValueAsString(observations)))
+            HttpRequest request = baseRequestBuilder()
+                    .method(HttpMethod.POST)
+                    .url(endpoint + "/api/public/observations/batch")
+                    .body(MAPPER.writeValueAsString(observations))
                     .build();
 
-            try {
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() >= 300) {
-                    String errorBody = response.body() != null ? response.body() : "No body";
-                    log.error("Failed to create observations batch. Response: {}, Body: {}", response, errorBody);
-                    throw new IOException("Failed to create observations batch: " + response);
-                }
-                log.debug("Batch of {} observations created successfully", observations.size());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Failed to create observations batch", e);
+            SuccessfulHttpResponse response = httpClient.execute(request);
+            if (response.statusCode() >= 300) {
+                throw new IOException("Failed to create observations batch: " + response.body());
             }
         }
 
         public void update(String observationId, Map<String, Object> output, String status) throws IOException {
-            log.debug("Updating observation {}. Output: {}, Status: {}", observationId, output, status);
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint + "/api/public/observations/" + observationId))
-                    .header("Authorization", "Bearer " + secretKey)
-                    .header("Content-Type", "application/json")
-                    .method(
-                            "PATCH",
-                            ofString(MAPPER.writeValueAsString(Map.of(
-                                    "output", output,
-                                    "status", status))))
+            HttpRequest request = baseRequestBuilder()
+                    .method(HttpMethod.POST)
+                    .url(endpoint + "/api/public/observations/" + observationId)
+                    .body(MAPPER.writeValueAsString(Map.of(
+                            "output", output,
+                            "status", status)))
                     .build();
 
-            try {
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() >= 300) {
-                    String errorBody = response.body() != null ? response.body() : "No body";
-                    log.error(
-                            "Failed to update observation {}. Response: {}, Body: {}",
-                            observationId,
-                            response,
-                            errorBody);
-                    throw new IOException("Failed to update observation: " + response);
-                }
-                log.debug("Observation {} updated successfully", observationId);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Failed to update observation", e);
+            SuccessfulHttpResponse response = httpClient.execute(request);
+            if (response.statusCode() >= 300) {
+                throw new IOException("Failed to update observation: " + response.body());
             }
         }
     }
 
     public class SessionAPI {
         public void create(Session session) throws IOException {
-            log.debug("Creating session: {}", session);
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint + "/api/public/sessions"))
-                    .header("Authorization", "Bearer " + secretKey)
-                    .header("Content-Type", "application/json")
-                    .POST(ofString(MAPPER.writeValueAsString(session)))
+            HttpRequest request = baseRequestBuilder()
+                    .method(HttpMethod.POST)
+                    .url(endpoint + "/api/public/sessions")
+                    .body(MAPPER.writeValueAsString(session))
                     .build();
 
-            try {
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() >= 300) {
-                    String errorBody = response.body() != null ? response.body() : "No body";
-                    log.error("Failed to create session. Response: {}, Body: {}", response, errorBody);
-                    throw new IOException("Failed to create session: " + response);
-                }
-                log.debug("Session created successfully: {}", session.getId());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Failed to create session", e);
+            SuccessfulHttpResponse response = httpClient.execute(request);
+            if (response.statusCode() >= 300) {
+                throw new IOException("Failed to create session: " + response.body());
             }
         }
 
         public void addTrace(String sessionId, String traceId) throws IOException {
-            log.debug("Adding trace {} to session {}", traceId, sessionId);
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint + "/api/public/sessions/" + sessionId + "/traces"))
-                    .header("Authorization", "Bearer " + secretKey)
-                    .header("Content-Type", "application/json")
-                    .POST(ofString(MAPPER.writeValueAsString(Map.of("traceId", traceId))))
+            HttpRequest request = baseRequestBuilder()
+                    .method(HttpMethod.POST)
+                    .url(endpoint + "/api/public/sessions/" + sessionId + "/traces")
+                    .body(MAPPER.writeValueAsString(Map.of("traceId", traceId)))
                     .build();
 
-            try {
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() >= 300) {
-                    String errorBody = response.body() != null ? response.body() : "No body";
-                    log.error(
-                            "Failed to add trace {} to session {}. Response: {}, Body: {}",
-                            traceId,
-                            sessionId,
-                            response,
-                            errorBody);
-                    throw new IOException("Failed to add trace to session: " + response);
-                }
-                log.debug("Trace {} added to session {} successfully", traceId, sessionId);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Failed to add trace to session", e);
+            SuccessfulHttpResponse response = httpClient.execute(request);
+            if (response.statusCode() >= 300) {
+                throw new IOException("Failed to add trace to session: " + response.body());
             }
         }
     }
 
     public class ScoreAPI {
         public void create(Score score) throws IOException {
-            log.debug("Creating score: {}", score);
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint + "/api/public/scores"))
-                    .header("Authorization", "Bearer " + secretKey)
-                    .header("Content-Type", "application/json")
-                    .POST(ofString(MAPPER.writeValueAsString(score)))
+            HttpRequest request = baseRequestBuilder()
+                    .method(HttpMethod.POST)
+                    .url(endpoint + "/api/public/scores")
+                    .body(MAPPER.writeValueAsString(score))
                     .build();
 
-            try {
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() >= 300) {
-                    String errorBody = response.body() != null ? response.body() : "No body";
-                    log.error("Failed to create score. Response: {}, Body: {}", response, errorBody);
-                    throw new IOException("Failed to create score: " + response);
-                }
-                log.debug("Score created successfully: {}", score.getId());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Failed to create score", e);
+            SuccessfulHttpResponse response = httpClient.execute(request);
+            if (response.statusCode() >= 300) {
+                throw new IOException("Failed to create score: " + response.body());
             }
         }
     }
 
     @Override
     public void close() {
-        log.debug("LangfuseClient closed");
+        if (httpClient instanceof AutoCloseable) {
+            try {
+                ((AutoCloseable) httpClient).close();
+            } catch (Exception e) {
+                log.warn("Error closing HTTP client", e);
+            }
+        }
     }
 
     public void shutdown() {
@@ -259,6 +186,7 @@ public class LangfuseClient implements AutoCloseable {
         private String endpoint = "https://cloud.langfuse.com";
         private String publicKey;
         private String secretKey;
+        private HttpClient httpClient;
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -272,6 +200,11 @@ public class LangfuseClient implements AutoCloseable {
 
         public Builder secretKey(String secretKey) {
             this.secretKey = secretKey;
+            return this;
+        }
+
+        public Builder httpClient(HttpClient httpClient) {
+            this.httpClient = httpClient;
             return this;
         }
 

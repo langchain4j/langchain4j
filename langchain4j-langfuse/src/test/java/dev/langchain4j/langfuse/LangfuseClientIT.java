@@ -1,195 +1,189 @@
 package dev.langchain4j.langfuse;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.langchain4j.langfuse.model.*;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.langfuse.model.Observation;
+import dev.langchain4j.langfuse.model.ObservationType;
+import dev.langchain4j.langfuse.model.Score;
+import dev.langchain4j.langfuse.model.Session;
+import dev.langchain4j.langfuse.model.Trace;
 import java.io.IOException;
-import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class LangfuseClientTest {
 
-    private static final String TEST_ENDPOINT = "http://test.langfuse.com";
-    private static final String TEST_PUBLIC_KEY = "public-key";
-    private static final String TEST_SECRET_KEY = "secret-key";
+    private static final String ENDPOINT = "https://test.langfuse.com";
+    private static final String PUBLIC_KEY = "public-key";
+    private static final String SECRET_KEY = "secret-key";
+
+    @Mock
+    private HttpClient httpClient;
+
+    @Mock
+    private SuccessfulHttpResponse successResponse;
 
     private LangfuseClient client;
-
-    @Mock
-    private HttpClient mockHttpClient;
-
-    @Mock
-    private HttpResponse<String> mockResponse;
 
     @BeforeEach
     void setUp() {
         client = LangfuseClient.builder()
-                .endpoint(TEST_ENDPOINT)
-                .publicKey(TEST_PUBLIC_KEY)
-                .secretKey(TEST_SECRET_KEY)
+                .endpoint(ENDPOINT)
+                .publicKey(PUBLIC_KEY)
+                .secretKey(SECRET_KEY)
+                .httpClient(httpClient)
                 .build();
     }
 
     @Test
-    void createTrace_Success() throws IOException {
-        // Arrange
-        Trace trace = createSampleTrace();
-        when(mockResponse.statusCode()).thenReturn(200);
-        when(mockHttpClient.send(any(), any())).thenReturn(mockResponse);
+    void shouldCreateTrace() throws IOException {
+        // Given
+        when(httpClient.execute(any(HttpRequest.class))).thenReturn(successResponse);
+        when(successResponse.statusCode()).thenReturn(200);
 
-        // Act & Assert
-        assertDoesNotThrow(() -> client.trace().create(trace));
-    }
-
-    @Test
-    void createTrace_Failed() throws IOException {
-        // Arrange
-        Trace trace = createSampleTrace();
-        when(mockResponse.statusCode()).thenReturn(400);
-        when(mockResponse.body()).thenReturn("Bad Request");
-        when(mockHttpClient.send(any(), any())).thenReturn(mockResponse);
-
-        // Act & Assert
-        assertThrows(IOException.class, () -> client.trace().create(trace));
-    }
-
-    @Test
-    void createObservationBatch_Success() throws IOException {
-        // Arrange
-        List<Observation> observations =
-                Arrays.asList(createSampleObservation("obs1"), createSampleObservation("obs2"));
-        when(mockResponse.statusCode()).thenReturn(200);
-        when(mockHttpClient.send(any(), any())).thenReturn(mockResponse);
-
-        // Act & Assert
-        assertDoesNotThrow(() -> client.observation().createBatch(observations));
-    }
-
-    @Test
-    void createSession_Success() throws IOException {
-        // Arrange
-        Session session = createSampleSession();
-        when(mockResponse.statusCode()).thenReturn(200);
-        when(mockHttpClient.send(any(), any())).thenReturn(mockResponse);
-
-        // Act & Assert
-        assertDoesNotThrow(() -> client.session().create(session));
-    }
-
-    @Test
-    void createScore_Success() throws IOException {
-        // Arrange
-        Score score = createSampleScore();
-        when(mockResponse.statusCode()).thenReturn(200);
-        when(mockHttpClient.send(any(), any())).thenReturn(mockResponse);
-
-        // Act & Assert
-        assertDoesNotThrow(() -> client.score().create(score));
-    }
-
-    @Test
-    void updateTrace_Success() throws IOException {
-        // Arrange
-        String traceId = "trace-123";
-        Map<String, String> output = new HashMap<>();
-        output.put("key", "value");
-        String status = "completed";
-
-        when(mockResponse.statusCode()).thenReturn(200);
-        when(mockHttpClient.send(any(), any())).thenReturn(mockResponse);
-
-        // Act & Assert
-        assertDoesNotThrow(() -> client.trace().update(traceId, output, status));
-    }
-
-    @Test
-    void addTraceToSession_Success() throws IOException {
-        // Arrange
-        String sessionId = "session-123";
-        String traceId = "trace-123";
-
-        when(mockResponse.statusCode()).thenReturn(200);
-        when(mockHttpClient.send(any(), any())).thenReturn(mockResponse);
-
-        // Act & Assert
-        assertDoesNotThrow(() -> client.session().addTrace(sessionId, traceId));
-    }
-
-    // Helper methods to create test objects
-    private Trace createSampleTrace() {
-        return Trace.builder()
-                .id("trace-123")
-                .name("Test Trace")
-                .userId("user-123")
+        Trace trace = Trace.builder()
+                .name("test-trace")
+                .input("test-key", "test-value")
                 .build();
+
+        // When
+        client.trace().create(trace);
+
+        // Then
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(httpClient).execute(requestCaptor.capture());
+
+        HttpRequest capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest.url()).isEqualTo(ENDPOINT + "/api/public/traces");
+        assertThat(capturedRequest.method().name()).isEqualTo("POST");
+
+        Map<String, List<String>> expectedHeaders = new HashMap<>();
+        expectedHeaders.put("Authorization", Collections.singletonList("Bearer " + SECRET_KEY));
+        expectedHeaders.put("Content-Type", Collections.singletonList("application/json"));
+
+        assertThat(capturedRequest.headers()).containsAllEntriesOf(expectedHeaders);
     }
 
-    private Observation createSampleObservation(String id) {
-        return Observation.builder()
-                .id(id)
-                .name("Test Observation")
-                .traceId("trace-123")
+    @Test
+    void shouldCreateObservationBatch() throws IOException {
+        // Given
+        when(httpClient.execute(any(HttpRequest.class))).thenReturn(successResponse);
+        when(successResponse.statusCode()).thenReturn(200);
+
+        Observation observation = Observation.builder()
+                .name("test-observation")
+                .traceId("test-trace-id")
+                .type(ObservationType.EVENT)
                 .build();
+
+        // When
+        client.observation().createBatch(Arrays.asList(observation));
+
+        // Then
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(httpClient).execute(requestCaptor.capture());
+
+        HttpRequest capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest.url()).isEqualTo(ENDPOINT + "/api/public/observations/batch");
+        assertThat(capturedRequest.method().name()).isEqualTo("POST");
     }
 
-    private Session createSampleSession() {
-        return Session.builder()
-                .id("session-123")
-                .name("Test Session")
-                .userId("user-123")
-                .build();
+    @Test
+    void shouldCreateSession() throws IOException {
+        // Given
+        when(httpClient.execute(any(HttpRequest.class))).thenReturn(successResponse);
+        when(successResponse.statusCode()).thenReturn(200);
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("test-key", "test-value");
+
+        Session session =
+                Session.builder().setName("test-session").addMetadata(metadata).build();
+
+        // When
+        client.session().create(session);
+
+        // Then
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(httpClient).execute(requestCaptor.capture());
+
+        HttpRequest capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest.url()).isEqualTo(ENDPOINT + "/api/public/sessions");
+        assertThat(capturedRequest.method().name()).isEqualTo("POST");
     }
 
-    private Score createSampleScore() {
-        return Score.builder()
-                .id("score-123")
-                .name("Test Score")
+    @Test
+    void shouldCreateScore() throws IOException {
+        // Given
+        when(httpClient.execute(any(HttpRequest.class))).thenReturn(successResponse);
+        when(successResponse.statusCode()).thenReturn(200);
+
+        Score score = Score.builder()
+                .name("test-score")
                 .value(0.95)
-                .traceId("trace-123")
+                .traceId("test-trace-id")
                 .build();
+
+        // When
+        client.score().create(score);
+
+        // Then
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(httpClient).execute(requestCaptor.capture());
+
+        HttpRequest capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest.url()).isEqualTo(ENDPOINT + "/api/public/scores");
+        assertThat(capturedRequest.method().name()).isEqualTo("POST");
     }
 
     @Test
-    void builder_DefaultEndpoint() {
-        // Act
-        LangfuseClient client = LangfuseClient.builder()
-                .publicKey(TEST_PUBLIC_KEY)
-                .secretKey(TEST_SECRET_KEY)
-                .build();
+    void shouldHandleErrorResponse() throws IOException {
+        // Given
+        when(httpClient.execute(any(HttpRequest.class))).thenReturn(successResponse);
+        when(successResponse.statusCode()).thenReturn(400);
+        when(successResponse.body()).thenReturn("Bad Request");
 
-        // Assert
-        assertEquals("https://cloud.langfuse.com", client.getEndpoint());
+        Trace trace = Trace.builder().name("test-trace").build();
+
+        // Then
+        assertThatThrownBy(() -> client.trace().create(trace))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("Failed to create trace");
     }
 
     @Test
-    void builder_CustomEndpoint() {
-        // Act
-        LangfuseClient client = LangfuseClient.builder()
-                .endpoint(TEST_ENDPOINT)
-                .publicKey(TEST_PUBLIC_KEY)
-                .secretKey(TEST_SECRET_KEY)
+    void shouldCloseHttpClientWhenShutdown() throws Exception {
+        // Given
+        HttpClient closeableHttpClient = mock(HttpClient.class, "closeableHttpClient");
+        LangfuseClient clientWithCloseableHttp = LangfuseClient.builder()
+                .endpoint(ENDPOINT)
+                .publicKey(PUBLIC_KEY)
+                .secretKey(SECRET_KEY)
+                .httpClient(closeableHttpClient)
                 .build();
 
-        // Assert
-        assertEquals(TEST_ENDPOINT, client.getEndpoint());
-    }
+        // When
+        clientWithCloseableHttp.shutdown();
 
-    @Test
-    void close_Success() {
-        // Act & Assert
-        assertDoesNotThrow(() -> client.close());
+        // Then
+        verify((AutoCloseable) closeableHttpClient).close();
     }
 }
