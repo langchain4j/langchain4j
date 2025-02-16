@@ -210,7 +210,7 @@
         </profile>
         <profile>
             <id>openrewrite</id>
-            <!-- `mvn -P openrewrite rewrite:run` -->
+            <!-- `mvn -Popenrewrite -Dspotless.check.skip=true org.openrewrite.maven:rewrite-maven-plugin:run` -->
             <build>
                 <plugins>
                     <plugin>
