@@ -19,7 +19,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
-public class LocalAzureBlobStorageDocumentLoaderIT {
+class LocalAzureBlobStorageDocumentLoaderIT {
 
     private static final int AZURE_STORAGE_BLOB_PORT = 10000;
 
@@ -39,7 +39,7 @@ public class LocalAzureBlobStorageDocumentLoaderIT {
     private final DocumentParser parser = new TextDocumentParser();
 
     @BeforeAll
-    public static void beforeAll() {
+    static void beforeAll() {
         String azuriteHost = azurite.getHost();
         int azuriteBlobMappedPort = azurite.getMappedPort(AZURE_STORAGE_BLOB_PORT);
         String connectionString = String.format("DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://%s:%d/devstoreaccount1;",
@@ -56,7 +56,7 @@ public class LocalAzureBlobStorageDocumentLoaderIT {
     }
 
     @Test
-    public void should_load_single_document() {
+    void should_load_single_document() {
         AzureBlobStorageDocumentLoader loader = new AzureBlobStorageDocumentLoader(blobServiceClient);
         Document document = loader.loadDocument(TEST_CONTAINER, TEST_BLOB, parser);
 
@@ -66,7 +66,7 @@ public class LocalAzureBlobStorageDocumentLoaderIT {
     }
 
     @Test
-    public void should_load_multiple_documents() {
+    void should_load_multiple_documents() {
         AzureBlobStorageDocumentLoader loader = new AzureBlobStorageDocumentLoader(blobServiceClient);
         List<Document> documents = loader.loadDocuments(TEST_CONTAINER, parser);
 
@@ -82,7 +82,7 @@ public class LocalAzureBlobStorageDocumentLoaderIT {
     }
 
     @AfterAll
-    public static void afterAll() {
+    static void afterAll() {
         blobServiceClient.getBlobContainerClient(TEST_CONTAINER).delete();
     }
 }
