@@ -444,6 +444,7 @@ public class InternalOpenAiHelper {
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
         AssistantMessage assistantMessage = response.choices().get(0).message();
         String text = assistantMessage.content();
+        String reasoningContent = assistantMessage.reasoningContent();
 
         List<ToolCall> toolCalls = assistantMessage.toolCalls();
         if (!isNullOrEmpty(toolCalls)) {
@@ -453,7 +454,9 @@ public class InternalOpenAiHelper {
                     .collect(toList());
             return isNullOrBlank(text)
                     ? AiMessage.from(toolExecutionRequests)
-                    : AiMessage.from(text, toolExecutionRequests);
+                        : isNullOrEmpty(reasoningContent)
+                            ? AiMessage.from(text, toolExecutionRequests)
+                            : AiMessage.from(text, reasoningContent, toolExecutionRequests);
         }
 
         FunctionCall functionCall = assistantMessage.functionCall();
@@ -464,10 +467,11 @@ public class InternalOpenAiHelper {
                     .build();
             return isNullOrBlank(text)
                     ? AiMessage.from(toolExecutionRequest)
-                    : AiMessage.from(text, singletonList(toolExecutionRequest));
+                    : isNullOrEmpty(reasoningContent) ? AiMessage.from(text, singletonList(toolExecutionRequest))
+                        : AiMessage.from(text, reasoningContent, singletonList(toolExecutionRequest));
         }
 
-        return AiMessage.from(text);
+        return isNullOrEmpty(reasoningContent) ? AiMessage.from(text) : AiMessage.from(text, reasoningContent);
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ToolCall toolCall) {
