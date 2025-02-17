@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.chat.policy.RetryUtils.withRetry;
 
 @Experimental
 @Slf4j

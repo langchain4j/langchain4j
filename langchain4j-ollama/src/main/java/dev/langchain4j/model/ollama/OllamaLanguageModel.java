@@ -11,7 +11,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.chat.policy.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;

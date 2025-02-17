@@ -15,7 +15,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.chat.policy.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;

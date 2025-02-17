@@ -10,7 +10,7 @@ import lombok.Builder;
 
 import java.time.Duration;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.chat.policy.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;

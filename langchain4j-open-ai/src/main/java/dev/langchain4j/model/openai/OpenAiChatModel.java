@@ -3,8 +3,10 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.chat.policy.ExceptionMapper;
+import dev.langchain4j.model.chat.policy.InvocationPolicy;
+import dev.langchain4j.model.chat.policy.RetryUtils;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -26,8 +28,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.chat.policy.PolicyUtil.invokePolicy;
+import static dev.langchain4j.model.chat.policy.RetryUtils.DEFAULT_RETRY_POLICY;
+import static dev.langchain4j.model.chat.policy.RetryUtils.retryPolicyBuilder;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -51,7 +56,7 @@ import static java.util.Collections.emptyList;
 public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
-    private final Integer maxRetries;
+    private final InvocationPolicy invocationPolicy;
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
     private final String responseFormat;
@@ -63,7 +68,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final List<ChatModelListener> listeners;
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
-
         if ("demo".equals(builder.apiKey)) {
             // TODO remove before releasing 1.0.0
             throw new RuntimeException("""
@@ -85,7 +89,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
                 .build();
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+
+        this.invocationPolicy = builder.invocationPolicy();
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -196,31 +201,24 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
-        try {
-            ChatCompletionResponse openAiResponse = withRetry(() ->
-                    client.chatCompletion(openAiRequest).execute(), maxRetries);
+        // TODO [MF]: check how this works with the streaming API
+        ChatCompletionResponse openAiResponse = invokePolicy(invocationPolicy,
+                () -> client.chatCompletion(openAiRequest).execute());
 
-            OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
-                    .id(openAiResponse.id())
-                    .modelName(openAiResponse.model())
-                    .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
-                    .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
-                    .created(openAiResponse.created().longValue())
-                    .serviceTier(openAiResponse.serviceTier())
-                    .systemFingerprint(openAiResponse.systemFingerprint())
-                    .build();
+        OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
+                .id(openAiResponse.id())
+                .modelName(openAiResponse.model())
+                .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
+                .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
+                .created(openAiResponse.created().longValue())
+                .serviceTier(openAiResponse.serviceTier())
+                .systemFingerprint(openAiResponse.systemFingerprint())
+                .build();
 
-            return ChatResponse.builder()
-                    .aiMessage(aiMessageFrom(openAiResponse))
-                    .metadata(responseMetadata)
-                    .build();
-        } catch (RuntimeException e) {
-            if (e.getCause() instanceof HttpException httpException) {
-                throw httpException;
-            } else {
-                throw e;
-            }
-        }
+        return ChatResponse.builder()
+                .aiMessage(aiMessageFrom(openAiResponse))
+                .metadata(responseMetadata)
+                .build();
     }
 
     @Override
@@ -278,12 +276,14 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private Map<String, String> metadata;
         private String serviceTier;
         private Duration timeout;
-        private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
         private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
+
+        private RetryUtils.RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
+        private ExceptionMapper exceptionMapper = OpenAiExceptionMapper.INSTANCE;
 
         public OpenAiChatModelBuilder() {
             // This is public so it can be extended
@@ -426,7 +426,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         }
 
         public OpenAiChatModelBuilder maxRetries(Integer maxRetries) {
-            this.maxRetries = maxRetries;
+            retryPolicy = retryPolicyBuilder()
+                    .maxAttempts(maxRetries)
+                    .delayMillis(500)
+                    .jitterScale(0.2)
+                    .backoffExp(1.5)
+                    .build();
             return this;
         }
 
@@ -457,6 +462,44 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         public OpenAiChatModel build() {
             return new OpenAiChatModel(this);
+        }
+
+        private InvocationPolicy invocationPolicy() {
+            return this.exceptionMapper.andThen(this.retryPolicy);
+        }
+
+        @Override
+        public String toString() {
+            return new StringJoiner(", ", OpenAiChatModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("baseUrl='" + baseUrl + "'")
+                    .add("organizationId='" + organizationId + "'")
+                    .add("defaultRequestParameters='" + defaultRequestParameters + "'")
+                    .add("modelName='" + modelName + "'")
+                    .add("temperature=" + temperature)
+                    .add("topP=" + topP)
+                    .add("stop=" + stop)
+                    .add("maxTokens=" + maxTokens)
+                    .add("maxCompletionTokens=" + maxCompletionTokens)
+                    .add("presencePenalty=" + presencePenalty)
+                    .add("frequencyPenalty=" + frequencyPenalty)
+                    .add("logitBias=" + logitBias)
+                    .add("responseFormat='" + responseFormat + "'")
+                    .add("strictJsonSchema=" + strictJsonSchema)
+                    .add("seed=" + seed)
+                    .add("user='" + user + "'")
+                    .add("strictTools=" + strictTools)
+                    .add("parallelToolCalls=" + parallelToolCalls)
+                    .add("store=" + store)
+                    .add("metadata=" + metadata)
+                    .add("serviceTier=" + serviceTier)
+                    .add("timeout=" + timeout)
+                    .add("maxRetries=" + retryPolicy.maxAttempts())
+                    .add("logRequests=" + logRequests)
+                    .add("logResponses=" + logResponses)
+                    .add("tokenizer=" + tokenizer)
+                    .add("customHeaders=" + customHeaders)
+                    .add("listeners=" + listeners)
+                    .toString();
         }
     }
 }

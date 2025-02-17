@@ -1,5 +1,6 @@
-package dev.langchain4j.internal;
+package dev.langchain4j.model.chat.policy;
 
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +29,7 @@ public final class RetryUtils {
     /**
      * This class encapsulates a retry policy.
      */
-    public static final class RetryPolicy {
+    public static final class RetryPolicy implements InvocationPolicy {
         /**
          * This class encapsulates a retry policy builder.
          */
@@ -129,6 +130,10 @@ public final class RetryUtils {
             this.backoffExp = backoffExp;
         }
 
+        public int maxAttempts() {
+            return maxAttempts;
+        }
+
         /**
          * This method returns the raw delay in milliseconds for a given attempt.
          * @param attempt The attempt number.
@@ -175,6 +180,11 @@ public final class RetryUtils {
             return withRetry(action, maxAttempts);
         }
 
+        @Override
+        public Callable<?> apply(final Callable<?> action) {
+            return () -> withRetry(action);
+        }
+
         /**
          * This method attempts to execute a given action up to a specified number of times with a 1-second delay.
          * If the action fails on all attempts, it throws a RuntimeException.
@@ -192,7 +202,7 @@ public final class RetryUtils {
                     return action.call();
                 } catch (Exception e) {
                     if (attempt >= maxAttempts) {
-                        throw new RuntimeException(e);
+                        throw e instanceof RuntimeException re ? re : new RuntimeException(e);
                     }
 
                     log.warn(String.format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);

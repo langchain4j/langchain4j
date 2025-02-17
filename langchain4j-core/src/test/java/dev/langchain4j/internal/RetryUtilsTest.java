@@ -1,5 +1,6 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.model.chat.policy.RetryUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.Callable;

@@ -1,6 +1,6 @@
 package dev.langchain4j.model.jina;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.chat.policy.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;

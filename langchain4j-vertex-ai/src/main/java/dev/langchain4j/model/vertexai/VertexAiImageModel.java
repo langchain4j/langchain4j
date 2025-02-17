@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.internal.Json.toJson;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.chat.policy.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
