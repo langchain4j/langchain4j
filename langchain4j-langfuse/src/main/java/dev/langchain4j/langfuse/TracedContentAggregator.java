@@ -109,16 +109,6 @@ public class TracedContentAggregator implements ContentAggregator {
                 .average();
 
         stats.put("average_content_length", avgLength.orElse(0.0));
-
-        // collect metedata statistics
-        // Map<String, Integer> metadataKeys = contents.stream()
-        //         .flatMap(content -> content.metadata().keySet().stream())
-        //         .collect(Collectors.groupingBy(
-        //                 key -> key, Collectors.collectingAndThen(Collectors.counting(),
-        // Long::intValue)));
-
-        // stats.put("metadata_keys_frequency", metadataKeys);
-
         return stats;
     }
 
