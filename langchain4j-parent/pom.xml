@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -55,7 +55,6 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <openai4j.version>0.27.0</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.13</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
         <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
@@ -98,12 +97,6 @@
 
     <dependencyManagement>
         <dependencies>
-
-            <dependency>
-                <groupId>dev.ai4j</groupId>
-                <artifactId>openai4j</artifactId>
-                <version>${openai4j.version}</version>
-            </dependency>
 
             <dependency>
                 <groupId>com.azure</groupId>
