@@ -14,7 +14,7 @@ class JsonSchemaElementHelperTest {
     static class CustomClass {}
 
     @Test
-    void test_isCustomClass() {
+    void is_custom_class() {
 
         assertThat(JsonSchemaElementHelper.isCustomClass(CustomClass.class)).isTrue();
 

@@ -1,23 +1,22 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.agent.tool.ToolSpecifications;
-import dev.langchain4j.model.output.structured.Description;
-import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class FunctionMapperTest {
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
+import dev.langchain4j.model.output.structured.Description;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+class FunctionMapperTest {
 
     enum Projection {
         WGS84,
@@ -30,8 +29,10 @@ public class FunctionMapperTest {
     static class Coordinates {
         @Description("latitude")
         double latitude;
+
         @Description("latitude")
         double longitude;
+
         @Description("Geographic projection system used")
         Projection projection;
 
@@ -45,9 +46,7 @@ public class FunctionMapperTest {
     static class IssTool {
         @Tool("Get the distance between the user and the ISS.")
         int distanceBetween(
-                @P("user coordinates") Coordinates userCoordinates,
-                @P("ISS coordinates") Coordinates issCoordinates
-        ) {
+                @P("user coordinates") Coordinates userCoordinates, @P("ISS coordinates") Coordinates issCoordinates) {
             return 3456;
         }
     }
@@ -90,7 +89,8 @@ public class FunctionMapperTest {
         assertThat(userCoord.getProperties()).hasSize(3);
         assertThat(issCoord.getProperties()).hasSize(3);
 
-        assertThat(userCoord.getProperties().keySet()).containsAll(Arrays.asList("latitude", "longitude", "projection"));
+        assertThat(userCoord.getProperties().keySet())
+                .containsAll(Arrays.asList("latitude", "longitude", "projection"));
         assertThat(issCoord.getProperties().keySet()).containsAll(Arrays.asList("latitude", "longitude", "projection"));
     }
 
@@ -111,16 +111,15 @@ public class FunctionMapperTest {
         private final String lastname;
 
         private final Address shippingAddress;
-//        private final Address billingAddress;
+        //        private final Address billingAddress;
 
-        public Customer(String firstname, String lastname,
-                        Address shippingAddress
-//                        Address billingAddress
-        ) {
+        public Customer(String firstname, String lastname, Address shippingAddress
+                //                        Address billingAddress
+                ) {
             this.firstname = firstname;
             this.lastname = lastname;
             this.shippingAddress = shippingAddress;
-//            this.billingAddress = billingAddress;
+            //            this.billingAddress = billingAddress;
         }
     }
 
@@ -166,7 +165,7 @@ public class FunctionMapperTest {
     }
 
     @Test
-    void testComplexNestedGraph() {
+    void complexNestedGraph() {
         // given
         List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(OrderSystem.class);
         System.out.println("\ntoolSpecifications = " + toolSpecifications);
@@ -190,7 +189,8 @@ public class FunctionMapperTest {
         GeminiSchema orderSchema = props.get("order");
         assertThat(orderSchema.getType()).isEqualTo(GeminiType.OBJECT);
         assertThat(orderSchema.getProperties()).hasSize(3);
-        assertThat(orderSchema.getProperties().keySet()).containsAll(Arrays.asList("totalAmount", "lineItems", "customer"));
+        assertThat(orderSchema.getProperties().keySet())
+                .containsAll(Arrays.asList("totalAmount", "lineItems", "customer"));
 
         GeminiSchema totalAmount = orderSchema.getProperties().get("totalAmount");
         assertThat(totalAmount.getType()).isEqualTo(GeminiType.NUMBER);
@@ -211,7 +211,8 @@ public class FunctionMapperTest {
         GeminiSchema customer = orderSchema.getProperties().get("customer");
         assertThat(customer.getType()).isEqualTo(GeminiType.OBJECT);
         assertThat(customer.getProperties()).hasSize(3);
-        assertThat(customer.getProperties().keySet()).containsAll(Arrays.asList("firstname", "lastname", "shippingAddress"));
+        assertThat(customer.getProperties().keySet())
+                .containsAll(Arrays.asList("firstname", "lastname", "shippingAddress"));
 
         GeminiSchema shippingAddress = customer.getProperties().get("shippingAddress");
         assertThat(shippingAddress.getType()).isEqualTo(GeminiType.OBJECT);
@@ -220,7 +221,7 @@ public class FunctionMapperTest {
     }
 
     @Test
-    void testArray() {
+    void array() {
         // given
         ToolSpecification spec = ToolSpecification.builder()
                 .name("toolName")
@@ -255,8 +256,7 @@ public class FunctionMapperTest {
     }
 
     private static String withoutNullValues(String toString) {
-        return toString
-                .replaceAll("(, )?(?<=(, |\\())[^\\s(]+?=null(?:, )?", " ")
+        return toString.replaceAll("(, )?(?<=(, |\\())[^\\s(]+?=null(?:, )?", " ")
                 .replaceFirst(", \\)$", ")");
     }
 }

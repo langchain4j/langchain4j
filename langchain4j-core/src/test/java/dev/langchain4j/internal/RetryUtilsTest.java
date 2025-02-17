@@ -1,9 +1,5 @@
 package dev.langchain4j.internal;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.concurrent.Callable;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -12,15 +8,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.concurrent.Callable;
+import org.junit.jupiter.api.Test;
+
 class RetryUtilsTest {
     @Test
-    public void test_jitter() {
-        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(1))
-                .isEqualTo(500.0);
-        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(2))
-                .isEqualTo(750.0);
-        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(3))
-                .isEqualTo(1125.0);
+    void jitter() {
+        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(1)).isEqualTo(500.0);
+        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(2)).isEqualTo(750.0);
+        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(3)).isEqualTo(1125.0);
 
         for (int i = 0; i < 100; i++) {
             assertThat(RetryUtils.DEFAULT_RETRY_POLICY.jitterDelayMillis(3))
@@ -29,7 +25,7 @@ class RetryUtilsTest {
     }
 
     @Test
-    void test_withRetry_directly() throws Exception {
+    void with_retry_directly() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenReturn("Success");
@@ -42,7 +38,7 @@ class RetryUtilsTest {
     }
 
     @Test
-    void test_withRetry_noAttempts_directly() throws Exception {
+    void with_retry_no_attempts_directly() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenReturn("Success");
@@ -55,15 +51,12 @@ class RetryUtilsTest {
     }
 
     @Test
-    void testSuccessfulCall() throws Exception {
+    void successfulCall() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenReturn("Success");
 
-        String result = RetryUtils.retryPolicyBuilder()
-                .delayMillis(100)
-                .build()
-                .withRetry(mockAction, 3);
+        String result = RetryUtils.retryPolicyBuilder().delayMillis(100).build().withRetry(mockAction, 3);
 
         assertThat(result).isEqualTo("Success");
         verify(mockAction).call();
@@ -71,19 +64,14 @@ class RetryUtilsTest {
     }
 
     @Test
-    void testRetryThenSuccess() throws Exception {
+    void retryThenSuccess() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
-        when(mockAction.call())
-                .thenThrow(new RuntimeException())
-                .thenReturn("Success");
+        when(mockAction.call()).thenThrow(new RuntimeException()).thenReturn("Success");
 
         long startTime = System.currentTimeMillis();
 
-        String result = RetryUtils.retryPolicyBuilder()
-                .delayMillis(100)
-                .build()
-                .withRetry(mockAction, 3);
+        String result = RetryUtils.retryPolicyBuilder().delayMillis(100).build().withRetry(mockAction, 3);
 
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
@@ -96,49 +84,43 @@ class RetryUtilsTest {
     }
 
     @Test
-    void testMaxAttemptsReached() throws Exception {
+    void maxAttemptsReached() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenThrow(new RuntimeException());
 
-        RetryUtils.RetryPolicy policy = RetryUtils.retryPolicyBuilder()
-                .delayMillis(100)
-                .build();
+        RetryUtils.RetryPolicy policy =
+                RetryUtils.retryPolicyBuilder().delayMillis(100).build();
 
-        assertThatThrownBy(() -> policy.withRetry(mockAction, 3))
-                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> policy.withRetry(mockAction, 3)).isInstanceOf(RuntimeException.class);
         verify(mockAction, times(3)).call();
         verifyNoMoreInteractions(mockAction);
     }
 
     @Test
-    void testZeroAttemptsReached() throws Exception {
+    void zeroAttemptsReached() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenThrow(new RuntimeException());
 
-        RetryUtils.RetryPolicy policy = RetryUtils.retryPolicyBuilder()
-                .delayMillis(100)
-                .build();
+        RetryUtils.RetryPolicy policy =
+                RetryUtils.retryPolicyBuilder().delayMillis(100).build();
 
-        assertThatThrownBy(() -> policy.withRetry(mockAction, 0))
-                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> policy.withRetry(mockAction, 0)).isInstanceOf(RuntimeException.class);
         verify(mockAction, times(1)).call();
         verifyNoMoreInteractions(mockAction);
     }
 
     @Test
-    void testIllegalAttemptsReached() throws Exception {
+    void illegalAttemptsReached() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenThrow(new RuntimeException());
 
-        RetryUtils.RetryPolicy policy = RetryUtils.retryPolicyBuilder()
-                .delayMillis(100)
-                .build();
+        RetryUtils.RetryPolicy policy =
+                RetryUtils.retryPolicyBuilder().delayMillis(100).build();
 
-        assertThatThrownBy(() -> policy.withRetry(mockAction, -1))
-                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> policy.withRetry(mockAction, -1)).isInstanceOf(RuntimeException.class);
         verify(mockAction, times(1)).call();
         verifyNoMoreInteractions(mockAction);
     }

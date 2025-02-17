@@ -1,17 +1,17 @@
 package dev.langchain4j.model.vertexai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class VertexAiChatModelIT {
 
     @Test
-    void testChatModel() {
+    void chatModel() {
 
         VertexAiChatModel vertexAiChatModel = VertexAiChatModel.builder()
                 .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))

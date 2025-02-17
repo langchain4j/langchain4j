@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.oracle;
 
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.sql.*;
 import java.util.stream.Stream;
@@ -17,7 +17,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * Tests which verify all possible configurations of {@link OracleEmbeddingStore.Builder#vectorIndex(CreateOption)}
  */
-public class VectorIndexIT {
+class VectorIndexIT {
 
     /**
      * Verifies that the index is being create or not depending on the {@link CreateOption}
@@ -26,7 +26,7 @@ public class VectorIndexIT {
      */
     @ParameterizedTest
     @EnumSource(CreateOption.class)
-    public void testCreateOption(CreateOption createOption) throws SQLException {
+    void createOption(CreateOption createOption) throws SQLException {
         OracleEmbeddingStore oracleEmbeddingStore = newEmbeddingStoreBuilder()
                 .index(Index.ivfIndexBuilder().createOption(createOption).build())
                 .build();
@@ -51,7 +51,7 @@ public class VectorIndexIT {
      */
     @ParameterizedTest
     @MethodSource("createIndexArguments")
-    public void testCreateIndexOnStoreCreation(
+    void createIndexOnStoreCreation(
             int targetAccuracy,
             int degreeOfParallelism,
             int neighborPartitions,
@@ -118,7 +118,7 @@ public class VectorIndexIT {
      * @throws SQLException throws an exception if an unexpected error occurs.
      */
     @Test
-    public void testMetadataKeyAndVectorIndex() throws SQLException {
+    void metadataKeyAndVectorIndex() throws SQLException {
         try {
             Index jsonIndex = Index.jsonIndexBuilder()
                     .createOption(CreateOption.CREATE_OR_REPLACE)
@@ -159,7 +159,7 @@ public class VectorIndexIT {
      * @throws SQLException throws an exception if an unexpected error occurs.
      */
     @Test
-    public void testMetadataKeysIndex() throws SQLException {
+    void metadataKeysIndex() throws SQLException {
         try {
             Index jsonIndex = Index.jsonIndexBuilder()
                     .name("JSON_INDEX")
@@ -199,7 +199,7 @@ public class VectorIndexIT {
                 "012sdf",
                 "azertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiop"
             })
-    public void InvalidIndexNameTest(String indexName) throws Exception {
+    void InvalidIndexNameTest(String indexName) throws Exception {
         try {
             OracleEmbeddingStore.builder()
                     .dataSource(getDataSource())

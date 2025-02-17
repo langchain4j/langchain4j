@@ -21,6 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Spotless `ratchetFrom` requires `origin/main`: https://github.com/diffplug/spotless/issues/710
+          fetch-depth: 0
           ref: ${{github.event.pull_request.head.ref}}
           repository: ${{github.event.pull_request.head.repo.full_name}}
       - uses: actions/setup-java@v4
@@ -43,7 +45,7 @@ jobs:
       # Execute recipes
       - name: Apply OpenRewrite recipes
         run: |
-          mvn --activate-profiles openrewrite -Dspotless.check.skip=true rewrite:run
+          mvn --activate-profiles openrewrite -Dspotless.check.skip=true org.openrewrite.maven:rewrite-maven-plugin:run
 
       # Apply spotless
       - name: Apply Spotless

@@ -119,7 +119,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_1() {
+    void system_message_configuration_1() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -138,7 +138,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_2() {
+    void system_message_configuration_2() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -157,7 +157,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_3() {
+    void system_message_configuration_3() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -177,7 +177,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_4() {
+    void system_message_configuration_4() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -196,7 +196,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_5() {
+    void system_message_configuration_5() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -216,7 +216,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_6() {
+    void system_message_configuration_6() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -235,7 +235,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_7() {
+    void system_message_configuration_7() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -254,7 +254,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_8() {
+    void system_message_configuration_8() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -273,7 +273,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_9() {
+    void system_message_configuration_9() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -292,7 +292,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_10() {
+    void system_message_configuration_10() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -311,7 +311,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_11() {
+    void system_message_configuration_11() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -331,7 +331,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_12() {
+    void system_message_configuration_12() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -351,7 +351,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_13() {
+    void system_message_configuration_13() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -372,7 +372,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_14() {
+    void system_message_configuration_14() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -392,7 +392,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_15() {
+    void system_message_configuration_15() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -413,7 +413,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_16() {
+    void system_message_configuration_16() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -433,7 +433,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_17() {
+    void system_message_configuration_17() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -453,7 +453,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_18() {
+    void system_message_configuration_18() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -473,7 +473,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_19() {
+    void system_message_configuration_19() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -493,7 +493,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_20() {
+    void system_message_configuration_20() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -513,7 +513,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_21() {
+    void system_message_configuration_21() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -534,7 +534,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_illegal_system_message_configuration_1() {
+    void illegal_system_message_configuration_1() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -549,7 +549,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_illegal_system_message_configuration_2() {
+    void illegal_system_message_configuration_2() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)

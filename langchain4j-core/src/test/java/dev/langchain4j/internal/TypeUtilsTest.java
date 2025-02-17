@@ -9,10 +9,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-public class TypeUtilsTest {
+class TypeUtilsTest {
 
     @Test
-    void testStringIsJsonCompatible() {
+    void stringIsJsonCompatible() {
         assertThat(TypeUtils.isJsonString(char.class)).isTrue();
         assertThat(TypeUtils.isJsonString(String.class)).isTrue();
         assertThat(TypeUtils.isJsonString(Character.class)).isTrue();
@@ -23,7 +23,7 @@ public class TypeUtilsTest {
     }
 
     @Test
-    void testCollectionIsJsonCompatible() {
+    void collectionIsJsonCompatible() {
         assertThat(TypeUtils.isJsonArray(String[].class)).isTrue();
         assertThat(TypeUtils.isJsonArray(Integer[].class)).isTrue();
         assertThat(TypeUtils.isJsonArray(int[].class)).isTrue();

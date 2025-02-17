@@ -1,5 +1,9 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
@@ -9,18 +13,13 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockStreamingChatModelIT {
 
     @Test
-    void testBedrockAnthropicStreamingChatModel() {
-        //given
-        BedrockAnthropicStreamingChatModel bedrockChatModel = BedrockAnthropicStreamingChatModel
-                .builder()
+    void bedrockAnthropicStreamingChatModel() {
+        // given
+        BedrockAnthropicStreamingChatModel bedrockChatModel = BedrockAnthropicStreamingChatModel.builder()
                 .temperature(0.5)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -28,17 +27,17 @@ class BedrockStreamingChatModelIT {
                 .build();
         UserMessage userMessage = userMessage("What's the capital of Poland?");
 
-        //when
+        // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         bedrockChatModel.generate(singletonList(userMessage), handler);
         Response<AiMessage> response = handler.get();
 
-        //then
+        // then
         assertThat(response.content().text()).contains("Warsaw");
     }
 
     @Test
-    void testInjectClientToModelBuilder() {
+    void injectClientToModelBuilder() {
 
         String serviceName = "custom-service-name";
 
@@ -50,8 +49,7 @@ class BedrockStreamingChatModelIT {
                     }
 
                     @Override
-                    public void close() {
-                    }
+                    public void close() {}
                 })
                 .build();
 
