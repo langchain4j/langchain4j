@@ -225,7 +225,7 @@ public class InternalOpenAiOfficialTestHelper {
             models.add(AZURE_OPEN_AI_IMAGE_MODEL);
         }
         if (AZURE_OPEN_AI_IMAGE_MODEL_BASE64 != null) {
-            models.add(AZURE_OPEN_AI_IMAGE_MODEL_BASE64);
+            models.add(AZURE_OPEN_AI_IMAGE_MODEL);
         }
         if (OPEN_AI_IMAGE_MODEL != null) {
             models.add(OPEN_AI_IMAGE_MODEL);

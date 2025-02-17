@@ -29,7 +29,7 @@ public class OpenAiOfficialImageModelIT {
     @Test
     void should_generate_image_with_url() {
         for (ImageModel model : modelsUrl()) {
-            Response<Image> response = model.generate("A church turned into a coworking space in Paris, France");
+            Response<Image> response = model.generate("A cup of coffee on a table in Paris, France");
 
             Image image = response.content();
             assertThat(image).isNotNull();
