@@ -1,13 +1,13 @@
 package dev.langchain4j.store.embedding.filter.logical;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
+
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AndTest {
@@ -19,7 +19,7 @@ class AndTest {
     private Filter mockFilterFails;
 
     @Test
-    void testBothFiltersPass() {
+    void bothFiltersPass() {
         when(mockFilterPasses.test(any())).thenReturn(true);
 
         And andFilter = new And(mockFilterPasses, mockFilterPasses);
@@ -28,7 +28,7 @@ class AndTest {
     }
 
     @Test
-    void testLeftFilterFails() {
+    void leftFilterFails() {
         when(mockFilterFails.test(any())).thenReturn(false);
 
         And andFilter = new And(mockFilterFails, mockFilterPasses);
@@ -38,7 +38,7 @@ class AndTest {
     }
 
     @Test
-    void testRightFilterFails() {
+    void rightFilterFails() {
         when(mockFilterPasses.test(any())).thenReturn(true);
         when(mockFilterFails.test(any())).thenReturn(false);
 
@@ -48,7 +48,7 @@ class AndTest {
     }
 
     @Test
-    void testBothFiltersFail() {
+    void bothFiltersFail() {
         when(mockFilterFails.test(any())).thenReturn(false);
 
         And andFilter = new And(mockFilterFails, mockFilterFails);
@@ -57,13 +57,11 @@ class AndTest {
     }
 
     @Test
-    void testEqualsAndHashCode() {
+    void equalsAndHashCode() {
         And andFilter = new And(mockFilterPasses, mockFilterPasses);
         And sameAndFilter = new And(mockFilterPasses, mockFilterPasses);
 
-        assertThat(andFilter)
-            .isEqualTo(sameAndFilter)
-            .hasSameHashCodeAs(sameAndFilter);
+        assertThat(andFilter).isEqualTo(sameAndFilter).hasSameHashCodeAs(sameAndFilter);
     }
 
     @Test

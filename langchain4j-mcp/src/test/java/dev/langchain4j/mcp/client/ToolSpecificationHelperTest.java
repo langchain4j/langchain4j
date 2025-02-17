@@ -16,12 +16,12 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-public class ToolSpecificationHelperTest {
+class ToolSpecificationHelperTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
-    public void toolWithSimpleParams() throws JsonProcessingException {
+    void toolWithSimpleParams() throws JsonProcessingException {
         String text =
                 // language=json
                 """
@@ -108,7 +108,7 @@ public class ToolSpecificationHelperTest {
     }
 
     @Test
-    public void toolWithObjectParam() throws JsonProcessingException {
+    void toolWithObjectParam() throws JsonProcessingException {
         String text =
                 // language=json
                 """
@@ -165,7 +165,7 @@ public class ToolSpecificationHelperTest {
     }
 
     @Test
-    public void toolWithNoParams() throws JsonProcessingException {
+    void toolWithNoParams() throws JsonProcessingException {
         String text =
                 // language=json
                 """
@@ -187,6 +187,6 @@ public class ToolSpecificationHelperTest {
         assertThat(toolSpecification.name()).isEqualTo("getTinyImage");
         assertThat(toolSpecification.description()).isEqualTo("Returns the MCP_TINY_IMAGE");
         JsonObjectSchema parameters = toolSpecification.parameters();
-        assertThat(parameters.properties()).hasSize(0);
+        assertThat(parameters.properties()).isEmpty();
     }
 }

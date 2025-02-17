@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 
 import java.sql.SQLException;
@@ -9,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.mockito.AdditionalAnswers;
 
@@ -29,8 +29,8 @@ class JSONMetadataHandlerTest {
                 .build();
         JSONMetadataHandler jsonMetadataHandler =
                 new JSONMetadataHandler(metadataStorageConfig, Collections.emptyList());
-        Assert.assertThrows(
-                RuntimeException.class, () -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
 
         assertThat(sqlStatementQueries).isEmpty();
     }
@@ -49,8 +49,8 @@ class JSONMetadataHandlerTest {
                 .build();
         JSONMetadataHandler jsonMetadataHandler =
                 new JSONMetadataHandler(metadataStorageConfig, Collections.emptyList());
-        Assert.assertThrows(
-                RuntimeException.class, () -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
 
         assertThat(sqlStatementQueries).isEmpty();
     }
@@ -69,8 +69,8 @@ class JSONMetadataHandlerTest {
                 .build();
         JSONMetadataHandler jsonMetadataHandler =
                 new JSONMetadataHandler(metadataStorageConfig, Collections.emptyList());
-        Assert.assertThrows(
-                RuntimeException.class, () -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
 
         assertThat(sqlStatementQueries).isEmpty();
     }
