@@ -94,10 +94,11 @@ class MetadataTest {
         String toString = metadata.toString();
 
         // then
-        assertThat(toString).isEqualTo("Metadata { " +
-                "userMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, " +
-                "chatMemoryId = 42, " +
-                "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, AiMessage { text = \"Hi, how can I help you today?\" toolExecutionRequests = null }] " +
-                "}");
+        assertThat(toString)
+                .isEqualTo("Metadata { "
+                        + "userMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, "
+                        + "chatMemoryId = 42, "
+                        + "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, AiMessage { text = \"Hi, how can I help you today?\" reasoningContent = null toolExecutionRequests = null }] "
+                        + "}");
     }
 }

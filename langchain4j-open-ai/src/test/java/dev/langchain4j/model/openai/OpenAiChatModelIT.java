@@ -66,6 +66,16 @@ class OpenAiChatModelIT {
             .logResponses(true)
             .build();
 
+    OpenAiChatModel reasoningModel = OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
+            .apiKey(System.getenv("REASONING_MODEL_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName("deepseek-reasoner")
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
     @Test
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
@@ -77,6 +87,30 @@ class OpenAiChatModelIT {
 
         // then
         assertThat(response.content().text()).contains("Berlin");
+        assertThat(response.content().reasoningContent()).contains("Berlin");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "REASONING_MODEL_API_KEY", matches = ".+")
+    void should_generate_answer_and_reasoning_and_return_token_usage_and_finish_reason_stop() {
+
+        // given
+        UserMessage userMessage = userMessage("What is the capital of Germany?");
+
+        // when
+        Response<AiMessage> response = reasoningModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text()).contains("Berlin");
+        assertThat(response.content().reasoningContent()).contains("Berlin");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();

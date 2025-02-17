@@ -34,6 +34,8 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -47,6 +49,16 @@ class OpenAiStreamingChatModelIT {
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_O_MINI)
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+    OpenAiStreamingChatModel reasoningModel = OpenAiStreamingChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
+            .apiKey(System.getenv("REASONING_MODEL_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName("deepseek-reasoner")
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -89,6 +101,62 @@ class OpenAiStreamingChatModelIT {
 
         String answer = futureAnswer.get(30, SECONDS);
         Response<AiMessage> response = futureResponse.get(30, SECONDS);
+
+        assertThat(answer).contains("Berlin");
+        assertThat(response.content().text()).isEqualTo(answer);
+
+        assertTokenUsage(response.tokenUsage());
+
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "REASONING_MODEL_API_KEY", matches = ".+")
+    void should_stream_reasoning_and_answer() throws Exception {
+
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
+        CompletableFuture<String> futureReasoning = new CompletableFuture<>();
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        AtomicBoolean haveReasoning = new AtomicBoolean(false);
+
+        reasoningModel.generate("What is the capital of Germany?", new StreamingResponseHandler<AiMessage>() {
+
+            private final StringBuilder answerBuilder = new StringBuilder();
+            private final StringBuilder reasoningBuilder = new StringBuilder();
+
+            @Override
+            public void onNext(String token) {
+                answerBuilder.append(token);
+            }
+
+            @Override
+            public void onReasoning(String token) {
+                haveReasoning.set(true);
+                reasoningBuilder.append(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                futureAnswer.complete(answerBuilder.toString());
+                futureReasoning.complete(response.toString());
+                futureResponse.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureAnswer.completeExceptionally(error);
+                futureReasoning.completeExceptionally(error);
+                futureResponse.completeExceptionally(error);
+            }
+        });
+
+        String answer = futureAnswer.get(30, SECONDS);
+        String reasoning = futureReasoning.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+
+        if (haveReasoning.get()) {
+            assertThat(reasoning).contains("Germany");
+        }
 
         assertThat(answer).contains("Berlin");
         assertThat(response.content().text()).isEqualTo(answer);

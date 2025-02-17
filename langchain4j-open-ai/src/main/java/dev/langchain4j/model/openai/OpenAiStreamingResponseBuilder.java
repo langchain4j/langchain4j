@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
@@ -8,9 +11,6 @@ import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.shared.Usage;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -34,6 +34,7 @@ import static java.util.stream.Collectors.toList;
 public class OpenAiStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
+    private final StringBuffer reasoningContentBuilder = new StringBuffer();
 
     private final StringBuffer toolNameBuilder = new StringBuffer();
     private final StringBuffer toolArgumentsBuilder = new StringBuffer();
@@ -97,6 +98,11 @@ public class OpenAiStreamingResponseBuilder {
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
             this.contentBuilder.append(content);
+        }
+
+        String reasoningContent = delta.reasoningContent();
+        if (!isNullOrEmpty(reasoningContent)) {
+            this.reasoningContentBuilder.append(reasoningContent);
         }
 
         if (delta.functionCall() != null) {
@@ -178,6 +184,8 @@ public class OpenAiStreamingResponseBuilder {
 
         String text = contentBuilder.toString();
 
+        String reasoning = reasoningContentBuilder.toString();
+
         String toolName = toolNameBuilder.toString();
         if (!toolName.isEmpty()) {
             ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
@@ -185,9 +193,16 @@ public class OpenAiStreamingResponseBuilder {
                     .arguments(toolArgumentsBuilder.toString())
                     .build();
 
-            AiMessage aiMessage = isNullOrBlank(text) ?
-                    AiMessage.from(toolExecutionRequest) :
-                    AiMessage.from(text, singletonList(toolExecutionRequest));
+            AiMessage aiMessage;
+
+            if (isNullOrBlank(text)) {
+                aiMessage = AiMessage.from(toolExecutionRequest);
+            } else if (isNullOrBlank(reasoning)) {
+                aiMessage = AiMessage.from(text, singletonList(toolExecutionRequest));
+            } else {
+                aiMessage = AiMessage.from(text, reasoning, singletonList(toolExecutionRequest));
+            }
+
 
             return ChatResponse.builder()
                     .aiMessage(aiMessage)
@@ -204,9 +219,16 @@ public class OpenAiStreamingResponseBuilder {
                             .build())
                     .collect(toList());
 
-            AiMessage aiMessage = isNullOrBlank(text) ?
-                    AiMessage.from(toolExecutionRequests) :
-                    AiMessage.from(text, toolExecutionRequests);
+
+            AiMessage aiMessage;
+
+            if (isNullOrBlank(text)) {
+                aiMessage = AiMessage.from(toolExecutionRequests);
+            } else if (isNullOrBlank(reasoning)) {
+                aiMessage = AiMessage.from(text, toolExecutionRequests);
+            } else {
+                aiMessage = AiMessage.from(text, reasoning, toolExecutionRequests);
+            }
 
             return ChatResponse.builder()
                     .aiMessage(aiMessage)
@@ -215,7 +237,12 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         if (!isNullOrBlank(text)) {
-            AiMessage aiMessage = AiMessage.from(text);
+            AiMessage aiMessage;
+            if (isNullOrBlank(reasoning)) {
+                aiMessage = AiMessage.from(text);
+            } else {
+                aiMessage = AiMessage.from(text, reasoning);
+            }
             return ChatResponse.builder()
                     .aiMessage(aiMessage)
                     .metadata(chatResponseMetadata)

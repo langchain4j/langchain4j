@@ -444,6 +444,7 @@ public class InternalOpenAiHelper {
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
         AssistantMessage assistantMessage = response.choices().get(0).message();
         String text = assistantMessage.content();
+        String reasoningContent = assistantMessage.reasoningContent();
 
         List<ToolCall> toolCalls = assistantMessage.toolCalls();
         if (!isNullOrEmpty(toolCalls)) {
@@ -453,7 +454,7 @@ public class InternalOpenAiHelper {
                     .collect(toList());
             return isNullOrBlank(text)
                     ? AiMessage.from(toolExecutionRequests)
-                    : AiMessage.from(text, toolExecutionRequests);
+                    : AiMessage.from(text, reasoningContent, toolExecutionRequests);
         }
 
         FunctionCall functionCall = assistantMessage.functionCall();
@@ -464,10 +465,10 @@ public class InternalOpenAiHelper {
                     .build();
             return isNullOrBlank(text)
                     ? AiMessage.from(toolExecutionRequest)
-                    : AiMessage.from(text, singletonList(toolExecutionRequest));
+                    : AiMessage.from(text, reasoningContent, singletonList(toolExecutionRequest));
         }
 
-        return AiMessage.from(text);
+        return AiMessage.from(text, reasoningContent);
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ToolCall toolCall) {
@@ -509,19 +510,13 @@ public class InternalOpenAiHelper {
         if (openAiFinishReason == null) {
             return null;
         }
-        switch (openAiFinishReason) {
-            case "stop":
-                return STOP;
-            case "length":
-                return LENGTH;
-            case "tool_calls":
-            case "function_call":
-                return TOOL_EXECUTION;
-            case "content_filter":
-                return CONTENT_FILTER;
-            default:
-                return null;
-        }
+        return switch (openAiFinishReason) {
+            case "stop" -> STOP;
+            case "length" -> LENGTH;
+            case "tool_calls", "function_call" -> TOOL_EXECUTION;
+            case "content_filter" -> CONTENT_FILTER;
+            default -> null;
+        };
     }
 
     static dev.langchain4j.model.openai.internal.chat.ResponseFormat toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
@@ -577,6 +572,11 @@ public class InternalOpenAiHelper {
             @Override
             public void onPartialResponse(String partialResponse) {
                 handler.onNext(partialResponse);
+            }
+
+            @Override
+            public void onReasoningResponse(String reasoningContent) {
+                handler.onReasoning(reasoningContent);
             }
 
             @Override

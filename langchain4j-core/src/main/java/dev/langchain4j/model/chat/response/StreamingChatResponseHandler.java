@@ -21,6 +21,15 @@ public interface StreamingChatResponseHandler {
     void onPartialResponse(String partialResponse);
 
     /**
+     * Invoked each time the model generates a reasoning response (usually a single token) in a textual response.
+     * If the model decides to start answering, this method will not be invoked;
+     * {@link #onPartialResponse} will be invoked instead.
+     *
+     * @param reasoningContent The partial response (usually a single token), which is a part of the complete response.
+     */
+    default void onReasoningResponse(String reasoningContent) {};
+
+    /**
      * Invoked when the model has finished streaming a response.
      * If the model requests the execution of one or multiple tools,
      * this can be accessed via {@link ChatResponse#aiMessage()} -> {@link AiMessage#toolExecutionRequests()}.
