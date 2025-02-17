@@ -1,44 +1,23 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelIT.MODEL_NAME;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialTestHelper.MODEL_NAME;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
-
-    static final OpenAiOfficialStreamingChatModel OPEN_AI_OFFICIAL_STREAMING_CHAT_MODEL =
-            OpenAiOfficialStreamingChatModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                    .modelName(MODEL_NAME)
-                    .build();
-
-    static final OpenAiOfficialStreamingChatModel OPEN_AI_OFFICIAL_STREAMING_CHAT_MODEL_STRICT_SCHEMA =
-            OpenAiOfficialStreamingChatModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                    .modelName(MODEL_NAME)
-                    .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
-                    .strictJsonSchema(true)
-                    .build();
 
     @Override
     protected List<StreamingChatLanguageModel> models() {
-        return List.of(
-                // OPEN_AI_OFFICIAL_STREAMING_CHAT_MODEL, //TODO FIX this doesn't run reliably when generating JSON (as
-                // there is no schema)
-                OPEN_AI_OFFICIAL_STREAMING_CHAT_MODEL_STRICT_SCHEMA
-                // TODO Add a model using OpenAI (NOT Azure OpenAI)
-                );
+        return InternalOpenAiOfficialTestHelper.modelsStreamingNormalAndJsonStrict();
     }
 
     @Override

@@ -1,42 +1,23 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialTestHelper.MODEL_NAME;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
-
-    public static final ChatModel MODEL_NAME = ChatModel.GPT_4O_MINI;
-
-    static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL = OpenAiOfficialChatModel.builder()
-            .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .modelName(MODEL_NAME)
-            .build();
-
-    static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL_STRICT_SCHEMA = OpenAiOfficialChatModel.builder()
-            .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .modelName(MODEL_NAME)
-            .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
-            .strictJsonSchema(true)
-            .build();
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(
-                // OPEN_AI_CHAT_MODEL, //TODO FIX this doesn't run reliably when generating JSON (as there is no schema)
-                OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
-                // TODO Add a model using OpenAI (NOT Azure OpenAI)
-                );
+        return InternalOpenAiOfficialTestHelper.modelsNormalAndJsonStrict();
     }
 
     @Override
