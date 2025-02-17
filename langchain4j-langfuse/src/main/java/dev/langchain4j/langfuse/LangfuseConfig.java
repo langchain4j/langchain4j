@@ -1,9 +1,5 @@
 package dev.langchain4j.langfuse;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
-
 public class LangfuseConfig {
 
     private final String publicKey;
@@ -99,45 +95,6 @@ public class LangfuseConfig {
                 .build();
     }
 
-    public static LangfuseConfig fromProperties(String propertiesFileName) {
-        Properties props = loadProperties(propertiesFileName);
-
-        String publicKey = props.getProperty("langfuse.public.key");
-        String secretKey = props.getProperty("langfuse.secret.key");
-        String endpoint = props.getProperty("langfuse.endpoint");
-        boolean enabled = Boolean.parseBoolean(props.getProperty("langfuse.enabled", "false"));
-        int maxContentLength = Integer.parseInt(props.getProperty("langfuse.max.content.length", "1000"));
-        int batchSize = Integer.parseInt(props.getProperty("langfuse.batch.size", "20"));
-        long flushInterval = Long.parseLong(props.getProperty("langfuse.flush.interval", "5000"));
-
-        return LangfuseConfig.builder()
-                .publicKey(publicKey)
-                .secretKey(secretKey)
-                .endpoint(endpoint != null ? endpoint : "https://cloud.langfuse.com")
-                .enabled(enabled)
-                .maxContentLength(maxContentLength)
-                .batchSize(batchSize)
-                .flushInterval(flushInterval)
-                .build();
-    }
-
-    private static Properties loadProperties(String propertiesFileName) {
-        Properties props = new Properties();
-        try (InputStream input = LangfuseConfig.class.getClassLoader().getResourceAsStream(propertiesFileName)) {
-            if (input == null) {
-                throw new IllegalArgumentException("Unable to find " + propertiesFileName + " in classpath");
-            }
-            props.load(input);
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to load properties file: " + propertiesFileName, e);
-        }
-        return props;
-    }
-
-    public static LangfuseConfig defaultConfigFromProperties() {
-        return fromProperties("langfuse.properties");
-    }
-
     public static LangfuseConfig defaultConfigFromEnv() {
         return fromEnv();
     }
@@ -164,6 +121,10 @@ public class LangfuseConfig {
 
     public long getFlushInterval() {
         return flushInterval;
+    }
+
+    public int getMaxContentLength() {
+        return maxContentLength;
     }
 
     @Override

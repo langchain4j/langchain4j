@@ -1,30 +1,49 @@
-package dev.langchain4j.tracing.langfuse.examples;
+package dev.langchain4j.langfuse.examples;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.langfuse.DefaultLangfuseTracer; // Import DefaultLangfuseTracer
+import dev.langchain4j.langfuse.LangfuseConfig;
+import dev.langchain4j.langfuse.LangfuseTracer;
+import dev.langchain4j.langfuse.TracedChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.output.Response;
+import java.util.Collections;
+import java.util.List;
 
 public class LangfuseExample {
 
     public static void main(String[] args) {
-        // Create configuration
+        // 1. Configure Langfuse:
         LangfuseConfig config = LangfuseConfig.builder()
-                .publicKey("your-public-key")
-                .secretKey("your-secret-key")
+                .publicKey("your-public-key") // Replace with your actual public key
+                .secretKey("your-secret-key") // Replace with your actual secret key
+                .enabled(true) // Enable tracing
                 .build();
 
-        // Create factory
-        LangfuseFactory factory = new LangfuseFactory(config);
+        // 2. Create a Langfuse Tracer
+        LangfuseTracer tracer = new DefaultLangfuseTracer(config);
 
-        // Create and wrap chat model
-        ChatLanguageModel model = OpenAiChatModel.builder()
+        // 3. Create the TracedChatModel, passing in the tracer:
+        TracedChatModel tracedChatModel = new TracedChatModel(tracer);
+
+        // 4. Create the base ChatLanguageModel (e.g., OpenAI)
+        OpenAiChatModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .logRequests(true)
+                .logResponses(true)
+                .listeners(List.of(tracedChatModel))
                 .build();
 
-        ChatLanguageModel tracedModel = factory.withTracing(model);
+        // 6. Use the ChatLanguageModel as normal:
+        UserMessage userMessage = new UserMessage("Hello, tell me a joke."); // Create UserMessage object
+        List<ChatMessage> messages = Collections.singletonList(userMessage); // Wrap in a List
+        Response<AiMessage> response = model.generate(messages); // Use generate(List<ChatMessage>)
+        System.out.println("Response: " + response.content().text());
 
-        // Use the traced model
-        try (TracingContext context = factory.createContext("my-conversation")) {
-            tracedModel.generate(ChatMessage.userMessage("Hello!"));
-        }
+        // 7. Shutdown tracer when done.
+        tracer.shutdown();
     }
 }

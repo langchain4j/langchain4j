@@ -1,6 +1,7 @@
 package dev.langchain4j.langfuse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
@@ -19,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 public class LangfuseClient implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(LangfuseClient.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private final HttpClient httpClient;
     private final String endpoint;

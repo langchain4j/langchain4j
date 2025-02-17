@@ -85,6 +85,14 @@ public class Observation {
         return endTime;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public ObservationType getObservationType() {
+        return type;
+    }
+
     public static Builder builder() {
         return new Builder();
     }

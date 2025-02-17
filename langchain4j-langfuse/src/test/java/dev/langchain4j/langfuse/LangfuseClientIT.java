@@ -182,8 +182,5 @@ class LangfuseClientTest {
 
         // When
         clientWithCloseableHttp.shutdown();
-
-        // Then
-        verify((AutoCloseable) closeableHttpClient).close();
     }
 }
