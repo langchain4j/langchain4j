@@ -31,7 +31,6 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final OpenAIClient client;
     private final boolean useAzure;
     private final String modelName;
-    private final Tokenizer tokenizer;
     private final Integer dimensions;
     private final String user;
     private final Integer maxSegmentsPerBatch;
@@ -63,7 +62,6 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
                 builder.customHeaders);
         this.modelName = builder.modelName;
         this.dimensions = getOrDefault(builder.dimensions, knownDimension());
-        this.tokenizer = builder.tokenizer;
         this.user = builder.user;
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
@@ -160,7 +158,6 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Duration timeout;
         private Integer maxRetries;
         private Proxy proxy;
-        private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
 
         public Builder baseUrl(String baseUrl) {
@@ -235,11 +232,6 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public Builder proxy(Proxy proxy) {
             this.proxy = proxy;
-            return this;
-        }
-
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 
