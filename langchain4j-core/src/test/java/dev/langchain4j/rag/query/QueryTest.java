@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class QueryTest {
 
     @Test
-    void test_create() {
+    void create() {
 
         // given
         String queryText = "query";
@@ -24,7 +24,7 @@ class QueryTest {
     }
 
     @Test
-    void test_create_with_metadata() {
+    void create_with_metadata() {
 
         // given
         String queryText = "query";
@@ -43,7 +43,7 @@ class QueryTest {
     }
 
     @Test
-    void test_equals_hashCode() {
+    void equals_hashCode() {
 
         // given
         Metadata metadata1 = Metadata.from(
@@ -71,7 +71,7 @@ class QueryTest {
     }
 
     @Test
-    void test_toString() {
+    void to_string() {
 
         // given
         Metadata metadata = Metadata.from(

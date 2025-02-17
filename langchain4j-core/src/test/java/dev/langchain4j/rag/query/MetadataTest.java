@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class MetadataTest {
 
     @Test
-    void test_create() {
+    void create() {
 
         // given
         UserMessage userMessage = UserMessage.from("user message");
@@ -32,7 +32,7 @@ class MetadataTest {
     }
 
     @Test
-    void test_equals_hashCode() {
+    void equals_hash_code() {
 
         // given
         Metadata metadata1 = Metadata.from(
@@ -57,7 +57,7 @@ class MetadataTest {
     }
 
     @Test
-    void test_toString() {
+    void to_string() {
 
         // given
         Metadata metadata = Metadata.from(
