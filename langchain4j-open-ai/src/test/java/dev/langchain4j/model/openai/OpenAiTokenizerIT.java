@@ -1,6 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.chat.ChatCompletionModel;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -19,14 +18,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_0125;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_1106;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_0125_PREVIEW;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_1106_PREVIEW;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K_0613;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_TURBO_PREVIEW;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
@@ -37,6 +28,14 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0125;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_1106;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0125_PREVIEW;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIEW;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K_0613;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Collections.singletonList;
@@ -49,13 +48,13 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 class OpenAiTokenizerIT {
 
     // my API key does not have access to these models
-    private static final Set<ChatCompletionModel> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
+    private static final Set<OpenAiChatModelName> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
             GPT_3_5_TURBO_0125,
             GPT_4_32K,
             GPT_4_32K_0613
     ));
 
-    private static final Set<ChatCompletionModel> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
+    private static final Set<OpenAiChatModelName> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
             // TODO add GPT_3_5_TURBO once it points to GPT_3_5_TURBO_1106
             GPT_3_5_TURBO_1106,
             GPT_3_5_TURBO_0125,
@@ -66,13 +65,13 @@ class OpenAiTokenizerIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_count_tokens_in_messages(List<ChatMessage> messages, ChatCompletionModel modelName) {
+    void should_count_tokens_in_messages(List<ChatMessage> messages, OpenAiChatModelName modelName) {
 
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName.toString())
+                .modelName(modelName)
                 .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
@@ -90,7 +89,7 @@ class OpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_messages() {
-        return stream(ChatCompletionModel.values())
+        return stream(OpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .flatMap(model -> Stream.of(
                         arguments(singletonList(systemMessage("Be friendly.")), model),
@@ -131,13 +130,13 @@ class OpenAiTokenizerIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_count_tokens_in_messages_with_single_tool(List<ChatMessage> messages, ChatCompletionModel modelName) {
+    void should_count_tokens_in_messages_with_single_tool(List<ChatMessage> messages, OpenAiChatModelName modelName) {
 
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName.toString())
+                .modelName(modelName)
                 .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
@@ -155,7 +154,7 @@ class OpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_messages_with_single_tool() {
-        return stream(ChatCompletionModel.values())
+        return stream(OpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .flatMap(model -> Stream.of(
 
@@ -348,12 +347,12 @@ class OpenAiTokenizerIT {
     @ParameterizedTest
     @MethodSource
     void should_count_tokens_in_messages_with_multiple_tools(List<ChatMessage> messages,
-                                                             ChatCompletionModel modelName) {
+                                                             OpenAiChatModelName modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName.toString())
+                .modelName(modelName)
                 .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
@@ -371,7 +370,7 @@ class OpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_messages_with_multiple_tools() {
-        return stream(ChatCompletionModel.values())
+        return stream(OpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .filter(MODELS_WITH_PARALLEL_TOOL_SUPPORT::contains)
                 .flatMap(model -> Stream.of(
@@ -775,12 +774,12 @@ class OpenAiTokenizerIT {
     @ParameterizedTest
     @MethodSource
     void should_count_tokens_in_tool_specifications(List<ToolSpecification> toolSpecifications,
-                                                    ChatCompletionModel modelName) {
+                                                    OpenAiChatModelName modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName.toString())
+                .modelName(modelName)
                 .maxCompletionTokens(2) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
@@ -801,7 +800,7 @@ class OpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_tool_specifications() {
-        return stream(ChatCompletionModel.values())
+        return stream(OpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .flatMap(model -> Stream.of(
 
@@ -1055,12 +1054,12 @@ class OpenAiTokenizerIT {
     void should_count_tokens_in_tool_execution_request(UserMessage userMessage,
                                                        ToolSpecification toolSpecification,
                                                        ToolExecutionRequest expectedToolExecutionRequest,
-                                                       ChatCompletionModel modelName) {
+                                                       OpenAiChatModelName modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName.toString())
+                .modelName(modelName)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -1092,7 +1091,7 @@ class OpenAiTokenizerIT {
                 // TODO remove once they fix it
                 e.printStackTrace();
                 // there is some pattern to it, so we are going to check if this is really the case or our calculation is wrong
-                Tokenizer tokenizer2 = new OpenAiTokenizer(GPT_3_5_TURBO.toString());
+                Tokenizer tokenizer2 = new OpenAiTokenizer(GPT_3_5_TURBO);
                 int tokenCount2 = tokenizer2.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);
                 assertThat(tokenCount2).isEqualTo(expectedTokenCount - 3);
             } else {
@@ -1106,12 +1105,12 @@ class OpenAiTokenizerIT {
     void should_count_tokens_in_forceful_tool_specification_and_execution_request(UserMessage userMessage,
                                                                                   ToolSpecification toolSpecification,
                                                                                   ToolExecutionRequest expectedToolExecutionRequest,
-                                                                                  ChatCompletionModel modelName) {
+                                                                                  OpenAiChatModelName modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName.toString())
+                .modelName(modelName)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -1148,7 +1147,7 @@ class OpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_tool_execution_request() {
-        return stream(ChatCompletionModel.values())
+        return stream(OpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .flatMap(model -> Stream.of(
 
@@ -1329,12 +1328,12 @@ class OpenAiTokenizerIT {
     void should_count_tokens_in_multiple_tool_execution_requests(UserMessage userMessage,
                                                                  List<ToolSpecification> toolSpecifications,
                                                                  List<ToolExecutionRequest> expectedToolExecutionRequests,
-                                                                 ChatCompletionModel modelName) {
+                                                                 OpenAiChatModelName modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName.toString())
+                .modelName(modelName)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -1364,7 +1363,7 @@ class OpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_multiple_tool_execution_requests() {
-        return stream(ChatCompletionModel.values())
+        return stream(OpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .filter(MODELS_WITH_PARALLEL_TOOL_SUPPORT::contains)
                 .flatMap(model -> Stream.of(

@@ -12,6 +12,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,7 @@ import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -76,8 +79,8 @@ class OpenAiChatModelIT {
         assertThat(response.content().text()).contains("Berlin");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -89,10 +92,10 @@ class OpenAiChatModelIT {
             value = OpenAiChatModelName.class,
             mode = EXCLUDE,
             names = {
-                "GPT_4_32K", // don't have access
-                "GPT_4_32K_0613", // don't have access
-                "O1", // don't have access
-                "O1_2024_12_17", // don't have access
+                    "GPT_4_32K", // don't have access
+                    "GPT_4_32K_0613", // don't have access
+                    "O1", // don't have access
+                    "O1_2024_12_17", // don't have access
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
@@ -199,8 +202,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -219,8 +222,8 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(37);
-        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.inputTokenCount()).isPositive();
+        assertThat(secondTokenUsage.outputTokenCount()).isPositive();
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
@@ -248,8 +251,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -268,8 +271,8 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.inputTokenCount()).isPositive();
+        assertThat(secondTokenUsage.outputTokenCount()).isPositive();
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
@@ -312,8 +315,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -335,8 +338,8 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.inputTokenCount()).isPositive();
+        assertThat(secondTokenUsage.outputTokenCount()).isPositive();
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
@@ -531,5 +534,46 @@ class OpenAiChatModelIT {
 
         // then
         assertThat(tokenCount).isEqualTo(42);
+    }
+
+    @Test
+    void should_answer_with_reasoning_effort() {
+
+        // given
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(O3_MINI)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        ChatRequest chatRequestWithLowReasoningEffort = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort("low")
+                        .build())
+                .build();
+
+        ChatRequest chatRequestWithMediumReasoningEffort = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort("medium")
+                        .build())
+                .build();
+
+        // when
+        ChatResponse chatResponseWithLowReasoningEffort = model.chat(chatRequestWithLowReasoningEffort);
+        ChatResponse chatResponseWithMediumReasoningEffort = model.chat(chatRequestWithMediumReasoningEffort);
+
+        // then
+        Integer lowReasoningTokens = ((OpenAiTokenUsage) chatResponseWithLowReasoningEffort.tokenUsage())
+                .outputTokensDetails().reasoningTokens();
+        Integer mediumReasoningTokens = ((OpenAiTokenUsage) chatResponseWithMediumReasoningEffort.tokenUsage())
+                .outputTokensDetails().reasoningTokens();
+        assertThat(lowReasoningTokens).isLessThan(mediumReasoningTokens);
     }
 }

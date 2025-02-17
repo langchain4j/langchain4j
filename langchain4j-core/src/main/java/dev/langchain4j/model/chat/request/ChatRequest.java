@@ -55,12 +55,18 @@ public class ChatRequest {
         return parameters;
     }
 
-    // TODO deprecate
+    /**
+     * @deprecated please use {@link #parameters()} and then {@link ChatRequestParameters#toolSpecifications()} instead
+     */
+    @Deprecated(forRemoval = true)
     public List<ToolSpecification> toolSpecifications() {
         return parameters.toolSpecifications();
     }
 
-    // TODO deprecate
+    /**
+     * @deprecated please use {@link #parameters()} and then {@link ChatRequestParameters#responseFormat()} instead
+     */
+    @Deprecated(forRemoval = true)
     public ResponseFormat responseFormat() {
         return parameters.responseFormat();
     }
@@ -113,18 +119,27 @@ public class ChatRequest {
             return this;
         }
 
-        // TODO deprecate
+        /**
+         * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#toolSpecifications()} instead
+         */
+        @Deprecated(forRemoval = true)
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return this;
         }
 
-        // TODO deprecate
+        /**
+         * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#toolSpecifications()} instead
+         */
+        @Deprecated(forRemoval = true)
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
 
-        // TODO deprecate
+        /**
+         * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#responseFormat()} instead
+         */
+        @Deprecated(forRemoval = true)
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;

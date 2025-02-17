@@ -12,11 +12,11 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LocalAiStreamingChatModelIT extends AbstractLocalAiInfrastructure {
+class LocalAiStreamingChatModelIT {
 
     StreamingChatLanguageModel model = LocalAiStreamingChatModel.builder()
-            .baseUrl(localAi.getBaseUrl())
-            .modelName("ggml-gpt4all-j")
+            .baseUrl("http://localhost:8082/v1")
+            .modelName("gpt-4")
             .maxTokens(3)
             .logRequests(true)
             .logResponses(true)
@@ -32,7 +32,7 @@ class LocalAiStreamingChatModelIT extends AbstractLocalAiInfrastructure {
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
 
-        model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
+        model.generate(userMessage, new StreamingResponseHandler<>() {
 
             @Override
             public void onNext(String token) {
@@ -59,7 +59,7 @@ class LocalAiStreamingChatModelIT extends AbstractLocalAiInfrastructure {
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isEqualTo(streamedAnswer);
 
-        assertThat(response.tokenUsage()).isNull();
+        assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 }

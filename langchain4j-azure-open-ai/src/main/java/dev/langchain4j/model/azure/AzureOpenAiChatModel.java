@@ -422,10 +422,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             ToolSpecification toolThatMustBeExecuted,
             ResponseFormat responseFormat) {
         ChatCompletionsResponseFormat chatCompletionsResponseFormat = null;
-        if (this.chatCompletionsResponseFormat != null) {
-            chatCompletionsResponseFormat = this.chatCompletionsResponseFormat;
-        } else {
+        if (responseFormat != null) {
             chatCompletionsResponseFormat = toAzureOpenAiResponseFormat(responseFormat, this.strictJsonSchema);
+        } else {
+            chatCompletionsResponseFormat = this.chatCompletionsResponseFormat;
         }
         ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
                 .setModel(deploymentName)

@@ -14,7 +14,7 @@ class DefaultChatRequestParametersTest {
     void test_overrideWith() {
 
         // given
-        DefaultChatRequestParameters original = DefaultChatRequestParameters.builder()
+        ChatRequestParameters original = DefaultChatRequestParameters.builder()
                 .modelName("model-1")
                 .temperature(0.7)
                 .topP(0.8)
@@ -30,7 +30,7 @@ class DefaultChatRequestParametersTest {
                 .toolChoice(AUTO)
                 .build();
 
-        DefaultChatRequestParameters override = DefaultChatRequestParameters.builder()
+        ChatRequestParameters override = DefaultChatRequestParameters.builder()
                 .modelName("model-2")
                 .temperature(0.9)
                 .build();

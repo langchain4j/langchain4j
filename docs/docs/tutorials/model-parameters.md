@@ -35,8 +35,8 @@ with all other mandatory parameters set to sensible defaults.
 We can set every available parameter of the model using the builder pattern as follows:
 ```java
 OpenAiChatModel model = OpenAiChatModel.builder()
-        .apiKey("demo")
-        .modelName("gpt-4")
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
         .temperature(0.3)
         .timeout(ofSeconds(60))
         .logRequests(true)
