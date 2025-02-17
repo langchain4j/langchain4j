@@ -26,7 +26,7 @@ class MariaDbEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
     final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeAll
-    public static void beforeAll() {
+    static void beforeAll() {
         mariadbContainer.start();
     }
 

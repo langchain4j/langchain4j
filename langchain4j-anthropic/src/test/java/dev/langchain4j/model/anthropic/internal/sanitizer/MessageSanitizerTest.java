@@ -1,13 +1,12 @@
 package dev.langchain4j.model.anthropic.internal.sanitizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.*;
-import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class MessageSanitizerTest {
 
@@ -17,7 +16,7 @@ class MessageSanitizerTest {
     private static final String EXPECTED_SYSTEM_MESSAGE_CONTENT = "System message";
 
     @Test
-    void test_stripSystemMessage() {
+    void strip_system_message() {
         List<ChatMessage> messages = new ArrayList<>();
 
         messages.add(new SystemMessage(EXPECTED_SYSTEM_MESSAGE_CONTENT));
@@ -26,12 +25,12 @@ class MessageSanitizerTest {
         List<ChatMessage> sanitized = MessageSanitizer.sanitizeMessages(messages);
 
         assertThat(sanitized).hasSize(1);
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(EXPECTED_USER_MESSAGE_CONTENT);
     }
 
     @Test
-    void test_stripMultipleSystemMessages() {
+    void strip_multiple_system_messages() {
         List<ChatMessage> messages = new ArrayList<>();
 
         messages.add(new SystemMessage("System message 1"));
@@ -41,12 +40,12 @@ class MessageSanitizerTest {
         List<ChatMessage> sanitized = MessageSanitizer.sanitizeMessages(messages);
 
         assertThat(sanitized).hasSize(1);
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(EXPECTED_USER_MESSAGE_CONTENT);
     }
 
     @Test
-    void test_removeSinglePairOfConsecutiveUserMessages() {
+    void remove_single_pair_of_consecutive_user_messages() {
         List<ChatMessage> messages = new ArrayList<>();
         String userMessage2 = "User message 2";
         messages.add(new UserMessage(EXPECTED_USER_MESSAGE_CONTENT));
@@ -56,14 +55,14 @@ class MessageSanitizerTest {
         List<ChatMessage> sanitized = MessageSanitizer.sanitizeMessages(messages);
 
         assertThat(sanitized).hasSize(2);
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(EXPECTED_USER_MESSAGE_CONTENT);
-        assertInstanceOf(AiMessage.class, sanitized.get(1));
+        assertThat(sanitized.get(1)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) sanitized.get(1)).text()).isEqualTo(EXPECTED_AI_MESSAGE_CONTENT);
     }
 
     @Test
-    void test_removeMultiplePairsOfConsecutiveUserMessages() {
+    void remove_multiple_pairs_of_consecutive_user_messages() {
         List<ChatMessage> messages = new ArrayList<>();
         String userMessage1 = "User message 1";
         String userMessage2 = "User message 2";
@@ -82,10 +81,10 @@ class MessageSanitizerTest {
         List<ChatMessage> sanitized = MessageSanitizer.sanitizeMessages(messages);
 
         assertThat(sanitized).hasSize(4);
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
-        assertInstanceOf(AiMessage.class, sanitized.get(1));
-        assertInstanceOf(UserMessage.class, sanitized.get(2));
-        assertInstanceOf(AiMessage.class, sanitized.get(3));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
+        assertThat(sanitized.get(1)).isInstanceOf(AiMessage.class);
+        assertThat(sanitized.get(2)).isInstanceOf(UserMessage.class);
+        assertThat(sanitized.get(3)).isInstanceOf(AiMessage.class);
 
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(userMessage1);
         assertThat(((AiMessage) sanitized.get(1)).text()).isEqualTo(aiMessage1);
@@ -94,7 +93,7 @@ class MessageSanitizerTest {
     }
 
     @Test
-    void test_aiMessageAfterUserMessage() {
+    void ai_message_after_user_message() {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new UserMessage(EXPECTED_USER_MESSAGE_CONTENT));
         messages.add(new AiMessage(EXPECTED_AI_MESSAGE_CONTENT));
@@ -102,14 +101,14 @@ class MessageSanitizerTest {
         List<ChatMessage> sanitized = MessageSanitizer.sanitizeMessages(messages);
 
         assertThat(sanitized).hasSize(2);
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(EXPECTED_USER_MESSAGE_CONTENT);
-        assertInstanceOf(AiMessage.class, sanitized.get(1));
+        assertThat(sanitized.get(1)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) sanitized.get(1)).text()).isEqualTo(EXPECTED_AI_MESSAGE_CONTENT);
     }
 
     @Test
-    void test_firstMessageIsUserMessage_noChange() {
+    void first_message_is_user_message_no_change() {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new UserMessage(EXPECTED_USER_MESSAGE_CONTENT));
         messages.add(new AiMessage(EXPECTED_AI_MESSAGE_CONTENT));
@@ -117,14 +116,14 @@ class MessageSanitizerTest {
         List<ChatMessage> sanitized = MessageSanitizer.sanitizeMessages(messages);
 
         assertThat(sanitized).hasSize(2);
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(EXPECTED_USER_MESSAGE_CONTENT);
-        assertInstanceOf(AiMessage.class, sanitized.get(1));
+        assertThat(sanitized.get(1)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) sanitized.get(1)).text()).isEqualTo(EXPECTED_AI_MESSAGE_CONTENT);
     }
 
     @Test
-    void test_firstMessageIsSystemMessage() {
+    void first_message_is_system_message() {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new SystemMessage(EXPECTED_SYSTEM_MESSAGE_CONTENT));
         messages.add(new UserMessage(EXPECTED_USER_MESSAGE_CONTENT));
@@ -133,14 +132,14 @@ class MessageSanitizerTest {
         List<ChatMessage> sanitized = MessageSanitizer.sanitizeMessages(messages);
 
         assertThat(sanitized).hasSize(2);
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(EXPECTED_USER_MESSAGE_CONTENT);
-        assertInstanceOf(AiMessage.class, sanitized.get(1));
+        assertThat(sanitized.get(1)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) sanitized.get(1)).text()).isEqualTo(EXPECTED_AI_MESSAGE_CONTENT);
     }
 
     @Test
-    void test_firstMessageIsAiMessage() {
+    void first_message_is_ai_message() {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new AiMessage(EXPECTED_AI_MESSAGE_CONTENT));
         messages.add(new UserMessage(EXPECTED_USER_MESSAGE_CONTENT));
@@ -149,14 +148,14 @@ class MessageSanitizerTest {
         List<ChatMessage> sanitized = MessageSanitizer.sanitizeMessages(messages);
 
         assertThat(sanitized).hasSize(2);
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(EXPECTED_USER_MESSAGE_CONTENT);
-        assertInstanceOf(AiMessage.class, sanitized.get(1));
+        assertThat(sanitized.get(1)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) sanitized.get(1)).text()).isEqualTo(EXPECTED_AI_MESSAGE_CONTENT);
     }
 
     @Test
-    void test_invalidStartingMessageWithInvalidUserPair() {
+    void invalid_starting_message_with_invalid_user_pair() {
         List<ChatMessage> messages = new ArrayList<>();
         String userMessage1 = "User message 1";
         String userMessage2 = "User message 2";
@@ -168,14 +167,14 @@ class MessageSanitizerTest {
         List<ChatMessage> sanitized = MessageSanitizer.sanitizeMessages(messages);
 
         assertThat(sanitized).hasSize(2);
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(userMessage1);
-        assertInstanceOf(AiMessage.class, sanitized.get(1));
+        assertThat(sanitized.get(1)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) sanitized.get(1)).text()).isEqualTo(EXPECTED_AI_MESSAGE_CONTENT);
     }
 
     @Test
-    void test_toolExecutionMessages() {
+    void tool_execution_messages() {
         String expectedUserMessageContent = "What is the product of 2x2?";
         String expectedAiMessageAfterTool = "The answer for 2x2 is 4";
 
@@ -194,22 +193,23 @@ class MessageSanitizerTest {
 
         assertThat(sanitized).hasSize(4);
 
-        assertInstanceOf(UserMessage.class, sanitized.get(0));
+        assertThat(sanitized.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(expectedUserMessageContent);
 
-        assertInstanceOf(AiMessage.class, sanitized.get(1));
-        ToolExecutionRequest toolExecutionRequest = ((AiMessage) sanitized.get(1)).toolExecutionRequests().get(0);
+        assertThat(sanitized.get(1)).isInstanceOf(AiMessage.class);
+        ToolExecutionRequest toolExecutionRequest =
+                ((AiMessage) sanitized.get(1)).toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.id()).isEqualTo("12345");
         assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"first\": 2, \"second\": 2}");
 
-        assertInstanceOf(ToolExecutionResultMessage.class, sanitized.get(2));
+        assertThat(sanitized.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
         ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) sanitized.get(2);
         assertThat(toolExecutionResultMessage.id()).isEqualTo("12345");
         assertThat(toolExecutionResultMessage.toolName()).isEqualTo("calculator");
         assertThat(toolExecutionResultMessage.text()).isEqualTo("4");
 
-        assertInstanceOf(AiMessage.class, sanitized.get(3));
+        assertThat(sanitized.get(3)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) sanitized.get(3)).text()).isEqualTo(expectedAiMessageAfterTool);
     }
 }

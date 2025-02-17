@@ -77,7 +77,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_user_message_configuration_1() {
+    void user_message_configuration_1() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -91,7 +91,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_user_message_configuration_2() {
+    void user_message_configuration_2() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -106,7 +106,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_user_message_configuration_3() {
+    void user_message_configuration_3() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -121,7 +121,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_user_message_configuration_4() {
+    void user_message_configuration_4() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -135,7 +135,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_user_message_configuration_5() {
+    void user_message_configuration_5() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -149,7 +149,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_user_message_configuration_6() {
+    void user_message_configuration_6() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -163,7 +163,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_user_message_configuration_7() {
+    void user_message_configuration_7() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -177,7 +177,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_user_message_configuration_8() {
+    void user_message_configuration_8() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -191,7 +191,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_illegal_user_message_configuration_1() {
+    void illegal_user_message_configuration_1() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -205,7 +205,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_illegal_user_message_configuration_2() {
+    void illegal_user_message_configuration_2() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -219,7 +219,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_illegal_user_message_configuration_3() {
+    void illegal_user_message_configuration_3() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -234,7 +234,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_illegal_user_message_configuration_4() {
+    void illegal_user_message_configuration_4() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -249,7 +249,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_illegal_user_message_configuration_5() {
+    void illegal_user_message_configuration_5() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
@@ -263,7 +263,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void test_illegal_user_message_configuration_6() {
+    void illegal_user_message_configuration_6() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)

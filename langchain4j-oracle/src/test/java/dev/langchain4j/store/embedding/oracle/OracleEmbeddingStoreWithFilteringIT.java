@@ -58,7 +58,7 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
     }
 
     @AfterAll
-    public static void cleanUp() throws SQLException {
+    static void cleanUp() throws SQLException {
         CommonTestOperations.dropTable();
     }
 
@@ -66,7 +66,7 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
      * Verifies behavior when a TextSegment exceeds the maximum length of a VARCHAR.
      */
     @Test
-    public void testClobTextSegment() {
+    void clobTextSegment() {
         OracleEmbeddingStore oracleEmbeddingStore = CommonTestOperations.newEmbeddingStore();
 
         Embedding embedding0 = TestData.randomEmbedding();
