@@ -229,6 +229,16 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
         }
     }
 
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public String system() {
+        return "az.ai.inference";
+    }
+
     public static Builder builder() {
         for (GitHubModelsChatModelBuilderFactory factory : loadFactories(GitHubModelsChatModelBuilderFactory.class)) {
             return factory.get();

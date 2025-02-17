@@ -376,6 +376,16 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         }
     }
 
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public String system() {
+        return "gemini";
+    }
+
     public static VertexAiGeminiChatModelBuilder builder() {
         for (VertexAiGeminiChatModelBuilderFactory factory : loadFactories(VertexAiGeminiChatModelBuilderFactory.class)) {
             return factory.get();

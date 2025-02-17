@@ -7,7 +7,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 
 import java.util.Map;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -35,7 +34,7 @@ public class ChatModelErrorContext {
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.request = ChatModelRequest.fromChatRequest(chatRequest);
         this.partialResponse = null;
-        this.system = ensureNotBlank(system, "system");
+        this.system = system;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
@@ -68,7 +67,7 @@ public class ChatModelErrorContext {
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
         this.partialResponse = partialResponse;
-        this.system = ensureNotBlank(system, "system");
+        this.system = system;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 

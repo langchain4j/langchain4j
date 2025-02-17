@@ -296,6 +296,16 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         }
     }
 
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public String system() {
+        return "az.ai.inference";
+    }
+
     public static Builder builder() {
         for (GitHubModelsStreamingChatModelBuilderFactory factory : loadFactories(GitHubModelsStreamingChatModelBuilderFactory.class)) {
             return factory.get();

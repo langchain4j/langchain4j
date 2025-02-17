@@ -104,8 +104,8 @@ public interface StreamingChatLanguageModel {
     }
 
     /**
-     * The name of the GenAI system (LLM provider), can be used for observability purposes.
-     * By default, each {@link StreamingChatLanguageModel} implementation returns a predefined,
+     * The name of the GenAI system (LLM provider), used for observability purposes.
+     * Each {@link StreamingChatLanguageModel} implementation can return a predefined,
      * OpenTelemetry-compliant name that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
      * See more details
      * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.

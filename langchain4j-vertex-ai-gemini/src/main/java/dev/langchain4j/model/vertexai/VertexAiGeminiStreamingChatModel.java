@@ -322,6 +322,16 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         }
     }
 
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public String system() {
+        return "gemini";
+    }
+
     public static VertexAiGeminiStreamingChatModelBuilder builder() {
         for (VertexAiGeminiStreamingChatModelBuilderFactory factory : loadFactories(VertexAiGeminiStreamingChatModelBuilderFactory.class)) {
             return factory.get();
