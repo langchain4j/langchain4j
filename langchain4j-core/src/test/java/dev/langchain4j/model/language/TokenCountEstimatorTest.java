@@ -14,12 +14,12 @@ class TokenCountEstimatorTest implements WithAssertions {
     }
 
     @Test
-    public void test() {
+    void test() {
         TokenCountEstimator estimator = new WhitespaceSplitTokenCountEstimator();
 
         assertThat(estimator.estimateTokenCount("foo bar, baz")).isEqualTo(3);
         assertThat(estimator.estimateTokenCount(new Prompt("foo bar, baz"))).isEqualTo(3);
-        assertThat(estimator.estimateTokenCount(TextSegment.from("foo bar, baz"))).isEqualTo(3);
+        assertThat(estimator.estimateTokenCount(TextSegment.from("foo bar, baz")))
+                .isEqualTo(3);
     }
-
 }

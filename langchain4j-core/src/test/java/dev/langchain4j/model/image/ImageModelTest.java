@@ -2,10 +2,9 @@ package dev.langchain4j.model.image;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
+import java.net.URI;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-
-import java.net.URI;
 
 class ImageModelTest implements WithAssertions {
 
@@ -23,17 +22,17 @@ class ImageModelTest implements WithAssertions {
     }
 
     public static final Image PLACEHOLDER_IMAGE;
+
     static {
         try {
-        PLACEHOLDER_IMAGE =
-                Image.builder().url(new URI("https://foo.bar")).build();
+            PLACEHOLDER_IMAGE = Image.builder().url(new URI("https://foo.bar")).build();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     @Test
-    public void test_not_supported() {
+    void not_supported() {
         ImageModel model = new FixedImageModel(PLACEHOLDER_IMAGE);
 
         assertThatThrownBy(() -> model.generate("prompt", 1))
@@ -41,16 +40,16 @@ class ImageModelTest implements WithAssertions {
                 .hasMessage("Operation is not supported");
 
         assertThatThrownBy(() -> model.edit(null, "prompt"))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("Operation is not supported");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Operation is not supported");
 
         assertThatThrownBy(() -> model.edit(null, null, "prompt"))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("Operation is not supported");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Operation is not supported");
     }
 
     @Test
-    public void test_trivial() {
+    void trivial() {
         ImageModel model = new FixedImageModel(PLACEHOLDER_IMAGE);
         Response<Image> response = model.generate("prompt");
 

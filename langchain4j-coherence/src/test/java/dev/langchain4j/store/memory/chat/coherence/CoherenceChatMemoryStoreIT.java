@@ -1,5 +1,8 @@
 package dev.langchain4j.store.memory.chat.coherence;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.oracle.bedrock.junit.CoherenceClusterExtension;
 import com.oracle.bedrock.junit.SessionBuilders;
 import com.oracle.bedrock.runtime.coherence.CoherenceClusterMember;
@@ -18,17 +21,13 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.RegisterExtension;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CoherenceChatMemoryStoreIT {
 
@@ -37,15 +36,13 @@ class CoherenceChatMemoryStoreIT {
 
     @RegisterExtension
     static CoherenceClusterExtension cluster = new CoherenceClusterExtension()
-            .with(ClusterName.of("NamedMapEmbeddingRepositoryIT"),
+            .with(
+                    ClusterName.of("NamedMapEmbeddingRepositoryIT"),
                     WellKnownAddress.loopback(),
                     LocalHost.only(),
                     IPv4Preferred.autoDetect(),
                     SystemProperty.of("coherence.serializer", "pof"))
-            .include(3, CoherenceClusterMember.class,
-                    DisplayName.of("storage"),
-                    RoleName.of("storage"),
-                    testLogs);
+            .include(3, CoherenceClusterMember.class, DisplayName.of("storage"), RoleName.of("storage"), testLogs);
 
     static Session session;
 
@@ -54,7 +51,7 @@ class CoherenceChatMemoryStoreIT {
     private CoherenceChatMemoryStore memoryStore;
 
     @BeforeAll
-    public static void beforeAll() {
+    static void beforeAll() {
         session = cluster.buildSession(SessionBuilders.storageDisabledMember(RoleName.of("test")));
     }
 

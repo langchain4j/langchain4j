@@ -1,19 +1,6 @@
 package dev.langchain4j.http.client.sse;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -21,6 +8,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultServerSentEventParserTest {
@@ -36,17 +35,16 @@ class DefaultServerSentEventParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "data: Simple message",
-
-            "data: Simple message\n",
-            "\ndata: Simple message",
-            "\ndata: Simple message\n",
-
-            "\n\ndata: Simple message",
-            "data: Simple message\n\n",
-            "\n\ndata: Simple message\n\n",
-    })
+    @ValueSource(
+            strings = {
+                "data: Simple message",
+                "data: Simple message\n",
+                "\ndata: Simple message",
+                "\ndata: Simple message\n",
+                "\n\ndata: Simple message",
+                "data: Simple message\n\n",
+                "\n\ndata: Simple message\n\n",
+            })
     void shouldParseSimpleSingleLineEvent(String input) {
 
         // given
@@ -137,11 +135,11 @@ class DefaultServerSentEventParserTest {
         // given
         InputStream mockStream = mock(InputStream.class);
         IOException simulatedIoException = new IOException("Simulated IO exception");
-        try {
-            when(mockStream.read(any(byte[].class), anyInt(), anyInt())).thenThrow(simulatedIoException);
-        } catch (IOException e) {
-            fail("Mock setup failed", e);
-        }
+        Assertions.assertDoesNotThrow(
+                () -> {
+                    when(mockStream.read(any(byte[].class), anyInt(), anyInt())).thenThrow(simulatedIoException);
+                },
+                "Mock setup failed");
 
         // when
         parser.parse(mockStream, listener);

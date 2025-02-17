@@ -1,5 +1,13 @@
 package dev.langchain4j.chain;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyList;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -14,6 +22,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.injector.DefaultContentInjector;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.retriever.Retriever;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,16 +31,6 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
-
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyList;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ConversationalRetrievalChainTest {
@@ -63,10 +62,7 @@ class ConversationalRetrievalChainTest {
     void should_inject_retrieved_segments() {
 
         // given
-        when(contentRetriever.retrieve(any())).thenReturn(asList(
-                Content.from("Segment 1"),
-                Content.from("Segment 2")
-        ));
+        when(contentRetriever.retrieve(any())).thenReturn(asList(Content.from("Segment 1"), Content.from("Segment 2")));
 
         ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
                 .chatLanguageModel(chatLanguageModel)
@@ -82,31 +78,19 @@ class ConversationalRetrievalChainTest {
 
         verify(chatLanguageModel).generate(messagesCaptor.capture());
         UserMessage expectedUserMessage = UserMessage.from(
-                "query\n" +
-                        "\n" +
-                        "Answer using the following information:\n" +
-                        "Segment 1\n" +
-                        "\n" +
-                        "Segment 2");
+                "query\n" + "\n" + "Answer using the following information:\n" + "Segment 1\n" + "\n" + "Segment 2");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
 
-        assertThat(chatMemory.messages()).containsExactly(
-                expectedUserMessage,
-                AiMessage.from(ANSWER)
-        );
+        assertThat(chatMemory.messages()).containsExactly(expectedUserMessage, AiMessage.from(ANSWER));
     }
 
     @Test
     void should_inject_retrieved_segments_using_custom_prompt_template() {
 
         // given
-        when(contentRetriever.retrieve(any())).thenReturn(asList(
-                Content.from("Segment 1"),
-                Content.from("Segment 2")
-        ));
+        when(contentRetriever.retrieve(any())).thenReturn(asList(Content.from("Segment 1"), Content.from("Segment 2")));
 
-        PromptTemplate promptTemplate = PromptTemplate.from(
-                "Answer '{{userMessage}}' using '{{contents}}'");
+        PromptTemplate promptTemplate = PromptTemplate.from("Answer '{{userMessage}}' using '{{contents}}'");
 
         ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
                 .chatLanguageModel(chatLanguageModel)
@@ -126,24 +110,18 @@ class ConversationalRetrievalChainTest {
         assertThat(answer).isEqualTo(ANSWER);
 
         verify(chatLanguageModel).generate(messagesCaptor.capture());
-        UserMessage expectedUserMessage = UserMessage.from(
-                "Answer 'query' using 'Segment 1\n\nSegment 2'");
+        UserMessage expectedUserMessage = UserMessage.from("Answer 'query' using 'Segment 1\n\nSegment 2'");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
 
-        assertThat(chatMemory.messages()).containsExactly(
-                expectedUserMessage,
-                AiMessage.from(ANSWER)
-        );
+        assertThat(chatMemory.messages()).containsExactly(expectedUserMessage, AiMessage.from(ANSWER));
     }
 
     @Test
-    void test_backward_compatibility_should_inject_retrieved_segments() {
+    void backward_compatibility_should_inject_retrieved_segments() {
 
         // given
-        when(retriever.findRelevant(QUERY)).thenReturn(asList(
-                TextSegment.from("Segment 1"),
-                TextSegment.from("Segment 2")
-        ));
+        when(retriever.findRelevant(QUERY))
+                .thenReturn(asList(TextSegment.from("Segment 1"), TextSegment.from("Segment 2")));
         when(retriever.toContentRetriever()).thenCallRealMethod();
 
         ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
@@ -159,29 +137,23 @@ class ConversationalRetrievalChainTest {
         assertThat(answer).isEqualTo(ANSWER);
 
         verify(chatLanguageModel).generate(messagesCaptor.capture());
-        UserMessage expectedUserMessage = UserMessage.from(
-                "Answer the following question to the best of your ability: query\n" +
-                        "\n" +
-                        "Base your answer on the following information:\n" +
-                        "Segment 1\n" +
-                        "\n" +
-                        "Segment 2");
+        UserMessage expectedUserMessage =
+                UserMessage.from("Answer the following question to the best of your ability: query\n" + "\n"
+                        + "Base your answer on the following information:\n"
+                        + "Segment 1\n"
+                        + "\n"
+                        + "Segment 2");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
 
-        assertThat(chatMemory.messages()).containsExactly(
-                expectedUserMessage,
-                AiMessage.from(ANSWER)
-        );
+        assertThat(chatMemory.messages()).containsExactly(expectedUserMessage, AiMessage.from(ANSWER));
     }
 
     @Test
-    void test_backward_compatibility_should_inject_retrieved_segments_using_custom_prompt_template() {
+    void backward_compatibility_should_inject_retrieved_segments_using_custom_prompt_template() {
 
         // given
-        when(retriever.findRelevant(QUERY)).thenReturn(asList(
-                TextSegment.from("Segment 1"),
-                TextSegment.from("Segment 2")
-        ));
+        when(retriever.findRelevant(QUERY))
+                .thenReturn(asList(TextSegment.from("Segment 1"), TextSegment.from("Segment 2")));
         when(retriever.toContentRetriever()).thenCallRealMethod();
 
         ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
@@ -198,13 +170,9 @@ class ConversationalRetrievalChainTest {
         assertThat(answer).isEqualTo(ANSWER);
 
         verify(chatLanguageModel).generate(messagesCaptor.capture());
-        UserMessage expectedUserMessage = UserMessage.from(
-                "Answer 'query' using 'Segment 1\n\nSegment 2'");
+        UserMessage expectedUserMessage = UserMessage.from("Answer 'query' using 'Segment 1\n\nSegment 2'");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
 
-        assertThat(chatMemory.messages()).containsExactly(
-                expectedUserMessage,
-                AiMessage.from(ANSWER)
-        );
+        assertThat(chatMemory.messages()).containsExactly(expectedUserMessage, AiMessage.from(ANSWER));
     }
 }
