@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -30,6 +31,7 @@ import java.util.Set;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
@@ -61,7 +63,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final Tokenizer tokenizer;
 
     private final List<ChatModelListener> listeners;
-    private final String system;
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
 
@@ -132,7 +133,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
 
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
-        this.system = getOrDefault(builder.system, "openai");
     }
 
     /**
@@ -231,8 +231,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public String system() {
-        return system;
+    public ModelProvider provider() {
+        return OPEN_AI;
     }
 
     @Override
@@ -291,7 +291,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
-        private String system;
 
         public OpenAiChatModelBuilder() {
             // This is public so it can be extended
@@ -460,11 +459,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         public OpenAiChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
-            return this;
-        }
-
-        public OpenAiChatModelBuilder system(String system) {
-            this.system = system;
             return this;
         }
 

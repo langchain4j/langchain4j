@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
@@ -26,8 +27,11 @@ class OllamaChatModelListenerUtils {
      * @param modelListenerRequest The {@link ChatModelRequest} containing the request details.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
-    static void onListenRequest(List<ChatModelListener> listeners, ChatModelRequest modelListenerRequest, String system, Map<Object, Object> attributes) {
-        ChatModelRequestContext context = new ChatModelRequestContext(modelListenerRequest, system, attributes);
+    static void onListenRequest(List<ChatModelListener> listeners,
+                                ChatModelRequest modelListenerRequest,
+                                ModelProvider modelProvider,
+                                Map<Object, Object> attributes) {
+        ChatModelRequestContext context = new ChatModelRequestContext(modelListenerRequest, modelProvider, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(context);
@@ -45,12 +49,16 @@ class OllamaChatModelListenerUtils {
      * @param modelListenerRequest The original {@link ChatModelRequest} associated with the response.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
-    static void onListenResponse(List<ChatModelListener> listeners, Response<AiMessage> response, ChatModelRequest modelListenerRequest, String system, Map<Object, Object> attributes) {
+    static void onListenResponse(List<ChatModelListener> listeners,
+                                 Response<AiMessage> response,
+                                 ChatModelRequest modelListenerRequest,
+                                 ModelProvider modelProvider,
+                                 Map<Object, Object> attributes) {
         ChatModelResponse modelListenerResponse = createModelListenerResponse(modelListenerRequest.model(), response);
         ChatModelResponseContext context = new ChatModelResponseContext(
                 modelListenerResponse,
                 modelListenerRequest,
-                system,
+                modelProvider,
                 attributes
         );
         listeners.forEach(listener -> {
@@ -71,13 +79,18 @@ class OllamaChatModelListenerUtils {
      * @param partialResponse      The partial {@link Response} containing cur response details.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
-    static void onListenError(List<ChatModelListener> listeners, Throwable error, ChatModelRequest modelListenerRequest, Response<AiMessage> partialResponse, String system, Map<Object, Object> attributes) {
+    static void onListenError(List<ChatModelListener> listeners,
+                              Throwable error,
+                              ChatModelRequest modelListenerRequest,
+                              Response<AiMessage> partialResponse,
+                              ModelProvider modelProvider,
+                              Map<Object, Object> attributes) {
         ChatModelResponse partialModelListenerResponse = createModelListenerResponse(modelListenerRequest.model(), partialResponse);
         ChatModelErrorContext context = new ChatModelErrorContext(
                 error,
                 modelListenerRequest,
                 partialModelListenerResponse,
-                system,
+                modelProvider,
                 attributes
         );
         listeners.forEach(listener -> {

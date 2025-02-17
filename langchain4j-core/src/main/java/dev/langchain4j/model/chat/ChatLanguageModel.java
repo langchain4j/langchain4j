@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -53,13 +54,13 @@ public interface ChatLanguageModel {
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-        ListenersUtil.onRequest(finalChatRequest, system(), attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, provider(), attributes, listeners);
         try {
             ChatResponse chatResponse = doChat(finalChatRequest);
-            ListenersUtil.onResponse(chatResponse, finalChatRequest, system(), attributes, listeners);
+            ListenersUtil.onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
             return chatResponse;
         } catch (Exception error) {
-            ListenersUtil.onError(error, finalChatRequest, system(), attributes, listeners);
+            ListenersUtil.onError(error, finalChatRequest, provider(), attributes, listeners);
             throw error;
         }
     }
@@ -101,13 +102,14 @@ public interface ChatLanguageModel {
     }
 
     /**
+     * TODO
      * The name of the GenAI system (LLM provider), used for observability purposes.
      * Each {@link ChatLanguageModel} implementation can return a predefined,
      * OpenTelemetry-compliant name that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
      * See more details
      * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.
      */
-    default String system() {
+    default ModelProvider provider() {
         return null;
     }
 

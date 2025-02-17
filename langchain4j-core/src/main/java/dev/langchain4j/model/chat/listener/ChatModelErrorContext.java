@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -23,23 +24,23 @@ public class ChatModelErrorContext {
     private final ChatModelRequest request;
     @Deprecated(forRemoval = true)
     private final ChatModelResponse partialResponse;
-    private final String system;
+    private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
     public ChatModelErrorContext(Throwable error,
                                  ChatRequest chatRequest,
-                                 String system,
+                                 ModelProvider modelProvider,
                                  Map<Object, Object> attributes) {
         this.error = ensureNotNull(error, "error");
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.request = ChatModelRequest.fromChatRequest(chatRequest);
         this.partialResponse = null;
-        this.system = system;
+        this.modelProvider = modelProvider;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
     /**
-     * @deprecated please use {@link #ChatModelErrorContext(Throwable, ChatRequest, String, Map)} instead
+     * @deprecated please use {@link #ChatModelErrorContext(Throwable, ChatRequest, ModelProvider, Map)} instead
      */
     @Deprecated(forRemoval = true)
     public ChatModelErrorContext(Throwable error,
@@ -50,24 +51,24 @@ public class ChatModelErrorContext {
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
         this.partialResponse = partialResponse;
-        this.system = null;
+        this.modelProvider = null;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
     /**
-     * @deprecated please use {@link #ChatModelErrorContext(Throwable, ChatRequest, String, Map)} instead
+     * @deprecated please use {@link #ChatModelErrorContext(Throwable, ChatRequest, ModelProvider, Map)} instead
      */
     @Deprecated(forRemoval = true)
     public ChatModelErrorContext(Throwable error,
                                  ChatModelRequest request,
                                  ChatModelResponse partialResponse,
-                                 String system,
+                                 ModelProvider modelProvider,
                                  Map<Object, Object> attributes) {
         this.error = ensureNotNull(error, "error");
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
         this.partialResponse = partialResponse;
-        this.system = system;
+        this.modelProvider = modelProvider;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
@@ -100,14 +101,18 @@ public class ChatModelErrorContext {
     }
 
     /**
-     * The name of the GenAI system (LLM provider). By default, each {@link ChatLanguageModel}
-     * and {@link StreamingChatLanguageModel} implementation returns a predefined, OpenTelemetry-compliant name
-     * that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
+     * TODO
+     * The name of the GenAI system (LLM provider).
+     * Each {@link ChatLanguageModel} and {@link StreamingChatLanguageModel} implementation can return a predefined,
+     * OpenTelemetry-compliant name that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
+     * <p>
+     * Please note that this method can return {@code null} in the future.
+     * <p>
      * See more details
      * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.
      */
-    public String system() {
-        return system;
+    public ModelProvider modelProvider() {
+        return modelProvider;
     }
 
     /**

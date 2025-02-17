@@ -3,6 +3,7 @@ package dev.langchain4j.model.azure;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createModelListenerRequest;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createModelListenerResponse;
@@ -29,6 +30,7 @@ import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
@@ -453,7 +455,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(
-                modelListenerRequest, system(), attributes);
+                modelListenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -472,7 +474,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             ChatModelResponse modelListenerResponse =
                     createModelListenerResponse(chatCompletions.getId(), options.getModel(), response);
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse, modelListenerRequest, system(), attributes);
+                    modelListenerResponse, modelListenerRequest, provider(), attributes);
             listeners.forEach(listener -> {
                 try {
                     listener.onResponse(responseContext);
@@ -485,7 +487,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         } catch (Exception exception) {
 
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    exception, modelListenerRequest, null, system(), attributes);
+                    exception, modelListenerRequest, null, provider(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -500,8 +502,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     }
 
     @Override
-    public String system() {
-        return "az.ai.openai";
+    public ModelProvider provider() {
+        return AZURE_OPEN_AI;
     }
 
     @Override

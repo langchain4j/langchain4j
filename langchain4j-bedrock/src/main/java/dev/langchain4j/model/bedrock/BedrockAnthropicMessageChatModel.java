@@ -146,7 +146,7 @@ public class BedrockAnthropicMessageChatModel
         ChatModelRequest modelListenerRequest =
                 createModelListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, system(), attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
 
         try {
             InvokeModelResponse invokeModelResponse =
@@ -160,7 +160,7 @@ public class BedrockAnthropicMessageChatModel
             ChatModelResponse modelListenerResponse =
                     createModelListenerResponse(result.getId(), result.getModel(), responseMessage);
             ChatModelResponseContext responseContext =
-                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, system(), attributes);
+                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, provider(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -172,7 +172,7 @@ public class BedrockAnthropicMessageChatModel
 
             return responseMessage;
         } catch (RuntimeException e) {
-            listenerErrorResponse(e, modelListenerRequest, system(), attributes);
+            listenerErrorResponse(e, modelListenerRequest, provider(), attributes);
             throw e;
         }
     }

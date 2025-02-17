@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
@@ -30,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
@@ -192,7 +194,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, system(), attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
 
         listeners.forEach(listener -> {
             try {
@@ -218,7 +220,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
                     modelListenerResponse,
                     modelListenerRequest,
-                    system(),
+                    provider(),
                     attributes
             );
 
@@ -239,7 +241,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
             ChatModelErrorContext errorContext = createErrorContext(
                     e,
                     modelListenerRequest,
-                    system(),
+                    provider(),
                     attributes
             );
 
@@ -262,7 +264,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public String system() {
-        return "anthropic";
+    public ModelProvider provider() {
+        return ANTHROPIC;
     }
 }

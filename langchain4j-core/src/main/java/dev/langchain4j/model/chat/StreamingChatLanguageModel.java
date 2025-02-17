@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
@@ -64,18 +65,18 @@ public interface StreamingChatLanguageModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                ListenersUtil.onResponse(completeResponse, finalChatRequest, system(), attributes, listeners);
+                ListenersUtil.onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ListenersUtil.onError(error, finalChatRequest, system(), attributes, listeners);
+                ListenersUtil.onError(error, finalChatRequest, provider(), attributes, listeners);
                 handler.onError(error);
             }
         };
 
-        ListenersUtil.onRequest(finalChatRequest, system(), attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, provider(), attributes, listeners);
         doChat(finalChatRequest, observingHandler);
     }
 
@@ -104,13 +105,14 @@ public interface StreamingChatLanguageModel {
     }
 
     /**
+     * TODO
      * The name of the GenAI system (LLM provider), used for observability purposes.
-     * Each {@link StreamingChatLanguageModel} implementation can return a predefined,
+     * Each {@link ChatLanguageModel} implementation can return a predefined,
      * OpenTelemetry-compliant name that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
      * See more details
      * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.
      */
-    default String system() {
+    default ModelProvider provider() {
         return null;
     }
 

@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -17,7 +18,7 @@ class InternalAnthropicHelper {
 
     static ChatModelErrorContext createErrorContext(Throwable e,
                                                     ChatModelRequest modelListenerRequest,
-                                                    String system,
+                                                    ModelProvider modelProvider,
                                                     Map<Object, Object> attributes) {
         Throwable error;
         if (e.getCause() instanceof AnthropicHttpException) {
@@ -30,7 +31,7 @@ class InternalAnthropicHelper {
                 error,
                 modelListenerRequest,
                 null,
-                system,
+                modelProvider,
                 attributes
         );
     }

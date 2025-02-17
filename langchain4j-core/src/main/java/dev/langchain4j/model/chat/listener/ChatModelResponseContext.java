@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -24,23 +25,23 @@ public class ChatModelResponseContext {
     private final ChatRequest chatRequest;
     @Deprecated(forRemoval = true)
     private final ChatModelRequest request;
-    private final String system;
+    private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
     public ChatModelResponseContext(ChatResponse chatResponse,
                                     ChatRequest chatRequest,
-                                    String system,
+                                    ModelProvider modelProvider,
                                     Map<Object, Object> attributes) {
         this.chatResponse = ensureNotNull(chatResponse, "chatResponse");
         this.response = ChatModelResponse.fromChatResponse(chatResponse);
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.request = ChatModelRequest.fromChatRequest(chatRequest);
-        this.system = system;
+        this.modelProvider = modelProvider;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
     /**
-     * @deprecated please use {@link #ChatModelResponseContext(ChatResponse, ChatRequest, String, Map)} instead
+     * @deprecated please use {@link #ChatModelResponseContext(ChatResponse, ChatRequest, ModelProvider, Map)} instead
      */
     @Deprecated(forRemoval = true)
     public ChatModelResponseContext(ChatModelResponse response,
@@ -50,23 +51,23 @@ public class ChatModelResponseContext {
         this.response = ensureNotNull(response, "response");
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
-        this.system = null;
+        this.modelProvider = null;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
     /**
-     * @deprecated please use {@link #ChatModelResponseContext(ChatResponse, ChatRequest, String, Map)} instead
+     * @deprecated please use {@link #ChatModelResponseContext(ChatResponse, ChatRequest, ModelProvider, Map)} instead
      */
     @Deprecated(forRemoval = true)
     public ChatModelResponseContext(ChatModelResponse response,
                                     ChatModelRequest request,
-                                    String system,
+                                    ModelProvider modelProvider,
                                     Map<Object, Object> attributes) {
         this.chatResponse = ChatModelResponse.toChatResponse(response);
         this.response = ensureNotNull(response, "response");
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
-        this.system = system;
+        this.modelProvider = modelProvider;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
@@ -95,14 +96,18 @@ public class ChatModelResponseContext {
     }
 
     /**
-     * The name of the GenAI system (LLM provider). By default, each {@link ChatLanguageModel}
-     * and {@link StreamingChatLanguageModel} implementation returns a predefined, OpenTelemetry-compliant name
-     * that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
+     * TODO
+     * The name of the GenAI system (LLM provider).
+     * Each {@link ChatLanguageModel} and {@link StreamingChatLanguageModel} implementation can return a predefined,
+     * OpenTelemetry-compliant name that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
+     * <p>
+     * Please note that this method can return {@code null} in the future.
+     * <p>
      * See more details
      * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.
      */
-    public String system() {
-        return system;
+    public ModelProvider modelProvider() {
+        return modelProvider;
     }
 
     /**

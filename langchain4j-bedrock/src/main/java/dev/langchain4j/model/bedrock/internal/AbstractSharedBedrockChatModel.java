@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
@@ -121,7 +122,7 @@ public abstract class AbstractSharedBedrockChatModel {
 
     protected void listenerErrorResponse(Throwable e,
                                          ChatModelRequest modelListenerRequest,
-                                         String system,
+                                         ModelProvider modelProvider,
                                          Map<Object, Object> attributes) {
         Throwable error;
         if (e.getCause() instanceof SdkClientException) {
@@ -134,7 +135,7 @@ public abstract class AbstractSharedBedrockChatModel {
                 error,
                 modelListenerRequest,
                 null,
-                system,
+                modelProvider,
                 attributes
         );
 

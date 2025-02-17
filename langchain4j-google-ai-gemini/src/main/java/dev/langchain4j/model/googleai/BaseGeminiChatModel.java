@@ -4,6 +4,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
@@ -164,7 +165,7 @@ abstract class BaseGeminiChatModel {
 
     protected void notifyListenersOnResponse(Response<AiMessage> response,
                                              ChatModelRequest request,
-                                             String system,
+                                             ModelProvider modelProvider,
                                              Map<Object, Object> attributes) {
         ChatModelResponse chatModelResponse = ChatModelResponse.builder()
             .model(request.model()) // TODO take actual model from response or return null?
@@ -173,7 +174,7 @@ abstract class BaseGeminiChatModel {
             .aiMessage(response.content())
             .build();
         ChatModelResponseContext context = new ChatModelResponseContext(
-            chatModelResponse, request, system, attributes);
+            chatModelResponse, request, modelProvider, attributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onResponse(context);
@@ -185,12 +186,12 @@ abstract class BaseGeminiChatModel {
 
     protected void notifyListenersOnError(Exception exception,
                                           ChatModelRequest request,
-                                          String system,
+                                          ModelProvider modelProvider,
                                           Map<Object, Object> attributes) {
         listeners.forEach((listener) -> {
             try {
                 ChatModelErrorContext context = new ChatModelErrorContext(
-                    exception, request, null, system, attributes);
+                    exception, request, null, modelProvider, attributes);
                 listener.onError(context);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener (onError)", e);

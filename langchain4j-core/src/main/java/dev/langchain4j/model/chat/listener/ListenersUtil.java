@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.listener;
 
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.slf4j.Logger;
@@ -16,13 +17,13 @@ public class ListenersUtil {
     }
 
     public static void onRequest(ChatRequest chatRequest,
-                                 String system,
+                                 ModelProvider modelProvider,
                                  Map<Object, Object> attributes,
                                  List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, system, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, modelProvider, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -35,13 +36,14 @@ public class ListenersUtil {
 
     public static void onResponse(ChatResponse chatResponse,
                                   ChatRequest chatRequest,
-                                  String system,
+                                  ModelProvider modelProvider,
                                   Map<Object, Object> attributes,
                                   List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
-        ChatModelResponseContext responseContext = new ChatModelResponseContext(chatResponse, chatRequest, system, attributes);
+        ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                chatResponse, chatRequest, modelProvider, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
@@ -54,13 +56,13 @@ public class ListenersUtil {
 
     public static void onError(Throwable error,
                                ChatRequest chatRequest,
-                               String system,
+                               ModelProvider modelProvider,
                                Map<Object, Object> attributes,
                                List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
-        ChatModelErrorContext errorContext = new ChatModelErrorContext(error, chatRequest, system, attributes);
+        ChatModelErrorContext errorContext = new ChatModelErrorContext(error, chatRequest, modelProvider, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);

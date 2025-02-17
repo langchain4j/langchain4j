@@ -8,8 +8,8 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
@@ -31,6 +31,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_GEMINI;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 
@@ -282,7 +283,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             .toolSpecifications(toolSpecifications)
             .build();
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, system(), listenerAttributes);
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, provider(), listenerAttributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onRequest(chatModelRequestContext);
@@ -299,7 +300,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             listeners.forEach((listener) -> {
                 try {
                     ChatModelErrorContext chatModelErrorContext =
-                        new ChatModelErrorContext(e, chatModelRequest, null, system(), listenerAttributes);
+                        new ChatModelErrorContext(e, chatModelRequest, null, provider(), listenerAttributes);
                     listener.onError(chatModelErrorContext);
                 } catch (Exception t) {
                     logger.warn("Exception while calling model listener (onError)", t);
@@ -348,7 +349,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             .aiMessage(aiMessage)
             .build();
         ChatModelResponseContext chatModelResponseContext = new ChatModelResponseContext(
-            chatModelResponse, chatModelRequest, system(), listenerAttributes);
+            chatModelResponse, chatModelRequest, provider(), listenerAttributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onResponse(chatModelResponseContext);
@@ -382,8 +383,8 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     }
 
     @Override
-    public String system() {
-        return "gemini";
+    public ModelProvider provider() {
+        return GOOGLE_GEMINI;
     }
 
     public static VertexAiGeminiChatModelBuilder builder() {

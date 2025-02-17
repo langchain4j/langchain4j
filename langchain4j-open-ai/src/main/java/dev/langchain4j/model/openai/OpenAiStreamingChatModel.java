@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -30,6 +31,7 @@ import java.util.Map;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
@@ -56,7 +58,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Tokenizer tokenizer;
 
     private final List<ChatModelListener> listeners;
-    private final String system;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
         this.client = OpenAiClient.builder()
@@ -116,7 +117,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
 
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
-        this.system = getOrDefault(builder.system, "openai");
     }
 
     /**
@@ -229,8 +229,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     @Override
-    public String system() {
-        return system;
+    public ModelProvider provider() {
+        return OPEN_AI;
     }
 
     @Override
@@ -288,7 +288,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
-        private String system;
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -452,11 +451,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         public OpenAiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
-            return this;
-        }
-
-        public OpenAiStreamingChatModelBuilder system(String system) {
-            this.system = system;
             return this;
         }
 
