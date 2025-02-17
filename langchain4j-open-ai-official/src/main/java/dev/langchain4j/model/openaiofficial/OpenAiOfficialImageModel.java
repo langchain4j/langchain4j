@@ -57,12 +57,12 @@ public class OpenAiOfficialImageModel implements ImageModel {
                 builder.customHeaders);
 
         this.modelName = builder.modelName;
-        this.size = getOrDefault(builder.size, ImageGenerateParams.Size._1024X1024);
-        this.quality = getOrDefault(builder.quality, ImageGenerateParams.Quality.STANDARD);
-        this.style = getOrDefault(builder.style, ImageGenerateParams.Style.NATURAL);
+        this.size = builder.size;
+        this.quality = builder.quality;
+        this.style = builder.style;
         this.user = builder.user;
         this.timeout = builder.timeout;
-        this.responseFormat = getOrDefault(builder.responseFormat, ImageGenerateParams.ResponseFormat.URL);
+        this.responseFormat = builder.responseFormat;
     }
 
     public String modelName() {
@@ -95,13 +95,21 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
     private ImageGenerateParams.Builder impageGenerateParamsBuilder(String prompt) {
         ImageGenerateParams.Builder builder = ImageGenerateParams.builder();
-        builder.model(modelName)
-                .prompt(prompt)
-                .size(size)
-                .quality(quality)
-                .style(style)
-                .responseFormat(responseFormat);
+        builder.model(modelName);
+        builder.prompt(prompt);
 
+        if (size != null) {
+            builder.size(size);
+        }
+        if (quality != null) {
+            builder.quality(quality);
+        }
+        if (style != null) {
+            builder.style(style);
+        }
+        if (responseFormat != null) {
+            builder.responseFormat(responseFormat);
+        }
         if (user != null) {
             builder.user(user);
         }
