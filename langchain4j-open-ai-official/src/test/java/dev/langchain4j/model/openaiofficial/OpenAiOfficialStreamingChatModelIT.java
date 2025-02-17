@@ -71,7 +71,7 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         // TODO fix
-        // gpt-4o-mini does not support base64-encoded images
+        // This cannot be tested  as it exceeds the token rate limit of the OpenAI S0 pricing tier
         return false;
     }
 

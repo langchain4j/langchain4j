@@ -291,15 +291,23 @@ class InternalOpenAiOfficialHelper {
                         .text(textContent.text())
                         .build()));
             } else if (content instanceof ImageContent imageContent) {
-                if (imageContent.image().url() == null) {
-                    throw new UnsupportedFeatureException(
-                            "Image URL is not present. " + "Base64 encoded images are not supported at the moment.");
-                }
                 ChatCompletionContentPartImage.ImageUrl.Builder imageUrlBuilder =
                         ChatCompletionContentPartImage.ImageUrl.builder();
-                parts.add(ChatCompletionContentPart.ofImageUrl(ChatCompletionContentPartImage.builder()
-                        .imageUrl(imageUrlBuilder.build())
-                        .build()));
+                if (imageContent.image().url() != null) {
+                    imageUrlBuilder.url(imageContent.image().url().toString());
+                    parts.add(ChatCompletionContentPart.ofImageUrl(ChatCompletionContentPartImage.builder()
+                            .imageUrl(imageUrlBuilder.build())
+                            .build()));
+                } else if (imageContent.image().base64Data() != null) {
+                    // The URL field can contain either a URL of the image or the base64 encoded image, as documented in
+                    // https://github.com/openai/openai-java/blob/e5b8e55762ecde475fa2de081b770d28537c9cd3/openai-java-core/src/main/kotlin/com/openai/models/ChatCompletionContentPartImage.kt#L130
+                    imageUrlBuilder.url(imageContent.image().base64Data());
+                    parts.add(ChatCompletionContentPart.ofImageUrl(ChatCompletionContentPartImage.builder()
+                            .imageUrl(imageUrlBuilder.build())
+                            .build()));
+                } else {
+                    throw new UnsupportedFeatureException("Image URL is not present.");
+                }
             } else if (content instanceof AudioContent audioContent) {
                 parts.add(ChatCompletionContentPart.ofInputAudio(ChatCompletionContentPartInputAudio.builder()
                         .inputAudio(ChatCompletionContentPartInputAudio.builder()
