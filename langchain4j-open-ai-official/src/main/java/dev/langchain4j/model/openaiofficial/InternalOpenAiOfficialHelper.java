@@ -301,7 +301,8 @@ class InternalOpenAiOfficialHelper {
                 } else if (imageContent.image().base64Data() != null) {
                     // The URL field can contain either a URL of the image or the base64 encoded image, as documented in
                     // https://github.com/openai/openai-java/blob/e5b8e55762ecde475fa2de081b770d28537c9cd3/openai-java-core/src/main/kotlin/com/openai/models/ChatCompletionContentPartImage.kt#L130
-                    imageUrlBuilder.url(imageContent.image().base64Data());
+                    imageUrlBuilder.url("data:" + imageContent.image().mimeType() + ";base64,"
+                            + imageContent.image().base64Data());
                     parts.add(ChatCompletionContentPart.ofImageUrl(ChatCompletionContentPartImage.builder()
                             .imageUrl(imageUrlBuilder.build())
                             .build()));

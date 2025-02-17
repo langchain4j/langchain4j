@@ -10,6 +10,6 @@ class OpenAiOfficialStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
 
     @Override
     protected List<StreamingChatLanguageModel> models() {
-        return InternalOpenAiOfficialTestHelper.modelsStreamingNormalAndJsonStrict();
+        return InternalOpenAiOfficialTestHelper.chatModelsStreamingNormalAndJsonStrict();
     }
 }

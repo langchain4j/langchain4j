@@ -10,7 +10,7 @@ class OpenAiOfficialAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return InternalOpenAiOfficialTestHelper.modelsNormalAndJsonStrict();
+        return InternalOpenAiOfficialTestHelper.chatModelsNormalAndJsonStrict();
     }
 
     @Override

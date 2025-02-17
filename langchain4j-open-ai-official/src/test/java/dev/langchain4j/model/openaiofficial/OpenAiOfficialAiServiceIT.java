@@ -10,6 +10,6 @@ class OpenAiOfficialAiServiceIT extends AbstractAiServiceIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return InternalOpenAiOfficialTestHelper.modelsNormalAndJsonStrict();
+        return InternalOpenAiOfficialTestHelper.chatModelsNormalAndJsonStrict();
     }
 }
