@@ -23,6 +23,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import java.net.Proxy;
 import java.time.Duration;
@@ -128,8 +129,13 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                         .created(chatCompletion.created());
 
         if (!chatCompletion.choices().isEmpty()) {
-            responseMetadataBuilder.finishReason(
-                    finishReasonFrom(chatCompletion.choices().get(0).finishReason()));
+            final ChatCompletion.Choice choice = chatCompletion.choices().get(0);
+            responseMetadataBuilder.finishReason(finishReasonFrom(choice.finishReason()));
+
+            if (choice.message().toolCalls().isPresent() && choice.finishReason().equals(ChatCompletion.Choice.FinishReason.STOP)) {
+                // When a tool is called, OpenAI returns a finish reason of "STOP", instead of "TOOL_CALLS"
+                responseMetadataBuilder.finishReason(FinishReason.TOOL_EXECUTION);
+            }
         }
         if (chatCompletion.usage().isPresent()) {
             responseMetadataBuilder.tokenUsage(

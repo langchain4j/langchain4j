@@ -46,13 +46,4 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         // With Azure OpenAI, the deployment name is part of the URL, changing the model name will not have any effect.
         return false;
     }
-
-    @Override
-    protected boolean assertFinishReason() {
-        // TODO fix
-        // The issue is in test should_force_LLM_to_execute_any_tool
-        // When executing a required tool,
-        // OpenAI returns a finish reason of "STOP" and not "TOOL_EXECUTION" as expected
-        return false;
-    }
 }
