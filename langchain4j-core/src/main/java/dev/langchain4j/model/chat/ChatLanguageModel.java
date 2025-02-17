@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Arrays.asList;
 
@@ -101,16 +102,8 @@ public interface ChatLanguageModel {
         return Collections.emptyList();
     }
 
-    /**
-     * TODO
-     * The name of the GenAI system (LLM provider), used for observability purposes.
-     * Each {@link ChatLanguageModel} implementation can return a predefined,
-     * OpenTelemetry-compliant name that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
-     * See more details
-     * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.
-     */
     default ModelProvider provider() {
-        return null;
+        return OTHER;
     }
 
     @Experimental

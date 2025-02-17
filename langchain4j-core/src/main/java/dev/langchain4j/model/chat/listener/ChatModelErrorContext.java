@@ -2,8 +2,6 @@ package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 
 import java.util.Map;
@@ -11,7 +9,8 @@ import java.util.Map;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * The error context. It contains the error, corresponding {@link ChatRequest} and attributes.
+ * The chat model error context.
+ * It contains the error, corresponding {@link ChatRequest} and attributes.
  * The attributes can be used to pass data between methods of a {@link ChatModelListener}
  * or between multiple {@link ChatModelListener}s.
  */
@@ -100,17 +99,6 @@ public class ChatModelErrorContext {
         return partialResponse;
     }
 
-    /**
-     * TODO
-     * The name of the GenAI system (LLM provider).
-     * Each {@link ChatLanguageModel} and {@link StreamingChatLanguageModel} implementation can return a predefined,
-     * OpenTelemetry-compliant name that can be directly used as the OpenTelemetry "gen_ai.system" attribute.
-     * <p>
-     * Please note that this method can return {@code null} in the future.
-     * <p>
-     * See more details
-     * <a href="https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/#gen-ai-system">here</a>.
-     */
     public ModelProvider modelProvider() {
         return modelProvider;
     }
