@@ -389,7 +389,7 @@ class DefaultRetrievalAugmentorTest {
         public UserMessage inject(List<Content> contents, UserMessage userMessage) {
             String joinedContents =
                     contents.stream().map(it -> it.textSegment().text()).collect(joining("\n"));
-            return UserMessage.from(userMessage.text() + "\n" + joinedContents);
+            return UserMessage.from(userMessage.singleText() + "\n" + joinedContents);
         }
     }
 }
