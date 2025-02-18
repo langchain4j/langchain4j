@@ -1,18 +1,17 @@
 package dev.langchain4j.internal;
 
-import com.google.gson.JsonSyntaxException;
-import org.assertj.core.api.WithAssertions;
-import org.assertj.core.data.MapEntry;
-import org.junit.jupiter.api.Test;
+import static java.util.Arrays.asList;
 
+import com.google.gson.JsonSyntaxException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-
-import static java.util.Arrays.asList;
+import org.assertj.core.api.WithAssertions;
+import org.assertj.core.data.MapEntry;
+import org.junit.jupiter.api.Test;
 
 class GsonJsonCodecTest implements WithAssertions {
     public static class Example {
@@ -29,8 +28,7 @@ class GsonJsonCodecTest implements WithAssertions {
             if (this == o) return true;
             if (!(o instanceof Example)) return false;
             Example example = (Example) o;
-            return age == example.age &&
-                    name.equals(example.name);
+            return age == example.age && name.equals(example.name);
         }
     }
 
@@ -47,9 +45,8 @@ class GsonJsonCodecTest implements WithAssertions {
         return sb.toString();
     }
 
-
     @Test
-    public void test() throws Exception {
+    void test() throws Exception {
         GsonJsonCodec codec = new GsonJsonCodec();
         Example example = new Example("John", 42);
         assertThat(codec.fromJson(codec.toJson(example), Example.class)).isEqualTo(example);
@@ -60,14 +57,13 @@ class GsonJsonCodecTest implements WithAssertions {
     }
 
     @Test
-    public void test_map() {
+    void map() {
         GsonJsonCodec codec = new GsonJsonCodec();
         {
             Map<Object, Object> expectedMap = new HashMap<>();
             expectedMap.put("a", "b");
 
-            assertThat(codec.toJson(expectedMap))
-                    .isEqualTo("{\n  \"a\": \"b\"\n}");
+            assertThat(codec.toJson(expectedMap)).isEqualTo("{\n  \"a\": \"b\"\n}");
 
             assertThat(codec.fromJson("{\"a\": \"b\"}", (Class<?>) expectedMap.getClass()))
                     .isEqualTo(expectedMap);
@@ -93,37 +89,30 @@ class GsonJsonCodecTest implements WithAssertions {
             if (this == o) return true;
             if (!(o instanceof DateExample)) return false;
             DateExample that = (DateExample) o;
-            return localDate.equals(that.localDate) &&
-                    localDateTime.equals(that.localDateTime);
+            return localDate.equals(that.localDate) && localDateTime.equals(that.localDateTime);
         }
     }
 
     @Test
-    public void test_datetime() {
+    void datetime() {
         GsonJsonCodec codec = new GsonJsonCodec();
-        DateExample example = new DateExample(
-                LocalDate.of(2019, 1, 1),
-                LocalDateTime.of(2019, 1, 1, 0, 0, 0)
-        );
+        DateExample example = new DateExample(LocalDate.of(2019, 1, 1), LocalDateTime.of(2019, 1, 1, 0, 0, 0));
 
-
-        assertThat(codec.toJson(example)).isEqualTo(
-                "{\n  \"localDate\": \"2019-01-01\",\n  \"localDateTime\": \"2019-01-01T00:00:00\"\n}");
+        assertThat(codec.toJson(example))
+                .isEqualTo("{\n  \"localDate\": \"2019-01-01\",\n  \"localDateTime\": \"2019-01-01T00:00:00\"\n}");
 
         assertThat(codec.fromJson(codec.toJson(example), DateExample.class)).isEqualTo(example);
     }
 
     @Test
-    public void test_broken() {
+    void broken() {
         GsonJsonCodec codec = new GsonJsonCodec();
-        assertThatExceptionOfType(JsonSyntaxException.class)
-                .isThrownBy(() -> codec.fromJson("abc", Integer.class));
+        assertThatExceptionOfType(JsonSyntaxException.class).isThrownBy(() -> codec.fromJson("abc", Integer.class));
 
-        assertThatExceptionOfType(ClassCastException.class)
-                .isThrownBy(() -> {
-                    try (InputStream ignored = codec.toInputStream("abc", Integer.class)) {
-                        fail("should not reach here");
-                    }
-                });
+        assertThatExceptionOfType(ClassCastException.class).isThrownBy(() -> {
+            try (InputStream ignored = codec.toInputStream("abc", Integer.class)) {
+                fail("should not reach here");
+            }
+        });
     }
 }

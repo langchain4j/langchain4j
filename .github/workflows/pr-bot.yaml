@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   pr-bot:
+    if: github.repository_owner == 'langchain4j'
     runs-on: ubuntu-latest
     steps:
       - name: PR Bot

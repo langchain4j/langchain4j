@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.mariadb;
 import java.util.Collections;
 import org.junit.jupiter.api.BeforeAll;
 
-public class MariaDbEmbeddingStoreWithJSONFilteringTest extends MariaDbEmbeddingStoreConfigTest {
+class MariaDbEmbeddingStoreWithJSONFilteringTest extends MariaDbEmbeddingStoreConfigTest {
     @BeforeAll
     static void beforeAllTests() {
         MetadataStorageConfig config = DefaultMetadataStorageConfig.builder()

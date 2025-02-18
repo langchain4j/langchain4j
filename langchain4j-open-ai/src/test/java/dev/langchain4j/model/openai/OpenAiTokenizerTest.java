@@ -1,8 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.chat.ChatCompletionModel;
-import dev.ai4j.openai4j.completion.CompletionModel;
-import dev.ai4j.openai4j.embedding.EmbeddingModel;
 import dev.langchain4j.model.Tokenizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -99,24 +96,10 @@ class OpenAiTokenizerTest {
 
     @ParameterizedTest
     @EnumSource(OpenAiChatModelName.class)
-    void should_support_all_model_names(OpenAiChatModelName modelName) {
+    void should_support_all_chat_model_names(OpenAiChatModelName modelName) {
 
         // given
         Tokenizer tokenizer = new OpenAiTokenizer(modelName);
-
-        // when
-        int tokenCount = tokenizer.estimateTokenCountInText("a");
-
-        // then
-        assertThat(tokenCount).isEqualTo(1);
-    }
-
-    @ParameterizedTest
-    @EnumSource(ChatCompletionModel.class)
-    void should_support_all_chat_models_from_openai4j(ChatCompletionModel model) {
-
-        // given
-        Tokenizer tokenizer = new OpenAiTokenizer(model.toString());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInText("a");
@@ -127,24 +110,10 @@ class OpenAiTokenizerTest {
 
     @ParameterizedTest
     @EnumSource(OpenAiEmbeddingModelName.class)
-    void should_support_all_embedding_models(OpenAiEmbeddingModelName modelName) {
+    void should_support_all_embedding_model_names(OpenAiEmbeddingModelName modelName) {
 
         // given
         Tokenizer tokenizer = new OpenAiTokenizer(modelName);
-
-        // when
-        int tokenCount = tokenizer.estimateTokenCountInText("a");
-
-        // then
-        assertThat(tokenCount).isEqualTo(1);
-    }
-
-    @ParameterizedTest
-    @EnumSource(EmbeddingModel.class)
-    void should_support_all_embedding_models_from_openai4j(EmbeddingModel model) {
-
-        // given
-        Tokenizer tokenizer = new OpenAiTokenizer(model.toString());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInText("a");
@@ -155,24 +124,10 @@ class OpenAiTokenizerTest {
 
     @ParameterizedTest
     @EnumSource(OpenAiLanguageModelName.class)
-    void should_support_all_language_models(OpenAiLanguageModelName modelName) {
+    void should_support_all_language_model_names(OpenAiLanguageModelName modelName) {
 
         // given
         Tokenizer tokenizer = new OpenAiTokenizer(modelName);
-
-        // when
-        int tokenCount = tokenizer.estimateTokenCountInText("a");
-
-        // then
-        assertThat(tokenCount).isEqualTo(1);
-    }
-
-    @ParameterizedTest
-    @EnumSource(CompletionModel.class)
-    void should_support_all_language_models_from_openai4j(CompletionModel model) {
-
-        // given
-        Tokenizer tokenizer = new OpenAiTokenizer(model.toString());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInText("a");

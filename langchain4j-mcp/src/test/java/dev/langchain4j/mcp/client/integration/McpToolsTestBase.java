@@ -29,7 +29,7 @@ public abstract class McpToolsTestBase {
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools.size()).isEqualTo(5);
+        assertThat(tools).hasSize(5);
 
         ToolSpecification echoString = findToolSpecificationByName(toolProviderResult, "echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");

@@ -10,7 +10,7 @@ class JdkHttpClientIT extends HttpClientIT {
     @Override
     protected List<HttpClient> clients() {
         return List.of(
-                new JdkHttpClientBuilder().build()
+                JdkHttpClient.builder().build()
         );
     }
 }

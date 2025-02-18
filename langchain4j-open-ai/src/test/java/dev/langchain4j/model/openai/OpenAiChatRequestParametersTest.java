@@ -1,19 +1,18 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import org.junit.jupiter.api.Test;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import java.util.HashMap;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
 class OpenAiChatRequestParametersTest {
 
     @Test
-    void test_overrideWith() {
+    void override_with() {
 
         // given
         Map<String, Integer> originalLogitBias = new HashMap<>();

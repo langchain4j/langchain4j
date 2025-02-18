@@ -1,12 +1,12 @@
 package dev.langchain4j.model;
 
+import static java.util.Arrays.asList;
+
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecifications;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-
-import static java.util.Arrays.asList;
 
 class TokenizerTest implements WithAssertions {
 
@@ -20,22 +20,20 @@ class TokenizerTest implements WithAssertions {
     }
 
     @Test
-    public void test_estimateTokenCountInTools() throws Exception {
+    void estimate_token_count_in_tools() throws Exception {
         ExampleTestTokenizer tokenizer = new ExampleTestTokenizer();
 
         ExampleTools exampleTools = new ExampleTools();
 
         // (Object)
-        assertThat(tokenizer.estimateTokenCountInTools(exampleTools))
-                .isEqualTo(6);
+        assertThat(tokenizer.estimateTokenCountInTools(exampleTools)).isEqualTo(6);
 
         // (Iterable<Object>)
         assertThat(tokenizer.estimateTokenCountInTools(asList(exampleTools, exampleTools)))
                 .isEqualTo(12);
 
         // (ToolExecutionRequest)
-        assertThat(tokenizer.estimateTokenCountInForcefulToolExecutionRequest(
-                ToolExecutionRequest.builder()
+        assertThat(tokenizer.estimateTokenCountInForcefulToolExecutionRequest(ToolExecutionRequest.builder()
                         .id("id")
                         .name("name")
                         .arguments("foo bar baz")
@@ -44,7 +42,7 @@ class TokenizerTest implements WithAssertions {
 
         // (ToolSpecification)
         assertThat(tokenizer.estimateTokenCountInForcefulToolSpecification(
-                ToolSpecifications.toolSpecificationFrom(ExampleTools.class.getMethod("launchRockets"))))
+                        ToolSpecifications.toolSpecificationFrom(ExampleTools.class.getMethod("launchRockets"))))
                 .isEqualTo(3);
     }
 }

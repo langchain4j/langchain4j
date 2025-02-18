@@ -1,43 +1,5 @@
 package dev.langchain4j.model.vertexai;
 
-import com.google.cloud.vertexai.VertexAI;
-import com.google.cloud.vertexai.api.GenerationConfig;
-import com.google.cloud.vertexai.api.Schema;
-import com.google.cloud.vertexai.api.Type;
-import com.google.cloud.vertexai.generativeai.GenerativeModel;
-import com.google.gson.Gson;
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.TokenStream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junitpioneer.jupiter.RetryingTest;
-
-import java.io.File;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Stream;
-
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -56,6 +18,43 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.google.cloud.vertexai.VertexAI;
+import com.google.cloud.vertexai.api.GenerationConfig;
+import com.google.cloud.vertexai.api.Schema;
+import com.google.cloud.vertexai.api.Type;
+import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import com.google.gson.Gson;
+import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.TokenStream;
+import java.io.File;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 class VertexAiGeminiStreamingChatModelIT {
 
@@ -84,7 +83,8 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(7);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount())
-                .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
+                .isEqualTo(response.tokenUsage().inputTokenCount()
+                        + response.tokenUsage().outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
@@ -104,51 +104,23 @@ class VertexAiGeminiStreamingChatModelIT {
 
     static Stream<Arguments> should_support_system_instructions() {
         return Stream.<Arguments>builder()
-                .add(Arguments.of(
-                        asList(
-                                SystemMessage.from("Translate in German"),
-                                UserMessage.from("I love apples")
-                        )
-                ))
-                .add(Arguments.of(
-                        asList(
-                                UserMessage.from("I love apples"),
-                                SystemMessage.from("Translate in German")
-                        )
-                ))
-                .add(Arguments.of(
-                        asList(
-                                SystemMessage.from("Translate in Italian"),
-                                UserMessage.from("I love apples"),
-                                SystemMessage.from("No, translate in German!")
-                        )
-                ))
-                .add(Arguments.of(
-                        asList(
-                                SystemMessage.from("Translate in German"),
-                                UserMessage.from(asList(
-                                        TextContent.from("I love apples"),
-                                        TextContent.from("I see apples")
-                                ))
-                        )
-                ))
-                .add(Arguments.of(
-                        asList(
-                                SystemMessage.from("Translate in German"),
-                                UserMessage.from(asList(
-                                        TextContent.from("I see apples"),
-                                        TextContent.from("I love apples")
-                                ))
-                        )
-                ))
-                .add(Arguments.of(
-                        asList(
-                                SystemMessage.from("Translate in German"),
-                                UserMessage.from("I see appels"),
-                                AiMessage.from("Ich sehe Äpfel"),
-                                UserMessage.from("I love apples")
-                        )
-                ))
+                .add(Arguments.of(asList(SystemMessage.from("Translate in German"), UserMessage.from("I love apples"))))
+                .add(Arguments.of(asList(UserMessage.from("I love apples"), SystemMessage.from("Translate in German"))))
+                .add(Arguments.of(asList(
+                        SystemMessage.from("Translate in Italian"),
+                        UserMessage.from("I love apples"),
+                        SystemMessage.from("No, translate in German!"))))
+                .add(Arguments.of(asList(
+                        SystemMessage.from("Translate in German"),
+                        UserMessage.from(asList(TextContent.from("I love apples"), TextContent.from("I see apples"))))))
+                .add(Arguments.of(asList(
+                        SystemMessage.from("Translate in German"),
+                        UserMessage.from(asList(TextContent.from("I see apples"), TextContent.from("I love apples"))))))
+                .add(Arguments.of(asList(
+                        SystemMessage.from("Translate in German"),
+                        UserMessage.from("I see appels"),
+                        AiMessage.from("Ich sehe Äpfel"),
+                        UserMessage.from("I love apples"))))
                 .build();
     }
 
@@ -176,7 +148,8 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(4);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(1);
         assertThat(response.tokenUsage().totalTokenCount())
-                .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
+                .isEqualTo(response.tokenUsage().inputTokenCount()
+                        + response.tokenUsage().outputTokenCount());
 
         assertThat(response.finishReason()).isIn(LENGTH, STOP);
     }
@@ -207,9 +180,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL),
-                TextContent.from("What do you see? Reply in one word.")
-        );
+                ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see? Reply in one word."));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -226,8 +197,7 @@ class VertexAiGeminiStreamingChatModelIT {
         // given
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
-                TextContent.from("What do you see? Reply in one word.")
-        );
+                TextContent.from("What do you see? Reply in one word."));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -244,9 +214,7 @@ class VertexAiGeminiStreamingChatModelIT {
         // given
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
-                TextContent.from("What do you see? Reply in one word.")
-        );
+                ImageContent.from(base64Data, "image/png"), TextContent.from("What do you see? Reply in one word."));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -264,8 +232,7 @@ class VertexAiGeminiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(DICE_IMAGE_URL),
-                TextContent.from("What do you see? Reply with one word per image.")
-        );
+                TextContent.from("What do you see? Reply with one word per image."));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -273,9 +240,7 @@ class VertexAiGeminiStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -285,8 +250,7 @@ class VertexAiGeminiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from("gs://langchain4j-test/cat.png"),
                 ImageContent.from("gs://langchain4j-test/dice.png"),
-                TextContent.from("What do you see? Reply with one word per image.")
-        );
+                TextContent.from("What do you see? Reply with one word per image."));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -294,9 +258,7 @@ class VertexAiGeminiStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -308,8 +270,7 @@ class VertexAiGeminiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(catBase64Data, "image/png"),
                 ImageContent.from(diceBase64Data, "image/png"),
-                TextContent.from("What do you see? Reply with one word per image.")
-        );
+                TextContent.from("What do you see? Reply with one word per image."));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -317,9 +278,7 @@ class VertexAiGeminiStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -330,8 +289,7 @@ class VertexAiGeminiStreamingChatModelIT {
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from("gs://langchain4j-test/dog.jpg"),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image.")
-        );
+                TextContent.from("What do you see? Reply with one word per image."));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -341,7 +299,7 @@ class VertexAiGeminiStreamingChatModelIT {
         // then
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
-//                .containsIgnoringCase("dog")  // sometimes model replies with "puppy" instead of "dog"
+                //                .containsIgnoringCase("dog")  // sometimes model replies with "puppy" instead of "dog"
                 .containsIgnoringCase("dice");
     }
 
@@ -358,7 +316,9 @@ class VertexAiGeminiStreamingChatModelIT {
         ToolSpecification weatherToolSpec = ToolSpecification.builder()
                 .name("getWeatherForecast")
                 .description("Get the weather forecast for a location")
-                .addParameter("location", JsonSchemaProperty.STRING,
+                .addParameter(
+                        "location",
+                        JsonSchemaProperty.STRING,
                         JsonSchemaProperty.description("the location to get the weather forecast for"))
                 .build();
 
@@ -374,7 +334,8 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
-        ToolExecutionRequest toolExecutionRequest = messageResponse.content().toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                messageResponse.content().toolExecutionRequests().get(0);
 
         assertThat(toolExecutionRequest.arguments()).contains("Paris");
         assertThat(toolExecutionRequest.name()).isEqualTo("getWeatherForecast");
@@ -382,8 +343,8 @@ class VertexAiGeminiStreamingChatModelIT {
         allMessages.add(messageResponse.content());
 
         // when (feeding the function return value back)
-        ToolExecutionResultMessage toolExecResMsg = ToolExecutionResultMessage.from(toolExecutionRequest,
-                "{\"location\":\"Paris\",\"forecast\":\"sunny\", \"temperature\": 20}");
+        ToolExecutionResultMessage toolExecResMsg = ToolExecutionResultMessage.from(
+                toolExecutionRequest, "{\"location\":\"Paris\",\"forecast\":\"sunny\", \"temperature\": 20}");
         allMessages.add(toolExecResMsg);
 
         handler = new TestStreamingResponseHandler<>();
@@ -408,8 +369,7 @@ class VertexAiGeminiStreamingChatModelIT {
     }
 
     interface StreamingStockAssistant {
-        @dev.langchain4j.service.SystemMessage(
-            "You MUST call `getStockInventory()` for stock inventory requests.")
+        @dev.langchain4j.service.SystemMessage("You MUST call `getStockInventory()` for stock inventory requests.")
         TokenStream chat(String msg);
     }
 
@@ -417,29 +377,30 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_work_with_parallel_function_calls() throws InterruptedException, ExecutionException, TimeoutException {
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-1.5-flash-001")
-            .logRequests(true)
-            .logResponses(true)
-            .temperature(0.0f)
-            .topK(1)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName("gemini-1.5-flash-001")
+                .logRequests(true)
+                .logResponses(true)
+                .temperature(0.0f)
+                .topK(1)
+                .build();
 
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         StreamingStockAssistant assistant = AiServices.builder(StreamingStockAssistant.class)
-            .streamingChatLanguageModel(model)
-            .chatMemory(chatMemory)
-            .tools(new StockInventory())
-            .build();
+                .streamingChatLanguageModel(model)
+                .chatMemory(chatMemory)
+                .tools(new StockInventory())
+                .build();
 
         // when
         CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
-        assistant.chat("Is there more stock of ABC or of XYZ?")
-            .onNext(System.out::println)
-            .onComplete(future::complete)
-            .onError(future::completeExceptionally)
-            .start();
+        assistant
+                .chat("Is there more stock of ABC or of XYZ?")
+                .onNext(System.out::println)
+                .onComplete(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
         Response<AiMessage> response = future.get(30, TimeUnit.SECONDS);
 
         // then
@@ -467,7 +428,6 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(aiMsg.toolExecutionRequests().get(0).arguments()).isEqualTo("{\"product\":\"ABC\"}");
         assertThat(aiMsg.toolExecutionRequests().get(1).name()).isEqualTo("getStockInventory");
         assertThat(aiMsg.toolExecutionRequests().get(1).arguments()).isEqualTo("{\"product\":\"XYZ\"}");
-
     }
 
     @Test
@@ -475,11 +435,11 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // given
         VertexAiGeminiStreamingChatModel modelWithSearch = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-1.5-flash-001")
-            .useGoogleSearch(true)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName("gemini-1.5-flash-001")
+                .useGoogleSearch(true)
+                .build();
 
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
 
@@ -495,14 +455,14 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // given
         VertexAiGeminiStreamingChatModel modelWithResponseMimeType = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-1.5-flash-001")
-            .responseMimeType("application/json")
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName("gemini-1.5-flash-001")
+                .responseMimeType("application/json")
+                .build();
 
-        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
-            "Before returning, tell me a joke."; // nudging it to say something additionally to json
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. "
+                + "Before returning, tell me a joke."; // nudging it to say something additionally to json
 
         String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
@@ -528,18 +488,17 @@ class VertexAiGeminiStreamingChatModelIT {
         safetySettings.put(HARM_CATEGORY_SEXUALLY_EXPLICIT, BLOCK_MEDIUM_AND_ABOVE);
 
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-1.5-flash-001")
-            .safetySettings(safetySettings)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName("gemini-1.5-flash-001")
+                .safetySettings(safetySettings)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
         // when
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            model.generate("You're a dumb bastard!!!", onNext(System.out::println));
-        });
+        Exception exception = assertThrows(
+                RuntimeException.class, () -> model.generate("You're a dumb bastard!!!", onNext(System.out::println)));
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -564,14 +523,14 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
-            .logResponses(true)
-            .responseMimeType("application/json")
-            .responseSchema(schema)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(GEMINI_1_5_PRO)
+                .logRequests(true)
+                .logResponses(true)
+                .responseMimeType("application/json")
+                .responseSchema(schema)
+                .build();
 
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(SystemMessage.from("Return a JSON object, as defined in the JSON schema."));
@@ -594,21 +553,21 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_honor_subset_of_function_calls() {
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
-            .logResponses(true)
-            .toolCallingMode(ToolCallingMode.ANY)
-            .allowedFunctionNames(Arrays.asList("add"))
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(GEMINI_1_5_PRO)
+                .logRequests(true)
+                .logResponses(true)
+                .toolCallingMode(ToolCallingMode.ANY)
+                .allowedFunctionNames(Arrays.asList("add"))
+                .build();
 
         ToolSpecification adder = ToolSpecification.builder()
-            .description("adds two numbers")
-            .name("add")
-            .addParameter("a", JsonSchemaProperty.INTEGER)
-            .addParameter("b", JsonSchemaProperty.INTEGER)
-            .build();
+                .description("adds two numbers")
+                .name("add")
+                .addParameter("a", JsonSchemaProperty.INTEGER)
+                .addParameter("b", JsonSchemaProperty.INTEGER)
+                .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -617,28 +576,30 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(handler.get().content().hasToolExecutionRequests()).isEqualTo(true);
-        assertThat(handler.get().content().toolExecutionRequests().get(0).name()).isEqualTo("add");
-        assertThat(handler.get().content().toolExecutionRequests().get(0).arguments()).isEqualTo("{\"a\":1.0,\"b\":2.0}");
+        assertThat(handler.get().content().toolExecutionRequests().get(0).name())
+                .isEqualTo("add");
+        assertThat(handler.get().content().toolExecutionRequests().get(0).arguments())
+                .isEqualTo("{\"a\":1.0,\"b\":2.0}");
     }
 
     @Test
     void should_forbid_function_calls() {
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
-            .logResponses(true)
-            .toolCallingMode(ToolCallingMode.NONE)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(GEMINI_1_5_PRO)
+                .logRequests(true)
+                .logResponses(true)
+                .toolCallingMode(ToolCallingMode.NONE)
+                .build();
 
         ToolSpecification adder = ToolSpecification.builder()
-            .description("adds two numbers")
-            .name("add")
-            .addParameter("a", JsonSchemaProperty.INTEGER)
-            .addParameter("b", JsonSchemaProperty.INTEGER)
-            .build();
+                .description("adds two numbers")
+                .name("add")
+                .addParameter("a", JsonSchemaProperty.INTEGER)
+                .addParameter("b", JsonSchemaProperty.INTEGER)
+                .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -653,18 +614,17 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_accept_audio() {
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(GEMINI_1_5_PRO)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
         // when
         UserMessage msg = UserMessage.from(
-            AudioContent.from("gs://cloud-samples-data/generative-ai/audio/pixel.mp3"),
-            TextContent.from("Give a summary of the audio")
-        );
+                AudioContent.from("gs://cloud-samples-data/generative-ai/audio/pixel.mp3"),
+                TextContent.from("Give a summary of the audio"));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -678,18 +638,17 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_accept_video() {
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
-            .logRequests(false) // videos are huge in logs
-            .logResponses(true)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(GEMINI_1_5_PRO)
+                .logRequests(false) // videos are huge in logs
+                .logResponses(true)
+                .build();
 
         // when
         UserMessage msg = UserMessage.from(
-            AudioContent.from("https://storage.googleapis.com/cloud-samples-data/video/animals.mp4"),
-            TextContent.from("What's in this video?")
-        );
+                AudioContent.from("https://storage.googleapis.com/cloud-samples-data/video/animals.mp4"),
+                TextContent.from("What's in this video?"));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -703,21 +662,20 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_accept_local_file() {
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
-            .logRequests(false) // videos are huge in logs
-            .logResponses(true)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(GEMINI_1_5_PRO)
+                .logRequests(false) // videos are huge in logs
+                .logResponses(true)
+                .build();
 
         // when
         File file = new File("src/test/resources/fingers.mp4");
         assertThat(file).exists();
 
         UserMessage msg = UserMessage.from(
-            AudioContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
-            TextContent.from("What's in this video?")
-        );
+                AudioContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
+                TextContent.from("What's in this video?"));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -727,23 +685,22 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(handler.get().content().text()).containsAnyOf("finger", "hand");
     }
 
-
     @Test
     void should_accept_PDF_documents() {
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(GEMINI_1_5_PRO)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
         // when
         UserMessage msg = UserMessage.from(
-            PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
-            TextContent.from("Provide a summary of the document")
-        );
+                PdfFileContent.from(
+                        Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+                TextContent.from("Provide a summary of the document"));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -757,42 +714,35 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_support_enum_structured_output() {
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
-            .logResponses(true)
-            .responseSchema(Schema.newBuilder()
-                .setType(Type.STRING)
-                .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
-                .build())
-            .build();
-
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(GEMINI_1_5_PRO)
+                .logRequests(true)
+                .logResponses(true)
+                .responseSchema(Schema.newBuilder()
+                        .setType(Type.STRING)
+                        .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+                        .build())
+                .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         String instruction = "What is the sentiment expressed in the following sentence: ";
-        model.generate(
-            instruction + "This is super exciting news, congratulations!", handler
-        );
+        model.generate(instruction + "This is super exciting news, congratulations!", handler);
 
         // then
         assertThat(handler.get().content().text()).isEqualTo("POSITIVE");
 
         // when
         handler = new TestStreamingResponseHandler<>();
-        model.generate(
-            instruction + "The sky is blue.", handler
-        );
+        model.generate(instruction + "The sky is blue.", handler);
 
         // then
         assertThat(handler.get().content().text()).isEqualTo("NEUTRAL");
 
         // when
         handler = new TestStreamingResponseHandler<>();
-        model.generate(
-            instruction + "This is the worst movie I've ever watched! Boring!", handler
-        );
+        model.generate(instruction + "This is the worst movie I've ever watched! Boring!", handler);
 
         // then
         assertThat(handler.get().content().text()).isEqualTo("NEGATIVE");

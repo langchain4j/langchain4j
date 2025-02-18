@@ -24,16 +24,15 @@ class DefaultStructuredPromptFactoryTest implements WithAssertions {
         }
     }
 
-
     @Test
-    public void test() {
+    void test() {
         DefaultStructuredPromptFactory factory = new DefaultStructuredPromptFactory();
         Prompt p = factory.toPrompt(new Greeting("Klaus"));
         assertThat(p.text()).isEqualTo("Hello, my name is Klaus");
     }
 
     @Test
-    public void test_bad_input() {
+    void bad_input() {
         DefaultStructuredPromptFactory factory = new DefaultStructuredPromptFactory();
 
         assertThatExceptionOfType(IllegalArgumentException.class)
@@ -42,13 +41,12 @@ class DefaultStructuredPromptFactoryTest implements WithAssertions {
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> factory.toPrompt(new Object()))
-                .withMessage(
-                        "java.lang.Object should be annotated with @StructuredPrompt " +
-                                "to be used as a structured prompt");
+                .withMessage("java.lang.Object should be annotated with @StructuredPrompt "
+                        + "to be used as a structured prompt");
     }
 
     @Test
-    public void test_brokenPrompt() {
+    void broken_prompt() {
         DefaultStructuredPromptFactory factory = new DefaultStructuredPromptFactory();
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> factory.toPrompt(new BrokenPrompt("Klaus")))

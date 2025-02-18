@@ -13,6 +13,8 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -33,7 +35,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -49,7 +50,7 @@ class BedrockChatModelWithInvokeAPIIT {
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
     @Test
-    void testBedrockAnthropicV3SonnetChatModel() {
+    void bedrockAnthropicV3SonnetChatModel() {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.50f)
@@ -72,7 +73,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockAnthropicV3SonnetChatModelImageContent() {
+    void bedrockAnthropicV3SonnetChatModelImageContent() {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.50f)
@@ -98,7 +99,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
+    void functionCallingWithBedrockAnthropicV3SonnetChatModel() {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.00f)
@@ -161,7 +162,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testSequentialFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
+    void sequentialFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.00f)
@@ -280,7 +281,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testMultipleFunctionCallingInParallelWithBedrockAnthropicV3SonnetChatModel() {
+    void multipleFunctionCallingInParallelWithBedrockAnthropicV3SonnetChatModel() {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.00f)
@@ -353,7 +354,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testNoParametersFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
+    void noParametersFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.0f)
@@ -418,7 +419,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testToolChoiceFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
+    void toolChoiceFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.0f)
                 .maxTokens(300)
@@ -486,7 +487,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testFunctionCallingWithBedrockAnthropicChatModelWithoutToolsSupport() {
+    void functionCallingWithBedrockAnthropicChatModelWithoutToolsSupport() {
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.00f)
                 .maxTokens(300)
@@ -508,7 +509,7 @@ class BedrockChatModelWithInvokeAPIIT {
 
         UserMessage userMessage = UserMessage.from("2+2=?");
 
-        IllegalArgumentException exception = Assertions.assertThrows(
+        IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> bedrockChatModel.generate(singletonList(userMessage), singletonList(calculator)),
                 "Expected generate() to throw, but it didn't");
@@ -518,8 +519,8 @@ class BedrockChatModelWithInvokeAPIIT {
 
     @ParameterizedTest
     @MethodSource("anthropicModelsWithoutToolSupport")
-    void testValidateModelIdWithoutToolsSupport(String modelId) {
-        IllegalArgumentException illegalArgumentException = Assertions.assertThrows(
+    void validateModelIdWithoutToolsSupport(String modelId) {
+        IllegalArgumentException illegalArgumentException = assertThrows(
                 IllegalArgumentException.class,
                 () -> BedrockAnthropicMessageChatModel.validateModelIdWithToolsSupport(modelId),
                 "Expected validateModelIdWithToolsSupport() to throw, but it didn't");
@@ -536,8 +537,8 @@ class BedrockChatModelWithInvokeAPIIT {
 
     @ParameterizedTest
     @MethodSource("anthropicModelsWithToolSupport")
-    void testValidateModelIdWithToolsSupport(String modelId) {
-        Assertions.assertDoesNotThrow(
+    void validateModelIdWithToolsSupport(String modelId) {
+        assertDoesNotThrow(
                 () -> BedrockAnthropicMessageChatModel.validateModelIdWithToolsSupport(modelId),
                 "Expected validateModelIdWithToolsSupport() to not throw, but it did");
     }
@@ -550,7 +551,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockAnthropicV3HaikuChatModel() {
+    void bedrockAnthropicV3HaikuChatModel() {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.50f)
@@ -571,7 +572,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockAnthropicV3HaikuChatModelImageContent() {
+    void bedrockAnthropicV3HaikuChatModelImageContent() {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.50f)
@@ -596,7 +597,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockAnthropicV2ChatModelEnumModelType() {
+    void bedrockAnthropicV2ChatModelEnumModelType() {
 
         BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel.builder()
                 .temperature(0.50f)
@@ -617,7 +618,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockAnthropicV2ChatModelStringModelType() {
+    void bedrockAnthropicV2ChatModelStringModelType() {
 
         BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel.builder()
                 .temperature(0.50f)
@@ -638,7 +639,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockTitanChatModel() {
+    void bedrockTitanChatModel() {
 
         BedrockTitanChatModel bedrockChatModel = BedrockTitanChatModel.builder()
                 .temperature(0.50f)
@@ -666,7 +667,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockCohereChatModel() {
+    void bedrockCohereChatModel() {
 
         BedrockCohereChatModel bedrockChatModel = BedrockCohereChatModel.builder()
                 .temperature(0.50f)
@@ -686,7 +687,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockStabilityChatModel() {
+    void bedrockStabilityChatModel() {
 
         BedrockStabilityAIChatModel bedrockChatModel = BedrockStabilityAIChatModel.builder()
                 .temperature(0.50f)
@@ -712,7 +713,7 @@ class BedrockChatModelWithInvokeAPIIT {
             value = BedrockLlamaChatModel.Types.class,
             mode = INCLUDE,
             names = {"META_LLAMA3_8B_INSTRUCT_V1_0", "META_LLAMA3_70B_INSTRUCT_V1_0"})
-    void testBedrockLlamaChatModel(BedrockLlamaChatModel.Types modelId) {
+    void bedrockLlamaChatModel(BedrockLlamaChatModel.Types modelId) {
 
         // given
         int maxTokens = 3;
@@ -738,7 +739,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockMistralAi7bInstructChatModel() {
+    void bedrockMistralAi7bInstructChatModel() {
 
         BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel.builder()
                 .temperature(0.50f)
@@ -763,7 +764,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockMistralAiMixtral8x7bInstructChatModel() {
+    void bedrockMistralAiMixtral8x7bInstructChatModel() {
 
         BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel.builder()
                 .temperature(0.50f)
@@ -783,7 +784,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testBedrockAnthropicMessageChatModelWithMessagesToSanitize() {
+    void bedrockAnthropicMessageChatModelWithMessagesToSanitize() {
         List<ChatMessage> messages = new ArrayList<>();
         String userMessage = "Hello, my name is Ronaldo, what is my name?";
         String userMessage2 = "Hello, my name is Neymar, what is my name?";
@@ -807,7 +808,7 @@ class BedrockChatModelWithInvokeAPIIT {
     }
 
     @Test
-    void testInjectClientToModelBuilder() {
+    void injectClientToModelBuilder() {
 
         String serviceName = "custom-service-name";
 

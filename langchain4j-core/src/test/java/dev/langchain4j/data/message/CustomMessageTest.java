@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class CustomMessageTest implements WithAssertions {
     @Test
-    public void test_methods() {
+    void methods() {
         LinkedHashMap<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("content", "The sky is blue.");
         attributes.put("myAttribute", "myValue");
@@ -20,7 +20,7 @@ class CustomMessageTest implements WithAssertions {
     }
 
     @Test
-    public void test_equals_hashCode() {
+    void equals_hash_code() {
         Map<String, Object> attributes = Map.of(
                 "content", "The sky is blue.",
                 "myAttribute", "myValue");
@@ -47,7 +47,7 @@ class CustomMessageTest implements WithAssertions {
     }
 
     @Test
-    public void test_builders() {
+    void builders() {
         Map<String, Object> attributes = Map.of(
                 "text", "The sky is blue.",
                 "myAttribute", "myValue");

@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 class IllegalConfigurationExceptionTest implements WithAssertions {
     @Test
-    void test_constructors() {
+    void constructors() {
         assertThat(new IllegalConfigurationException("message abc 123"))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("message abc 123");
