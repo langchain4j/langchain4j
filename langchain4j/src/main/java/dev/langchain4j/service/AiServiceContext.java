@@ -6,6 +6,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.tool.ToolService;
 import java.util.Map;
 import java.util.Optional;
@@ -25,6 +26,8 @@ public class AiServiceContext {
 
     public ToolService toolService = new ToolService();
 
+    public final GuardrailService guardrailService;
+
     public ModerationModel moderationModel;
 
     public RetrievalAugmentor retrievalAugmentor;
@@ -33,6 +36,7 @@ public class AiServiceContext {
 
     public AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
+        this.guardrailService = new GuardrailService(this.aiServiceClass);
     }
 
     public boolean hasChatMemory() {
