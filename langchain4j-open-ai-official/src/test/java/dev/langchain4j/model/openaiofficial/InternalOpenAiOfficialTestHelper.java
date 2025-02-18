@@ -221,8 +221,7 @@ public class InternalOpenAiOfficialTestHelper {
             models.add(OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA);
         }
         if (models.isEmpty()) {
-            log.error(
-                    "Testing JSON responses: skipping tests are Azure OpenAI and OpenAI API keys are not set");
+            log.error("Testing JSON responses: skipping tests are Azure OpenAI and OpenAI API keys are not set");
         }
         return models;
     }

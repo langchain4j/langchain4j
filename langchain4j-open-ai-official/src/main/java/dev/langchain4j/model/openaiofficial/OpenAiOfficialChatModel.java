@@ -132,7 +132,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
             final ChatCompletion.Choice choice = chatCompletion.choices().get(0);
             responseMetadataBuilder.finishReason(finishReasonFrom(choice.finishReason()));
 
-            if (choice.message().toolCalls().isPresent() && choice.finishReason().equals(ChatCompletion.Choice.FinishReason.STOP)) {
+            if (choice.message().toolCalls().isPresent()
+                    && choice.finishReason().equals(ChatCompletion.Choice.FinishReason.STOP)) {
                 // When a tool is called, OpenAI returns a finish reason of "STOP", instead of "TOOL_CALLS"
                 responseMetadataBuilder.finishReason(FinishReason.TOOL_EXECUTION);
             }
