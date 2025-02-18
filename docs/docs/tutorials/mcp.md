@@ -135,7 +135,7 @@ Let's create a Java class called `McpGithubToolsExample` that uses LangChain4j t
 * Establish a connection using the stdio transport
 * Use an LLM to summarize the last 3 commits of the LangChain4j GitHub repository
 
-> **Note**: Since the LangChain4j repository is public and we only fetch the last commits, we don't need a GitHub token. However, for private repositories or write operations (creating a PR, pushing code, etc.), you will need to provide a GitHub token to access the repository.
+> **Note**: In the code below we pass the GitHub token in the environment variable `GITHUB_PERSONAL_ACCESS_TOKEN`. But this is optional for some actions on public repositories that don't need authentication.
 
 Here's the implementation:
 
@@ -143,29 +143,29 @@ Here's the implementation:
 public static void main(String[] args) throws Exception {
 
     ChatLanguageModel model = OpenAiChatModel.builder()
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .modelName("gpt-4o-mini")
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .logRequests(true)
+        .logResponses(true)
+        .build();
 
     McpTransport transport = new StdioMcpTransport.Builder()
-            .command(List.of("/usr/local/bin/docker", "run", "-i", "mcp/github"))
-            .logEvents(true)
-            .build();
+        .command(List.of("/usr/local/bin/docker", "run", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "-i", "mcp/github"))
+        .logEvents(true)
+        .build();
 
     McpClient mcpClient = new DefaultMcpClient.Builder()
-            .transport(transport)
-            .build();
+        .transport(transport)
+        .build();
 
     ToolProvider toolProvider = McpToolProvider.builder()
-            .mcpClients(List.of(mcpClient))
-            .build();
+        .mcpClients(List.of(mcpClient))
+        .build();
 
     Bot bot = AiServices.builder(Bot.class)
-            .chatLanguageModel(model)
-            .toolProvider(toolProvider)
-            .build();
+        .chatLanguageModel(model)
+        .toolProvider(toolProvider)
+        .build();
 
     try {
         String response = bot.chat("Summarize the last 3 commits of the LangChain4j GitHub repository");
