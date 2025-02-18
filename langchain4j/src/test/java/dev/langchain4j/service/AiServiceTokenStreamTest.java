@@ -1,34 +1,33 @@
 package dev.langchain4j.service;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.GuardrailParams.CommonGuardrailParams;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
-
-import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-
 @ExtendWith(MockitoExtension.class)
 class AiServiceTokenStreamTest {
 
-    static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {
-    };
+    static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
 
-    static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {
-    };
+    static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
 
-    static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {
-    };
+    static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
 
     List<ChatMessage> messages = new ArrayList<>();
 
@@ -48,17 +47,14 @@ class AiServiceTokenStreamTest {
 
     @Test
     void start_with_onPartialResponse_shouldNotThrowException() {
-        tokenStream
-                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
-                .ignoreErrors();
+        tokenStream.onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER).ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
     }
 
     @Test
     void start_onPartialResponseNotInvoked_shouldThrowException() {
-        tokenStream
-                .ignoreErrors();
+        tokenStream.ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
@@ -79,8 +75,7 @@ class AiServiceTokenStreamTest {
 
     @Test
     void start_onErrorNorIgnoreErrorsInvoked_shouldThrowException() {
-        tokenStream
-                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER);
+        tokenStream.onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER);
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
@@ -113,9 +108,19 @@ class AiServiceTokenStreamTest {
     }
 
     private AiServiceTokenStream setupAiServiceTokenStream() {
-        StreamingChatLanguageModel model = mock(StreamingChatLanguageModel.class);
+        StreamingChatLanguageModel streamingModel = mock(StreamingChatLanguageModel.class);
+        ChatLanguageModel chatLanguageModel = mock(ChatLanguageModel.class);
         AiServiceContext context = new AiServiceContext(getClass());
-        context.streamingChatModel = model;
-        return new AiServiceTokenStream(messages, null, null, content, context, memoryId);
+        context.streamingChatModel = streamingModel;
+        context.chatModel = chatLanguageModel;
+        return new AiServiceTokenStream(
+                messages,
+                null,
+                null,
+                content,
+                context,
+                memoryId,
+                new CommonGuardrailParams(null, null, "", Map.of()),
+                "");
     }
 }

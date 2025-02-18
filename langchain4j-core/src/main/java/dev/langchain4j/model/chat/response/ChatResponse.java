@@ -1,14 +1,13 @@
 package dev.langchain4j.model.chat.response;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import org.jspecify.annotations.NonNull;
-
 import java.util.Objects;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import org.jspecify.annotations.NonNull;
 
 @Experimental
 public class ChatResponse {
@@ -23,16 +22,14 @@ public class ChatResponse {
 
         if (builder.tokenUsage != null) {
             if (builder.metadata != null) {
-                throw new IllegalArgumentException(
-                        "Cannot set both 'metadata' and 'tokenUsage' on ChatResponse");
+                throw new IllegalArgumentException("Cannot set both 'metadata' and 'tokenUsage' on ChatResponse");
             }
             metadataBuilder.tokenUsage(builder.tokenUsage);
         }
 
         if (builder.finishReason != null) {
             if (builder.metadata != null) {
-                throw new IllegalArgumentException(
-                        "Cannot set both 'metadata' and 'finishReason' on ChatResponse");
+                throw new IllegalArgumentException("Cannot set both 'metadata' and 'finishReason' on ChatResponse");
             }
             metadataBuilder.finishReason(builder.finishReason);
         }
@@ -46,6 +43,16 @@ public class ChatResponse {
 
     public AiMessage aiMessage() {
         return aiMessage;
+    }
+
+    /**
+     * Converts the current instance of {@code ChatResponse} into a {@link Builder},
+     * allowing modifications to the current object's fields.
+     *
+     * @return a new {@link Builder} instance initialized with the current state of this {@code ChatResponse}.
+     */
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     @Experimental
@@ -68,8 +75,7 @@ public class ChatResponse {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ChatResponse that = (ChatResponse) o;
-        return Objects.equals(this.aiMessage, that.aiMessage)
-                && Objects.equals(this.metadata, that.metadata);
+        return Objects.equals(this.aiMessage, that.aiMessage) && Objects.equals(this.metadata, that.metadata);
     }
 
     @Override
@@ -79,10 +85,7 @@ public class ChatResponse {
 
     @Override
     public String toString() {
-        return "ChatResponse {" +
-                " aiMessage = " + aiMessage +
-                ", metadata = " + metadata +
-                " }";
+        return "ChatResponse {" + " aiMessage = " + aiMessage + ", metadata = " + metadata + " }";
     }
 
     public static Builder builder() {
@@ -90,11 +93,17 @@ public class ChatResponse {
     }
 
     public static class Builder {
-
         private AiMessage aiMessage;
         private ChatResponseMetadata metadata;
         private TokenUsage tokenUsage;
         private FinishReason finishReason;
+
+        public Builder() {}
+
+        public Builder(ChatResponse chatResponse) {
+            this.aiMessage = chatResponse.aiMessage;
+            this.metadata = chatResponse.metadata;
+        }
 
         public Builder aiMessage(AiMessage aiMessage) {
             this.aiMessage = aiMessage;

@@ -1,24 +1,25 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.GuardrailParams.CommonGuardrailParams;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.InMemoryChatMemory;
+import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.emptyList;
+import org.jspecify.annotations.Nullable;
 
 public class AiServiceTokenStream implements TokenStream {
 
@@ -28,6 +29,8 @@ public class AiServiceTokenStream implements TokenStream {
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
+    private final CommonGuardrailParams commonGuardrailParams;
+    private final Object methodKey;
 
     private Consumer<String> partialResponseHandler;
     private Consumer<List<Content>> contentsHandler;
@@ -42,18 +45,23 @@ public class AiServiceTokenStream implements TokenStream {
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
 
-    public AiServiceTokenStream(List<ChatMessage> messages,
-                                List<ToolSpecification> toolSpecifications,
-                                Map<String, ToolExecutor> toolExecutors,
-                                List<Content> retrievedContents,
-                                AiServiceContext context,
-                                Object memoryId) {
+    public AiServiceTokenStream(
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecifications,
+            Map<String, ToolExecutor> toolExecutors,
+            List<Content> retrievedContents,
+            AiServiceContext context,
+            Object memoryId,
+            @Nullable CommonGuardrailParams commonGuardrailParams,
+            Object methodKey) {
         this.messages = ensureNotEmpty(messages, "messages");
         this.toolSpecifications = copyIfNotNull(toolSpecifications);
         this.toolExecutors = copyIfNotNull(toolExecutors);
         this.retrievedContents = retrievedContents;
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
+        this.methodKey = ensureNotNull(methodKey, "methodKey");
+        this.commonGuardrailParams = commonGuardrailParams;
         ensureNotNull(context.streamingChatModel, "streamingChatModel");
     }
 
@@ -108,7 +116,13 @@ public class AiServiceTokenStream implements TokenStream {
                 .toolSpecifications(toolSpecifications)
                 .build();
 
-        StreamingChatResponseHandler handler = new AiServiceStreamingResponseHandler(
+        ChatExecutor chatExecutor = ChatExecutor.builder()
+                .chatRequest(chatRequest)
+                .chatLanguageModel(context.chatModel)
+                .build();
+
+        var handler = new AiServiceStreamingResponseHandler(
+                chatExecutor,
                 context,
                 memoryId,
                 partialResponseHandler,
@@ -118,8 +132,9 @@ public class AiServiceTokenStream implements TokenStream {
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
                 toolSpecifications,
-                toolExecutors
-        );
+                toolExecutors,
+                commonGuardrailParams,
+                methodKey);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);
@@ -142,16 +157,18 @@ public class AiServiceTokenStream implements TokenStream {
             throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");
         }
         if (onErrorInvoked + ignoreErrorsInvoked != 1) {
-            throw new IllegalConfigurationException("One of [onError, ignoreErrors] " +
-                    "must be invoked on TokenStream exactly 1 time");
+            throw new IllegalConfigurationException(
+                    "One of [onError, ignoreErrors] " + "must be invoked on TokenStream exactly 1 time");
         }
     }
 
-    private List<ChatMessage> initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
-        if (context.hasChatMemory()) {
-            return emptyList();
-        } else {
-            return new ArrayList<>(messagesToSend);
+    private ChatMemory initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
+        var chatMemory = new InMemoryChatMemory();
+
+        if (!context.hasChatMemory()) {
+            chatMemory.add(messagesToSend);
         }
+
+        return chatMemory;
     }
 }
