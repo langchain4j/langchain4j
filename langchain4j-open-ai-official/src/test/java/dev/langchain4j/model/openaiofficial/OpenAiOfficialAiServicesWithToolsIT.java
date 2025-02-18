@@ -15,7 +15,8 @@ class OpenAiOfficialAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
 
     @Override
     protected boolean supportsMapParameters() {
-        // When strictTools=true , Map parameters are not supported as there is no JsonSchemaElement for them at the moment.
+        // When strictTools=true , Map parameters are not supported as there is no JsonSchemaElement for them at the
+        // moment.
         return false;
     }
 
