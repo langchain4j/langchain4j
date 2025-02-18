@@ -45,6 +45,10 @@ internal class StreamingChatLanguageModelExtensionsKtTest {
             val flow =
                 mockModel.chatFlow {
                     messages += userMessage("Hey, there!")
+                    parameters {
+                        temperature = 0.7
+                        maxOutputTokens = 42
+                    }
                 }
             val result = flow.toList()
 
