@@ -1,16 +1,15 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.output.Response;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.output.Response;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 public class TestStreamingResponseHandler<T> implements StreamingResponseHandler<T> {
 
@@ -18,20 +17,29 @@ public class TestStreamingResponseHandler<T> implements StreamingResponseHandler
 
     private final StringBuffer textContentBuilder = new StringBuffer();
 
+    private final StringBuffer reasoningContentBuilder = new StringBuffer();
+
     @Override
     public void onNext(String token) {
         textContentBuilder.append(token);
     }
 
     @Override
+    public void onNextReasoning(String token) {
+        reasoningContentBuilder.append(token);
+    }
+
+    @Override
     public void onComplete(Response<T> response) {
 
         String expectedTextContent = textContentBuilder.toString();
+        String expectedReasoningContent = reasoningContentBuilder.toString();
         if (response.content() instanceof AiMessage aiMessage) {
-            if (aiMessage.hasToolExecutionRequests()){
+            if (aiMessage.hasToolExecutionRequests()) {
                 assertThat(aiMessage.toolExecutionRequests().size()).isGreaterThan(0);
             } else {
                 assertThat(aiMessage.text()).isEqualTo(expectedTextContent);
+                assertThat(aiMessage.reasoningContent()).isEqualTo(expectedReasoningContent);
             }
         } else if (response.content() instanceof String) {
             assertThat(response.content()).isEqualTo(expectedTextContent);
@@ -47,7 +55,7 @@ public class TestStreamingResponseHandler<T> implements StreamingResponseHandler
         futureResponse.completeExceptionally(error);
     }
 
-    public Response<T> get()  {
+    public Response<T> get() {
         try {
             return futureResponse.get(30, SECONDS);
         } catch (InterruptedException e) {
