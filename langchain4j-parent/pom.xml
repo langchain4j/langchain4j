@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.0.0-alpha2-SNAPSHOT</version>
+    <version>1.0.0-beta2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -55,7 +55,6 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <openai4j.version>0.25.0</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.13</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
         <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
@@ -65,7 +64,7 @@
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.1.0</jtokkit.version>
         <langchain4j-embeddings.version>${project.version}</langchain4j-embeddings.version>
-        <lombok.version>1.18.30</lombok.version>
+        <lombok.version>1.18.36</lombok.version>
         <slf4j-api.version>2.0.16</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.11.3</junit.version>
@@ -73,18 +72,17 @@
         <bytebuddy.version>1.15.10</bytebuddy.version>
         <mockito.version>5.14.2</mockito.version>
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
-        <assertj.version>3.24.2</assertj.version>
+        <assertj.version>3.27.3</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <tinylog.version>2.6.2</tinylog.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
-        <aws-java-sdk-core.version>1.12.777</aws-java-sdk-core.version>
+        <aws-java-sdk-core.version>1.12.780</aws-java-sdk-core.version>
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <elastic.version>8.15.3</elastic.version>
-        <jackson.version>2.16.1</jackson.version>
-        <jedis.version>5.0.0</jedis.version>
-        <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
+        <jackson.version>2.18.2</jackson.version>
+        <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
         <netty.version>4.1.111.Final</netty.version>
@@ -94,16 +92,11 @@
         <infinispan.version>15.0.0.Final</infinispan.version>
         <kotlin.version>1.9.25</kotlin.version>
         <kotlinx.version>1.9.0</kotlinx.version>
+        <wiremock.version>3.10.0</wiremock.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-
-            <dependency>
-                <groupId>dev.ai4j</groupId>
-                <artifactId>openai4j</artifactId>
-                <version>${openai4j.version}</version>
-            </dependency>
 
             <dependency>
                 <groupId>com.azure</groupId>
@@ -287,7 +280,7 @@
 
             <dependency>
                 <groupId>com.willowtreeapps.assertk</groupId>
-                <artifactId>assertk</artifactId>
+                <artifactId>assertk-coroutines-jvm</artifactId>
                 <version>${assertk.version}</version>
                 <scope>test</scope>
             </dependency>
@@ -355,12 +348,6 @@
             </dependency>
 
             <dependency>
-                <groupId>redis.clients</groupId>
-                <artifactId>jedis</artifactId>
-                <version>${jedis.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
                 <version>${aws.java.sdk.version}</version>
@@ -412,6 +399,14 @@
                 <artifactId>logback-classic</artifactId>
                 <version>1.3.14</version>
             </dependency>
+
+            <dependency>
+                <groupId>org.wiremock</groupId>
+                <artifactId>wiremock</artifactId>
+                <version>${wiremock.version}</version>
+                <scope>test</scope>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -424,6 +419,11 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -552,7 +552,7 @@
                 <plugin>
                     <groupId>org.jetbrains.dokka</groupId>
                     <artifactId>dokka-maven-plugin</artifactId>
-                    <version>1.9.20</version>
+                    <version>2.0.0</version>
                     <configuration>
                         <jdkVersion>${java.version}</jdkVersion>
                         <languageVersion>2.0</languageVersion>
@@ -562,6 +562,12 @@
                     <groupId>com.github.ozsie</groupId>
                     <artifactId>detekt-maven-plugin</artifactId>
                     <version>1.23.7</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.simpligility.maven.plugins</groupId>
+                    <artifactId>android-maven-plugin</artifactId>
+                    <version>4.6.0</version>
+                    <extensions>true</extensions>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -652,6 +658,19 @@
                 </configuration>
             </plugin>
 
+            <plugin>
+                <groupId>com.simpligility.maven.plugins</groupId>
+                <artifactId>android-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>lint</id>
+                        <goals>
+                            <goal>lint</goal>
+                        </goals>
+                        <phase>compile</phase>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>

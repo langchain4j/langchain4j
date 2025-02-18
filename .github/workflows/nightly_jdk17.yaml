@@ -35,6 +35,8 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
+      - name: Setup JBang
+        uses: jbangdev/setup-jbang@main
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
           ## compile and verify javadocs on ALL modules
@@ -89,7 +91,7 @@ jobs:
 
       - name: Upload Test Reports
         if: always() # always run even if the previous step failed or was cancelled
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Test-Reports-${{ matrix.java-version }}
           path: '**/target/*-reports/*'

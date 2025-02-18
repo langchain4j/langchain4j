@@ -3,28 +3,25 @@ package dev.langchain4j.model.moderation;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-
 class ModerationTest implements WithAssertions {
     @Test
-    public void test_methods() {
+    void methods() {
         {
             Moderation moderation = new Moderation();
             assertThat(moderation.flagged()).isFalse();
             assertThat(moderation.flaggedText()).isNull();
-            assertThat(moderation)
-                    .hasToString("Moderation { flagged = false, flaggedText = null }");
+            assertThat(moderation).hasToString("Moderation { flagged = false, flaggedText = null }");
         }
         {
             Moderation moderation = new Moderation("flaggedText");
             assertThat(moderation.flagged()).isTrue();
             assertThat(moderation.flaggedText()).isEqualTo("flaggedText");
-            assertThat(moderation)
-                    .hasToString("Moderation { flagged = true, flaggedText = \"flaggedText\" }");
+            assertThat(moderation).hasToString("Moderation { flagged = true, flaggedText = \"flaggedText\" }");
         }
     }
 
     @Test
-    public void test_equals_hashCode() {
+    void equals_hash_code() {
         Moderation flagged1 = new Moderation("flaggedText");
         Moderation flagged2 = new Moderation("flaggedText");
 
@@ -58,19 +55,13 @@ class ModerationTest implements WithAssertions {
                 .isNotEqualTo(flagged3)
                 .doesNotHaveSameHashCodeAs(flagged3);
 
-        assertThat(flagged3)
-                .isEqualTo(flagged3)
-                .isEqualTo(flagged4)
-                .hasSameHashCodeAs(flagged4);
+        assertThat(flagged3).isEqualTo(flagged3).isEqualTo(flagged4).hasSameHashCodeAs(flagged4);
     }
 
     @Test
-    public void test_builders() {
-        assertThat(new Moderation("flaggedText"))
-                .isEqualTo(Moderation.flagged("flaggedText"));
+    void builders() {
+        assertThat(new Moderation("flaggedText")).isEqualTo(Moderation.flagged("flaggedText"));
 
-        assertThat(new Moderation())
-                .isEqualTo(Moderation.notFlagged());
+        assertThat(new Moderation()).isEqualTo(Moderation.notFlagged());
     }
-
 }

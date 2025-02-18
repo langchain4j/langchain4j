@@ -7,6 +7,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -15,8 +17,11 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
@@ -30,11 +35,8 @@ import static java.util.Collections.singletonList;
  */
 public interface StreamingChatLanguageModel {
 
-    // TODO improve javadoc
-
     /**
      * This is the main API to interact with the chat model.
-     * All the existing generate(...) methods (see below) will be deprecated and removed before 1.0.0 release.
      * <p>
      * A temporary default implementation of this method is necessary
      * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
@@ -44,6 +46,65 @@ public interface StreamingChatLanguageModel {
      */
     @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
+
+        List<ChatModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+        StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                handler.onPartialResponse(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
+                handler.onCompleteResponse(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+                handler.onError(error);
+            }
+        };
+
+        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        doChat(finalChatRequest, observingHandler);
+    }
+
+    @Experimental
+    default void chat(String userMessage, StreamingChatResponseHandler handler) {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from(userMessage))
+                .build();
+
+        chat(chatRequest, handler);
+    }
+
+    @Experimental
+    default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(messages)
+                .build();
+
+        chat(chatRequest, handler);
+    }
+
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
+    }
+
+    @Experimental
+    default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
@@ -94,7 +155,7 @@ public interface StreamingChatLanguageModel {
 
     @Experimental
     default ChatRequestParameters defaultRequestParameters() {
-        return null;
+        return ChatRequestParameters.builder().build();
     }
 
     @Experimental
@@ -107,7 +168,9 @@ public interface StreamingChatLanguageModel {
      *
      * @param userMessage The message from the user.
      * @param handler     The handler for streaming the response.
+     * @deprecated please use {@link #chat(String, StreamingChatResponseHandler)} instead
      */
+    @Deprecated(forRemoval = true)
     default void generate(String userMessage, StreamingResponseHandler<AiMessage> handler) {
         generate(singletonList(UserMessage.from(userMessage)), handler);
     }
@@ -117,7 +180,9 @@ public interface StreamingChatLanguageModel {
      *
      * @param userMessage The message from the user.
      * @param handler     The handler for streaming the response.
+     * @deprecated please use {@link #chat(List, StreamingChatResponseHandler)} instead
      */
+    @Deprecated(forRemoval = true)
     default void generate(UserMessage userMessage, StreamingResponseHandler<AiMessage> handler) {
         generate(singletonList(userMessage), handler);
     }
@@ -129,7 +194,9 @@ public interface StreamingChatLanguageModel {
      *
      * @param messages A list of messages.
      * @param handler  The handler for streaming the response.
+     * @deprecated please use {@link #chat(List, StreamingChatResponseHandler)} instead
      */
+    @Deprecated(forRemoval = true)
     void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler);
 
     /**
@@ -144,7 +211,10 @@ public interface StreamingChatLanguageModel {
      * @param handler            The handler for streaming the response.
      *                           {@link AiMessage} can contain either a textual response or a request to execute one of the tools.
      * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
+     * @deprecated please use {@link #chat(ChatRequest, StreamingChatResponseHandler)} instead.
+     * See {@link ChatRequestParameters#toolSpecifications()}.
      */
+    @Deprecated(forRemoval = true)
     default void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         throw new UnsupportedFeatureException("tools are currently not supported by " + getClass().getSimpleName());
     }
@@ -159,8 +229,13 @@ public interface StreamingChatLanguageModel {
      *                          The model is <b>forced</b> to execute this tool.
      * @param handler           The handler for streaming the response.
      * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
+     * @deprecated please use {@link #chat(ChatRequest, StreamingChatResponseHandler)} instead.
+     * See {@link ChatRequestParameters#toolSpecifications()} and {@link ChatRequestParameters#toolChoice()}.
      */
+    @Deprecated(forRemoval = true)
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         throw new UnsupportedFeatureException("tools and tool choice are currently not supported by " + getClass().getSimpleName());
     }
+
+    // TODO improve javadoc
 }

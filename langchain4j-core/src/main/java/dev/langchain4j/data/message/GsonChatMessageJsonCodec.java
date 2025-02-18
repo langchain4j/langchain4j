@@ -23,6 +23,7 @@ public class GsonChatMessageJsonCodec implements ChatMessageJsonCodec {
             .registerTypeAdapter(UserMessage.class, new GsonChatMessageAdapter())
             .registerTypeAdapter(AiMessage.class, new GsonChatMessageAdapter())
             .registerTypeAdapter(ToolExecutionResultMessage.class, new GsonChatMessageAdapter())
+            .registerTypeAdapter(CustomMessage.class, new GsonChatMessageAdapter())
             .create();
 
     /**

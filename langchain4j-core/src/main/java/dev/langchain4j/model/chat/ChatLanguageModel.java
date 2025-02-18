@@ -6,6 +6,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -15,8 +17,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
@@ -29,12 +34,8 @@ import static java.util.Arrays.asList;
  */
 public interface ChatLanguageModel {
 
-    // TODO improve javadoc
-
     /**
      * This is the main API to interact with the chat model.
-     * All the existing generate(...) methods (see below) will be deprecated and removed before 1.0.0 release.
-     * <p>
      * A temporary default implementation of this method is necessary
      * until all {@link ChatLanguageModel} implementations adopt it. It should be removed once that occurs.
      *
@@ -43,6 +44,64 @@ public interface ChatLanguageModel {
      */
     @Experimental
     default ChatResponse chat(ChatRequest chatRequest) {
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
+
+        List<ChatModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        try {
+            ChatResponse chatResponse = doChat(finalChatRequest);
+            ListenersUtil.onResponse(chatResponse, finalChatRequest, attributes, listeners);
+            return chatResponse;
+        } catch (Exception error) {
+            ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+            throw error;
+        }
+    }
+
+    @Experimental
+    default String chat(String userMessage) {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from(userMessage))
+                .build();
+
+        ChatResponse chatResponse = chat(chatRequest);
+
+        return chatResponse.aiMessage().text();
+    }
+
+    @Experimental
+    default ChatResponse chat(ChatMessage... messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(messages)
+                .build();
+
+        return chat(chatRequest);
+    }
+
+    @Experimental
+    default ChatResponse chat(List<ChatMessage> messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(messages)
+                .build();
+
+        return chat(chatRequest);
+    }
+
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
+    }
+
+    @Experimental
+    default ChatResponse doChat(ChatRequest chatRequest) {
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
@@ -82,25 +141,25 @@ public interface ChatLanguageModel {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'modelName' parameter"));
         }
         if (parameters.temperature() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'temperature' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'temperature' parameter"));
         }
         if (parameters.topP() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'topP' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'topP' parameter"));
         }
         if (parameters.topK() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'topK' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'topK' parameter"));
         }
         if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'frequencyPenalty' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'frequencyPenalty' parameter"));
         }
         if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'presencePenalty' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'presencePenalty' parameter"));
         }
         if (parameters.maxOutputTokens() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'maxOutputTokens' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'maxOutputTokens' parameter"));
         }
         if (parameters.stopSequences() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'stopSequences' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'stopSequences' parameter"));
         }
     }
 
@@ -115,25 +174,13 @@ public interface ChatLanguageModel {
         String errorTemplate = "%s is not supported yet by this model provider";
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             // TODO check supportedCapabilities() instead?
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"JSON response format"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
         }
     }
 
     @Experimental
-    default String chat(String userMessage) {
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(userMessage))
-                .build();
-
-        ChatResponse chatResponse = chat(chatRequest);
-
-        return chatResponse.aiMessage().text();
-    }
-
-    @Experimental
     default ChatRequestParameters defaultRequestParameters() {
-        return null;
+        return ChatRequestParameters.builder().build();
     }
 
     @Experimental
@@ -148,7 +195,9 @@ public interface ChatLanguageModel {
      *
      * @param userMessage The message from the user.
      * @return The response generated by the model.
+     * @deprecated please use {@link #chat(String)} instead
      */
+    @Deprecated(forRemoval = true)
     default String generate(String userMessage) {
         return generate(UserMessage.from(userMessage)).content().text();
     }
@@ -160,7 +209,9 @@ public interface ChatLanguageModel {
      *
      * @param messages An array of messages.
      * @return The response generated by the model.
+     * @deprecated please use {@link #chat(ChatMessage...)} instead
      */
+    @Deprecated(forRemoval = true)
     default Response<AiMessage> generate(ChatMessage... messages) {
         return generate(asList(messages));
     }
@@ -172,7 +223,9 @@ public interface ChatLanguageModel {
      *
      * @param messages A list of messages.
      * @return The response generated by the model.
+     * @deprecated please use {@link #chat(List)} instead
      */
+    @Deprecated(forRemoval = true)
     Response<AiMessage> generate(List<ChatMessage> messages);
 
     /**
@@ -187,7 +240,10 @@ public interface ChatLanguageModel {
      * @return The response generated by the model.
      * {@link AiMessage} can contain either a textual response or a request to execute one of the tools.
      * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
+     * @deprecated please use {@link #chat(ChatRequest)} instead.
+     * See {@link ChatRequestParameters#toolSpecifications()}.
      */
+    @Deprecated(forRemoval = true)
     default Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         throw new UnsupportedFeatureException("tools are currently not supported by " + getClass().getSimpleName());
     }
@@ -206,8 +262,13 @@ public interface ChatLanguageModel {
      * @return The response generated by the model.
      * {@link AiMessage} contains a request to execute the specified tool.
      * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
+     * @deprecated please use {@link #chat(ChatRequest)} instead.
+     * See {@link ChatRequestParameters#toolSpecifications()} and {@link ChatRequestParameters#toolChoice()}.
      */
+    @Deprecated(forRemoval = true)
     default Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new UnsupportedFeatureException("tools and tool choice are currently not supported by " + getClass().getSimpleName());
     }
+
+    // TODO improve javadoc
 }

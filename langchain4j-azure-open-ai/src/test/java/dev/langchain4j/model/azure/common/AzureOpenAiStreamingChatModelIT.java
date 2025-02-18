@@ -3,6 +3,7 @@ package dev.langchain4j.model.azure.common;
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -18,11 +19,19 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .logRequestsAndResponses(true)
             .build();
 
+    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA = AzureOpenAiStreamingChatModel.builder()
+            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .deploymentName("gpt-4o-mini")
+            .logRequestsAndResponses(true)
+            .strictJsonSchema(true)
+            .build();
+
     @Override
     protected List<StreamingChatLanguageModel> models() {
         return List.of(
-                AZURE_OPEN_AI_STREAMING_CHAT_MODEL
-                // TODO add more model configs, see OpenAiChatModelIT
+                AZURE_OPEN_AI_STREAMING_CHAT_MODEL,
+                AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA
         );
     }
 
@@ -63,17 +72,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 
@@ -94,5 +93,13 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     protected boolean assertFinishReason() {
         return false; // TODO implement
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_OPENAI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

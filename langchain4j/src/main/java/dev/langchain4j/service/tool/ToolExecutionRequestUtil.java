@@ -3,7 +3,6 @@ package dev.langchain4j.service.tool;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -16,8 +15,7 @@ class ToolExecutionRequestUtil {
 
     private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
 
-    private ToolExecutionRequestUtil() {
-    }
+    private ToolExecutionRequestUtil() {}
 
     /**
      * Gson instance.
@@ -27,8 +25,7 @@ class ToolExecutionRequestUtil {
     /**
      * Utility {@link TypeToken} describing {@code Map<String, Object>}.
      */
-    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
-    }.getType();
+    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {}.getType();
 
     /**
      * Convert arguments to map.

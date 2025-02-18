@@ -1,14 +1,13 @@
 package dev.langchain4j.store.memory.chat.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import java.net.InetSocketAddress;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-
-import java.net.InetSocketAddress;
 
 /**
  * Test Cassandra Chat Memory Store with a Saas DB.
@@ -20,7 +19,7 @@ class CassandraChatMemoryStoreDockerIT extends CassandraChatMemoryStoreTestSuppo
     static CassandraContainer<?> cassandraContainer;
 
     @BeforeAll
-    public static void ensureDockerIsRunning() {
+    static void ensureDockerIsRunning() {
         DockerClientFactory.instance().client();
     }
 
@@ -36,14 +35,13 @@ class CassandraChatMemoryStoreDockerIT extends CassandraChatMemoryStoreTestSuppo
     @Override
     @SuppressWarnings("resource")
     CassandraChatMemoryStore createChatMemoryStore() {
-        final InetSocketAddress contactPoint =
-                cassandraContainer.getContactPoint();
+        final InetSocketAddress contactPoint = cassandraContainer.getContactPoint();
         CqlSession.builder()
                 .addContactPoint(contactPoint)
                 .withLocalDatacenter(DATACENTER)
-                .build().execute(
-                        "CREATE KEYSPACE IF NOT EXISTS " + KEYSPACE +
-                                " WITH replication = {'class':'SimpleStrategy', 'replication_factor':'1'};");
+                .build()
+                .execute("CREATE KEYSPACE IF NOT EXISTS " + KEYSPACE
+                        + " WITH replication = {'class':'SimpleStrategy', 'replication_factor':'1'};");
         return new CassandraChatMemoryStore(CqlSession.builder()
                 .addContactPoint(contactPoint)
                 .withLocalDatacenter(DATACENTER)

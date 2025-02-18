@@ -69,6 +69,22 @@ public class ValidationUtils {
     }
 
     /**
+     * Ensures that the given array is not null and not empty.
+     * @param array The array to check.
+     * @param name The name of the array to be used in the exception message.
+     * @return The array if it is not null and not empty.
+     * @param <T> The component type of the array.
+     * @throws IllegalArgumentException if the array is null or empty.
+     */
+    public static <T> T[] ensureNotEmpty(T[] array, String name) {
+        if (array == null || array.length == 0) {
+            throw illegalArgument("%s cannot be null or empty", name);
+        }
+
+        return array;
+    }
+
+    /**
      * Ensures that the given map is not null and not empty.
      *
      * @param map  The map to check.

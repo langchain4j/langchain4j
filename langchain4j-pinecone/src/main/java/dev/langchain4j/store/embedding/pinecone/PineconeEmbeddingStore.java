@@ -16,8 +16,8 @@ import io.pinecone.clients.Pinecone;
 import io.pinecone.unsigned_indices_model.QueryResponseWithUnsignedIndices;
 import io.pinecone.unsigned_indices_model.ScoredVectorWithUnsignedIndices;
 import io.pinecone.unsigned_indices_model.VectorWithUnsignedIndices;
-import org.openapitools.client.model.IndexList;
-import org.openapitools.client.model.IndexModel;
+import org.openapitools.db_control.client.model.IndexList;
+import org.openapitools.db_control.client.model.IndexModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

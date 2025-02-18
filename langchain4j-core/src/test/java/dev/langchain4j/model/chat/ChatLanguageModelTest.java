@@ -6,12 +6,11 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.output.Response;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class ChatLanguageModelTest implements WithAssertions {
     public static class UpperCaseEchoModel implements ChatLanguageModel {
@@ -23,7 +22,7 @@ class ChatLanguageModelTest implements WithAssertions {
     }
 
     @Test
-    public void test_not_supported() {
+    void not_supported() {
         ChatLanguageModel model = new UpperCaseEchoModel();
 
         List<ChatMessage> messages = new ArrayList<>();
@@ -33,16 +32,16 @@ class ChatLanguageModelTest implements WithAssertions {
                 .withMessageContaining("tools are currently not supported by UpperCaseEchoModel");
 
         assertThatExceptionOfType(UnsupportedFeatureException.class)
-                .isThrownBy(() -> model.generate(messages, ToolSpecification.builder().name("foo").build()))
+                .isThrownBy(() -> model.generate(
+                        messages, ToolSpecification.builder().name("foo").build()))
                 .withMessageContaining("tools and tool choice are currently not supported by UpperCaseEchoModel");
     }
 
     @Test
-    public void test_generate() {
+    void generate() {
         ChatLanguageModel model = new UpperCaseEchoModel();
 
-        assertThat(model.generate("how are you?"))
-                .isEqualTo("HOW ARE YOU?");
+        assertThat(model.generate("how are you?")).isEqualTo("HOW ARE YOU?");
 
         {
             List<ChatMessage> messages = new ArrayList<>();
@@ -58,10 +57,8 @@ class ChatLanguageModelTest implements WithAssertions {
         }
 
         {
-            Response<AiMessage> response = model.generate(
-                    new UserMessage("Hello"),
-                    new AiMessage("Hi"),
-                    new UserMessage("How are you?"));
+            Response<AiMessage> response =
+                    model.generate(new UserMessage("Hello"), new AiMessage("Hi"), new UserMessage("How are you?"));
 
             assertThat(response.content().text()).isEqualTo("HOW ARE YOU?");
             assertThat(response.tokenUsage()).isNull();

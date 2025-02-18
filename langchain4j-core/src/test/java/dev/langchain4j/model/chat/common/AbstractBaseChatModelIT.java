@@ -206,7 +206,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"));
         if (supportsMaxOutputTokensParameter()) {
-            DefaultChatRequestParameters parameters = ChatRequestParameters.builder()
+            ChatRequestParameters parameters = ChatRequestParameters.builder()
                     .maxOutputTokens(1) // to save tokens
                     .build();
             chatRequestBuilder.parameters(parameters);
@@ -1054,7 +1054,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         Base64.Encoder encoder = Base64.getEncoder();
 
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
+                TextContent.from("What do you see on these images?"),
                 ImageContent.from(encoder.encodeToString(readBytes(CAT_IMAGE_URL)), "image/png"),
                 ImageContent.from(encoder.encodeToString(readBytes(DICE_IMAGE_URL)), "image/png")
         );
@@ -1147,7 +1147,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
+                TextContent.from("What do you see on these images?"),
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(DICE_IMAGE_URL)
         );
