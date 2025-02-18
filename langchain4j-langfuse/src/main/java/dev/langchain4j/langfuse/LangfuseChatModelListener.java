@@ -1,17 +1,19 @@
 package dev.langchain4j.langfuse;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import java.util.Map;
 
-public class TracedChatModel implements ChatModelListener {
+public class LangfuseChatModelListener implements ChatModelListener {
 
     private final LangfuseTracer tracer;
 
-    public TracedChatModel(LangfuseTracer tracer) {
-        this.tracer = tracer;
+    public LangfuseChatModelListener(LangfuseTracer tracer) {
+        this.tracer = ensureNotNull(tracer, "tracer must not be null");
     }
 
     @Override

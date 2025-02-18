@@ -33,7 +33,7 @@ public class DefaultLangfuseTracer implements LangfuseTracer {
         this.client = LangfuseClient.builder()
                 .publicKey(config.getPublicKey())
                 .secretKey(config.getSecretKey())
-                .endpoint(config.getEndpoint())
+                .baseUrl(config.getBaseUrl())
                 .build();
 
         this.contexts = new ConcurrentHashMap<>();

@@ -4,11 +4,11 @@ public class LangfuseConfig {
 
     private final String publicKey;
     private final String secretKey;
-    private final String endpoint;
+    private final String baseUrl;
     private final int maxContentLength;
     private final int batchSize;
     private final long flushInterval;
-    private final boolean enabled;
+    private final boolean tracingEnabled;
 
     public static Builder builder() {
         return new Builder();
@@ -17,8 +17,8 @@ public class LangfuseConfig {
     private LangfuseConfig(Builder builder) {
         this.publicKey = builder.publicKey;
         this.secretKey = builder.secretKey;
-        this.endpoint = builder.endpoint;
-        this.enabled = builder.enabled;
+        this.baseUrl = builder.baseUrl;
+        this.tracingEnabled = builder.tracingEnabled;
         this.maxContentLength = builder.maxContentLength;
         this.batchSize = builder.batchSize;
         this.flushInterval = builder.flushInterval;
@@ -27,11 +27,11 @@ public class LangfuseConfig {
     public static class Builder {
         private String publicKey;
         private String secretKey;
-        private String endpoint = "https://cloud.langfuse.com";
+        private String baseUrl = "https://cloud.langfuse.com";
         private int maxContentLength = 1000;
         private int batchSize = 20;
         private long flushInterval = 5000;
-        private boolean enabled = false;
+        private boolean tracingEnabled = false;
 
         public Builder publicKey(String publicKey) {
             this.publicKey = publicKey;
@@ -43,13 +43,13 @@ public class LangfuseConfig {
             return this;
         }
 
-        public Builder endpoint(String endpoint) {
-            this.endpoint = endpoint;
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
             return this;
         }
 
-        public Builder enabled(boolean enabled) {
-            this.enabled = enabled;
+        public Builder tracingEnabled(boolean tracingEnabled) {
+            this.tracingEnabled = tracingEnabled;
             return this;
         }
 
@@ -69,7 +69,7 @@ public class LangfuseConfig {
         }
 
         public LangfuseConfig build() {
-            if (enabled) {
+            if (tracingEnabled) {
                 if (publicKey == null || publicKey.isEmpty()) {
                     throw new IllegalArgumentException("Public key must be provided when Langfuse tracing is enabled.");
                 }
@@ -81,24 +81,6 @@ public class LangfuseConfig {
         }
     }
 
-    public static LangfuseConfig fromEnv() {
-        String publicKey = System.getenv("LANGFUSE_PUBLIC_KEY");
-        String secretKey = System.getenv("LANGFUSE_SECRET_KEY");
-        String endpoint = System.getenv("LANGFUSE_ENDPOINT");
-        boolean enabled = Boolean.parseBoolean(System.getenv("LANGFUSE_ENABLED"));
-
-        return LangfuseConfig.builder()
-                .publicKey(publicKey)
-                .secretKey(secretKey)
-                .endpoint(endpoint != null ? endpoint : "https://cloud.langfuse.com")
-                .enabled(enabled)
-                .build();
-    }
-
-    public static LangfuseConfig defaultConfigFromEnv() {
-        return fromEnv();
-    }
-
     public String getPublicKey() {
         return publicKey;
     }
@@ -107,12 +89,12 @@ public class LangfuseConfig {
         return secretKey;
     }
 
-    public String getEndpoint() {
-        return endpoint;
+    public String getBaseUrl() {
+        return baseUrl;
     }
 
-    public boolean isEnabled() {
-        return enabled;
+    public boolean isTracingEnabled() {
+        return tracingEnabled;
     }
 
     public int getBatchSize() {
@@ -132,11 +114,11 @@ public class LangfuseConfig {
         return "LangfuseConfig{"
                 + "publicKey='****'"
                 + ", secretKey='****'"
-                + ", endpoint='"
-                + endpoint
+                + ", baseUrl='"
+                + baseUrl
                 + '\''
-                + ", enabled="
-                + enabled
+                + ", tracingEnabled="
+                + tracingEnabled
                 + '}';
     }
 }

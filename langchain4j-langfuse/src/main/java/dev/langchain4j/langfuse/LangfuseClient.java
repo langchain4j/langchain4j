@@ -1,12 +1,16 @@
 package dev.langchain4j.langfuse;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.time.Duration.ofSeconds;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.langfuse.model.Observation;
 import dev.langchain4j.langfuse.model.Score;
 import dev.langchain4j.langfuse.model.Session;
@@ -23,20 +27,23 @@ public class LangfuseClient implements AutoCloseable {
     private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private final HttpClient httpClient;
-    private final String endpoint;
+    private final String baseUrl;
     private final String publicKey;
     private final String secretKey;
 
     private LangfuseClient(Builder builder) {
-        this.endpoint = builder.endpoint;
+        this.baseUrl = builder.baseUrl;
         this.publicKey = builder.publicKey;
         this.secretKey = builder.secretKey;
-        this.httpClient = builder.httpClient != null
-                ? builder.httpClient
-                : new JdkHttpClientBuilder()
-                        .readTimeout(Duration.ofSeconds(30))
-                        .connectTimeout(Duration.ofSeconds(30))
-                        .build();
+        HttpClientBuilder httpClientBuilder =
+                getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
+
+        this.httpClient = httpClientBuilder
+                .connectTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
+                .readTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
+                .build();
     }
 
     private HttpRequest.Builder baseRequestBuilder() {
@@ -65,7 +72,7 @@ public class LangfuseClient implements AutoCloseable {
         public void create(Trace trace) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(endpoint + "/api/public/traces")
+                    .url(baseUrl + "/api/public/traces")
                     .body(MAPPER.writeValueAsString(trace))
                     .build();
 
@@ -78,7 +85,7 @@ public class LangfuseClient implements AutoCloseable {
         public void update(String traceId, Map<String, Object> output, String status) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(endpoint + "/api/public/traces/" + traceId)
+                    .url(baseUrl + "/api/public/traces/" + traceId)
                     .body(MAPPER.writeValueAsString(Map.of(
                             "outputs", output,
                             "status", status)))
@@ -95,7 +102,7 @@ public class LangfuseClient implements AutoCloseable {
         public void createBatch(List<Observation> observations) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(endpoint + "/api/public/observations/batch")
+                    .url(baseUrl + "/api/public/observations/batch")
                     .body(MAPPER.writeValueAsString(observations))
                     .build();
 
@@ -108,7 +115,7 @@ public class LangfuseClient implements AutoCloseable {
         public void update(String observationId, Map<String, Object> output, String status) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(endpoint + "/api/public/observations/" + observationId)
+                    .url(baseUrl + "/api/public/observations/" + observationId)
                     .body(MAPPER.writeValueAsString(Map.of(
                             "output", output,
                             "status", status)))
@@ -125,7 +132,7 @@ public class LangfuseClient implements AutoCloseable {
         public void create(Session session) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(endpoint + "/api/public/sessions")
+                    .url(baseUrl + "/api/public/sessions")
                     .body(MAPPER.writeValueAsString(session))
                     .build();
 
@@ -138,7 +145,7 @@ public class LangfuseClient implements AutoCloseable {
         public void addTrace(String sessionId, String traceId) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(endpoint + "/api/public/sessions/" + sessionId + "/traces")
+                    .url(baseUrl + "/api/public/sessions/" + sessionId + "/traces")
                     .body(MAPPER.writeValueAsString(Map.of("traceId", traceId)))
                     .build();
 
@@ -153,7 +160,7 @@ public class LangfuseClient implements AutoCloseable {
         public void create(Score score) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(endpoint + "/api/public/scores")
+                    .url(baseUrl + "/api/public/scores")
                     .body(MAPPER.writeValueAsString(score))
                     .build();
 
@@ -184,13 +191,25 @@ public class LangfuseClient implements AutoCloseable {
     }
 
     public static class Builder {
-        private String endpoint = "https://cloud.langfuse.com";
+        private HttpClientBuilder httpClientBuilder;
+        private Duration timeout;
+
+        private String baseUrl = "https://cloud.langfuse.com";
         private String publicKey;
         private String secretKey;
-        private HttpClient httpClient;
 
-        public Builder endpoint(String endpoint) {
-            this.endpoint = endpoint;
+        Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        Builder timeout(Duration timeout) {
+            this.timeout = timeout;
             return this;
         }
 
@@ -201,11 +220,6 @@ public class LangfuseClient implements AutoCloseable {
 
         public Builder secretKey(String secretKey) {
             this.secretKey = secretKey;
-            return this;
-        }
-
-        public Builder httpClient(HttpClient httpClient) {
-            this.httpClient = httpClient;
             return this;
         }
 

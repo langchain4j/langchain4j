@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.langfuse.model.Observation;
@@ -16,6 +17,7 @@ import dev.langchain4j.langfuse.model.Score;
 import dev.langchain4j.langfuse.model.Session;
 import dev.langchain4j.langfuse.model.Trace;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,12 +33,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class LangfuseClientTest {
 
-    private static final String ENDPOINT = "https://test.langfuse.com";
+    private static final String BASE_URL = "https://test.langfuse.com";
     private static final String PUBLIC_KEY = "public-key";
     private static final String SECRET_KEY = "secret-key";
 
     @Mock
     private HttpClient httpClient;
+
+    @Mock
+    private HttpClientBuilder httpClientBuilder;
 
     @Mock
     private SuccessfulHttpResponse successResponse;
@@ -45,11 +50,15 @@ class LangfuseClientTest {
 
     @BeforeEach
     void setUp() {
+        httpClientBuilder = mock(HttpClientBuilder.class);
+        when(httpClientBuilder.connectTimeout(any(Duration.class))).thenReturn(httpClientBuilder);
+        when(httpClientBuilder.readTimeout(any(Duration.class))).thenReturn(httpClientBuilder);
+        when(httpClientBuilder.build()).thenReturn(httpClient);
         client = LangfuseClient.builder()
-                .endpoint(ENDPOINT)
+                .baseUrl(BASE_URL)
                 .publicKey(PUBLIC_KEY)
                 .secretKey(SECRET_KEY)
-                .httpClient(httpClient)
+                .httpClientBuilder(httpClientBuilder)
                 .build();
     }
 
@@ -72,7 +81,7 @@ class LangfuseClientTest {
         verify(httpClient).execute(requestCaptor.capture());
 
         HttpRequest capturedRequest = requestCaptor.getValue();
-        assertThat(capturedRequest.url()).isEqualTo(ENDPOINT + "/api/public/traces");
+        assertThat(capturedRequest.url()).isEqualTo(BASE_URL + "/api/public/traces");
         assertThat(capturedRequest.method().name()).isEqualTo("POST");
 
         Map<String, List<String>> expectedHeaders = new HashMap<>();
@@ -102,7 +111,7 @@ class LangfuseClientTest {
         verify(httpClient).execute(requestCaptor.capture());
 
         HttpRequest capturedRequest = requestCaptor.getValue();
-        assertThat(capturedRequest.url()).isEqualTo(ENDPOINT + "/api/public/observations/batch");
+        assertThat(capturedRequest.url()).isEqualTo(BASE_URL + "/api/public/observations/batch");
         assertThat(capturedRequest.method().name()).isEqualTo("POST");
     }
 
@@ -126,7 +135,7 @@ class LangfuseClientTest {
         verify(httpClient).execute(requestCaptor.capture());
 
         HttpRequest capturedRequest = requestCaptor.getValue();
-        assertThat(capturedRequest.url()).isEqualTo(ENDPOINT + "/api/public/sessions");
+        assertThat(capturedRequest.url()).isEqualTo(BASE_URL + "/api/public/sessions");
         assertThat(capturedRequest.method().name()).isEqualTo("POST");
     }
 
@@ -150,7 +159,7 @@ class LangfuseClientTest {
         verify(httpClient).execute(requestCaptor.capture());
 
         HttpRequest capturedRequest = requestCaptor.getValue();
-        assertThat(capturedRequest.url()).isEqualTo(ENDPOINT + "/api/public/scores");
+        assertThat(capturedRequest.url()).isEqualTo(BASE_URL + "/api/public/scores");
         assertThat(capturedRequest.method().name()).isEqualTo("POST");
     }
 
@@ -172,12 +181,14 @@ class LangfuseClientTest {
     @Test
     void shouldCloseHttpClientWhenShutdown() throws Exception {
         // Given
-        HttpClient closeableHttpClient = mock(HttpClient.class, "closeableHttpClient");
+        HttpClient mockCloseableHttpClient = mock(HttpClient.class);
+        when(httpClientBuilder.build()).thenReturn(mockCloseableHttpClient);
+
         LangfuseClient clientWithCloseableHttp = LangfuseClient.builder()
-                .endpoint(ENDPOINT)
+                .baseUrl(BASE_URL)
                 .publicKey(PUBLIC_KEY)
                 .secretKey(SECRET_KEY)
-                .httpClient(closeableHttpClient)
+                .httpClientBuilder(httpClientBuilder)
                 .build();
 
         // When

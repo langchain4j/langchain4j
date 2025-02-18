@@ -4,9 +4,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.langfuse.DefaultLangfuseTracer; // Import DefaultLangfuseTracer
+import dev.langchain4j.langfuse.LangfuseChatModelListener;
 import dev.langchain4j.langfuse.LangfuseConfig;
 import dev.langchain4j.langfuse.LangfuseTracer;
-import dev.langchain4j.langfuse.TracedChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import java.util.Collections;
@@ -19,14 +19,14 @@ public class LangfuseExample {
         LangfuseConfig config = LangfuseConfig.builder()
                 .publicKey("your-public-key") // Replace with your actual public key
                 .secretKey("your-secret-key") // Replace with your actual secret key
-                .enabled(true) // Enable tracing
+                .tracingEnabled(true) // Enable tracing
                 .build();
 
         // 2. Create a Langfuse Tracer
         LangfuseTracer tracer = new DefaultLangfuseTracer(config);
 
-        // 3. Create the TracedChatModel, passing in the tracer:
-        TracedChatModel tracedChatModel = new TracedChatModel(tracer);
+        // 3. Create the LangfuseChatModelListener, passing in the tracer:
+        LangfuseChatModelListener tracedChatModel = new LangfuseChatModelListener(tracer);
 
         // 4. Create the base ChatLanguageModel (e.g., OpenAI)
         OpenAiChatModel model = OpenAiChatModel.builder()
