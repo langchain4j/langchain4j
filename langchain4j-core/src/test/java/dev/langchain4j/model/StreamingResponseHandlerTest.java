@@ -4,7 +4,6 @@ import dev.langchain4j.model.output.Response;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-
 class StreamingResponseHandlerTest implements WithAssertions {
     public static class MinimalStreamingResponseHandler<T> implements StreamingResponseHandler<T> {
         @Override
@@ -17,7 +16,7 @@ class StreamingResponseHandlerTest implements WithAssertions {
     }
 
     @Test
-    public void testMinimalStreamingResponseHandler() {
+    void minimalStreamingResponseHandler() {
         StreamingResponseHandler<String> handler = new MinimalStreamingResponseHandler<>();
 
         // Verify that the default implementation of onComplete does nothing.

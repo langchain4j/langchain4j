@@ -1,18 +1,17 @@
 package dev.langchain4j.service.output;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Iterator;
 import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class StringSetOutputParserTest {
 
     StringSetOutputParser sut = new StringSetOutputParser();
 
     @Test()
-    public void ensureThatOrderIsPreserved() {
+    void ensureThatOrderIsPreserved() {
         // Given
         String toParse = "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten";
 

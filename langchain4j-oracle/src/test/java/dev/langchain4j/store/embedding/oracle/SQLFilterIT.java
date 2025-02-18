@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
  * {@link dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT} test already covers many cases. This test class
  * covers some additional behavior which that test might not check for.
  */
-public class SQLFilterIT {
+class SQLFilterIT {
 
     /**
      * Verifies the case where an IsIn and IsNot in filter has a comparison values of different object classes. This
@@ -30,7 +30,7 @@ public class SQLFilterIT {
      * example: "x IN (0,1)" would become "x = 0 OR x = 1"
      */
     @Test
-    public void testNonUniformCollection() {
+    void nonUniformCollection() {
         Embedding embedding0 = TestData.randomEmbedding();
         Embedding embedding1 = TestData.randomEmbedding();
 
@@ -91,7 +91,7 @@ public class SQLFilterIT {
      * {@link SQLFilter#toSQL()}.
      */
     @Test
-    public void testSQLType() throws SQLException {
+    void sqlType() throws SQLException {
 
         assertThat(SQLFilters.create(new IsEqualTo("x", Integer.MIN_VALUE), (key, type) -> {
                             assertThat(key).isEqualTo("x");

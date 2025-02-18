@@ -73,7 +73,7 @@
         <bytebuddy.version>1.15.10</bytebuddy.version>
         <mockito.version>5.14.2</mockito.version>
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
-        <assertj.version>3.24.2</assertj.version>
+        <assertj.version>3.27.3</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <tinylog.version>2.6.2</tinylog.version>
         <httpclient5.version>5.2.1</httpclient5.version>
