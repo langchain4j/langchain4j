@@ -375,6 +375,10 @@ class InternalOpenAiOfficialHelper {
             } else {
                 parametersBuilder.putAdditionalProperty("required", JsonValue.from(parameters.required()));
             }
+            if (parameters.definitions() != null) {
+                parametersBuilder.putAdditionalProperty(
+                        "$defs", JsonValue.from(toMap(parameters.definitions(), strict)));
+            }
             return parametersBuilder.build();
         } else {
             parametersBuilder.putAdditionalProperty("properties", JsonValue.from(toMap(new HashMap<>(), strict)));

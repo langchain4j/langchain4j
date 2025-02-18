@@ -10,11 +10,16 @@ class OpenAiOfficialAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return InternalOpenAiOfficialTestHelper.chatModelsNormalAndJsonStrict();
+        return InternalOpenAiOfficialTestHelper.chatModelsNormalAndStrictTools();
     }
 
     @Override
     protected boolean supportsRecursion() {
+        return true;
+    }
+
+    @Override
+    protected boolean verifyModelInteractions() {
         return true;
     }
 }

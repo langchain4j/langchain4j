@@ -24,9 +24,11 @@ public class InternalOpenAiOfficialTestHelper {
 
     // Chat models
     static final OpenAiOfficialChatModel AZURE_OPEN_AI_CHAT_MODEL;
+    static final OpenAiOfficialChatModel AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS;
     static final OpenAiOfficialChatModel AZURE_OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA;
     static final OpenAiOfficialChatModel AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA;
     static final OpenAiOfficialStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL;
+    static final OpenAiOfficialStreamingChatModel AZURE_OPEN_AI_CHAT_MODEL_STREAMING_WITH_STRICT_TOOLS;
     static final OpenAiOfficialStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA;
 
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL;
@@ -53,6 +55,13 @@ public class InternalOpenAiOfficialTestHelper {
                     .modelName(CHAT_MODEL_NAME)
                     .build();
 
+            AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS = OpenAiOfficialChatModel.builder()
+                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                    .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .modelName(CHAT_MODEL_NAME)
+                    .strictTools(true)
+                    .build();
+
             AZURE_OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA = OpenAiOfficialChatModel.builder()
                     .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                     .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
@@ -73,6 +82,13 @@ public class InternalOpenAiOfficialTestHelper {
                     .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                     .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
                     .modelName(CHAT_MODEL_NAME)
+                    .build();
+
+            AZURE_OPEN_AI_CHAT_MODEL_STREAMING_WITH_STRICT_TOOLS = OpenAiOfficialStreamingChatModel.builder()
+                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                    .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .modelName(CHAT_MODEL_NAME)
+                    .strictTools(true)
                     .build();
 
             AZURE_OPEN_AI_STREAMING_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA = OpenAiOfficialStreamingChatModel.builder()
@@ -105,9 +121,11 @@ public class InternalOpenAiOfficialTestHelper {
 
         } else {
             AZURE_OPEN_AI_CHAT_MODEL = null;
+            AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS = null;
             AZURE_OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA = null;
             AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA = null;
             AZURE_OPEN_AI_STREAMING_CHAT_MODEL = null;
+            AZURE_OPEN_AI_CHAT_MODEL_STREAMING_WITH_STRICT_TOOLS = null;
             AZURE_OPEN_AI_STREAMING_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA = null;
             AZURE_OPEN_AI_EMBEDDING_MODEL = null;
             AZURE_OPEN_AI_IMAGE_MODEL = null;
@@ -157,6 +175,9 @@ public class InternalOpenAiOfficialTestHelper {
         if (AZURE_OPEN_AI_CHAT_MODEL != null) {
             models.add(AZURE_OPEN_AI_CHAT_MODEL);
         }
+        if (AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS != null) {
+            models.add(AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS);
+        }
         if (AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA != null) {
             models.add(AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA);
         }
@@ -170,7 +191,25 @@ public class InternalOpenAiOfficialTestHelper {
         return models;
     }
 
-    static List<ChatLanguageModel> chatModelsAllJson() {
+    static List<ChatLanguageModel> chatModelsNormalAndStrictTools() {
+        List<ChatLanguageModel> models = new ArrayList<>();
+        if (AZURE_OPEN_AI_CHAT_MODEL != null) {
+            models.add(AZURE_OPEN_AI_CHAT_MODEL);
+        }
+        if (AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS != null) {
+            models.add(AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS);
+        }
+        if (OPEN_AI_CHAT_MODEL != null) {
+            models.add(OPEN_AI_CHAT_MODEL);
+        }
+        if (models.isEmpty()) {
+            log.error(
+                    "Testing normal model & JSON strict tools: skipping tests are Azure OpenAI and OpenAI API keys are not set");
+        }
+        return models;
+    }
+
+    static List<ChatLanguageModel> chatModelsWithJsonResponse() {
         List<ChatLanguageModel> models = new ArrayList<>();
         if (AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA != null) {
             models.add(AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA);
@@ -183,7 +222,7 @@ public class InternalOpenAiOfficialTestHelper {
         }
         if (models.isEmpty()) {
             log.error(
-                    "Testing strict and non-strict JSON models: skipping tests are Azure OpenAI and OpenAI API keys are not set");
+                    "Testing JSON responses: skipping tests are Azure OpenAI and OpenAI API keys are not set");
         }
         return models;
     }

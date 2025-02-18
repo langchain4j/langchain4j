@@ -10,7 +10,7 @@ class OpenAiOfficialAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaI
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return InternalOpenAiOfficialTestHelper.chatModelsAllJson();
+        return InternalOpenAiOfficialTestHelper.chatModelsWithJsonResponse();
     }
 
     @Override
