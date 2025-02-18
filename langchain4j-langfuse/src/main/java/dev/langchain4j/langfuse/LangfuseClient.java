@@ -72,7 +72,7 @@ public class LangfuseClient implements AutoCloseable {
         public void create(Trace trace) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(baseUrl + "/api/public/traces")
+                    .url(baseUrl, "/api/public/traces")
                     .body(MAPPER.writeValueAsString(trace))
                     .build();
 
@@ -102,7 +102,7 @@ public class LangfuseClient implements AutoCloseable {
         public void createBatch(List<Observation> observations) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(baseUrl + "/api/public/observations/batch")
+                    .url(baseUrl, "/api/public/observations/batch")
                     .body(MAPPER.writeValueAsString(observations))
                     .build();
 
@@ -115,7 +115,7 @@ public class LangfuseClient implements AutoCloseable {
         public void update(String observationId, Map<String, Object> output, String status) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(baseUrl + "/api/public/observations/" + observationId)
+                    .url(baseUrl, "/api/public/observations/" + observationId)
                     .body(MAPPER.writeValueAsString(Map.of(
                             "output", output,
                             "status", status)))
@@ -132,7 +132,7 @@ public class LangfuseClient implements AutoCloseable {
         public void create(Session session) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(baseUrl + "/api/public/sessions")
+                    .url(baseUrl, "/api/public/sessions")
                     .body(MAPPER.writeValueAsString(session))
                     .build();
 
@@ -145,7 +145,7 @@ public class LangfuseClient implements AutoCloseable {
         public void addTrace(String sessionId, String traceId) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(baseUrl + "/api/public/sessions/" + sessionId + "/traces")
+                    .url(baseUrl, "/api/public/sessions/" + sessionId + "/traces")
                     .body(MAPPER.writeValueAsString(Map.of("traceId", traceId)))
                     .build();
 
@@ -160,7 +160,7 @@ public class LangfuseClient implements AutoCloseable {
         public void create(Score score) throws IOException {
             HttpRequest request = baseRequestBuilder()
                     .method(HttpMethod.POST)
-                    .url(baseUrl + "/api/public/scores")
+                    .url(baseUrl, "/api/public/scores")
                     .body(MAPPER.writeValueAsString(score))
                     .build();
 
