@@ -16,7 +16,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 @Disabled("Run manually before release. Expensive to run very often.")
-public class OpenAiOfficialImageModelIT {
+class OpenAiOfficialImageModelIT {
 
     protected List<ImageModel> modelsUrl() {
         return InternalOpenAiOfficialTestHelper.imageModelsUrl();
