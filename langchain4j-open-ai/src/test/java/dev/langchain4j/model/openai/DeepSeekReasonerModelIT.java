@@ -11,7 +11,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
-public class DeepSeekReasonerModelIT {
+class DeepSeekReasonerModelIT {
     // Refer to the model's documentation: https://api-docs.deepseek.com/zh-cn/guides/reasoning_model
 
     @ParameterizedTest
