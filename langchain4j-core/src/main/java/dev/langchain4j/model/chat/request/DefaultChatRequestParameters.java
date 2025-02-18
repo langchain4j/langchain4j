@@ -1,16 +1,17 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import java.util.List;
+import java.util.Objects;
 
 @Experimental
 public class DefaultChatRequestParameters implements ChatRequestParameters {
@@ -26,6 +27,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     private final List<ToolSpecification> toolSpecifications;
     private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
+    private final InputGuardrailsConfig inputGuardrailsConfig;
+    private final OutputGuardrailsConfig outputGuardrailsConfig;
 
     protected DefaultChatRequestParameters(Builder<?> builder) {
         this.modelName = builder.modelName;
@@ -39,6 +42,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
         this.toolChoice = builder.toolChoice;
         this.responseFormat = builder.responseFormat;
+        this.inputGuardrailsConfig = builder.inputGuardrailsConfig;
+        this.outputGuardrailsConfig = builder.outputGuardrailsConfig;
     }
 
     @Override
@@ -97,6 +102,16 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     }
 
     @Override
+    public InputGuardrailsConfig inputGuardrailsConfig() {
+        return inputGuardrailsConfig;
+    }
+
+    @Override
+    public OutputGuardrailsConfig outputGuardrailsConfig() {
+        return outputGuardrailsConfig;
+    }
+
+    @Override
     public ChatRequestParameters overrideWith(ChatRequestParameters that) {
         return DefaultChatRequestParameters.builder()
                 .overrideWith(this)
@@ -119,7 +134,9 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 && Objects.equals(stopSequences, that.stopSequences)
                 && Objects.equals(toolSpecifications, that.toolSpecifications)
                 && Objects.equals(toolChoice, that.toolChoice)
-                && Objects.equals(responseFormat, that.responseFormat);
+                && Objects.equals(responseFormat, that.responseFormat)
+                && Objects.equals(inputGuardrailsConfig, that.inputGuardrailsConfig)
+                && Objects.equals(outputGuardrailsConfig, that.outputGuardrailsConfig);
     }
 
     @Override
@@ -135,25 +152,25 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 stopSequences,
                 toolSpecifications,
                 toolChoice,
-                responseFormat
-        );
+                responseFormat,
+                inputGuardrailsConfig,
+                outputGuardrailsConfig);
     }
 
     @Override
     public String toString() {
-        return "DefaultChatRequestParameters{" +
-                "modelName='" + modelName + '\'' +
-                ", temperature=" + temperature +
-                ", topP=" + topP +
-                ", topK=" + topK +
-                ", frequencyPenalty=" + frequencyPenalty +
-                ", presencePenalty=" + presencePenalty +
-                ", maxOutputTokens=" + maxOutputTokens +
-                ", stopSequences=" + stopSequences +
-                ", toolSpecifications=" + toolSpecifications +
-                ", toolChoice=" + toolChoice +
-                ", responseFormat=" + responseFormat +
-                '}';
+        return "DefaultChatRequestParameters{" + "modelName='"
+                + modelName + '\'' + ", temperature="
+                + temperature + ", topP="
+                + topP + ", topK="
+                + topK + ", frequencyPenalty="
+                + frequencyPenalty + ", presencePenalty="
+                + presencePenalty + ", maxOutputTokens="
+                + maxOutputTokens + ", stopSequences="
+                + stopSequences + ", toolSpecifications="
+                + toolSpecifications + ", toolChoice="
+                + toolChoice + ", responseFormat="
+                + responseFormat + '}';
     }
 
     public static Builder<?> builder() {
@@ -173,6 +190,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
+        private InputGuardrailsConfig inputGuardrailsConfig;
+        private OutputGuardrailsConfig outputGuardrailsConfig;
 
         public T overrideWith(ChatRequestParameters parameters) {
             modelName(getOrDefault(parameters.modelName(), modelName));
@@ -186,6 +205,18 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             toolSpecifications(copyIfNotNull(getOrDefault(parameters.toolSpecifications(), toolSpecifications)));
             toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
             responseFormat(getOrDefault(parameters.responseFormat(), responseFormat));
+            inputGuardrailsConfig(getOrDefault(parameters.inputGuardrailsConfig(), inputGuardrailsConfig));
+            outputGuardrailsConfig(getOrDefault(parameters.outputGuardrailsConfig(), outputGuardrailsConfig));
+            return (T) this;
+        }
+
+        public T inputGuardrailsConfig(InputGuardrailsConfig inputGuardrailsConfig) {
+            this.inputGuardrailsConfig = inputGuardrailsConfig;
+            return (T) this;
+        }
+
+        public T outputGuardrailsConfig(OutputGuardrailsConfig outputGuardrailsConfig) {
+            this.outputGuardrailsConfig = outputGuardrailsConfig;
             return (T) this;
         }
 
