@@ -12,6 +12,7 @@ import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -40,6 +41,7 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ModelProvider.AZURE_AI_INFERENCE;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.contentFilterManagement;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerRequest;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerResponse;
@@ -182,7 +184,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
 
         listeners.forEach(listener -> {
             try {
@@ -245,6 +247,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                             throwable,
                             requestContext.request(),
                             modelListenerPartialResponse,
+                            provider(),
                             requestContext.attributes()
                     );
 
@@ -267,6 +270,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
                             modelListenerResponse,
                             requestContext.request(),
+                            provider(),
                             requestContext.attributes()
                     );
                     listeners.forEach(listener -> {
@@ -292,6 +296,16 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         if (message != null && message.getContent() != null) {
             handler.onNext(message.getContent());
         }
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return AZURE_AI_INFERENCE;
     }
 
     public static Builder builder() {

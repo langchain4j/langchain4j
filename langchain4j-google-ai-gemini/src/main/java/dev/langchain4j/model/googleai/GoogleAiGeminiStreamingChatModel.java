@@ -4,6 +4,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_GEMINI;
 
 @Experimental
 @Slf4j
@@ -66,7 +68,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         ChatModelRequest chatModelRequest = createChatModelRequest(null, messages, toolSpecifications, parameters);
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, listenerAttributes);
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, provider(), listenerAttributes);
         notifyListenersOnRequest(chatModelRequestContext);
 
         processGenerateContentRequest(request, handler, chatModelRequest, listenerAttributes);
@@ -89,11 +91,21 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             Response<AiMessage> fullResponse = responseBuilder.build();
             handler.onComplete(fullResponse);
 
-            notifyListenersOnResponse(fullResponse, chatModelRequest, listenerAttributes);
+            notifyListenersOnResponse(fullResponse, chatModelRequest, provider(), listenerAttributes);
         } catch (RuntimeException exception) {
-            notifyListenersOnError(exception, chatModelRequest, listenerAttributes);
+            notifyListenersOnError(exception, chatModelRequest, provider(), listenerAttributes);
             handler.onError(exception);
         }
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return GOOGLE_GEMINI;
     }
 
     public static class GoogleAiGeminiStreamingChatModelBuilder {

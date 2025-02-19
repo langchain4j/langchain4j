@@ -10,6 +10,7 @@ import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.github.spi.GitHubModelsChatModelBuilderFactory;
@@ -28,6 +29,7 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ModelProvider.AZURE_AI_INFERENCE;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
@@ -160,7 +162,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -185,6 +187,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
                     modelListenerResponse,
                     modelListenerRequest,
+                    provider(),
                     attributes
             );
             listeners.forEach(listener -> {
@@ -203,6 +206,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                     httpResponseException,
                     modelListenerRequest,
                     null,
+                    provider(),
                     attributes
             );
 
@@ -225,6 +229,16 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                     exceptionFinishReason
             );
         }
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return AZURE_AI_INFERENCE;
     }
 
     public static Builder builder() {
