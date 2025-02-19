@@ -1,22 +1,29 @@
 package dev.langchain4j.model.chat.common;
 
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.DISABLED;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.FAIL;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.SUPPORT;
+
 public abstract class ChatModelCapabilities<M> {
 
     private final M model;
-    private final boolean supportsModelNameParameter;
-    private final boolean supportsMaxOutputTokensParameter;
-    private final boolean supportsDefaultRequestParameters;
-    private final boolean supportsTools;
-    private final boolean supportsToolChoiceRequiredWithMultipleTools;
-    private final boolean supportsToolChoiceRequiredWithSingleTool;
-    private final boolean supportsToolChoiceRequired;
-    private final boolean supportsJsonResponseFormat;
-    private final boolean supportsJsonResponseFormatWithSchema;
-    private final boolean supportsSingleImageInputAsBase64EncodedString;
-    private final boolean supportsMultipleImageInputsAsBase64EncodedStrings;
-    private final boolean supportsSingleImageInputAsPublicURL;
-    private final boolean supportsMultipleImageInputsAsPublicURLs;
-    private final boolean supportsStopSequencesParameter;
+    private final String mnemonicName;
+    private final Capability supportsModelNameParameter;
+    private final Capability supportsMaxOutputTokensParameter;
+    private final Capability supportsDefaultRequestParameters;
+    private final Capability supportsTools;
+    private final Capability supportsToolChoiceRequiredWithMultipleTools;
+    private final Capability supportsToolChoiceRequiredWithSingleTool;
+    private final Capability supportsToolChoiceRequired;
+    private final Capability supportsJsonResponseFormat;
+    private final Capability supportsJsonResponseFormatWithSchema;
+    private final Capability supportsSingleImageInputAsBase64EncodedString;
+    private final Capability supportsMultipleImageInputsAsBase64EncodedStrings;
+    private final Capability supportsSingleImageInputAsPublicURL;
+    private final Capability supportsMultipleImageInputsAsPublicURLs;
+    private final Capability supportsStopSequencesParameter;
+    private final Capability supportsCommonParametersWrappedInIntegrationSpecificClass;
+    private final Capability supportsToolsAndJsonResponseFormatWithSchema;
     private final boolean assertResponseId;
     private final boolean assertResponseModel;
     private final boolean assertTokenUsage;
@@ -31,6 +38,7 @@ public abstract class ChatModelCapabilities<M> {
     protected ChatModelCapabilities(AbstractBuilder<?, M> builder) {
         this.model = builder.model;
         this.supportsModelNameParameter = builder.supportsModelNameParameter;
+        this.mnemonicName = builder.mnemonicName;
         this.supportsMaxOutputTokensParameter = builder.supportsMaxOutputTokensParameter;
         this.supportsDefaultRequestParameters = builder.supportsDefaultRequestParameters;
         this.supportsTools = builder.supportsTools;
@@ -45,6 +53,9 @@ public abstract class ChatModelCapabilities<M> {
         this.supportsSingleImageInputAsPublicURL = builder.supportsSingleImageInputAsPublicURL;
         this.supportsMultipleImageInputsAsPublicURLs = builder.supportsMultipleImageInputsAsPublicURLs;
         this.supportsStopSequencesParameter = builder.supportsStopSequencesParameter;
+        this.supportsCommonParametersWrappedInIntegrationSpecificClass =
+                builder.supportsCommonParametersWrappedInIntegrationSpecificClass;
+        this.supportsToolsAndJsonResponseFormatWithSchema = builder.supportsToolsAndJsonResponseFormatWithSchema;
         this.assertResponseId = builder.assertResponseId;
         this.assertResponseModel = builder.assertResponseModel;
         this.assertTokenUsage = builder.assertTokenUsage;
@@ -54,65 +65,76 @@ public abstract class ChatModelCapabilities<M> {
         this.assertTimesOnPartialResponseWasCalled = builder.assertTimesOnPartialResponseWasCalled;
     }
 
-    // Getters pour chaque champ
     public M model() {
         return model;
     }
 
-    public boolean supportsModelNameParameter() {
+    public String mnemonicName() {
+        return mnemonicName;
+    }
+
+    public Capability supportsModelNameParameter() {
         return supportsModelNameParameter;
     }
 
-    public boolean supportsMaxOutputTokensParameter() {
+    public Capability supportsMaxOutputTokensParameter() {
         return supportsMaxOutputTokensParameter;
     }
 
-    public boolean supportsDefaultRequestParameters() {
+    public Capability supportsDefaultRequestParameters() {
         return supportsDefaultRequestParameters;
     }
 
-    public boolean supportsTools() {
+    public Capability supportsTools() {
         return supportsTools;
     }
 
-    public boolean supportsToolChoiceRequiredWithMultipleTools() {
+    public Capability supportsToolChoiceRequiredWithMultipleTools() {
         return supportsToolChoiceRequiredWithMultipleTools;
     }
 
-    public boolean supportsToolChoiceRequiredWithSingleTool() {
+    public Capability supportsToolChoiceRequiredWithSingleTool() {
         return supportsToolChoiceRequiredWithSingleTool;
     }
 
-    public boolean supportsToolChoiceRequired() {
+    public Capability supportsToolChoiceRequired() {
         return supportsToolChoiceRequired;
     }
 
-    public boolean supportsJsonResponseFormat() {
+    public Capability supportsJsonResponseFormat() {
         return supportsJsonResponseFormat;
     }
 
-    public boolean supportsJsonResponseFormatWithSchema() {
+    public Capability supportsJsonResponseFormatWithSchema() {
         return supportsJsonResponseFormatWithSchema;
     }
 
-    public boolean supportsSingleImageInputAsBase64EncodedString() {
+    public Capability supportsSingleImageInputAsBase64EncodedString() {
         return supportsSingleImageInputAsBase64EncodedString;
     }
 
-    public boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
+    public Capability supportsMultipleImageInputsAsBase64EncodedStrings() {
         return supportsMultipleImageInputsAsBase64EncodedStrings;
     }
 
-    public boolean supportsSingleImageInputAsPublicURL() {
+    public Capability supportsSingleImageInputAsPublicURL() {
         return supportsSingleImageInputAsPublicURL;
     }
 
-    public boolean supportsMultipleImageInputsAsPublicURLs() {
+    public Capability supportsMultipleImageInputsAsPublicURLs() {
         return supportsMultipleImageInputsAsPublicURLs;
     }
 
-    public boolean supportsStopSequencesParameter() {
+    public Capability supportsStopSequencesParameter() {
         return supportsStopSequencesParameter;
+    }
+
+    public Capability supportsCommonParametersWrappedInIntegrationSpecificClass() {
+        return supportsCommonParametersWrappedInIntegrationSpecificClass;
+    }
+
+    public Capability supportsToolsAndJsonResponseFormatWithSchema() {
+        return supportsToolsAndJsonResponseFormatWithSchema;
     }
 
     public boolean assertResponseId() {
@@ -149,20 +171,23 @@ public abstract class ChatModelCapabilities<M> {
      */
     public abstract static class AbstractBuilder<T extends AbstractBuilder<T, M>, M> {
         protected M model;
-        private boolean supportsModelNameParameter = true;
-        private boolean supportsMaxOutputTokensParameter = true;
-        private boolean supportsDefaultRequestParameters = true;
-        private boolean supportsTools = true;
-        private boolean supportsToolChoiceRequiredWithMultipleTools = true;
-        private boolean supportsToolChoiceRequiredWithSingleTool = true;
-        private boolean supportsToolChoiceRequired = true;
-        private boolean supportsJsonResponseFormat = true;
-        private boolean supportsJsonResponseFormatWithSchema = true;
-        private boolean supportsSingleImageInputAsBase64EncodedString = true;
-        private boolean supportsMultipleImageInputsAsBase64EncodedStrings = true;
-        private boolean supportsSingleImageInputAsPublicURL = true;
-        private boolean supportsMultipleImageInputsAsPublicURLs = true;
-        private boolean supportsStopSequencesParameter = true;
+        private String mnemonicName = null;
+        private Capability supportsModelNameParameter = SUPPORT;
+        private Capability supportsMaxOutputTokensParameter = SUPPORT;
+        private Capability supportsDefaultRequestParameters = SUPPORT;
+        private Capability supportsTools = SUPPORT;
+        private Capability supportsToolChoiceRequiredWithMultipleTools = SUPPORT;
+        private Capability supportsToolChoiceRequiredWithSingleTool = SUPPORT;
+        private Capability supportsToolChoiceRequired = SUPPORT;
+        private Capability supportsJsonResponseFormat = SUPPORT;
+        private Capability supportsJsonResponseFormatWithSchema = SUPPORT;
+        private Capability supportsSingleImageInputAsBase64EncodedString = SUPPORT;
+        private Capability supportsMultipleImageInputsAsBase64EncodedStrings = SUPPORT;
+        private Capability supportsSingleImageInputAsPublicURL = SUPPORT;
+        private Capability supportsMultipleImageInputsAsPublicURLs = SUPPORT;
+        private Capability supportsStopSequencesParameter = SUPPORT;
+        private Capability supportsCommonParametersWrappedInIntegrationSpecificClass = SUPPORT;
+        private Capability supportsToolsAndJsonResponseFormatWithSchema = SUPPORT;
         private boolean assertResponseId = true;
         private boolean assertResponseModel = true;
         private boolean assertTokenUsage = true;
@@ -176,88 +201,147 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
-        public T supportsModelNameParameter(boolean value) {
+        /**
+         * Sets a mnemonic name for this object.
+         * <p>
+         * This name will be used by the object's toString() method, making it particularly useful
+         * in parameterized tests where test execution names are derived from the toString()
+         * representation of test parameters.
+         * <p>
+         * For example, in a test like:
+         * <pre>
+         * {@code
+         * @ParameterizedTest
+         * @MethodSource("provideObjects")
+         * void myTest(MyObject obj) {
+         *     // test logic
+         * }
+         * }
+         * </pre>
+         * The test execution will be named using this mnemonic name if set.
+         *
+         * @param value the name to be used for identification in test reports
+         */
+        public T mnemonicName(String value) {
+            this.mnemonicName = value;
+            return self();
+        }
+
+        public T supportsModelNameParameter(Capability value) {
             this.supportsModelNameParameter = value;
             return self();
         }
 
-        public T supportsMaxOutputTokensParameter(boolean value) {
+        public T supportsMaxOutputTokensParameter(Capability value) {
             this.supportsMaxOutputTokensParameter = value;
             return self();
         }
 
-        public T supportsDefaultRequestParameters(boolean value) {
+        public T supportsDefaultRequestParameters(Capability value) {
             this.supportsDefaultRequestParameters = value;
             return self();
         }
 
-        public T supportsTools(boolean value) {
+        public T supportsTools(Capability value) {
             this.supportsTools = value;
-            if (!value) {
-                this.supportsToolChoiceRequiredWithMultipleTools = false;
-                this.supportsToolChoiceRequiredWithSingleTool = false;
-                this.supportsToolChoiceRequired = false;
+            if (value.equals(FAIL)) {
+                this.supportsToolChoiceRequiredWithMultipleTools = FAIL;
+                this.supportsToolChoiceRequiredWithSingleTool = FAIL;
+                this.supportsToolChoiceRequired = FAIL;
+                this.supportsToolsAndJsonResponseFormatWithSchema = FAIL;
+            }
+            if (value.equals(DISABLED)) {
+                this.supportsToolChoiceRequiredWithMultipleTools = DISABLED;
+                this.supportsToolChoiceRequiredWithSingleTool = DISABLED;
+                this.supportsToolChoiceRequired = DISABLED;
+                this.supportsToolsAndJsonResponseFormatWithSchema = DISABLED;
             }
             return self();
         }
 
-        public T supportsToolChoiceRequiredWithMultipleTools(boolean value) {
+        public T supportsToolChoiceRequiredWithMultipleTools(Capability value) {
             this.supportsToolChoiceRequiredWithMultipleTools = value;
             return self();
         }
 
-        public T supportsToolChoiceRequiredWithSingleTool(boolean value) {
+        public T supportsToolChoiceRequiredWithSingleTool(Capability value) {
             this.supportsToolChoiceRequiredWithSingleTool = value;
             return self();
         }
 
-        public T supportsToolChoiceRequired(boolean value) {
+        public T supportsToolChoiceRequired(Capability value) {
             this.supportsToolChoiceRequired = value;
-            if (!value) {
-                this.supportsToolChoiceRequiredWithMultipleTools = false;
-                this.supportsToolChoiceRequiredWithSingleTool = false;
+            if (value.equals(FAIL)) {
+                this.supportsToolChoiceRequiredWithMultipleTools = FAIL;
+                this.supportsToolChoiceRequiredWithSingleTool = FAIL;
+            }
+            if (value.equals(DISABLED)) {
+                this.supportsToolChoiceRequiredWithMultipleTools = DISABLED;
+                this.supportsToolChoiceRequiredWithSingleTool = DISABLED;
             }
             return self();
         }
 
-        public T supportsJsonResponseFormat(boolean value) {
+        public T supportsJsonResponseFormat(Capability value) {
             this.supportsJsonResponseFormat = value;
             return self();
         }
 
-        public T supportsJsonResponseFormatWithSchema(boolean value) {
+        public T supportsJsonResponseFormatWithSchema(Capability value) {
             this.supportsJsonResponseFormatWithSchema = value;
-            return self();
-        }
-
-        public T supportsSingleImageInputAsBase64EncodedString(boolean value) {
-            this.supportsSingleImageInputAsBase64EncodedString = value;
-            if (!value) {
-                this.supportsMultipleImageInputsAsBase64EncodedStrings = false;
+            if (value.equals(FAIL)) {
+                this.supportsToolsAndJsonResponseFormatWithSchema = FAIL;
+            }
+            if (value.equals(DISABLED)) {
+                this.supportsToolsAndJsonResponseFormatWithSchema = DISABLED;
             }
             return self();
         }
 
-        public T supportsMultipleImageInputsAsBase64EncodedStrings(boolean value) {
+        public T supportsSingleImageInputAsBase64EncodedString(Capability value) {
+            this.supportsSingleImageInputAsBase64EncodedString = value;
+            if (value.equals(FAIL)) {
+                this.supportsMultipleImageInputsAsBase64EncodedStrings = FAIL;
+            }
+            if (value.equals(DISABLED)) {
+                this.supportsMultipleImageInputsAsBase64EncodedStrings = DISABLED;
+            }
+            return self();
+        }
+
+        public T supportsMultipleImageInputsAsBase64EncodedStrings(Capability value) {
             this.supportsMultipleImageInputsAsBase64EncodedStrings = value;
             return self();
         }
 
-        public T supportsSingleImageInputAsPublicURL(boolean value) {
+        public T supportsSingleImageInputAsPublicURL(Capability value) {
             this.supportsSingleImageInputAsPublicURL = value;
-            if (!value) {
-                this.supportsMultipleImageInputsAsPublicURLs = false;
+            if (value.equals(FAIL)) {
+                this.supportsMultipleImageInputsAsPublicURLs = FAIL;
+            }
+            if (value.equals(DISABLED)) {
+                this.supportsMultipleImageInputsAsPublicURLs = DISABLED;
             }
             return self();
         }
 
-        public T supportsMultipleImageInputsAsPublicURLs(boolean value) {
+        public T supportsMultipleImageInputsAsPublicURLs(Capability value) {
             this.supportsMultipleImageInputsAsPublicURLs = value;
             return self();
         }
 
-        public T supportsStopSequencesParameter(boolean value) {
+        public T supportsStopSequencesParameter(Capability value) {
             this.supportsStopSequencesParameter = value;
+            return self();
+        }
+
+        public T supportsCommonParametersWrappedInIntegrationSpecificClass(Capability value) {
+            this.supportsCommonParametersWrappedInIntegrationSpecificClass = value;
+            return self();
+        }
+
+        public T supportsToolsAndJsonResponseFormatWithSchema(Capability value) {
+            this.supportsToolsAndJsonResponseFormatWithSchema = value;
             return self();
         }
 
@@ -305,5 +389,11 @@ public abstract class ChatModelCapabilities<M> {
          * Construit l'instance concrète de ChatModelCapabilities.
          */
         public abstract ChatModelCapabilities<M> build();
+    }
+
+    public enum Capability {
+        SUPPORT,
+        FAIL,
+        DISABLED
     }
 }

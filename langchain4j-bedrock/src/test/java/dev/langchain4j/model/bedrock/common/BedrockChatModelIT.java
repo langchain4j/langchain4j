@@ -1,15 +1,15 @@
 package dev.langchain4j.model.bedrock.common;
 
+import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1;
+import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.FAIL;
+
 import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT2;
 import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
-
 import java.util.List;
-
-import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1;
-import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
 
 class BedrockChatModelIT extends AbstractChatModelIT2 {
 
@@ -25,31 +25,27 @@ class BedrockChatModelIT extends AbstractChatModelIT2 {
         return List.of(
                 ChatLanguageModelCapabilities.builder()
                         .model(BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL)
-                        .supportsDefaultRequestParameters(false)
-                        .supportsModelNameParameter(false)
-                        .supportsMaxOutputTokensParameter(false)
-                        .supportsStopSequencesParameter(false)
-                        .supportsToolChoiceRequired(false)
-                        .supportsJsonResponseFormat(false)
-                        .supportsJsonResponseFormatWithSchema(false)
-                        .supportsSingleImageInputAsPublicURL(false)
+                        .supportsDefaultRequestParameters(FAIL)
+                        .supportsModelNameParameter(FAIL)
+                        .supportsMaxOutputTokensParameter(FAIL)
+                        .supportsStopSequencesParameter(FAIL)
+                        .supportsToolChoiceRequired(FAIL)
+                        .supportsJsonResponseFormat(FAIL)
+                        .supportsJsonResponseFormatWithSchema(FAIL)
+                        .supportsSingleImageInputAsPublicURL(FAIL)
+                        .supportsCommonParametersWrappedInIntegrationSpecificClass(FAIL)
                         .assertResponseId(false)
                         .assertResponseModel(false)
                         .assertExceptionType(false)
-                .build()
+                        .build()
                 // TODO add more models from other providers
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
     protected String customModelName() {
         return AnthropicClaude3HaikuV1.getValue();
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
     }
 
     @Override
@@ -65,26 +61,6 @@ class BedrockChatModelIT extends AbstractChatModelIT2 {
     @Override
     protected boolean supportsStopSequencesParameter() {
         return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO check if supported
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO check if supported
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // Bedrock supports only Base64-encoded images
     }
 
     @Override
