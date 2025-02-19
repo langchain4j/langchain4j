@@ -1,29 +1,29 @@
 package dev.langchain4j.model.chat.common;
 
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.DISABLED;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.FAIL;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.SUPPORT;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.DISABLED;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.SUPPORTED;
 
 public abstract class ChatModelCapabilities<M> {
 
     private final M model;
     private final String mnemonicName;
-    private final Capability supportsModelNameParameter;
-    private final Capability supportsMaxOutputTokensParameter;
-    private final Capability supportsDefaultRequestParameters;
-    private final Capability supportsTools;
-    private final Capability supportsToolChoiceRequiredWithMultipleTools;
-    private final Capability supportsToolChoiceRequiredWithSingleTool;
-    private final Capability supportsToolChoiceRequired;
-    private final Capability supportsJsonResponseFormat;
-    private final Capability supportsJsonResponseFormatWithSchema;
-    private final Capability supportsSingleImageInputAsBase64EncodedString;
-    private final Capability supportsMultipleImageInputsAsBase64EncodedStrings;
-    private final Capability supportsSingleImageInputAsPublicURL;
-    private final Capability supportsMultipleImageInputsAsPublicURLs;
-    private final Capability supportsStopSequencesParameter;
-    private final Capability supportsCommonParametersWrappedInIntegrationSpecificClass;
-    private final Capability supportsToolsAndJsonResponseFormatWithSchema;
+    private final SupportStatus supportsModelNameParameter;
+    private final SupportStatus supportsMaxOutputTokensParameter;
+    private final SupportStatus supportsDefaultRequestParameters;
+    private final SupportStatus supportsTools;
+    private final SupportStatus supportsToolChoiceRequiredWithMultipleTools;
+    private final SupportStatus supportsToolChoiceRequiredWithSingleTool;
+    private final SupportStatus supportsToolChoiceRequired;
+    private final SupportStatus supportsJsonResponseFormat;
+    private final SupportStatus supportsJsonResponseFormatWithSchema;
+    private final SupportStatus supportsSingleImageInputAsBase64EncodedString;
+    private final SupportStatus supportsMultipleImageInputsAsBase64EncodedStrings;
+    private final SupportStatus supportsSingleImageInputAsPublicURL;
+    private final SupportStatus supportsMultipleImageInputsAsPublicURLs;
+    private final SupportStatus supportsStopSequencesParameter;
+    private final SupportStatus supportsCommonParametersWrappedInIntegrationSpecificClass;
+    private final SupportStatus supportsToolsAndJsonResponseFormatWithSchema;
     private final boolean assertResponseId;
     private final boolean assertResponseModel;
     private final boolean assertTokenUsage;
@@ -73,67 +73,67 @@ public abstract class ChatModelCapabilities<M> {
         return mnemonicName;
     }
 
-    public Capability supportsModelNameParameter() {
+    public SupportStatus supportsModelNameParameter() {
         return supportsModelNameParameter;
     }
 
-    public Capability supportsMaxOutputTokensParameter() {
+    public SupportStatus supportsMaxOutputTokensParameter() {
         return supportsMaxOutputTokensParameter;
     }
 
-    public Capability supportsDefaultRequestParameters() {
+    public SupportStatus supportsDefaultRequestParameters() {
         return supportsDefaultRequestParameters;
     }
 
-    public Capability supportsTools() {
+    public SupportStatus supportsTools() {
         return supportsTools;
     }
 
-    public Capability supportsToolChoiceRequiredWithMultipleTools() {
+    public SupportStatus supportsToolChoiceRequiredWithMultipleTools() {
         return supportsToolChoiceRequiredWithMultipleTools;
     }
 
-    public Capability supportsToolChoiceRequiredWithSingleTool() {
+    public SupportStatus supportsToolChoiceRequiredWithSingleTool() {
         return supportsToolChoiceRequiredWithSingleTool;
     }
 
-    public Capability supportsToolChoiceRequired() {
+    public SupportStatus supportsToolChoiceRequired() {
         return supportsToolChoiceRequired;
     }
 
-    public Capability supportsJsonResponseFormat() {
+    public SupportStatus supportsJsonResponseFormat() {
         return supportsJsonResponseFormat;
     }
 
-    public Capability supportsJsonResponseFormatWithSchema() {
+    public SupportStatus supportsJsonResponseFormatWithSchema() {
         return supportsJsonResponseFormatWithSchema;
     }
 
-    public Capability supportsSingleImageInputAsBase64EncodedString() {
+    public SupportStatus supportsSingleImageInputAsBase64EncodedString() {
         return supportsSingleImageInputAsBase64EncodedString;
     }
 
-    public Capability supportsMultipleImageInputsAsBase64EncodedStrings() {
+    public SupportStatus supportsMultipleImageInputsAsBase64EncodedStrings() {
         return supportsMultipleImageInputsAsBase64EncodedStrings;
     }
 
-    public Capability supportsSingleImageInputAsPublicURL() {
+    public SupportStatus supportsSingleImageInputAsPublicURL() {
         return supportsSingleImageInputAsPublicURL;
     }
 
-    public Capability supportsMultipleImageInputsAsPublicURLs() {
+    public SupportStatus supportsMultipleImageInputsAsPublicURLs() {
         return supportsMultipleImageInputsAsPublicURLs;
     }
 
-    public Capability supportsStopSequencesParameter() {
+    public SupportStatus supportsStopSequencesParameter() {
         return supportsStopSequencesParameter;
     }
 
-    public Capability supportsCommonParametersWrappedInIntegrationSpecificClass() {
+    public SupportStatus supportsCommonParametersWrappedInIntegrationSpecificClass() {
         return supportsCommonParametersWrappedInIntegrationSpecificClass;
     }
 
-    public Capability supportsToolsAndJsonResponseFormatWithSchema() {
+    public SupportStatus supportsToolsAndJsonResponseFormatWithSchema() {
         return supportsToolsAndJsonResponseFormatWithSchema;
     }
 
@@ -172,22 +172,22 @@ public abstract class ChatModelCapabilities<M> {
     public abstract static class AbstractBuilder<T extends AbstractBuilder<T, M>, M> {
         protected M model;
         private String mnemonicName = null;
-        private Capability supportsModelNameParameter = SUPPORT;
-        private Capability supportsMaxOutputTokensParameter = SUPPORT;
-        private Capability supportsDefaultRequestParameters = SUPPORT;
-        private Capability supportsTools = SUPPORT;
-        private Capability supportsToolChoiceRequiredWithMultipleTools = SUPPORT;
-        private Capability supportsToolChoiceRequiredWithSingleTool = SUPPORT;
-        private Capability supportsToolChoiceRequired = SUPPORT;
-        private Capability supportsJsonResponseFormat = SUPPORT;
-        private Capability supportsJsonResponseFormatWithSchema = SUPPORT;
-        private Capability supportsSingleImageInputAsBase64EncodedString = SUPPORT;
-        private Capability supportsMultipleImageInputsAsBase64EncodedStrings = SUPPORT;
-        private Capability supportsSingleImageInputAsPublicURL = SUPPORT;
-        private Capability supportsMultipleImageInputsAsPublicURLs = SUPPORT;
-        private Capability supportsStopSequencesParameter = SUPPORT;
-        private Capability supportsCommonParametersWrappedInIntegrationSpecificClass = SUPPORT;
-        private Capability supportsToolsAndJsonResponseFormatWithSchema = SUPPORT;
+        private SupportStatus supportsModelNameParameter = SUPPORTED;
+        private SupportStatus supportsMaxOutputTokensParameter = SUPPORTED;
+        private SupportStatus supportsDefaultRequestParameters = SUPPORTED;
+        private SupportStatus supportsTools = SUPPORTED;
+        private SupportStatus supportsToolChoiceRequiredWithMultipleTools = SUPPORTED;
+        private SupportStatus supportsToolChoiceRequiredWithSingleTool = SUPPORTED;
+        private SupportStatus supportsToolChoiceRequired = SUPPORTED;
+        private SupportStatus supportsJsonResponseFormat = SUPPORTED;
+        private SupportStatus supportsJsonResponseFormatWithSchema = SUPPORTED;
+        private SupportStatus supportsSingleImageInputAsBase64EncodedString = SUPPORTED;
+        private SupportStatus supportsMultipleImageInputsAsBase64EncodedStrings = SUPPORTED;
+        private SupportStatus supportsSingleImageInputAsPublicURL = SUPPORTED;
+        private SupportStatus supportsMultipleImageInputsAsPublicURLs = SUPPORTED;
+        private SupportStatus supportsStopSequencesParameter = SUPPORTED;
+        private SupportStatus supportsCommonParametersWrappedInIntegrationSpecificClass = SUPPORTED;
+        private SupportStatus supportsToolsAndJsonResponseFormatWithSchema = SUPPORTED;
         private boolean assertResponseId = true;
         private boolean assertResponseModel = true;
         private boolean assertTokenUsage = true;
@@ -227,28 +227,28 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
-        public T supportsModelNameParameter(Capability value) {
+        public T supportsModelNameParameter(SupportStatus value) {
             this.supportsModelNameParameter = value;
             return self();
         }
 
-        public T supportsMaxOutputTokensParameter(Capability value) {
+        public T supportsMaxOutputTokensParameter(SupportStatus value) {
             this.supportsMaxOutputTokensParameter = value;
             return self();
         }
 
-        public T supportsDefaultRequestParameters(Capability value) {
+        public T supportsDefaultRequestParameters(SupportStatus value) {
             this.supportsDefaultRequestParameters = value;
             return self();
         }
 
-        public T supportsTools(Capability value) {
+        public T supportsTools(SupportStatus value) {
             this.supportsTools = value;
-            if (value.equals(FAIL)) {
-                this.supportsToolChoiceRequiredWithMultipleTools = FAIL;
-                this.supportsToolChoiceRequiredWithSingleTool = FAIL;
-                this.supportsToolChoiceRequired = FAIL;
-                this.supportsToolsAndJsonResponseFormatWithSchema = FAIL;
+            if (value.equals(NOT_SUPPORTED)) {
+                this.supportsToolChoiceRequiredWithMultipleTools = NOT_SUPPORTED;
+                this.supportsToolChoiceRequiredWithSingleTool = NOT_SUPPORTED;
+                this.supportsToolChoiceRequired = NOT_SUPPORTED;
+                this.supportsToolsAndJsonResponseFormatWithSchema = NOT_SUPPORTED;
             }
             if (value.equals(DISABLED)) {
                 this.supportsToolChoiceRequiredWithMultipleTools = DISABLED;
@@ -259,21 +259,21 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
-        public T supportsToolChoiceRequiredWithMultipleTools(Capability value) {
+        public T supportsToolChoiceRequiredWithMultipleTools(SupportStatus value) {
             this.supportsToolChoiceRequiredWithMultipleTools = value;
             return self();
         }
 
-        public T supportsToolChoiceRequiredWithSingleTool(Capability value) {
+        public T supportsToolChoiceRequiredWithSingleTool(SupportStatus value) {
             this.supportsToolChoiceRequiredWithSingleTool = value;
             return self();
         }
 
-        public T supportsToolChoiceRequired(Capability value) {
+        public T supportsToolChoiceRequired(SupportStatus value) {
             this.supportsToolChoiceRequired = value;
-            if (value.equals(FAIL)) {
-                this.supportsToolChoiceRequiredWithMultipleTools = FAIL;
-                this.supportsToolChoiceRequiredWithSingleTool = FAIL;
+            if (value.equals(NOT_SUPPORTED)) {
+                this.supportsToolChoiceRequiredWithMultipleTools = NOT_SUPPORTED;
+                this.supportsToolChoiceRequiredWithSingleTool = NOT_SUPPORTED;
             }
             if (value.equals(DISABLED)) {
                 this.supportsToolChoiceRequiredWithMultipleTools = DISABLED;
@@ -282,15 +282,15 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
-        public T supportsJsonResponseFormat(Capability value) {
+        public T supportsJsonResponseFormat(SupportStatus value) {
             this.supportsJsonResponseFormat = value;
             return self();
         }
 
-        public T supportsJsonResponseFormatWithSchema(Capability value) {
+        public T supportsJsonResponseFormatWithSchema(SupportStatus value) {
             this.supportsJsonResponseFormatWithSchema = value;
-            if (value.equals(FAIL)) {
-                this.supportsToolsAndJsonResponseFormatWithSchema = FAIL;
+            if (value.equals(NOT_SUPPORTED)) {
+                this.supportsToolsAndJsonResponseFormatWithSchema = NOT_SUPPORTED;
             }
             if (value.equals(DISABLED)) {
                 this.supportsToolsAndJsonResponseFormatWithSchema = DISABLED;
@@ -298,10 +298,10 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
-        public T supportsSingleImageInputAsBase64EncodedString(Capability value) {
+        public T supportsSingleImageInputAsBase64EncodedString(SupportStatus value) {
             this.supportsSingleImageInputAsBase64EncodedString = value;
-            if (value.equals(FAIL)) {
-                this.supportsMultipleImageInputsAsBase64EncodedStrings = FAIL;
+            if (value.equals(NOT_SUPPORTED)) {
+                this.supportsMultipleImageInputsAsBase64EncodedStrings = NOT_SUPPORTED;
             }
             if (value.equals(DISABLED)) {
                 this.supportsMultipleImageInputsAsBase64EncodedStrings = DISABLED;
@@ -309,15 +309,15 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
-        public T supportsMultipleImageInputsAsBase64EncodedStrings(Capability value) {
+        public T supportsMultipleImageInputsAsBase64EncodedStrings(SupportStatus value) {
             this.supportsMultipleImageInputsAsBase64EncodedStrings = value;
             return self();
         }
 
-        public T supportsSingleImageInputAsPublicURL(Capability value) {
+        public T supportsSingleImageInputAsPublicURL(SupportStatus value) {
             this.supportsSingleImageInputAsPublicURL = value;
-            if (value.equals(FAIL)) {
-                this.supportsMultipleImageInputsAsPublicURLs = FAIL;
+            if (value.equals(NOT_SUPPORTED)) {
+                this.supportsMultipleImageInputsAsPublicURLs = NOT_SUPPORTED;
             }
             if (value.equals(DISABLED)) {
                 this.supportsMultipleImageInputsAsPublicURLs = DISABLED;
@@ -325,22 +325,22 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
-        public T supportsMultipleImageInputsAsPublicURLs(Capability value) {
+        public T supportsMultipleImageInputsAsPublicURLs(SupportStatus value) {
             this.supportsMultipleImageInputsAsPublicURLs = value;
             return self();
         }
 
-        public T supportsStopSequencesParameter(Capability value) {
+        public T supportsStopSequencesParameter(SupportStatus value) {
             this.supportsStopSequencesParameter = value;
             return self();
         }
 
-        public T supportsCommonParametersWrappedInIntegrationSpecificClass(Capability value) {
+        public T supportsCommonParametersWrappedInIntegrationSpecificClass(SupportStatus value) {
             this.supportsCommonParametersWrappedInIntegrationSpecificClass = value;
             return self();
         }
 
-        public T supportsToolsAndJsonResponseFormatWithSchema(Capability value) {
+        public T supportsToolsAndJsonResponseFormatWithSchema(SupportStatus value) {
             this.supportsToolsAndJsonResponseFormatWithSchema = value;
             return self();
         }
@@ -391,9 +391,9 @@ public abstract class ChatModelCapabilities<M> {
         public abstract ChatModelCapabilities<M> build();
     }
 
-    public enum Capability {
-        SUPPORT,
-        FAIL,
+    public enum SupportStatus {
+        SUPPORTED,
+        NOT_SUPPORTED,
         DISABLED
     }
 }
