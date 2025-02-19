@@ -6,6 +6,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
 import lombok.Getter;
 import org.neo4j.driver.AuthTokens;
@@ -21,7 +22,6 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 import org.neo4j.driver.Driver;
@@ -174,27 +174,64 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
         var embeddingValue = Values.value(request.queryEmbedding().vector());
 
         try (var session = session()) {
-            Map<String, Object> params = Map.of("indexName", indexName,
-                    "embeddingValue", embeddingValue,
-                    "minScore", request.minScore(),
-                    "maxResults", request.maxResults());
-
-            List<EmbeddingMatch<TextSegment>> matches = session
-                .run("""
-                        CALL db.index.vector.queryNodes($indexName, $maxResults, $embeddingValue)
-                        YIELD node, score
-                        WHERE score >= $minScore
-                        """ + retrievalQuery,
-                    params)
-                .list(item -> toEmbeddingMatch(this, item));
-
-            return new EmbeddingSearchResult<>(matches);
+            final Filter filter = request.filter();
+            if (filter == null) {
+                return getSearchResUsingVectorIndex(request, embeddingValue, session);
+            }
+            return getSearchResUsingVectorSimilarity(request, filter, embeddingValue, session);
         }
     }
 
     /*
     Private methods
     */
+
+    private EmbeddingSearchResult getSearchResUsingVectorSimilarity(EmbeddingSearchRequest request, Filter filter, Value embeddingValue, Session session) {
+        final AbstractMap.SimpleEntry<String, Map> entry = new Neo4jFilterMapper().map(filter);
+        final String query = """
+                CYPHER runtime = parallel parallelRuntimeSupport=all
+                MATCH (n:%1$s)
+                WHERE n.%2$s IS NOT NULL AND size(n.%2$s) = toInteger(%3$s) AND %4$s
+                WITH n, vector.similarity.cosine(n.%2$s, %5$s) AS score
+                WHERE score >= $minScore
+                WITH n AS node, score
+                ORDER BY score DESC
+                LIMIT $maxResults
+                """.formatted(
+                sanitizedLabel,
+                embeddingProperty,
+                dimension,
+                entry.getKey(),
+                embeddingValue
+        );
+        final Map params = entry.getValue();
+        params.put("minScore", request.minScore());
+        params.put("maxResults", request.maxResults());
+        return getEmbeddingSearchResult(session, query, params);
+    }
+
+    private EmbeddingSearchResult<TextSegment> getSearchResUsingVectorIndex(EmbeddingSearchRequest request, Value embeddingValue, Session session) {
+        Map<String, Object> params = Map.of("indexName", indexName,
+                "embeddingValue", embeddingValue,
+                "minScore", request.minScore(),
+                "maxResults", request.maxResults());
+
+        final String query = """
+                CALL db.index.vector.queryNodes($indexName, $maxResults, $embeddingValue)
+                YIELD node, score
+                WHERE score >= $minScore
+                """;
+        return getEmbeddingSearchResult(session, query, params);
+    }
+
+    private EmbeddingSearchResult<TextSegment> getEmbeddingSearchResult(Session session, String query, Map<String, Object> params) {
+        List<EmbeddingMatch<TextSegment>> matches = session
+                .run(query + retrievalQuery,
+                        params)
+                .list(item -> toEmbeddingMatch(this, item));
+
+        return new EmbeddingSearchResult<>(matches);
+    }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
         addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
