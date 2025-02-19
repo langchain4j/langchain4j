@@ -43,7 +43,7 @@ class QueryTest {
     }
 
     @Test
-    void equals_hash_code() {
+    void equals_hashCode() {
 
         // given
         Metadata metadata1 = Metadata.from(
@@ -89,7 +89,8 @@ class QueryTest {
                         + "metadata = Metadata { "
                         + "userMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, "
                         + "chatMemoryId = 42, "
-                        + "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, AiMessage { text = \"Hi, how can I help you today?\" toolExecutionRequests = null }] "
+                        + "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, "
+                        + "AiMessage { text = \"Hi, how can I help you today?\" reasoningContent = null toolExecutionRequests = null }] "
                         + "} "
                         + "}");
     }
