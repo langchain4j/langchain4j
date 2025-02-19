@@ -12,7 +12,7 @@ class VertexAiGeminiAiServiceIT extends AbstractAiServiceIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(VERTEX_AI_GEMINI_CHAT_MODEL);
+        return List.of(VERTEX_AI_GEMINI_CHAT_MODEL.model());
     }
 
     @Override
