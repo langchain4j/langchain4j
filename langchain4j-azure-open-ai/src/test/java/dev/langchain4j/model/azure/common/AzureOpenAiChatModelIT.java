@@ -1,15 +1,15 @@
 package dev.langchain4j.model.azure.common;
 
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.FAIL;
+
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
+import dev.langchain4j.model.chat.common.AbstractChatModelIT2;
+import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import java.util.List;
 
-class AzureOpenAiChatModelIT extends AbstractChatModelIT {
+class AzureOpenAiChatModelIT extends AbstractChatModelIT2 {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
@@ -29,32 +29,38 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
         return List.of(
-                AZURE_OPEN_AI_CHAT_MODEL,
-                AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
-        );
-    }
-
-    @Override
-    @Disabled
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_single_image_as_public_URL(ChatLanguageModel model) {
-        // TODO fix
-    }
-
-    @Override
-    @Disabled
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_public_URLs(ChatLanguageModel model) {
-        // TODO fix
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
+                ChatLanguageModelCapabilities.builder()
+                        .model(AZURE_OPEN_AI_CHAT_MODEL)
+                        // .supportsSingleImageInputAsPublicURL(false)
+                        .supportsSingleImageInputAsBase64EncodedString(FAIL)
+                        .supportsToolChoiceRequired(FAIL)
+                        .supportsDefaultRequestParameters(FAIL)
+                        .supportsModelNameParameter(FAIL)
+                        .supportsMaxOutputTokensParameter(FAIL)
+                        .supportsStopSequencesParameter(FAIL)
+                        .supportsToolChoiceRequired(FAIL)
+                        .assertExceptionType(false)
+                        .assertResponseId(false)
+                        .assertResponseModel(false)
+                        .assertFinishReason(false)
+                        .build(),
+                ChatLanguageModelCapabilities.builder()
+                        .model(AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA)
+                        // .supportsSingleImageInputAsPublicURL(false)
+                        .supportsSingleImageInputAsBase64EncodedString(FAIL)
+                        .supportsToolChoiceRequired(FAIL)
+                        .supportsDefaultRequestParameters(FAIL)
+                        .supportsModelNameParameter(FAIL)
+                        .supportsMaxOutputTokensParameter(FAIL)
+                        .supportsStopSequencesParameter(FAIL)
+                        .supportsToolChoiceRequired(FAIL)
+                        .assertExceptionType(false)
+                        .assertResponseId(false)
+                        .assertResponseModel(false)
+                        .assertFinishReason(false)
+                        .build());
     }
 
     @Override
@@ -70,16 +76,6 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsStopSequencesParameter() {
         return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // Azure OpenAI does not support base64-encoded images
     }
 
     @Override
