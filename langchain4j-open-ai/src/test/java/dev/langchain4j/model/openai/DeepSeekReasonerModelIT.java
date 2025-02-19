@@ -25,7 +25,9 @@ class DeepSeekReasonerModelIT {
 
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("DEEPSEEK_BASE_URL")) // you can use "https://api.siliconflow.cn/v1" temporarily
-                .apiKey(System.getenv("DEEPSEEK_API_KEY")) // you can use sk-schvdsxflqddfytnomlkioavigtwxftyxhbgnzmtljfdmqfd temporarily
+                .apiKey(System.getenv(
+                        "DEEPSEEK_API_KEY")) // you can use sk-schvdsxflqddfytnomlkioavigtwxftyxhbgnzmtljfdmqfd
+                // temporarily
                 .modelName(modelName)
                 // .temperature(0.0)   unsupported by the model, will be ignored
                 .logRequests(true)
