@@ -24,8 +24,8 @@ class DeepSeekReasonerModelIT {
     void should_answer_with_reasoning_content(String modelName) {
 
         OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("https://api.siliconflow.cn/v1")) // you can use "https://api.siliconflow.cn/v1" temporarily
-                .apiKey(System.getenv("DEEPSEEK_API_KEY"))
+                .baseUrl(System.getenv("DEEPSEEK_BASE_URL")) // you can use "https://api.siliconflow.cn/v1" temporarily
+                .apiKey(System.getenv("DEEPSEEK_API_KEY")) // you can use sk-schvdsxflqddfytnomlkioavigtwxftyxhbgnzmtljfdmqfd temporarily
                 .modelName(modelName)
                 // .temperature(0.0)   unsupported by the model, will be ignored
                 .logRequests(true)
@@ -33,7 +33,7 @@ class DeepSeekReasonerModelIT {
                 .build();
 
         // given
-        UserMessage userMessage = userMessage("what is the capital of China after 1949?");
+        UserMessage userMessage = userMessage("what is the capital of China?");
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
