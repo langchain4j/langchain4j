@@ -2,14 +2,16 @@ package dev.langchain4j.model.bedrock.common;
 
 import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT2;
+import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 
 import java.util.List;
 
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1;
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
 
-class BedrockChatModelIT extends AbstractChatModelIT {
+class BedrockChatModelIT extends AbstractChatModelIT2 {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
@@ -19,9 +21,22 @@ class BedrockChatModelIT extends AbstractChatModelIT {
                     .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
         return List.of(
-                BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL
+                ChatLanguageModelCapabilities.builder()
+                        .model(BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL)
+                        .supportsDefaultRequestParameters(false)
+                        .supportsModelNameParameter(false)
+                        .supportsMaxOutputTokensParameter(false)
+                        .supportsStopSequencesParameter(false)
+                        .supportsToolChoiceRequired(false)
+                        .supportsJsonResponseFormat(false)
+                        .supportsJsonResponseFormatWithSchema(false)
+                        .supportsSingleImageInputAsPublicURL(false)
+                        .assertResponseId(false)
+                        .assertResponseModel(false)
+                        .assertExceptionType(false)
+                .build()
                 // TODO add more models from other providers
                 // TODO add more model configs, see OpenAiChatModelIT
         );
