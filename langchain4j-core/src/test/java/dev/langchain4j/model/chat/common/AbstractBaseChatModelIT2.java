@@ -145,7 +145,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_model_name_parameter(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(modelCapabilities.supportsModelNameParameter())) {
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsModelNameParameter())) {
             // Test positive case
             String modelName = customModelName();
             ensureModelNameIsDifferentFromDefault(modelName, modelCapabilities.model());
@@ -163,7 +163,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                     chat(modelCapabilities.model(), chatRequest).chatResponse();
             assertThat(chatResponse.aiMessage().text()).isNotBlank();
             assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
-        } else if (ChatModelCapabilities.Capability.FAIL.equals(modelCapabilities.supportsModelNameParameter())) {
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsModelNameParameter())) {
             // Test negative case
             String modelName = "dummy";
             ChatRequestParameters parameters =
@@ -244,7 +244,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_maxOutputTokens_in_chat_request(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(modelCapabilities.supportsMaxOutputTokensParameter())) {
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsMaxOutputTokensParameter())) {
             // given
             int maxOutputTokens = 5;
             ChatRequestParameters parameters = ChatRequestParameters.builder()
@@ -284,7 +284,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                     assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
                 }
             }
-        } else if (ChatModelCapabilities.Capability.FAIL.equals(modelCapabilities.supportsModelNameParameter())) {
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsModelNameParameter())) {
             // given
             int maxOutputTokens = 5;
             ChatRequestParameters parameters = ChatRequestParameters.builder()
@@ -304,7 +304,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                         .isExactlyInstanceOf(UnsupportedFeatureException.class)
                         .hasMessageContaining("maxOutputTokens")
                         .hasMessageContaining("not support");
-            if (ChatModelCapabilities.Capability.SUPPORT.equals(modelCapabilities.supportsDefaultRequestParameters())) {
+            if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsDefaultRequestParameters())) {
                 final AbstractThrowableAssert<?, ? extends Throwable> abstractThrowableAssert1 =
                         assertThatThrownBy(() -> createModelWith(parameters));
                 if (modelCapabilities.assertExceptionType())
@@ -363,7 +363,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handlestop_sequences_parameter(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(modelCapabilities.supportsStopSequencesParameter())) {
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsStopSequencesParameter())) {
             // Test positive case
             List<String> stopSequences = List.of("World", " World");
             ChatRequestParameters parameters =
@@ -389,7 +389,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.Capability.FAIL.equals(modelCapabilities.supportsStopSequencesParameter())) {
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsStopSequencesParameter())) {
             // Test negative case
             List<String> stopSequences = List.of("World");
             ChatRequestParameters parameters =
@@ -455,7 +455,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @MethodSource("models")
     protected void should_handle_common_parameters_wrapped_in_integration_specific_class_in_chat_request(
             ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsCommonParametersWrappedInIntegrationSpecificClass())) {
             // given
             // TODO test more/all common params?
@@ -533,7 +533,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_execute_a_tool_then_answer(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(modelCapabilities.supportsTools())) {
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsTools())) {
             // given
             UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
 
@@ -621,7 +621,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                     assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
                 }
             }
-        } else if (ChatModelCapabilities.Capability.FAIL.equals(modelCapabilities.supportsTools())) {
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsTools())) {
             // given
             ChatRequest chatRequest = ChatRequest.builder()
                     .messages(UserMessage.from("What is the weather in Munich?"))
@@ -645,7 +645,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_force_LLM_to_execute_any_tool(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsToolChoiceRequiredWithMultipleTools())) {
             // given
             ToolSpecification calculatorTool = ToolSpecification.builder()
@@ -684,7 +684,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
             }
-        } else if (ChatModelCapabilities.Capability.FAIL.equals(
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
                 modelCapabilities.supportsToolChoiceRequiredWithMultipleTools())) {
             // given
             ToolChoice toolChoice = REQUIRED;
@@ -711,7 +711,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_force_LLM_to_execute_specific_tool(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsToolChoiceRequiredWithSingleTool())) {
             // given
             ChatRequest chatRequest = ChatRequest.builder()
@@ -754,7 +754,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_json_response_format(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(modelCapabilities.supportsJsonResponseFormat())) {
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsJsonResponseFormat())) {
             // given
             ResponseFormat responseFormat = ResponseFormat.JSON;
 
@@ -782,7 +782,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.Capability.FAIL.equals(modelCapabilities.supportsJsonResponseFormat())) {
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsJsonResponseFormat())) {
             // Test negative case
             ResponseFormat responseFormat = ResponseFormat.JSON;
 
@@ -807,7 +807,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_JSON_response_format_with_schema(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(modelCapabilities.supportsJsonResponseFormatWithSchema())) {
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsJsonResponseFormatWithSchema())) {
             // given
             ChatRequest chatRequest = ChatRequest.builder()
                     .messages(UserMessage.from("What is the capital of Germany?"))
@@ -832,7 +832,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.Capability.FAIL.equals(
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
                 modelCapabilities.supportsJsonResponseFormatWithSchema())) {
             // given
             ChatRequest chatRequest = ChatRequest.builder()
@@ -860,7 +860,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @MethodSource("models")
     protected void should_handle_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
             ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsToolsAndJsonResponseFormatWithSchema())) {
             // given
             UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
@@ -967,7 +967,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_single_image_as_base64_encoded_string(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsSingleImageInputAsBase64EncodedString())) {
             // given
             String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
@@ -992,7 +992,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.Capability.FAIL.equals(
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
                 modelCapabilities.supportsSingleImageInputAsBase64EncodedString())) {
             // given
             String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
@@ -1016,7 +1016,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_multiple_images_as_base64_encoded_strings(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsMultipleImageInputsAsBase64EncodedStrings())) {
             // given
             Base64.Encoder encoder = Base64.getEncoder();
@@ -1055,7 +1055,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_single_image_as_public_URL(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(modelCapabilities.supportsSingleImageInputAsPublicURL())) {
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsSingleImageInputAsPublicURL())) {
             // given
             UserMessage userMessage =
                     UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(CAT_IMAGE_URL));
@@ -1078,7 +1078,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.Capability.FAIL.equals(
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
                 modelCapabilities.supportsSingleImageInputAsPublicURL())) {
             // given
             UserMessage userMessage =
@@ -1101,7 +1101,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_handle_multiple_images_as_public_URLs(ChatModelCapabilities<M> modelCapabilities) {
-        if (ChatModelCapabilities.Capability.SUPPORT.equals(
+        if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsMultipleImageInputsAsPublicURLs())) {
             // given
             UserMessage userMessage = UserMessage.from(

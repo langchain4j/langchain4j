@@ -1,8 +1,8 @@
 package dev.langchain4j.model.ollama.common;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.DISABLED;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.FAIL;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.DISABLED;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
@@ -56,10 +56,10 @@ class OllamaChatModelIT extends AbstractChatModelIT2 {
             .supportsSingleImageInputAsPublicURL(DISABLED) // no exception thrown, image is just silently ignored
             .supportsSingleImageInputAsBase64EncodedString(
                     DISABLED) // no exception thrown, image is just silently ignored
-            .supportsMaxOutputTokensParameter(FAIL)
-            .supportsModelNameParameter(FAIL)
-            .supportsStopSequencesParameter(FAIL)
-            .supportsToolChoiceRequired(FAIL)
+            .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsStopSequencesParameter(NOT_SUPPORTED)
+            .supportsToolChoiceRequired(NOT_SUPPORTED)
             .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
             .supportsToolsAndJsonResponseFormatWithSchema(DISABLED)
             .assertExceptionType(false)
@@ -75,12 +75,12 @@ class OllamaChatModelIT extends AbstractChatModelIT2 {
                     .temperature(0.0)
                     .build())
             .mnemonicName("ollama_chat_model_with_vision")
-            .supportsMaxOutputTokensParameter(FAIL)
-            .supportsModelNameParameter(FAIL)
-            .supportsTools(FAIL)
-            .supportsMultipleImageInputsAsBase64EncodedStrings(FAIL)
-            .supportsMultipleImageInputsAsPublicURLs(FAIL)
-            .supportsStopSequencesParameter(FAIL)
+            .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsTools(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsBase64EncodedStrings(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsPublicURLs(NOT_SUPPORTED)
+            .supportsStopSequencesParameter(NOT_SUPPORTED)
             .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
             .assertExceptionType(false)
             .assertResponseId(false)
@@ -96,10 +96,10 @@ class OllamaChatModelIT extends AbstractChatModelIT2 {
                     .temperature(0.0)
                     .build())
             .mnemonicName("open_ai_chat_model_with_tools")
-            .supportsSingleImageInputAsPublicURL(FAIL)
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
             .supportsSingleImageInputAsBase64EncodedString(
                     DISABLED) // no exception thrown, image is just silently ignored
-            .supportsModelNameParameter(FAIL)
+            .supportsModelNameParameter(NOT_SUPPORTED)
             .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
             .supportsToolsAndJsonResponseFormatWithSchema(DISABLED)
             .assertExceptionType(false)
@@ -116,10 +116,10 @@ class OllamaChatModelIT extends AbstractChatModelIT2 {
                     .temperature(0.0)
                     .build())
             .mnemonicName("open_ai_chat_model_with_vision")
-            .supportsModelNameParameter(FAIL)
-            .supportsTools(FAIL)
-            .supportsMultipleImageInputsAsBase64EncodedStrings(FAIL)
-            .supportsSingleImageInputAsPublicURL(FAIL) // getting invalid image input from model
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsTools(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsBase64EncodedStrings(NOT_SUPPORTED)
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // getting invalid image input from model
             .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
             .assertExceptionType(false)
             .assertResponseId(false)

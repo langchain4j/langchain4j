@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.FAIL;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
 
 import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
 
@@ -17,11 +17,11 @@ public final class TestedModelsWithConverseAPI {
             .model(BedrockChatModel.builder()
                     .modelId("us.amazon.nova-micro-v1:0")
                     .build())
-            .supportsSingleImageInputAsPublicURL(FAIL)
-            .supportsSingleImageInputAsBase64EncodedString(FAIL)
-            .supportsToolChoiceRequired(FAIL)
-            .supportsJsonResponseFormat(FAIL)
-            .supportsJsonResponseFormatWithSchema(FAIL)
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
+            .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+            .supportsToolChoiceRequired(NOT_SUPPORTED)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
             .build();
 
@@ -29,17 +29,17 @@ public final class TestedModelsWithConverseAPI {
             .model(BedrockChatModel.builder()
                     .modelId("us.amazon.nova-lite-v1:0")
                     .build())
-            .supportsToolChoiceRequired(FAIL)
-            .supportsJsonResponseFormat(FAIL)
-            .supportsJsonResponseFormatWithSchema(FAIL)
+            .supportsToolChoiceRequired(NOT_SUPPORTED)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
             .build();
 
     public static final ChatLanguageModelCapabilities AWS_NOVA_PRO = ChatLanguageModelCapabilities.builder()
             .model(BedrockChatModel.builder().modelId("us.amazon.nova-pro-v1:0").build())
-            .supportsToolChoiceRequired(FAIL)
-            .supportsJsonResponseFormat(FAIL)
-            .supportsJsonResponseFormatWithSchema(FAIL)
+            .supportsToolChoiceRequired(NOT_SUPPORTED)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
             .build();
 
@@ -49,8 +49,8 @@ public final class TestedModelsWithConverseAPI {
             .model(BedrockChatModel.builder()
                     .modelId("anthropic.claude-3-haiku-20240307-v1:0")
                     .build())
-            .supportsJsonResponseFormat(FAIL)
-            .supportsJsonResponseFormatWithSchema(FAIL)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
             .build();
 
@@ -62,10 +62,10 @@ public final class TestedModelsWithConverseAPI {
             .model(BedrockChatModel.builder()
                     .modelId("mistral.mistral-large-2402-v1:0")
                     .build())
-            .supportsSingleImageInputAsPublicURL(FAIL)
-            .supportsSingleImageInputAsBase64EncodedString(FAIL)
-            .supportsJsonResponseFormat(FAIL)
-            .supportsJsonResponseFormatWithSchema(FAIL)
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
+            .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
             .build();
 
@@ -73,9 +73,9 @@ public final class TestedModelsWithConverseAPI {
             .model(BedrockChatModel.builder()
                     .modelId("meta.llama3-2-90b-instruct-v1:0")
                     .build())
-            .supportsToolChoiceRequired(FAIL)
-            .supportsJsonResponseFormat(FAIL)
-            .supportsJsonResponseFormatWithSchema(FAIL)
+            .supportsToolChoiceRequired(NOT_SUPPORTED)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
             .build();
 
@@ -85,11 +85,11 @@ public final class TestedModelsWithConverseAPI {
             .model(BedrockChatModel.builder()
                     .modelId("cohere.command-r-plus-v1:0")
                     .build())
-            .supportsSingleImageInputAsPublicURL(FAIL)
-            .supportsSingleImageInputAsBase64EncodedString(FAIL)
-            .supportsToolChoiceRequired(FAIL)
-            .supportsJsonResponseFormat(FAIL)
-            .supportsJsonResponseFormatWithSchema(FAIL)
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
+            .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+            .supportsToolChoiceRequired(NOT_SUPPORTED)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
             .build();
 
@@ -99,11 +99,11 @@ public final class TestedModelsWithConverseAPI {
             .model(BedrockChatModel.builder()
                     .modelId("ai21.jamba-1-5-mini-v1:0")
                     .build())
-            .supportsSingleImageInputAsPublicURL(FAIL)
-            .supportsSingleImageInputAsBase64EncodedString(FAIL)
-            .supportsToolChoiceRequired(FAIL)
-            .supportsJsonResponseFormat(FAIL)
-            .supportsJsonResponseFormatWithSchema(FAIL)
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
+            .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+            .supportsToolChoiceRequired(NOT_SUPPORTED)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
             .build();
 }

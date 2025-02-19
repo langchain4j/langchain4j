@@ -1,6 +1,6 @@
 package dev.langchain4j.model.azure.common;
 
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.FAIL;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
 
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -34,13 +34,13 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT2 {
                 ChatLanguageModelCapabilities.builder()
                         .model(AZURE_OPEN_AI_CHAT_MODEL)
                         // .supportsSingleImageInputAsPublicURL(false)
-                        .supportsSingleImageInputAsBase64EncodedString(FAIL)
-                        .supportsToolChoiceRequired(FAIL)
-                        .supportsDefaultRequestParameters(FAIL)
-                        .supportsModelNameParameter(FAIL)
-                        .supportsMaxOutputTokensParameter(FAIL)
-                        .supportsStopSequencesParameter(FAIL)
-                        .supportsToolChoiceRequired(FAIL)
+                        .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+                        .supportsToolChoiceRequired(NOT_SUPPORTED)
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
+                        .supportsModelNameParameter(NOT_SUPPORTED)
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+                        .supportsStopSequencesParameter(NOT_SUPPORTED)
+                        .supportsToolChoiceRequired(NOT_SUPPORTED)
                         .assertExceptionType(false)
                         .assertResponseId(false)
                         .assertResponseModel(false)
@@ -49,13 +49,13 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT2 {
                 ChatLanguageModelCapabilities.builder()
                         .model(AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA)
                         // .supportsSingleImageInputAsPublicURL(false)
-                        .supportsSingleImageInputAsBase64EncodedString(FAIL)
-                        .supportsToolChoiceRequired(FAIL)
-                        .supportsDefaultRequestParameters(FAIL)
-                        .supportsModelNameParameter(FAIL)
-                        .supportsMaxOutputTokensParameter(FAIL)
-                        .supportsStopSequencesParameter(FAIL)
-                        .supportsToolChoiceRequired(FAIL)
+                        .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+                        .supportsToolChoiceRequired(NOT_SUPPORTED)
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
+                        .supportsModelNameParameter(NOT_SUPPORTED)
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+                        .supportsStopSequencesParameter(NOT_SUPPORTED)
+                        .supportsToolChoiceRequired(NOT_SUPPORTED)
                         .assertExceptionType(false)
                         .assertResponseId(false)
                         .assertResponseModel(false)

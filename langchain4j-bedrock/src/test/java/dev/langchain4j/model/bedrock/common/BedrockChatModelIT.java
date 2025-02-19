@@ -2,7 +2,7 @@ package dev.langchain4j.model.bedrock.common;
 
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1;
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.Capability.FAIL;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
 
 import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -25,15 +25,15 @@ class BedrockChatModelIT extends AbstractChatModelIT2 {
         return List.of(
                 ChatLanguageModelCapabilities.builder()
                         .model(BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL)
-                        .supportsDefaultRequestParameters(FAIL)
-                        .supportsModelNameParameter(FAIL)
-                        .supportsMaxOutputTokensParameter(FAIL)
-                        .supportsStopSequencesParameter(FAIL)
-                        .supportsToolChoiceRequired(FAIL)
-                        .supportsJsonResponseFormat(FAIL)
-                        .supportsJsonResponseFormatWithSchema(FAIL)
-                        .supportsSingleImageInputAsPublicURL(FAIL)
-                        .supportsCommonParametersWrappedInIntegrationSpecificClass(FAIL)
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
+                        .supportsModelNameParameter(NOT_SUPPORTED)
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+                        .supportsStopSequencesParameter(NOT_SUPPORTED)
+                        .supportsToolChoiceRequired(NOT_SUPPORTED)
+                        .supportsJsonResponseFormat(NOT_SUPPORTED)
+                        .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
+                        .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
+                        .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
                         .assertResponseId(false)
                         .assertResponseModel(false)
                         .assertExceptionType(false)
