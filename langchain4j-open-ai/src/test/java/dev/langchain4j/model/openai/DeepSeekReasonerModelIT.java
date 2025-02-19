@@ -12,15 +12,20 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
 class DeepSeekReasonerModelIT {
-    // Refer to the model's documentation: https://api-docs.deepseek.com/zh-cn/guides/reasoning_model
 
+    /**
+     * Refer to the model's documentation: <a href="https://api-docs.deepseek.com/guides/reasoning_model">...</a>
+     * Note: Due to the official servers of DeepSeek, in order to ensure the smooth progress of the test cases,
+     * the test cases adopted the third-party API of Silicon Mobility, which is consistent with the official output.
+     * @param modelName the name of the reasoner model to test.
+     */
     @ParameterizedTest
-    @CsvSource(value = {"deepseek-reasoner"})
+    @CsvSource(value = {"deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"})
     void should_answer_with_reasoning_content(String modelName) {
 
         OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("DEEPSEEK_BASE_URL"))
-                .apiKey(System.getenv("DEEPSEEK_BASE_URL"))
+                .baseUrl(System.getenv("DEEPSEEK_BASE_URL")) // you can use "https://api.siliconflow.cn/v1" temporarily
+                .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName(modelName)
                 // .temperature(0.0)   unsupported by the model, will be ignored
                 .logRequests(true)
@@ -28,7 +33,7 @@ class DeepSeekReasonerModelIT {
                 .build();
 
         // given
-        UserMessage userMessage = userMessage("What is the capital of China?");
+        UserMessage userMessage = userMessage("what is the capital of China after 1949?");
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
