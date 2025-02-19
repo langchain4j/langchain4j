@@ -33,6 +33,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT2 {
         return List.of(
                 ChatLanguageModelCapabilities.builder()
                         .model(AZURE_OPEN_AI_CHAT_MODEL)
+                        .mnemonicName("azure open ai chat model")
                         // .supportsSingleImageInputAsPublicURL(false)
                         .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
                         .supportsToolChoiceRequired(NOT_SUPPORTED)
@@ -48,6 +49,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT2 {
                         .build(),
                 ChatLanguageModelCapabilities.builder()
                         .model(AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA)
+                        .mnemonicName("azure open ai chat model with strict schema")
                         // .supportsSingleImageInputAsPublicURL(false)
                         .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
                         .supportsToolChoiceRequired(NOT_SUPPORTED)
