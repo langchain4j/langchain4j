@@ -1,10 +1,5 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.ChatMessageType.AI;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
@@ -12,6 +7,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents a response message from an AI (language model).
@@ -130,8 +129,8 @@ public class AiMessage implements ChatMessage {
         if (o == null || getClass() != o.getClass()) return false;
         AiMessage that = (AiMessage) o;
         return Objects.equals(this.text, that.text)
-            && Objects.equals(this.reasoningContent, that.reasoningContent)
-            && Objects.equals(this.toolExecutionRequests, that.toolExecutionRequests);
+                && Objects.equals(this.reasoningContent, that.reasoningContent)
+                && Objects.equals(this.toolExecutionRequests, that.toolExecutionRequests);
     }
 
     @Override
@@ -141,11 +140,10 @@ public class AiMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "AiMessage {" +
-            " text = " + quoted(text) +
-            " reasoningContent = " + quoted(reasoningContent) +
-            " toolExecutionRequests = " + toolExecutionRequests +
-            " }";
+        return "AiMessage {" + " text = "
+                + quoted(text) + " reasoningContent = "
+                + quoted(reasoningContent) + " toolExecutionRequests = "
+                + toolExecutionRequests + " }";
     }
 
     /**
@@ -208,7 +206,8 @@ public class AiMessage implements ChatMessage {
      * @param toolExecutionRequests the tool execution requests of the message.
      * @return the new {@link AiMessage}.
      */
-    public static AiMessage from(String text, String reasoningContent, List<ToolExecutionRequest> toolExecutionRequests) {
+    public static AiMessage from(
+            String text, String reasoningContent, List<ToolExecutionRequest> toolExecutionRequests) {
         return new AiMessage(text, reasoningContent, toolExecutionRequests);
     }
 
