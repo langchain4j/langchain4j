@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class AiMessageTest implements WithAssertions {
     @Test
-    public void accessors() {
+    void accessors() {
         {
             AiMessage m = new AiMessage("text");
             assertThat(m.type()).isEqualTo(ChatMessageType.AI);
@@ -47,7 +47,7 @@ class AiMessageTest implements WithAssertions {
     }
 
     @Test
-    public void equals_and_hashCode() {
+    void equals_and_hashCode() {
         AiMessage m1 = new AiMessage("text");
         AiMessage m2 = new AiMessage("text");
         assertThat(m1)
@@ -84,7 +84,7 @@ class AiMessageTest implements WithAssertions {
     }
 
     @Test
-    public void from() {
+    void from() {
         ToolExecutionRequest[] requests = new ToolExecutionRequest[] {
             ToolExecutionRequest.builder().id("foo").build(),
             ToolExecutionRequest.builder().id("bar").build()
