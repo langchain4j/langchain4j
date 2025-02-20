@@ -16,7 +16,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             AzureOpenAiStreamingChatModel.builder()
                     .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                     .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                    .deploymentName("gpt-4o")
+                    .deploymentName("gpt-4o-mini")
                     .logRequestsAndResponses(true)
                     .build();
 
@@ -24,7 +24,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             AzureOpenAiStreamingChatModel.builder()
                     .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                     .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                    .deploymentName("gpt-4o")
+                    .deploymentName("gpt-4o-mini")
                     .logRequestsAndResponses(true)
                     .strictJsonSchema(true)
                     .build();
