@@ -23,18 +23,18 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT2 {
                             .modelName("gemini-1.5-flash")
                             .build())
                     .mnemonicName("vertex ai gemini chat model")
-                    .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
-                    .supportsModelNameParameter(NOT_SUPPORTED)
-                    .supportsStopSequencesParameter(NOT_SUPPORTED)
-                    .supportsToolChoiceRequired(NOT_SUPPORTED)
+                    .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                    .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                    .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                    .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
                     .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
-                    .supportsJsonResponseFormat(NOT_SUPPORTED)
+                    .supportsJsonResponseFormat(NOT_SUPPORTED) // TODO implement
                     .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
                     .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED)
                     .assertExceptionType(false)
-                    .assertResponseId(false)
-                    .assertFinishReason(false)
-                    .assertResponseModel(false)
+                    .assertResponseId(false) // TODO implement
+                    .assertFinishReason(false) // TODO implement
+                    .assertResponseModel(false) // TODO implement
                     .build();
 
     @Override

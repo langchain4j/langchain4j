@@ -189,7 +189,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                         .isExactlyInstanceOf(UnsupportedFeatureException.class)
                         .hasMessageContaining("modelName")
                         .hasMessageContaining("not support");
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsModelNameParameter is DISABLED");
     }
 
     protected String customModelName() {
@@ -284,7 +284,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                     assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
                 }
             }
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsModelNameParameter())) {
+        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsMaxOutputTokensParameter())) {
             // given
             int maxOutputTokens = 5;
             ChatRequestParameters parameters = ChatRequestParameters.builder()
@@ -313,7 +313,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                             .hasMessageContaining("maxOutputTokens")
                             .hasMessageContaining("not support");
             }
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsMaxOutputTokensParameter is DISABLED");
     }
 
     @Test
@@ -415,7 +415,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                         .isExactlyInstanceOf(UnsupportedFeatureException.class)
                         .hasMessageContaining("stopSequences")
                         .hasMessageContaining("not support");
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsStopSequencesParameter is DISABLED");
     }
 
     @Test
@@ -484,7 +484,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
             }
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsCommonParametersWrappedInIntegrationSpecificClass is " + modelCapabilities.supportsCommonParametersWrappedInIntegrationSpecificClass());
     }
 
     @Test
@@ -639,7 +639,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                         .hasMessageContaining("tool")
                         .hasMessageContaining("not support");
             }
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsTools is DISABLED");
     }
 
     @ParameterizedTest
@@ -705,7 +705,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                         .hasMessageContaining("ToolChoice.REQUIRED")
                         .hasMessageContaining("not support");
             }
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsToolChoiceRequiredWithMultipleTools is DISABLED");
     }
 
     @ParameterizedTest
@@ -742,9 +742,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
             }
-        } else {
-            // already test for single tool
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsToolChoiceRequiredWithSingleTool is " + modelCapabilities.supportsToolChoiceRequiredWithSingleTool());
     }
 
     // RESPONSE FORMAT
@@ -801,7 +799,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                         .isExactlyInstanceOf(UnsupportedFeatureException.class)
                         .hasMessageContaining("JSON response format")
                         .hasMessageContaining("not support");
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsJsonResponseFormat is DISABLED");
     }
 
     @ParameterizedTest
@@ -851,7 +849,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                         .hasMessageContaining("JSON response format")
                         .hasMessageContaining("not support");
             }
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsJsonResponseFormatWithSchema is DISABLED");
     }
 
     // TOOLS + RESPONSE FORMAT
@@ -957,9 +955,8 @@ public abstract class AbstractBaseChatModelIT2<M> {
                     assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
                 }
             }
-        } else {
-            // already tested
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsToolsAndJsonResponseFormatWithSchema is " + modelCapabilities.supportsToolsAndJsonResponseFormatWithSchema());
+
     }
 
     // MULTI MODALITY: IMAGES: BASE64
@@ -1010,7 +1007,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                         .hasMessageContaining("image")
                         .hasMessageContaining("not support");
             }
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsSingleImageInputAsBase64EncodedString is DISABLED");
     }
 
     @ParameterizedTest
@@ -1045,9 +1042,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else {
-            // already tested
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsMultipleImageInputsAsBase64EncodedStrings is " + modelCapabilities.supportsMultipleImageInputsAsBase64EncodedStrings());
     }
 
     // MULTI MODALITY: IMAGES: PUBLIC URL
@@ -1095,7 +1090,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
                         .hasMessageContaining("image")
                         .hasMessageContaining("not support");
             }
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsSingleImageInputAsPublicURL is DISABLED");
     }
 
     @ParameterizedTest
@@ -1127,9 +1122,7 @@ public abstract class AbstractBaseChatModelIT2<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else {
-            // already tested
-        }
+        } else throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities + " because modelCapabilities.supportsMultipleImageInputsAsPublicURLs is " + modelCapabilities.supportsMultipleImageInputsAsPublicURLs());
     }
 
     protected boolean supportsDefaultRequestParameters() {
