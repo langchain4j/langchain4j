@@ -1,18 +1,17 @@
 package dev.langchain4j.model.chat.common;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.junit.jupiter.api.TestInstance;
-
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import org.junit.jupiter.api.TestInstance;
 
 /**
  * Contains all the common tests that every {@link StreamingChatLanguageModel} must successfully pass.
@@ -60,8 +59,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                     concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
                     timesOnPartialResponseWasCalled.get(),
                     timesOnCompleteResponseWasCalled.get(),
-                    threads
-            );
+                    threads);
             return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
         } catch (Exception e) {
             throw new RuntimeException(e);

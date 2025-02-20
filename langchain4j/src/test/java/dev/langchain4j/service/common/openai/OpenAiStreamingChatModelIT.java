@@ -1,7 +1,7 @@
 package dev.langchain4j.service.common.openai;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT2;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import dev.langchain4j.model.chat.common.StreamingChatLanguageModelCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -13,7 +13,7 @@ import java.util.List;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
-class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT2 {
+class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     public static OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder defaultStreamingModelBuilder() {
         return OpenAiStreamingChatModel.builder()

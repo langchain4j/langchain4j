@@ -1,7 +1,7 @@
 package dev.langchain4j.model.vertexai.common;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT2;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import dev.langchain4j.model.chat.common.StreamingChatLanguageModelCapabilities;
 import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
@@ -11,7 +11,7 @@ import java.util.List;
 
 import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
 
-class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT2 {
+class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final VertexAiGeminiStreamingChatModel VERTEX_AI_GEMINI_STREAMING_CHAT_MODEL =
             VertexAiGeminiStreamingChatModel.builder()

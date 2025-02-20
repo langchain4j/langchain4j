@@ -4,13 +4,13 @@ import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportSta
 
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT2;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import dev.langchain4j.model.chat.common.StreamingChatLanguageModelCapabilities;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 
-class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT2 {
+class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL =
             AzureOpenAiStreamingChatModel.builder()

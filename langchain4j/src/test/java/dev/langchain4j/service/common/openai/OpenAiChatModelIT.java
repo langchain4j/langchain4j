@@ -8,7 +8,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT2;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -25,7 +25,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
-class OpenAiChatModelIT extends AbstractChatModelIT2 {
+class OpenAiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 

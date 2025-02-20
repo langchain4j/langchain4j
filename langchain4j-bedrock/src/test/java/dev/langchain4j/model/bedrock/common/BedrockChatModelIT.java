@@ -6,12 +6,12 @@ import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportSta
 
 import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT2;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import java.util.List;
 
-class BedrockChatModelIT extends AbstractChatModelIT2 {
+class BedrockChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
