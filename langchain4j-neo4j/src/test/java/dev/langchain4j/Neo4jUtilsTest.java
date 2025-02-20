@@ -1,10 +1,10 @@
-package dev.langchain4j.store.embedding.neo4j;
-
-import org.junit.jupiter.api.Test;
+package dev.langchain4j;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class Neo4jEmbeddingUtilsTest {
+import org.junit.jupiter.api.Test;
+
+class Neo4jUtilsTest {
 
     @Test
     void test_sanitize() {
@@ -44,6 +44,6 @@ class Neo4jEmbeddingUtilsTest {
     }
 
     private String sanitize(String value) {
-        return Neo4jEmbeddingUtils.sanitizeOrThrows(value, "ignored");
+        return Neo4jUtils.sanitizeOrThrows(value, "ignored");
     }
 }

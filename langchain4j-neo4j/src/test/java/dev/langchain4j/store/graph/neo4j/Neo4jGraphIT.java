@@ -1,5 +1,9 @@
 package dev.langchain4j.store.graph.neo4j;
 
+import static dev.langchain4j.Neo4jTestUtils.getNeo4jContainer;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -14,20 +18,14 @@ import org.neo4j.driver.summary.ResultSummary;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class Neo4jGraphIT {
 
     @Container
-    private static final Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.16.0"))
-            .withoutAuthentication()
-            .withLabsPlugins("apoc");
+    private static final Neo4jContainer<?> neo4jContainer =
+            getNeo4jContainer().withoutAuthentication().withLabsPlugins("apoc");
 
     private static Neo4jGraph neo4jGraph;
 
@@ -51,7 +49,8 @@ class Neo4jGraphIT {
     void refreshSchemaShouldReturnEmptySchema() {
 
         neo4jGraph.refreshSchema();
-        String expectedSchema = "Node properties are the following:\n\n\nRelationship properties are the following:\n\n\nThe relationships are the following:\n";
+        String expectedSchema =
+                "Node properties are the following:\n\n\nRelationship properties are the following:\n\n\nThe relationships are the following:\n";
         assertThat(neo4jGraph.getSchema()).isEqualTo(expectedSchema);
     }
 
@@ -80,13 +79,14 @@ class Neo4jGraphIT {
     void refreshSchemaShouldReturnUpdatedSchema() {
 
         neo4jGraph.refreshSchema();
-        String expectedSchema = """
+        String expectedSchema =
+                """
                 Node properties are the following:
                 Person {name:STRING}
-                                
+
                 Relationship properties are the following:
-                                
-                                
+
+
                 The relationships are the following:
                 """;
         assertThat(neo4jGraph.getSchema()).isEqualTo(expectedSchema);

@@ -4,24 +4,21 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import org.neo4j.driver.Record;
-import org.neo4j.driver.Value;
-import org.neo4j.driver.Values;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.neo4j.driver.Record;
+import org.neo4j.driver.Value;
+import org.neo4j.driver.Values;
 
-import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
+public class Neo4jEmbeddingUtils {
 
-class Neo4jEmbeddingUtils {
-    
     /* not-configurable strings, just used under-the-hood in `UNWIND $rows ...` statement */
     public static final String EMBEDDINGS_ROW_KEY = "embeddingRow";
-    
+
     /* default configs */
     public static final String DEFAULT_ID_PROP = "id";
     public static final String DEFAULT_DATABASE_NAME = "neo4j";
@@ -44,22 +41,26 @@ class Neo4jEmbeddingUtils {
         Metadata metadata = new Metadata(metaData);
 
         Value text = neo4jRecord.get(store.getTextProperty());
-        TextSegment textSegment = text.isNull()
-                ? null
-                : TextSegment.from(text.asString(), metadata);
+        TextSegment textSegment = text.isNull() ? null : TextSegment.from(text.asString(), metadata);
 
-        List<Float> embeddingList = neo4jRecord.get(store.getEmbeddingProperty())
-                .asList(Value::asFloat);
+        List<Float> embeddingList =
+                neo4jRecord.get(store.getEmbeddingProperty()).asList(Value::asFloat);
 
         Embedding embedding = Embedding.from(embeddingList);
 
-        return new EmbeddingMatch<>(neo4jRecord.get("score").asDouble(),
+        return new EmbeddingMatch<>(
+                neo4jRecord.get("score").asDouble(),
                 neo4jRecord.get(store.getIdProperty()).asString(),
                 embedding,
                 textSegment);
     }
 
-    public static Map<String, Object> toRecord(Neo4jEmbeddingStore store, int idx, List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public static Map<String, Object> toRecord(
+            Neo4jEmbeddingStore store,
+            int idx,
+            List<String> ids,
+            List<Embedding> embeddings,
+            List<TextSegment> embedded) {
         String id = ids.get(idx);
         Embedding embedding = embeddings.get(idx);
 
@@ -79,29 +80,18 @@ class Neo4jEmbeddingUtils {
         return row;
     }
 
-    public static Stream<List<Map<String, Object>>> getRowsBatched(Neo4jEmbeddingStore store, List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public static Stream<List<Map<String, Object>>> getRowsBatched(
+            Neo4jEmbeddingStore store, List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         int batchSize = 10_000;
         AtomicInteger batchCounter = new AtomicInteger();
         int total = ids.size();
-        int batchNumber = (int) Math.ceil( (double) total / batchSize );
-        return IntStream.range(0, batchNumber)
-                .mapToObj(part -> {
-                    List<Map<String, Object>> maps = ids.subList(Math.min(part * batchSize, total), Math.min((part + 1) * batchSize, total))
-                                    .stream()
-                                    .map(i -> toRecord(store, batchCounter.getAndIncrement(), ids, embeddings, embedded))
-                                    .toList();
-                            return maps;
-                        }
-                );
-    }
-
-    public static String sanitizeOrThrows(String value, String config) {
-        return sanitize(value)
-                .orElseThrow(() -> {
-                    String invalidSanitizeValue = String.format("The value %s, to assign to configuration %s, cannot be safely quoted",
-                            value,
-                            config);
-                    return new RuntimeException(invalidSanitizeValue);
-                });
+        int batchNumber = (int) Math.ceil((double) total / batchSize);
+        return IntStream.range(0, batchNumber).mapToObj(part -> {
+            List<Map<String, Object>> maps =
+                    ids.subList(Math.min(part * batchSize, total), Math.min((part + 1) * batchSize, total)).stream()
+                            .map(i -> toRecord(store, batchCounter.getAndIncrement(), ids, embeddings, embedded))
+                            .toList();
+            return maps;
+        });
     }
 }

@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.neo4j;
 
+import static dev.langchain4j.Neo4jTestUtils.getNeo4jContainer;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_EMBEDDING_PROP;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_ID_PROP;
@@ -40,7 +41,6 @@ import org.neo4j.driver.types.Node;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
 class Neo4jEmbeddingStoreIT {
@@ -50,8 +50,7 @@ class Neo4jEmbeddingStoreIT {
     public static final String LABEL_TO_SANITIZE = "Label ` to \\ sanitize";
 
     @Container
-    static Neo4jContainer<?> neo4jContainer =
-            new Neo4jContainer<>(DockerImageName.parse("neo4j:5.14.0")).withAdminPassword(ADMIN_PASSWORD);
+    static Neo4jContainer<?> neo4jContainer = getNeo4jContainer().withAdminPassword(ADMIN_PASSWORD);
 
     private static final String METADATA_KEY = "test-key";
 

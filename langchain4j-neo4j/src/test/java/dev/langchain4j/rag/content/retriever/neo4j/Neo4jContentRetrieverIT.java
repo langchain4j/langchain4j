@@ -1,10 +1,17 @@
 package dev.langchain4j.rag.content.retriever.neo4j;
 
+import static dev.langchain4j.Neo4jTestUtils.getNeo4jContainer;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.graph.neo4j.Neo4jGraph;
+import java.util.List;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,20 +23,12 @@ import org.neo4j.driver.Session;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 
-import java.util.List;
-
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 class Neo4jContentRetrieverIT {
 
     @Container
-    private static final Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>("neo4j:latest")
-            .withoutAuthentication()
-            .withPlugins("apoc");
+    private static final Neo4jContainer<?> neo4jContainer =
+            getNeo4jContainer().withoutAuthentication().withPlugins("apoc");
 
     private Driver driver;
     private Neo4jGraph graph;
@@ -52,9 +51,7 @@ class Neo4jContentRetrieverIT {
             session.run("CREATE (book:Book {title: 'Dune'})<-[:WROTE]-(author:Person {name: 'Frank Herbert'})");
         }
 
-        graph = Neo4jGraph.builder()
-                .driver(driver)
-                .build();
+        graph = Neo4jGraph.builder().driver(driver).build();
 
         retriever = Neo4jContentRetriever.builder()
                 .graph(graph)
@@ -80,7 +77,8 @@ class Neo4jContentRetrieverIT {
     void shouldRetrieveContentWhenQueryIsValid() {
         // Given
         Query query = new Query("Who is the author of the book 'Dune'?");
-        when(chatLanguageModel.generate(anyString())).thenReturn("MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
+        when(chatLanguageModel.generate(anyString()))
+                .thenReturn("MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
 
         // When
         List<Content> contents = retriever.retrieve(query);
@@ -93,7 +91,9 @@ class Neo4jContentRetrieverIT {
     void shouldRetrieveContentWhenQueryIsValidAndResponseHasBackticks() {
         // Given
         Query query = new Query("Who is the author of the book 'Dune'?");
-        when(chatLanguageModel.generate(anyString())).thenReturn("```MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output```");
+        when(chatLanguageModel.generate(anyString()))
+                .thenReturn(
+                        "```MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output```");
 
         // When
         List<Content> contents = retriever.retrieve(query);
@@ -134,7 +134,9 @@ class Neo4jContentRetrieverIT {
     void shouldReturnEmptyListWhenQueryIsInvalid() {
         // Given
         Query query = new Query("Who is the author of the movie 'Dune'?");
-        when(chatLanguageModel.generate(anyString())).thenReturn("MATCH(movie:Movie {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
+        when(chatLanguageModel.generate(anyString()))
+                .thenReturn(
+                        "MATCH(movie:Movie {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
 
         // When
         List<Content> contents = retriever.retrieve(query);
