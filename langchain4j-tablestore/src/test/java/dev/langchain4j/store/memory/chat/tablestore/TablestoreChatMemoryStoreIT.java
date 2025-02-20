@@ -64,10 +64,8 @@ class TablestoreChatMemoryStoreIT {
 
         // When
         UserMessage userMessage = userMessage("How are you?");
-        chatMemory.add(userMessage);
-
         AiMessage aiMessage = aiMessage("I am fine! Thank you!");
-        chatMemory.add(aiMessage);
+        chatMemory.addAll(List.of(userMessage, aiMessage));
 
         // Then
         assertThat(chatMemory.messages()).containsExactly(userMessage, aiMessage);
