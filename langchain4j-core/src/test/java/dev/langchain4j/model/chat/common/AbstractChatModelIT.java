@@ -12,7 +12,7 @@ import org.junit.jupiter.api.TestInstance;
  * This ensures that {@link ChatLanguageModel} implementations are interchangeable among themselves.
  */
 @TestInstance(PER_CLASS)
-public abstract class AbstractChatModelIT2 extends AbstractBaseChatModelIT2<ChatLanguageModel> {
+public abstract class AbstractChatModelIT extends AbstractBaseChatModelIT<ChatLanguageModel> {
 
     @Override
     protected ChatResponseAndStreamingMetadata chat(ChatLanguageModel chatModel, ChatRequest chatRequest) {

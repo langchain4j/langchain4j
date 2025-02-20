@@ -1,7 +1,7 @@
 package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT2;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -12,7 +12,7 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
 
-class GoogleAiGeminiChatModelIT extends AbstractChatModelIT2 {
+class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 // TODO add streaming counterpart
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219

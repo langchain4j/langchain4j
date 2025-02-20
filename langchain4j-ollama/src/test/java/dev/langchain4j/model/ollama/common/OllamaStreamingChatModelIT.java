@@ -1,7 +1,7 @@
 package dev.langchain4j.model.ollama.common;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT2;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import dev.langchain4j.model.chat.common.StreamingChatLanguageModelCapabilities;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
@@ -21,7 +21,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
-class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT2 {
+class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     private static final String MODEL_WITH_TOOLS = LLAMA_3_1;
     private static LC4jOllamaContainer ollamaWithTools;

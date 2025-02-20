@@ -12,7 +12,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT2;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
@@ -20,7 +20,7 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import java.util.List;
 
-class OllamaChatModelIT extends AbstractChatModelIT2 {
+class OllamaChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
