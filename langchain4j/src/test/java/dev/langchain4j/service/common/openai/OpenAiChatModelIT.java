@@ -44,15 +44,18 @@ class OpenAiChatModelIT extends AbstractChatModelIT2 {
         return List.of(
                 ChatLanguageModelCapabilities.builder()
                         .model(defaultModelBuilder().build())
+                        .mnemonicName("default openAi chat model")
                         .build(),
                 ChatLanguageModelCapabilities.builder()
                         .model(defaultModelBuilder().strictTools(true).build())
+                        .mnemonicName("openAi chat model with strict tools")
                         .build(),
                 ChatLanguageModelCapabilities.builder()
                         .model(defaultModelBuilder()
                                 .responseFormat("json_schema")
                                 .strictJsonSchema(true)
                                 .build())
+                        .mnemonicName("openAi chat model with json schema response format")
                         .build()
                 // TODO json_object?
                 );
