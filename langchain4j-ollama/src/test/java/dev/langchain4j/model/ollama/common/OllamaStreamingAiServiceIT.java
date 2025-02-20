@@ -13,8 +13,8 @@ class OllamaStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
     @Override
     protected List<StreamingChatLanguageModel> models() {
         return List.of(
-                OLLAMA_CHAT_MODEL_WITH_TOOLS,
-                OPEN_AI_CHAT_MODEL_WITH_TOOLS
+                OLLAMA_CHAT_MODEL_WITH_TOOLS.model(),
+                OPEN_AI_CHAT_MODEL_WITH_TOOLS.model()
         );
     }
 

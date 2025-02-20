@@ -1,16 +1,18 @@
 package dev.langchain4j.model.ollama.common;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT2;
+import dev.langchain4j.model.chat.common.ChatModelCapabilities;
+import dev.langchain4j.model.chat.common.StreamingChatLanguageModelCapabilities;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import org.junit.jupiter.api.Disabled;
 
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.DISABLED;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
@@ -19,7 +21,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
-class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
+class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT2 {
 
     private static final String MODEL_WITH_TOOLS = LLAMA_3_1;
     private static LC4jOllamaContainer ollamaWithTools;
@@ -43,110 +45,101 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
         }
     }
 
-    static final OllamaStreamingChatModel OLLAMA_CHAT_MODEL_WITH_TOOLS = OllamaStreamingChatModel.builder()
+    static final StreamingChatLanguageModelCapabilities OLLAMA_CHAT_MODEL_WITH_TOOLS = StreamingChatLanguageModelCapabilities.builder()
+            .model(OllamaStreamingChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollamaWithTools))
             .modelName(MODEL_WITH_TOOLS)
             .temperature(0.0)
+            .build())
+            .mnemonicName("ollama_chat_model_with_tools")
+            .supportsSingleImageInputAsPublicURL(DISABLED) // no exception thrown, image is just silently ignored
+            .supportsSingleImageInputAsBase64EncodedString(
+            DISABLED) // no exception thrown, image is just silently ignored
+            .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsStopSequencesParameter(NOT_SUPPORTED)
+            .supportsToolChoiceRequired(NOT_SUPPORTED)
+            .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .assertExceptionType(false)
+            .assertResponseId(false)
+            .assertFinishReason(false)
+            .assertResponseModel(false)
+            .assertTimesOnPartialResponseWasCalled(false) //TODO
             .build();
 
-    static final OllamaStreamingChatModel OLLAMA_CHAT_MODEL_WITH_VISION = OllamaStreamingChatModel.builder()
+    static final StreamingChatLanguageModelCapabilities OLLAMA_CHAT_MODEL_WITH_VISION = StreamingChatLanguageModelCapabilities.builder()
+            .model(OllamaStreamingChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollamaWithVision))
             .modelName(MODEL_WITH_VISION)
             .temperature(0.0)
+            .build())
+            .mnemonicName("ollama_chat_model_with_vision")
+            .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsTools(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsBase64EncodedStrings(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsPublicURLs(NOT_SUPPORTED)
+            .supportsStopSequencesParameter(NOT_SUPPORTED)
+            .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
+            .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
+            .supportsJsonResponseFormat(NOT_SUPPORTED)
+            .assertExceptionType(false)
+            .assertResponseId(false)
+            .assertFinishReason(false)
+            .assertResponseModel(false)
             .build();
 
-    static final OpenAiStreamingChatModel OPEN_AI_CHAT_MODEL_WITH_TOOLS = OpenAiStreamingChatModel.builder()
+    static final StreamingChatLanguageModelCapabilities OPEN_AI_CHAT_MODEL_WITH_TOOLS = StreamingChatLanguageModelCapabilities.builder()
+            .model(OpenAiStreamingChatModel.builder()
             .apiKey("does not matter")
             .baseUrl(ollamaBaseUrl(ollamaWithTools) + "/v1")
             .modelName(MODEL_WITH_TOOLS)
             .temperature(0.0)
+            .build())
+            .mnemonicName("open_ai_chat_model_with_tools")
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
+            .supportsSingleImageInputAsBase64EncodedString(
+                    DISABLED) // no exception thrown, image is just silently ignored
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
+            .supportsToolsAndJsonResponseFormatWithSchema(DISABLED)
+            .assertExceptionType(false)
+            .assertResponseId(false)
+            .assertFinishReason(false)
+            .assertResponseModel(false)
+            .assertTimesOnPartialResponseWasCalled(false) //TODO
             .build();
 
-    static final OpenAiStreamingChatModel OPEN_AI_CHAT_MODEL_WITH_VISION = OpenAiStreamingChatModel.builder()
+    static final StreamingChatLanguageModelCapabilities OPEN_AI_CHAT_MODEL_WITH_VISION = StreamingChatLanguageModelCapabilities.builder()
+            .model(OpenAiStreamingChatModel.builder()
             .apiKey("does not matter")
             .baseUrl(ollamaBaseUrl(ollamaWithVision) + "/v1")
             .modelName(MODEL_WITH_VISION)
             .temperature(0.0)
+            .build())
+            .mnemonicName("open_ai_chat_model_with_vision")
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsTools(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsBase64EncodedStrings(NOT_SUPPORTED)
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // getting invalid image input from model
+            .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
+            .assertExceptionType(false)
+            .assertResponseId(false)
+            .assertFinishReason(false)
+            .assertResponseModel(false)
             .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<ChatModelCapabilities<StreamingChatLanguageModel>> models() {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_TOOLS,
-                OPEN_AI_CHAT_MODEL_WITH_TOOLS
-                // TODO add more model configs, see OpenAiChatModelIT
-        );
-    }
-
-    @Override
-    protected List<StreamingChatLanguageModel> modelsSupportingImageInputs() {
-        return List.of(
                 OLLAMA_CHAT_MODEL_WITH_VISION,
+                OPEN_AI_CHAT_MODEL_WITH_TOOLS,
                 OPEN_AI_CHAT_MODEL_WITH_VISION
                 // TODO add more model configs, see OpenAiChatModelIT
         );
-    }
-
-    @Override
-    protected void should_fail_if_modelName_is_not_supported(StreamingChatLanguageModel model) {
-        if (model instanceof OpenAiStreamingChatModel) {
-            return;
-        }
-        super.should_fail_if_modelName_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(StreamingChatLanguageModel model) {
-        if (model instanceof OpenAiStreamingChatModel) {
-            return;
-        }
-        super.should_fail_if_maxOutputTokens_parameter_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_stopSequences_parameter_is_not_supported(StreamingChatLanguageModel model) {
-        if (model instanceof OpenAiStreamingChatModel) {
-            return;
-        }
-        super.should_fail_if_stopSequences_parameter_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(StreamingChatLanguageModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return;
-        }
-        super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_JSON_response_format_is_not_supported(StreamingChatLanguageModel model) {
-        if (model instanceof OpenAiStreamingChatModel) {
-            return;
-        }
-        super.should_fail_if_JSON_response_format_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(StreamingChatLanguageModel model) {
-        if (model instanceof OpenAiStreamingChatModel) {
-            return;
-        }
-        super.should_fail_if_JSON_response_format_with_schema_is_not_supported(model);
-    }
-
-    @Override
-    @Disabled("enable after validation is implemented in OllamaStreamingChatModel")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatLanguageModel model) {
-        if (model instanceof OpenAiStreamingChatModel) {
-            return;
-        }
-        super.should_fail_if_images_as_public_URLs_are_not_supported(model);
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
     }
 
     @Override
@@ -164,58 +157,4 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO check if Ollama supports this
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
-        return false; // vision model only supports a single image per message
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // Ollama supports only base64-encoded images
-    }
-
-    @Override
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return false; // Ollama supports only base64-encoded images
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertTokenUsage() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertTimesOnPartialResponseWasCalled() {
-        return false; // TODO
-    }
 }
