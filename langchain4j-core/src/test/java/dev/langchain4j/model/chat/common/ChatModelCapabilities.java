@@ -32,9 +32,6 @@ public abstract class ChatModelCapabilities<M> {
     private final boolean assertExceptionType;
     private final boolean assertTimesOnPartialResponseWasCalled;
 
-    /**
-     * Constructeur protégé qui initialise les champs à partir du builder.
-     */
     protected ChatModelCapabilities(AbstractBuilder<?, M> builder) {
         this.model = builder.model;
         this.supportsModelNameParameter = builder.supportsModelNameParameter;
@@ -242,6 +239,16 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
+        /**
+         * if tools support is set to NOT_SUPPORTED or DISABLED : <br />
+         * - supportsToolChoiceRequiredWithMultipleTools<br />
+         * - supportsToolChoiceRequiredWithSingleTool<br />
+         * - supportsToolChoiceRequired<br />
+         * - supportsToolsAndJsonResponseFormatWithSchema<br />
+         * will also be set to NOT_SUPPORTED or DISABLED
+         *
+         * @param value the tools support status
+         */
         public T supportsTools(SupportStatus value) {
             this.supportsTools = value;
             if (value.equals(NOT_SUPPORTED)) {
@@ -269,6 +276,14 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
+        /**
+         * if tool choice required support is set to NOT_SUPPORTED or DISABLED : <br />
+         * - supportsToolChoiceRequiredWithMultipleTools<br />
+         * - supportsToolChoiceRequiredWithSingleTool<br />
+         * will also be set to NOT_SUPPORTED or DISABLED
+         *
+         * @param value the tool choice required support status
+         */
         public T supportsToolChoiceRequired(SupportStatus value) {
             this.supportsToolChoiceRequired = value;
             if (value.equals(NOT_SUPPORTED)) {
@@ -287,6 +302,13 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
+        /**
+         * if json response format with schema support is set to NOT_SUPPORTED or DISABLED : <br />
+         * - supportsToolsAndJsonResponseFormatWithSchema<br />
+         * will also be set to NOT_SUPPORTED or DISABLED
+         *
+         * @param value the json response format with schema support status
+         */
         public T supportsJsonResponseFormatWithSchema(SupportStatus value) {
             this.supportsJsonResponseFormatWithSchema = value;
             if (value.equals(NOT_SUPPORTED)) {
@@ -298,6 +320,13 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
+        /**
+         * if image as B64 encoding support is set to NOT_SUPPORTED or DISABLED : <br />
+         * - supportsMultipleImageInputsAsBase64EncodedStrings<br />
+         * will also be set to NOT_SUPPORTED or DISABLED
+         *
+         * @param value the image as B64 encoding support status
+         */
         public T supportsSingleImageInputAsBase64EncodedString(SupportStatus value) {
             this.supportsSingleImageInputAsBase64EncodedString = value;
             if (value.equals(NOT_SUPPORTED)) {
@@ -314,6 +343,13 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
+        /**
+         * if image as public URL support is set to NOT_SUPPORTED or DISABLED : <br />
+         * - supportsMultipleImageInputsAsPublicURLs<br />
+         * will also be set to NOT_SUPPORTED or DISABLED
+         *
+         * @param value the image as public URL support status
+         */
         public T supportsSingleImageInputAsPublicURL(SupportStatus value) {
             this.supportsSingleImageInputAsPublicURL = value;
             if (value.equals(NOT_SUPPORTED)) {
@@ -380,14 +416,8 @@ public abstract class ChatModelCapabilities<M> {
             return self();
         }
 
-        /**
-         * Méthode permettant de retourner le builder concret.
-         */
         protected abstract T self();
 
-        /**
-         * Construit l'instance concrète de ChatModelCapabilities.
-         */
         public abstract ChatModelCapabilities<M> build();
     }
 
