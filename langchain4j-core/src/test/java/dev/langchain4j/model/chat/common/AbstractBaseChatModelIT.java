@@ -144,7 +144,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_model_name_parameter(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_respect_model_name_parameter(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsModelNameParameter())) {
             // Test positive case
             String modelName = customModelName();
@@ -163,8 +163,16 @@ public abstract class AbstractBaseChatModelIT<M> {
                     chat(modelCapabilities.model(), chatRequest).chatResponse();
             assertThat(chatResponse.aiMessage().text()).isNotBlank();
             assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
-                modelCapabilities.supportsModelNameParameter())) {
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsModelNameParameter is "
+                    + modelCapabilities.supportsModelNameParameter());
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_modelName_is_not_supported(ChatModelCapabilities<M> modelCapabilities) {
+        if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsModelNameParameter())) {
             // Test negative case
             String modelName = "dummy";
             ChatRequestParameters parameters =
@@ -192,7 +200,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                         .hasMessageContaining("not support");
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
-                    + " because modelCapabilities.supportsModelNameParameter is DISABLED");
+                    + " because modelCapabilities.supportsModelNameParameter is "
+                    + modelCapabilities.supportsModelNameParameter());
     }
 
     protected String customModelName() {
@@ -246,7 +255,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_maxOutputTokens_in_chat_request(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_respect_maxOutputTokens_in_chat_request(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsMaxOutputTokensParameter())) {
             // given
@@ -288,7 +297,17 @@ public abstract class AbstractBaseChatModelIT<M> {
                     assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
                 }
             }
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsMaxOutputTokensParameter is "
+                    + modelCapabilities.supportsMaxOutputTokensParameter());
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(
+            ChatModelCapabilities<M> modelCapabilities) {
+        if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
                 modelCapabilities.supportsMaxOutputTokensParameter())) {
             // given
             int maxOutputTokens = 5;
@@ -321,7 +340,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             }
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
-                    + " because modelCapabilities.supportsMaxOutputTokensParameter is DISABLED");
+                    + " because modelCapabilities.supportsMaxOutputTokensParameter is "
+                    + modelCapabilities.supportsMaxOutputTokensParameter());
     }
 
     @Test
@@ -370,7 +390,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handlestop_sequences_parameter(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_respect_stopSequences_in_chat_request(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsStopSequencesParameter())) {
             // Test positive case
             List<String> stopSequences = List.of("World", " World");
@@ -397,7 +417,16 @@ public abstract class AbstractBaseChatModelIT<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsStopSequencesParameter is "
+                    + modelCapabilities.supportsStopSequencesParameter());
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatModelCapabilities<M> modelCapabilities) {
+        if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
                 modelCapabilities.supportsStopSequencesParameter())) {
             // Test negative case
             List<String> stopSequences = List.of("World");
@@ -426,7 +455,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                         .hasMessageContaining("not support");
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
-                    + " because modelCapabilities.supportsStopSequencesParameter is DISABLED");
+                    + " because modelCapabilities.supportsStopSequencesParameter is "
+                    + modelCapabilities.supportsStopSequencesParameter());
     }
 
     @Test
@@ -464,7 +494,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_common_parameters_wrapped_in_integration_specific_class_in_chat_request(
+    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(
             ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsCommonParametersWrappedInIntegrationSpecificClass())) {
@@ -546,7 +576,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_execute_a_tool_then_answer(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_execute_a_tool_then_answer(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsTools())) {
             // given
             UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
@@ -635,7 +665,15 @@ public abstract class AbstractBaseChatModelIT<M> {
                     assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
                 }
             }
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsTools())) {
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsTools is " + modelCapabilities.supportsTools());
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_tools_are_not_supported(ChatModelCapabilities<M> modelCapabilities) {
+        if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsTools())) {
             // given
             ChatRequest chatRequest = ChatRequest.builder()
                     .messages(UserMessage.from("What is the weather in Munich?"))
@@ -654,31 +692,31 @@ public abstract class AbstractBaseChatModelIT<M> {
                         .hasMessageContaining("not support");
             }
         } else
-            throw new org.opentest4j.TestAbortedException(
-                    "Test disabled for " + modelCapabilities + " because modelCapabilities.supportsTools is DISABLED");
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsTools is " + modelCapabilities.supportsTools());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_force_LLM_to_execute_any_tool(ChatModelCapabilities<M> modelCapabilities) {
-        // given
-        ToolSpecification calculatorTool = ToolSpecification.builder()
-                .name("add_two_numbers")
-                .parameters(JsonObjectSchema.builder()
-                        .addIntegerProperty("a")
-                        .addIntegerProperty("b")
-                        .build())
-                .build();
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("I live in Munich"))
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL, calculatorTool)
-                        .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
-                        .build())
-                .build();
-
+    protected void should_force_LLM_to_execute_any_tool(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsToolChoiceRequiredWithMultipleTools())) {
+            // given
+            ToolSpecification calculatorTool = ToolSpecification.builder()
+                    .name("add_two_numbers")
+                    .parameters(JsonObjectSchema.builder()
+                            .addIntegerProperty("a")
+                            .addIntegerProperty("b")
+                            .build())
+                    .build();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("I live in Munich"))
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL, calculatorTool)
+                            .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
+                            .build())
+                    .build();
+
             // when
             ChatResponse chatResponse =
                     chat(modelCapabilities.model(), chatRequest).chatResponse();
@@ -699,8 +737,33 @@ public abstract class AbstractBaseChatModelIT<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
             }
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsToolChoiceRequiredWithMultipleTools is "
+                    + modelCapabilities.supportsToolChoiceRequiredWithMultipleTools());
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(ChatModelCapabilities<M> modelCapabilities) {
+        if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
                 modelCapabilities.supportsToolChoiceRequiredWithMultipleTools())) {
+
+            // given
+            ToolSpecification calculatorTool = ToolSpecification.builder()
+                    .name("add_two_numbers")
+                    .parameters(JsonObjectSchema.builder()
+                            .addIntegerProperty("a")
+                            .addIntegerProperty("b")
+                            .build())
+                    .build();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("I live in Munich"))
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL, calculatorTool)
+                            .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
+                            .build())
+                    .build();
             // when-then
             AbstractThrowableAssert<?, ?> throwableAssert =
                     assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
@@ -712,12 +775,13 @@ public abstract class AbstractBaseChatModelIT<M> {
             }
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
-                    + " because modelCapabilities.supportsToolChoiceRequiredWithMultipleTools is DISABLED");
+                    + " because modelCapabilities.supportsToolChoiceRequiredWithMultipleTools is "
+                    + modelCapabilities.supportsToolChoiceRequiredWithMultipleTools());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_force_LLM_to_execute_specific_tool(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_force_LLM_to_execute_specific_tool(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsToolChoiceRequiredWithSingleTool())) {
             // given
@@ -761,7 +825,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_json_response_format(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_respect_JSON_response_format(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(modelCapabilities.supportsJsonResponseFormat())) {
             // given
             ResponseFormat responseFormat = ResponseFormat.JSON;
@@ -790,8 +854,16 @@ public abstract class AbstractBaseChatModelIT<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
-                modelCapabilities.supportsJsonResponseFormat())) {
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsJsonResponseFormat is "
+                    + modelCapabilities.supportsJsonResponseFormat());
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_JSON_response_format_is_not_supported(ChatModelCapabilities<M> modelCapabilities) {
+        if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsJsonResponseFormat())) {
             // Test negative case
             ResponseFormat responseFormat = ResponseFormat.JSON;
 
@@ -812,12 +884,13 @@ public abstract class AbstractBaseChatModelIT<M> {
                         .hasMessageContaining("not support");
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
-                    + " because modelCapabilities.supportsJsonResponseFormat is DISABLED");
+                    + " because modelCapabilities.supportsJsonResponseFormat is "
+                    + modelCapabilities.supportsJsonResponseFormat());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_JSON_response_format_with_schema(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_respect_JSON_response_format_with_schema(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsJsonResponseFormatWithSchema())) {
             // given
@@ -844,7 +917,17 @@ public abstract class AbstractBaseChatModelIT<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsJsonResponseFormatWithSchema is "
+                    + modelCapabilities.supportsJsonResponseFormatWithSchema());
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(
+            ChatModelCapabilities<M> modelCapabilities) {
+        if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
                 modelCapabilities.supportsJsonResponseFormatWithSchema())) {
             // given
             ChatRequest chatRequest = ChatRequest.builder()
@@ -865,14 +948,14 @@ public abstract class AbstractBaseChatModelIT<M> {
             }
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
-                    + " because modelCapabilities.supportsJsonResponseFormatWithSchema is DISABLED");
+                    + " because modelCapabilities.supportsJsonResponseFormatWithSchema is "
+                    + modelCapabilities.supportsJsonResponseFormatWithSchema());
     }
-
     // TOOLS + RESPONSE FORMAT
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
+    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
             ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsToolsAndJsonResponseFormatWithSchema())) {
@@ -981,7 +1064,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_single_image_as_base64_encoded_string(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_accept_single_image_as_base64_encoded_string(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsSingleImageInputAsBase64EncodedString())) {
             // given
@@ -1007,32 +1090,15 @@ public abstract class AbstractBaseChatModelIT<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
-                modelCapabilities.supportsSingleImageInputAsBase64EncodedString())) {
-            // given
-            String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-            UserMessage userMessage =
-                    UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
-            ChatRequest chatRequest =
-                    ChatRequest.builder().messages(userMessage).build();
-
-            // when-then
-            AbstractThrowableAssert<?, ?> throwableAssert =
-                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
-            if (modelCapabilities.assertExceptionType()) {
-                throwableAssert
-                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                        .hasMessageContaining("image")
-                        .hasMessageContaining("not support");
-            }
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
-                    + " because modelCapabilities.supportsSingleImageInputAsBase64EncodedString is DISABLED");
+                    + " because modelCapabilities.supportsSingleImageInputAsBase64EncodedString is "
+                    + modelCapabilities.supportsSingleImageInputAsBase64EncodedString());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_multiple_images_as_base64_encoded_strings(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_accept_multiple_images_as_base64_encoded_strings(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsMultipleImageInputsAsBase64EncodedStrings())) {
             // given
@@ -1068,11 +1134,39 @@ public abstract class AbstractBaseChatModelIT<M> {
                     + modelCapabilities.supportsMultipleImageInputsAsBase64EncodedStrings());
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(
+            ChatModelCapabilities<M> modelCapabilities) {
+        if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsSingleImageInputAsBase64EncodedString())) {
+            // given
+            String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+            UserMessage userMessage =
+                    UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(userMessage).build();
+
+            // when-then
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType()) {
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("image")
+                        .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsSingleImageInputAsBase64EncodedString is "
+                    + modelCapabilities.supportsSingleImageInputAsBase64EncodedString());
+    }
+
     // MULTI MODALITY: IMAGES: PUBLIC URL
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_single_image_as_public_URL(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_accept_single_image_as_public_URL(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsSingleImageInputAsPublicURL())) {
             // given
@@ -1097,31 +1191,15 @@ public abstract class AbstractBaseChatModelIT<M> {
             if (modelCapabilities.assertFinishReason()) {
                 assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
             }
-        } else if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
-                modelCapabilities.supportsSingleImageInputAsPublicURL())) {
-            // given
-            UserMessage userMessage =
-                    UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(CAT_IMAGE_URL));
-            ChatRequest chatRequest =
-                    ChatRequest.builder().messages(userMessage).build();
-
-            // when-then
-            AbstractThrowableAssert<?, ?> throwableAssert =
-                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
-            if (modelCapabilities.assertExceptionType()) {
-                throwableAssert
-                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                        .hasMessageContaining("image")
-                        .hasMessageContaining("not support");
-            }
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
-                    + " because modelCapabilities.supportsSingleImageInputAsPublicURL is DISABLED");
+                    + " because modelCapabilities.supportsSingleImageInputAsPublicURL is "
+                    + modelCapabilities.supportsSingleImageInputAsPublicURL());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handle_multiple_images_as_public_URLs(ChatModelCapabilities<M> modelCapabilities) {
+    protected void should_accept_multiple_images_as_public_URLs(ChatModelCapabilities<M> modelCapabilities) {
         if (ChatModelCapabilities.SupportStatus.SUPPORTED.equals(
                 modelCapabilities.supportsMultipleImageInputsAsPublicURLs())) {
             // given
@@ -1154,8 +1232,30 @@ public abstract class AbstractBaseChatModelIT<M> {
                     + modelCapabilities.supportsMultipleImageInputsAsPublicURLs());
     }
 
-    protected boolean supportsDefaultRequestParameters() {
-        return true;
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(ChatModelCapabilities<M> modelCapabilities) {
+        if (ChatModelCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsSingleImageInputAsPublicURL())) {
+            // given
+            UserMessage userMessage =
+                    UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(CAT_IMAGE_URL));
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(userMessage).build();
+
+            // when-then
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType()) {
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("image")
+                        .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsSingleImageInputAsPublicURL is "
+                    + modelCapabilities.supportsSingleImageInputAsPublicURL());
     }
 
     protected boolean supportsModelNameParameter() {
@@ -1170,48 +1270,12 @@ public abstract class AbstractBaseChatModelIT<M> {
         return true;
     }
 
-    protected boolean supportsTools() {
-        return true;
-    }
-
     protected boolean supportsToolChoiceRequired() {
-        return true;
-    }
-
-    protected boolean supportsToolChoiceRequiredWithSingleTool() {
-        return supportsToolChoiceRequired();
-    }
-
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return supportsToolChoiceRequired();
-    }
-
-    protected boolean supportsJsonResponseFormat() {
         return true;
     }
 
     protected boolean supportsJsonResponseFormatWithSchema() {
         return true;
-    }
-
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return supportsTools() && supportsJsonResponseFormatWithSchema();
-    }
-
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return true;
-    }
-
-    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
-        return supportsSingleImageInputAsBase64EncodedString();
-    }
-
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return true;
-    }
-
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return supportsSingleImageInputAsPublicURL();
     }
 
     protected boolean assertResponseId() {
@@ -1235,10 +1299,6 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected boolean assertExceptionType() {
-        return true;
-    }
-
-    protected boolean assertTimesOnPartialResponseWasCalled() {
         return true;
     }
 
