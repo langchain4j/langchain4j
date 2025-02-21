@@ -181,7 +181,9 @@ class InternalGitHubModelHelper {
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
-            return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
+            ChatRequestToolMessage chatRequestToolMessage = new ChatRequestToolMessage(toolExecutionResultMessage.id());
+            chatRequestToolMessage.setContent(toolExecutionResultMessage.text());
+            return chatRequestToolMessage;
         } else if (message instanceof SystemMessage) {
             SystemMessage systemMessage = (SystemMessage) message;
             return new ChatRequestSystemMessage(systemMessage.text());

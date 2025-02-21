@@ -57,6 +57,7 @@
         <!-- Dependency Versions -->
         <azure-ai-openai.version>1.0.0-beta.13</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
+        <azure.ai-inference>1.0.0-beta.3</azure.ai-inference>
         <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
         <azure.storage-common.version>12.28.0</azure.storage-common.version>
         <azure.identity.version>1.14.2</azure.identity.version>
@@ -108,6 +109,12 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-search-documents</artifactId>
                 <version>${azure-ai-search.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-ai-inference</artifactId>
+                <version>${azure.ai-inference}</version>
             </dependency>
 
             <dependency>

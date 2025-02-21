@@ -10,7 +10,7 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.azure.ai.inference.models.ChatCompletionsResponseFormatJson;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonObject;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -120,7 +120,7 @@ class GitHubModelsStreamingChatModelIT {
         StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
-                .responseFormat(new ChatCompletionsResponseFormatJson())
+                .responseFormat(new ChatCompletionsResponseFormatJsonObject())
                 .logRequestsAndResponses(true)
                 .build();
 
