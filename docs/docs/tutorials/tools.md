@@ -451,6 +451,11 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+## Model Context Protocol (MCP)
+
+You can also import [tools from MCP server](https://modelcontextprotocol.io/docs/concepts/tools).
+More information on this can be found [here](/tutorials/mcp/#creating-an-mcp-tool-provider).
+
 ## Related Tutorials
 
 - [Great guide on Tools](https://www.youtube.com/watch?v=cjI_6Siry-s)

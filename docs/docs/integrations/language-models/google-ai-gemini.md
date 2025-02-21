@@ -25,6 +25,7 @@ Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-2.0-flash`
 * `gemini-1.5-flash`
 * `gemini-1.5-pro`
 * `gemini-1.0-pro`
