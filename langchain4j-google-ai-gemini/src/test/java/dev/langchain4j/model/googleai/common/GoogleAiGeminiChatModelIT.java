@@ -25,8 +25,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
-        return List.of(
-                ChatLanguageModelCapabilities.builder()
+        return List.of(ChatLanguageModelCapabilities.builder()
                         .model(GOOGLE_AI_GEMINI_CHAT_MODEL)
                         .mnemonicName("google ai gemini chat model")
                         .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO check if supported
