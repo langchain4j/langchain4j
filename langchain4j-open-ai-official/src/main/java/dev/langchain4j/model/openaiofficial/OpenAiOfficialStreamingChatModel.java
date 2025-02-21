@@ -7,7 +7,6 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
-import com.openai.client.OpenAIClient;
 import com.openai.client.OpenAIClientAsync;
 import com.openai.core.http.AsyncStreamResponse;
 import com.openai.credential.Credential;
