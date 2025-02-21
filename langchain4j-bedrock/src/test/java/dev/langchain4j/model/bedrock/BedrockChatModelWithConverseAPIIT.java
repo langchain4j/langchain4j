@@ -82,12 +82,6 @@ class BedrockChatModelWithConverseAPIIT extends AbstractChatModelIT {
 
     // output format not supported
     @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false;
-    }
-
-    // output format not supported
-    @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
         return false;
     }
@@ -98,10 +92,9 @@ class BedrockChatModelWithConverseAPIIT extends AbstractChatModelIT {
     }
 
     // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
-    @Override
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_handlestop_sequences_parameter(ChatModelCapabilities<ChatLanguageModel> modelCapabilities) {
+    protected void should_respect_stopSequences_in_chat_request(ChatModelCapabilities<ChatLanguageModel> modelCapabilities) {
         if (List.of(AWS_NOVA_MICRO, AWS_NOVA_LITE, AWS_NOVA_PRO).contains(modelCapabilities)) {
             // given
             List<String> stopSequences = List.of("Hello", " Hello");
@@ -124,7 +117,7 @@ class BedrockChatModelWithConverseAPIIT extends AbstractChatModelIT {
             assertThat(aiMessage.toolExecutionRequests()).isNull();
 
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
-        } else super.should_handlestop_sequences_parameter(modelCapabilities);
+        } else super.should_respect_stopSequences_in_chat_request(modelCapabilities);
     }
 
     // ADDING SOME TESTS SCENARIO ABSENT FROM AbstractChatModelIT
