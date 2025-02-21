@@ -77,6 +77,8 @@ import java.util.stream.Collectors;
 class InternalOpenAiOfficialHelper {
 
     static final String OPENAI_URL = "https://api.openai.com/v1";
+    static final String GITHUB_MODELS_URL = "https://models.inference.ai.azure.com";
+    static final String GITHUB_TOKEN = "GITHUB_TOKEN";
     static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
 
     static OpenAIClient setupSyncClient(
@@ -88,11 +90,24 @@ class InternalOpenAiOfficialHelper {
             String azureDeploymentName,
             AzureOpenAIServiceVersion azureOpenAiServiceVersion,
             String organizationId,
+            boolean isGitHubModels,
+            OpenAIClient openAIClient,
             String modelName,
             Duration timeout,
             Integer maxRetries,
             Proxy proxy,
             Map<String, String> customHeaders) {
+
+        if (openAIClient != null) {
+            return openAIClient;
+        }
+
+        if (isGitHubModels) {
+            baseUrl = GITHUB_MODELS_URL;
+            if (System.getenv(GITHUB_TOKEN) != null) {
+                apiKey = System.getenv(GITHUB_TOKEN);
+            }
+        }
 
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
 
@@ -159,12 +174,25 @@ class InternalOpenAiOfficialHelper {
             Credential credential,
             String azureDeploymentName,
             AzureOpenAIServiceVersion azureOpenAiServiceVersion,
+            boolean isGitHubModels,
+            OpenAIClientAsync openAIClientAsync,
             String organizationId,
             String modelName,
             Duration timeout,
             Integer maxRetries,
             Proxy proxy,
             Map<String, String> customHeaders) {
+
+        if (openAIClientAsync != null) {
+            return openAIClientAsync;
+        }
+
+        if (isGitHubModels) {
+            baseUrl = GITHUB_MODELS_URL;
+            if (System.getenv(GITHUB_TOKEN) != null) {
+                apiKey = System.getenv(GITHUB_TOKEN);
+            }
+        }
 
         OpenAIOkHttpClientAsync.Builder builder = OpenAIOkHttpClientAsync.builder();
 

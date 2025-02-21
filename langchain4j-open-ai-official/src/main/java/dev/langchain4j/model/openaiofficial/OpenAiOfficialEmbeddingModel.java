@@ -54,6 +54,8 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
                 builder.azureDeploymentName,
                 builder.azureOpenAIServiceVersion,
                 builder.organizationId,
+                builder.isGitHubModels,
+                builder.openAIClient,
                 builder.modelName,
                 builder.timeout,
                 builder.maxRetries,
@@ -150,6 +152,8 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         private String azureDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
+        private boolean isGitHubModels;
+        private OpenAIClient openAIClient;
         private String modelName;
         private Integer dimensions;
         private String user;
@@ -191,6 +195,16 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public Builder isGitHubModels(boolean isGitHubModels) {
+            this.isGitHubModels = isGitHubModels;
+            return this;
+        }
+
+        public Builder openAIClient(OpenAIClient openAIClient) {
+            this.openAIClient = openAIClient;
             return this;
         }
 

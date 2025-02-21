@@ -7,6 +7,8 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
+import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientAsync;
 import com.openai.core.http.AsyncStreamResponse;
 import com.openai.credential.Credential;
 import com.openai.models.ChatCompletionChunk;
@@ -49,6 +51,9 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 builder.azureDeploymentName,
                 builder.azureOpenAIServiceVersion,
                 builder.organizationId,
+                builder.isGitHubModels,
+                null,
+                builder.openAIClientAsync,
                 builder.defaultRequestParameters,
                 builder.modelName,
                 builder.temperature,
@@ -282,6 +287,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         private String azureDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
+        private boolean isGitHubModels;
+        private OpenAIClientAsync openAIClientAsync;
 
         private ChatRequestParameters defaultRequestParameters;
         private String modelName;
@@ -367,6 +374,16 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public Builder isGitHubModels(boolean isGitHubModels) {
+            this.isGitHubModels = isGitHubModels;
+            return this;
+        }
+
+        public Builder openAIClientAsync(OpenAIClientAsync openAIClientAsync) {
+            this.openAIClientAsync = openAIClientAsync;
             return this;
         }
 

@@ -8,6 +8,7 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
+import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
 import com.openai.models.ChatCompletion;
 import com.openai.models.ChatCompletionCreateParams;
@@ -43,6 +44,9 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                 builder.azureDeploymentName,
                 builder.azureOpenAIServiceVersion,
                 builder.organizationId,
+                builder.isGitHubModels,
+                builder.openAIClient,
+                null,
                 builder.defaultRequestParameters,
                 builder.modelName,
                 builder.temperature,
@@ -170,6 +174,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         private String azureDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
+        private boolean isGitHubModels;
+        private OpenAIClient openAIClient;
 
         private ChatRequestParameters defaultRequestParameters;
         private String modelName;
@@ -255,6 +261,16 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public Builder isGitHubModels(boolean isGitHubModels) {
+            this.isGitHubModels = isGitHubModels;
+            return this;
+        }
+
+        public Builder openAIClient(OpenAIClient openAIClient) {
+            this.openAIClient = openAIClient;
             return this;
         }
 

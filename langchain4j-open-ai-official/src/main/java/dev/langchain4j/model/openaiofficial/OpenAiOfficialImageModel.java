@@ -49,6 +49,8 @@ public class OpenAiOfficialImageModel implements ImageModel {
                 builder.azureDeploymentName,
                 builder.azureOpenAIServiceVersion,
                 builder.organizationId,
+                builder.isGitHubModels,
+                builder.openAIClient,
                 builder.modelName,
                 builder.timeout,
                 builder.maxRetries,
@@ -153,6 +155,8 @@ public class OpenAiOfficialImageModel implements ImageModel {
         private String azureDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
+        private boolean isGitHubModels;
+        private OpenAIClient openAIClient;
         private String modelName;
         private ImageGenerateParams.Size size;
         private ImageGenerateParams.Quality quality;
@@ -196,6 +200,16 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public Builder isGitHubModels(boolean isGitHubModels) {
+            this.isGitHubModels = isGitHubModels;
+            return this;
+        }
+
+        public Builder openAIClient(OpenAIClient openAIClient) {
+            this.openAIClient = openAIClient;
             return this;
         }
 

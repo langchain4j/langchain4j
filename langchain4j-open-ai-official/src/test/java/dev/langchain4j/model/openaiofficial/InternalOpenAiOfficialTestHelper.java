@@ -13,6 +13,14 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Helper class for testing OpenAI models.
+ * <p>
+ * Tests will run depending on the available environment variables:
+ * - AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_KEY: Azure OpenAI models will be tested
+ * - OPENAI_API_KEY: OpenAI models will be tested
+ * - GITHUB_TOKEN: GitHub models will be tested
+ */
 public class InternalOpenAiOfficialTestHelper {
 
     private static final Logger log = LoggerFactory.getLogger(InternalOpenAiOfficialTestHelper.class);
@@ -34,6 +42,8 @@ public class InternalOpenAiOfficialTestHelper {
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL;
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA;
     static final OpenAiOfficialStreamingChatModel OPEN_AI_STREAMING_CHAT_MODEL;
+
+    static final OpenAiOfficialChatModel GITHUB_MODELS_CHAT_MODEL;
 
     // Embedding models
     static final OpenAiOfficialEmbeddingModel AZURE_OPEN_AI_EMBEDDING_MODEL;
@@ -168,6 +178,15 @@ public class InternalOpenAiOfficialTestHelper {
             OPEN_AI_EMBEDDING_MODEL = null;
             OPEN_AI_IMAGE_MODEL = null;
         }
+
+        if (System.getenv("GITHUB_TOKEN") != null) {
+            GITHUB_MODELS_CHAT_MODEL = OpenAiOfficialChatModel.builder()
+                    .isGitHubModels(true)
+                    .modelName(CHAT_MODEL_NAME)
+                    .build();
+        } else {
+            GITHUB_MODELS_CHAT_MODEL = null;
+        }
     }
 
     static List<ChatLanguageModel> chatModelsNormalAndJsonStrict() {
@@ -183,6 +202,9 @@ public class InternalOpenAiOfficialTestHelper {
         }
         if (OPEN_AI_CHAT_MODEL != null) {
             models.add(OPEN_AI_CHAT_MODEL);
+        }
+        if (GITHUB_MODELS_CHAT_MODEL != null) {
+            models.add(GITHUB_MODELS_CHAT_MODEL);
         }
         if (models.isEmpty()) {
             log.error(
