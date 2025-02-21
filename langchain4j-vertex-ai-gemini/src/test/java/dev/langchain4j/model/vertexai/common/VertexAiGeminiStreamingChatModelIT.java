@@ -1,15 +1,14 @@
 package dev.langchain4j.model.vertexai.common;
 
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
+
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import dev.langchain4j.model.chat.common.StreamingChatLanguageModelCapabilities;
 import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
-import org.junit.jupiter.api.AfterEach;
-
 import java.util.List;
-
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
+import org.junit.jupiter.api.AfterEach;
 
 class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -41,7 +40,7 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         .assertThreads(false) // TODO what to do with it?
                         .build()
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
