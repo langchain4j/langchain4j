@@ -1,5 +1,10 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
+import static java.util.Objects.nonNull;
+
+import java.util.ArrayList;
+import java.util.List;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDeltaEvent;
@@ -14,12 +19,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.MessageStartEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.MessageStopEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
-import static java.util.Objects.nonNull;
 
 class ConverseResponseFromStreamBuilder {
     private ConverseResponse.Builder converseResponseBuilder = ConverseResponse.builder();
@@ -46,7 +45,8 @@ class ConverseResponseFromStreamBuilder {
         if (contentBlockDeltaEvent.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
             stringBuilder.append(contentBlockDeltaEvent.delta().text());
         } else if (contentBlockDeltaEvent.delta().type().equals(ContentBlockDelta.Type.TOOL_USE)) {
-            toolUseBlockBuilder.input(documentFromJson(contentBlockDeltaEvent.delta().toolUse().input()));
+            toolUseBlockBuilder.input(
+                    documentFromJson(contentBlockDeltaEvent.delta().toolUse().input()));
         }
         return this;
     }
@@ -61,7 +61,9 @@ class ConverseResponseFromStreamBuilder {
 
     public ConverseResponseFromStreamBuilder append(ConverseStreamMetadataEvent metadataEvent) {
         converseResponseBuilder.usage(metadataEvent.usage());
-        converseResponseBuilder.metrics(ConverseMetrics.builder().latencyMs(metadataEvent.metrics().latencyMs()).build());
+        converseResponseBuilder.metrics(ConverseMetrics.builder()
+                .latencyMs(metadataEvent.metrics().latencyMs())
+                .build());
         return this;
     }
 
@@ -77,14 +79,11 @@ class ConverseResponseFromStreamBuilder {
         if (nonNull(this.messageBuilder)) {
             ArrayList<ContentBlock> contents = new ArrayList<>();
             contents.add(ContentBlock.builder().text(stringBuilder.toString()).build());
-            contents.addAll(this.toolUseBlocks.stream().map(ContentBlock::fromToolUse).toList());
-            converseResponseBuilder.output(
-                    ConverseOutput.builder().message(
-                            this.messageBuilder
-                                    .content(contents)
-                                    .build()
-                    ).build()
-            );
+            contents.addAll(
+                    this.toolUseBlocks.stream().map(ContentBlock::fromToolUse).toList());
+            converseResponseBuilder.output(ConverseOutput.builder()
+                    .message(this.messageBuilder.content(contents).build())
+                    .build());
             this.messageBuilder = null;
         }
         return this;
@@ -93,5 +92,4 @@ class ConverseResponseFromStreamBuilder {
     public ConverseResponse build() {
         return converseResponseBuilder.build();
     }
-
 }

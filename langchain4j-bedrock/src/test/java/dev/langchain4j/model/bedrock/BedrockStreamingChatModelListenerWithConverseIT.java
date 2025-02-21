@@ -1,14 +1,13 @@
 package dev.langchain4j.model.bedrock;
 
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.concurrent.CompletionException;
-
-import static java.util.Collections.singletonList;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockStreamingChatModelListenerWithConverseIT extends StreamingChatModelListenerIT {
@@ -17,14 +16,12 @@ class BedrockStreamingChatModelListenerWithConverseIT extends StreamingChatModel
     protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
         return BedrockStreamingChatModel.builder()
                 .modelId(modelName())
-                .defaultRequestParameters(
-                        DefaultChatRequestParameters.builder()
-                                .modelName(modelName())
-                                .temperature(temperature())
-                                .topP(topP())
-                                .maxOutputTokens(maxTokens())
-                                .build()
-                )
+                .defaultRequestParameters(DefaultChatRequestParameters.builder()
+                        .modelName(modelName())
+                        .temperature(temperature())
+                        .topP(topP())
+                        .maxOutputTokens(maxTokens())
+                        .build())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
