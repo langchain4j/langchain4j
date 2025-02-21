@@ -94,7 +94,8 @@ class BedrockChatModelWithConverseAPIIT extends AbstractChatModelIT {
     // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_respect_stopSequences_in_chat_request(ChatModelCapabilities<ChatLanguageModel> modelCapabilities) {
+    protected void should_respect_stopSequences_in_chat_request(
+            ChatModelCapabilities<ChatLanguageModel> modelCapabilities) {
         if (List.of(AWS_NOVA_MICRO, AWS_NOVA_LITE, AWS_NOVA_PRO).contains(modelCapabilities)) {
             // given
             List<String> stopSequences = List.of("Hello", " Hello");
