@@ -1,21 +1,17 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -30,15 +26,12 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
-import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolProviderRequest;
-import dev.langchain4j.service.tool.ToolProviderResult;
+import dev.langchain4j.service.tool.ToolExecutionContext;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.reflect.Array;
@@ -60,8 +53,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 class DefaultAiServices<T> extends AiServices<T> {
-
-    private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 100;
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
@@ -184,29 +175,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        List<ToolSpecification> toolSpecifications = context.toolSpecifications;
-                        Map<String, ToolExecutor> toolExecutors = context.toolExecutors;
-
-                        if (context.toolProvider != null) {
-                            toolSpecifications = new ArrayList<>();
-                            toolExecutors = new HashMap<>();
-                            ToolProviderRequest toolProviderRequest = new ToolProviderRequest(memoryId, userMessage);
-                            ToolProviderResult toolProviderResult =
-                                    context.toolProvider.provideTools(toolProviderRequest);
-                            if (toolProviderResult != null) {
-                                Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-                                for (ToolSpecification toolSpecification : tools.keySet()) {
-                                    toolSpecifications.add(toolSpecification);
-                                    toolExecutors.put(toolSpecification.name(), tools.get(toolSpecification));
-                                }
-                            }
-                        }
+                        ToolExecutionContext toolExecutionContext =
+                                context.toolService.executionContext(memoryId, userMessage);
 
                         if (streaming) {
                             TokenStream tokenStream = new AiServiceTokenStream(
                                     messages,
-                                    toolSpecifications,
-                                    toolExecutors,
+                                    toolExecutionContext.toolSpecifications(),
+                                    toolExecutionContext.toolExecutors(),
                                     augmentationResult != null ? augmentationResult.contents() : null,
                                     context,
                                     memoryId);
@@ -227,7 +203,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         ChatRequestParameters parameters = ChatRequestParameters.builder()
-                                .toolSpecifications(toolSpecifications)
+                                .toolSpecifications(toolExecutionContext.toolSpecifications())
                                 .responseFormat(responseFormat)
                                 .build();
 
@@ -238,78 +214,30 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse chatResponse = context.chatModel.chat(chatRequest);
 
-                        TokenUsage tokenUsageAccumulator =
-                                chatResponse.metadata().tokenUsage();
-
                         verifyModerationIfNeeded(moderationFuture);
 
-                        int executionsLeft = MAX_SEQUENTIAL_TOOL_EXECUTIONS;
-                        List<ToolExecution> toolExecutions = new ArrayList<>();
-                        while (true) {
+                        ToolExecutionResult toolExecutionResult = context.toolService.executeInferenceAndToolsLoop(
+                                chatResponse,
+                                parameters,
+                                messages,
+                                context.chatModel,
+                                context.hasChatMemory() ? context.chatMemory(memoryId) : null,
+                                memoryId,
+                                toolExecutionContext.toolExecutors());
 
-                            if (executionsLeft-- == 0) {
-                                throw runtime(
-                                        "Something is wrong, exceeded %s sequential tool executions",
-                                        MAX_SEQUENTIAL_TOOL_EXECUTIONS);
-                            }
-
-                            AiMessage aiMessage = chatResponse.aiMessage();
-
-                            if (context.hasChatMemory()) {
-                                context.chatMemory(memoryId).add(aiMessage);
-                            } else {
-                                messages = new ArrayList<>(messages);
-                                messages.add(aiMessage);
-                            }
-
-                            if (!aiMessage.hasToolExecutionRequests()) {
-                                break;
-                            }
-
-                            for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                                ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
-                                String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                                toolExecutions.add(ToolExecution.builder()
-                                        .request(toolExecutionRequest)
-                                        .result(toolExecutionResult)
-                                        .build());
-                                ToolExecutionResultMessage toolExecutionResultMessage =
-                                        ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutionResult);
-                                if (context.hasChatMemory()) {
-                                    context.chatMemory(memoryId).add(toolExecutionResultMessage);
-                                } else {
-                                    messages.add(toolExecutionResultMessage);
-                                }
-                            }
-
-                            if (context.hasChatMemory()) {
-                                messages = context.chatMemory(memoryId).messages();
-                            }
-
-                            chatRequest = ChatRequest.builder()
-                                    .messages(messages)
-                                    .parameters(parameters)
-                                    .build();
-
-                            chatResponse = context.chatModel.chat(chatRequest);
-
-                            tokenUsageAccumulator = TokenUsage.sum(
-                                    tokenUsageAccumulator,
-                                    chatResponse.metadata().tokenUsage());
-                        }
-
+                        chatResponse = toolExecutionResult.chatResponse();
                         FinishReason finishReason = chatResponse.metadata().finishReason();
-                        Response<AiMessage> response =
-                                Response.from(chatResponse.aiMessage(), tokenUsageAccumulator, finishReason);
+                        Response<AiMessage> response = Response.from(
+                                chatResponse.aiMessage(), toolExecutionResult.tokenUsageAccumulator(), finishReason);
 
                         Object parsedResponse = serviceOutputParser.parse(response, returnType);
                         if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
-                                    .tokenUsage(tokenUsageAccumulator)
+                                    .tokenUsage(toolExecutionResult.tokenUsageAccumulator())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
                                     .finishReason(finishReason)
-                                    .toolExecutions(toolExecutions)
+                                    .toolExecutions(toolExecutionResult.toolExecutions())
                                     .build();
                         } else {
                             return parsedResponse;

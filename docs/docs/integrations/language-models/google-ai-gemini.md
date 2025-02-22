@@ -13,7 +13,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 
@@ -25,6 +25,7 @@ Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-2.0-flash`
 * `gemini-1.5-flash`
 * `gemini-1.5-pro`
 * `gemini-1.0-pro`

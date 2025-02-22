@@ -17,7 +17,7 @@ For example, OpenAI API's parameters can be found at https://platform.openai.com
 |--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
 | `modelName`        | The name of the model to use (e.g., gpt-4o, gpt-4o-mini, etc.)                                                                                                                             | `String`  |
 | `temperature`      | What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.       | `Double`  |
-| `max_tokens`       | The maximum number of tokens that can be generated in the chat completion.                                                                                                                 | `Integer` |
+| `maxTokens`        | The maximum number of tokens that can be generated in the chat completion.                                                                                                                 | `Integer` |
 | `frequencyPenalty` | Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim. | `Double`  |
 | `...`              | ...                                                                                                                                                                                        | `...`     |
 
@@ -30,29 +30,13 @@ You can create `*Model` in two ways:
 with all other mandatory parameters set to sensible defaults.
 - A builder pattern: here, you can specify the value for each parameter.
 
-## Static Factory
-```java
-OpenAiChatModel model = OpenAiChatModel.withApiKey("demo");
-```
-In this case of an OpenAI Chat Model for example, some of the defaults are
 
-| Parameter      | Default Value | 
-|----------------|---------------|
-| `modelName`    | gpt-3.5-turbo |
-| `temperature`  | 0.7           |
-| `timeout`      | 60s           |
-| `logRequests`  | false         |
-| `logResponses` | false         |
-| `...`          | ...           |
-
-Defaults for all models can be found on the pages of the respective providers under [Integrations](/integrations).
-
-## Builder
+## Model Builder
 We can set every available parameter of the model using the builder pattern as follows:
 ```java
 OpenAiChatModel model = OpenAiChatModel.builder()
-        .apiKey("demo")
-        .modelName("gpt-4")
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
         .temperature(0.3)
         .timeout(ofSeconds(60))
         .logRequests(true)

@@ -1,19 +1,18 @@
 package dev.langchain4j.store.embedding.pgvector;
 
+import static java.lang.String.format;
+import static java.util.AbstractMap.SimpleEntry;
+
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static java.lang.String.format;
-import static java.util.AbstractMap.SimpleEntry;
 
 abstract class PgVectorFilterMapper {
 
@@ -30,62 +29,81 @@ abstract class PgVectorFilterMapper {
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     public String map(Filter filter) {
-        if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
-        } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
-        } else if (filter instanceof IsGreaterThan) {
-            return mapGreaterThan((IsGreaterThan) filter);
-        } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
-        } else if (filter instanceof IsLessThan) {
-            return mapLessThan((IsLessThan) filter);
-        } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
-        } else if (filter instanceof IsIn) {
-            return mapIn((IsIn) filter);
-        } else if (filter instanceof IsNotIn) {
-            return mapNotIn((IsNotIn) filter);
-        } else if (filter instanceof And) {
-            return mapAnd((And) filter);
-        } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
-        } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
+        if (filter instanceof ContainsString containsString) {
+            return mapContains(containsString);
+        } else if (filter instanceof IsEqualTo isEqualTo) {
+            return mapEqual(isEqualTo);
+        } else if (filter instanceof IsNotEqualTo isNotEqualTo) {
+            return mapNotEqual(isNotEqualTo);
+        } else if (filter instanceof IsGreaterThan isGreaterThan) {
+            return mapGreaterThan(isGreaterThan);
+        } else if (filter instanceof IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
+            return mapGreaterThanOrEqual(isGreaterThanOrEqualTo);
+        } else if (filter instanceof IsLessThan isLessThan) {
+            return mapLessThan(isLessThan);
+        } else if (filter instanceof IsLessThanOrEqualTo isLessThanOrEqualTo) {
+            return mapLessThanOrEqual(isLessThanOrEqualTo);
+        } else if (filter instanceof IsIn isIn) {
+            return mapIn(isIn);
+        } else if (filter instanceof IsNotIn isNotIn) {
+            return mapNotIn(isNotIn);
+        } else if (filter instanceof And and) {
+            return mapAnd(and);
+        } else if (filter instanceof Not not) {
+            return mapNot(not);
+        } else if (filter instanceof Or or) {
+            return mapOr(or);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "Unsupported filter type: " + filter.getClass().getName());
         }
+    }
+
+    private String mapContains(ContainsString containsString) {
+        String key = formatKey(containsString.key(), containsString.comparisonValue().getClass());
+        return format("%s is not null and %s ~ %s", key, key, formatValue(containsString.comparisonValue()));
     }
 
     private String mapEqual(IsEqualTo isEqualTo) {
         String key = formatKey(isEqualTo.key(), isEqualTo.comparisonValue().getClass());
-        return format("%s is not null and %s = %s", key, key,
-                formatValue(isEqualTo.comparisonValue()));
+        return format("%s is not null and %s = %s", key, key, formatValue(isEqualTo.comparisonValue()));
     }
 
     private String mapNotEqual(IsNotEqualTo isNotEqualTo) {
-        String key = formatKey(isNotEqualTo.key(), isNotEqualTo.comparisonValue().getClass());
-        return format("%s is null or %s != %s", key, key,
-                formatValue(isNotEqualTo.comparisonValue()));
+        String key =
+                formatKey(isNotEqualTo.key(), isNotEqualTo.comparisonValue().getClass());
+        return format("%s is null or %s != %s", key, key, formatValue(isNotEqualTo.comparisonValue()));
     }
 
     private String mapGreaterThan(IsGreaterThan isGreaterThan) {
-        return format("%s > %s", formatKey(isGreaterThan.key(), isGreaterThan.comparisonValue().getClass()),
+        return format(
+                "%s > %s",
+                formatKey(isGreaterThan.key(), isGreaterThan.comparisonValue().getClass()),
                 formatValue(isGreaterThan.comparisonValue()));
     }
 
     private String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
-        return format("%s >= %s", formatKey(isGreaterThanOrEqualTo.key(), isGreaterThanOrEqualTo.comparisonValue().getClass()),
+        return format(
+                "%s >= %s",
+                formatKey(
+                        isGreaterThanOrEqualTo.key(),
+                        isGreaterThanOrEqualTo.comparisonValue().getClass()),
                 formatValue(isGreaterThanOrEqualTo.comparisonValue()));
     }
 
     private String mapLessThan(IsLessThan isLessThan) {
-        return format("%s < %s", formatKey(isLessThan.key(), isLessThan.comparisonValue().getClass()),
+        return format(
+                "%s < %s",
+                formatKey(isLessThan.key(), isLessThan.comparisonValue().getClass()),
                 formatValue(isLessThan.comparisonValue()));
     }
 
     private String mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
-        return format("%s <= %s", formatKey(isLessThanOrEqualTo.key(), isLessThanOrEqualTo.comparisonValue().getClass()),
+        return format(
+                "%s <= %s",
+                formatKey(
+                        isLessThanOrEqualTo.key(),
+                        isLessThanOrEqualTo.comparisonValue().getClass()),
                 formatValue(isLessThanOrEqualTo.comparisonValue()));
     }
 
@@ -123,7 +141,6 @@ abstract class PgVectorFilterMapper {
     }
 
     String formatValuesAsString(Collection<?> values) {
-        return "(" + values.stream().map(v -> String.format("'%s'", v))
-                .collect(Collectors.joining(",")) + ")";
+        return "(" + values.stream().map(v -> format("'%s'", v)).collect(Collectors.joining(",")) + ")";
     }
 }

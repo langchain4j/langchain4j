@@ -5,14 +5,13 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import java.sql.SQLException;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import javax.sql.DataSource;
-import java.sql.SQLException;
 
 @Testcontainers
 abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringIT {
@@ -68,5 +67,10 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
+    }
+
+    @Override
+    protected boolean supportsContains() {
+        return true;
     }
 }

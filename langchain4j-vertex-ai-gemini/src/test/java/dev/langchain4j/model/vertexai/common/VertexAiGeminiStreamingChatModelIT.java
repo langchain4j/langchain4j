@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai.common;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
+import org.junit.jupiter.api.AfterEach;
 
 import java.util.List;
 
@@ -76,5 +77,13 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean assertThreads() {
         return false; // TODO what to do with it?
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

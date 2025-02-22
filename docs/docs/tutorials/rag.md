@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 
@@ -487,6 +487,29 @@ It has the following attributes:
 
 #### Filter
 The `Filter` allows filtering by `Metadata` entries when performing a vector search.
+
+Currently, the following `Filter` types/operations are supported:
+-  `IsEqualTo`
+-  `IsNotEqualTo`
+-  `IsGreaterThan`
+-  `IsGreaterThanOrEqualTo`
+-  `IsLessThan`
+-  `IsLessThanOrEqualTo`
+-  `IsIn`
+-  `IsNotIn`
+-  `ContainsString`
+-  `And`
+-  `Not`
+-  `Or`
+
+:::note
+Not all embedding stores support filtering by `Metadata`,
+please see the "Filtering by Metadata" column [here](https://docs.langchain4j.dev/integrations/embedding-stores/).
+
+Some stores that support filtering by `Metadata` do not support all possible `Filter` types/operations.
+For example, `ContainsString` is currently supported only by Milvus, PgVector and Qdrant.
+:::
+
 More details about `Filter` can be found [here](https://github.com/langchain4j/langchain4j/pull/610).
 
 

@@ -7,7 +7,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.document.DocumentSource;
 import dev.langchain4j.data.document.Metadata;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -30,7 +29,7 @@ public class ClassPathSource implements DocumentSource {
 
         var file = this.url.getFile();
         this.metadata.put(URL, file);
-        this.metadata.put(FILE_NAME, file.substring(file.lastIndexOf(File.separatorChar) + 1));
+        this.metadata.put(FILE_NAME, file.substring(file.lastIndexOf('/') + 1));
     }
 
     /**

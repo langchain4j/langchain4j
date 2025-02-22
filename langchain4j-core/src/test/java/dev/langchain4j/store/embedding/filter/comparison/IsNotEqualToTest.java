@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class IsNotEqualToTest {
 
     @Test
-    void testIsNotEqualToFilter() {
+    void isNotEqualToFilter() {
         String key = "testKey";
         String unequalValue = "notEqual";
 

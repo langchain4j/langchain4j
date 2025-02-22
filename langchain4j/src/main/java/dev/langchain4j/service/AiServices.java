@@ -1,6 +1,13 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -20,14 +27,10 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
-import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
-
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,13 +38,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Function;
-
-import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
-import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * AI Services is a high-level API of LangChain4j to interact with {@link ChatLanguageModel} and {@link StreamingChatLanguageModel}.
@@ -64,7 +60,7 @@ import static java.util.stream.Collectors.toList;
  * - Single (shared) {@link ChatMemory}, configured via {@link #chatMemory(ChatMemory)}
  * - Separate (per-user) {@code ChatMemory}, configured via {@link #chatMemoryProvider(ChatMemoryProvider)} and a method parameter annotated with @{@link MemoryId}
  * - RAG, configured via {@link #contentRetriever(ContentRetriever)} or {@link #retrievalAugmentor(RetrievalAugmentor)}
- * - Tools, configured via {@link #tools(List)}, {@link #tools(Object...)}, {@link #tools(Map)} or {@link #toolProvider(ToolProvider)} and methods annotated with @{@link Tool}
+ * - Tools, configured via {@link #tools(Collection)}, {@link #tools(Object...)}, {@link #tools(Map)} or {@link #toolProvider(ToolProvider)} and methods annotated with @{@link Tool}
  * - Various method return types (output parsers), see more details below
  * - Streaming (use {@link TokenStream} as a return type)
  * - Structured prompts as method arguments (see @{@link StructuredPrompt})
@@ -157,9 +153,7 @@ public abstract class AiServices<T> {
      * @return An instance of the provided interface, implementing all its defined methods.
      */
     public static <T> T create(Class<T> aiService, ChatLanguageModel chatLanguageModel) {
-        return builder(aiService)
-                .chatLanguageModel(chatLanguageModel)
-                .build();
+        return builder(aiService).chatLanguageModel(chatLanguageModel).build();
     }
 
     /**
@@ -313,9 +307,6 @@ public abstract class AiServices<T> {
      * @see Tool
      */
     public AiServices<T> tools(Object... objectsWithTools) {
-        if (context.toolProvider != null) {
-            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
-        }
         return tools(asList(objectsWithTools));
     }
 
@@ -328,30 +319,8 @@ public abstract class AiServices<T> {
      * @return builder
      * @see Tool
      */
-    public AiServices<T> tools(List<Object> objectsWithTools) { // TODO Collection?
-        // TODO validate uniqueness of tool names
-
-        if (context.toolSpecifications == null) {
-            context.toolSpecifications = new ArrayList<>();
-        }
-        if (context.toolExecutors == null) {
-            context.toolExecutors = new HashMap<>();
-        }
-
-        for (Object objectWithTool : objectsWithTools) {
-            if (objectWithTool instanceof Class) {
-                throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
-            }
-
-            for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                if (method.isAnnotationPresent(Tool.class)) {
-                    ToolSpecification toolSpecification = toolSpecificationFrom(method);
-                    context.toolSpecifications.add(toolSpecification);
-                    context.toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
-                }
-            }
-        }
-
+    public AiServices<T> tools(Collection<Object> objectsWithTools) {
+        context.toolService.tools(objectsWithTools);
         return this;
     }
 
@@ -362,10 +331,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> toolProvider(ToolProvider toolProvider) {
-        if (context.toolSpecifications != null | context.toolExecutors != null) {
-            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
-        }
-        context.toolProvider = toolProvider;
+        context.toolService.toolProvider(toolProvider);
         return this;
     }
 
@@ -375,25 +341,24 @@ public abstract class AiServices<T> {
      * @param tools A map of {@link ToolSpecification} to {@link ToolExecutor} entries.
      *              This method of configuring tools is useful when tools must be configured programmatically.
      *              Otherwise, it is recommended to use the {@link Tool}-annotated java methods
-     *              and configure tools with the {@link #tools(Object...)} and {@link #tools(List)} methods.
+     *              and configure tools with the {@link #tools(Object...)} and {@link #tools(Collection)} methods.
      * @return builder
      */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
-        if (context.toolProvider != null) {
-            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
-        }
-        if (context.toolSpecifications == null) {
-            context.toolSpecifications = new ArrayList<>();
-        }
-        if (context.toolExecutors == null) {
-            context.toolExecutors = new HashMap<>();
-        }
+        context.toolService.tools(tools);
+        return this;
+    }
 
-        tools.forEach((toolSpecification, toolExecutor) -> {
-            context.toolSpecifications.add(toolSpecification);
-            context.toolExecutors.put(toolSpecification.name(), toolExecutor);
-        });
-
+    /**
+     * Configures the strategy to be used when the LLM hallucinates a tool name (i.e., attempts to call a nonexistent tool).
+     *
+     * @param hallucinatedToolNameStrategy A Function from {@link ToolExecutionRequest} to {@link ToolExecutionResultMessage} defining
+     *                                  the response provided to the LLM when it hallucinates a tool name.
+     * @return builder
+     */
+    public AiServices<T> hallucinatedToolNameStrategy(
+            Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
+        context.toolService.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
         return this;
     }
 
@@ -484,7 +449,8 @@ public abstract class AiServices<T> {
             try {
                 Moderation moderation = moderationFuture.get();
                 if (moderation.flagged()) {
-                    throw new ModerationException(String.format("Text \"%s\" violates content policy", moderation.flaggedText()));
+                    throw new ModerationException(
+                            String.format("Text \"%s\" violates content policy", moderation.flaggedText()));
                 }
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);

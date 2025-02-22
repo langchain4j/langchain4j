@@ -1,14 +1,9 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.chat.ChatCompletionChoice;
-import dev.ai4j.openai4j.chat.ChatCompletionRequest;
-import dev.ai4j.openai4j.chat.ChatCompletionResponse;
-import dev.ai4j.openai4j.chat.Delta;
-import dev.ai4j.openai4j.shared.StreamOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -19,25 +14,28 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
@@ -59,62 +57,30 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     private final List<ChatModelListener> listeners;
 
-    public OpenAiStreamingChatModel(String baseUrl,
-                                    String apiKey,
-                                    String organizationId,
-                                    ChatRequestParameters defaultRequestParameters,
-                                    String modelName,
-                                    Double temperature,
-                                    Double topP,
-                                    List<String> stop,
-                                    Integer maxTokens,
-                                    Integer maxCompletionTokens,
-                                    Double presencePenalty,
-                                    Double frequencyPenalty,
-                                    Map<String, Integer> logitBias,
-                                    String responseFormat,
-                                    Boolean strictJsonSchema,
-                                    Integer seed,
-                                    String user,
-                                    Boolean strictTools,
-                                    Boolean parallelToolCalls,
-                                    Boolean store,
-                                    Map<String, String> metadata,
-                                    String serviceTier,
-                                    Duration timeout,
-                                    Proxy proxy,
-                                    Boolean logRequests,
-                                    Boolean logResponses,
-                                    Tokenizer tokenizer,
-                                    Map<String, String> customHeaders,
-                                    List<ChatModelListener> listeners) {
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
+    public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
         this.client = OpenAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
-                .openAiApiKey(apiKey)
-                .organizationId(organizationId)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
+                .apiKey(builder.apiKey)
+                .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(customHeaders)
+                .customHeaders(builder.customHeaders)
                 .build();
 
         ChatRequestParameters commonParameters;
-        if (defaultRequestParameters != null) {
-            commonParameters = defaultRequestParameters;
+        if (builder.defaultRequestParameters != null) {
+            commonParameters = builder.defaultRequestParameters;
         } else {
             commonParameters = DefaultChatRequestParameters.builder().build();
         }
 
         OpenAiChatRequestParameters openAiParameters;
-        if (defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
+        if (builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
             openAiParameters = openAiChatRequestParameters;
         } else {
             openAiParameters = OpenAiChatRequestParameters.builder().build();
@@ -122,35 +88,39 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
-                .modelName(getOrDefault(getOrDefault(modelName, commonParameters.modelName()), GPT_3_5_TURBO))
-                .temperature(getOrDefault(getOrDefault(temperature, commonParameters.temperature()), 0.7))
-                .topP(getOrDefault(topP, commonParameters.topP()))
-                .frequencyPenalty(getOrDefault(frequencyPenalty, commonParameters.frequencyPenalty()))
-                .presencePenalty(getOrDefault(presencePenalty, commonParameters.presencePenalty()))
-                .maxOutputTokens(getOrDefault(maxTokens, commonParameters.maxOutputTokens())) // TODO maxCompletionTokens
-                .stopSequences(getOrDefault(stop, () -> copyIfNotNull(commonParameters.stopSequences())))
+                .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
+                .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
+                .topP(getOrDefault(builder.topP, commonParameters.topP()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(builder.stop, () -> copyIfNotNull(commonParameters.stopSequences())))
                 .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
-                .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
-                .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
-                .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
-                .seed(getOrDefault(seed, openAiParameters.seed()))
-                .user(getOrDefault(user, openAiParameters.user()))
-                .store(getOrDefault(store, openAiParameters.store()))
-                .metadata(getOrDefault(metadata, () -> copyIfNotNull(openAiParameters.metadata())))
-                .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
+                .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
+                .logitBias(getOrDefault(builder.logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
+                .parallelToolCalls(getOrDefault(builder.parallelToolCalls, openAiParameters.parallelToolCalls()))
+                .seed(getOrDefault(builder.seed, openAiParameters.seed()))
+                .user(getOrDefault(builder.user, openAiParameters.user()))
+                .store(getOrDefault(builder.store, openAiParameters.store()))
+                .metadata(getOrDefault(builder.metadata, () -> copyIfNotNull(openAiParameters.metadata())))
+                .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
+                .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
-        this.strictJsonSchema = getOrDefault(strictJsonSchema, false); // TODO move into OpenAI-specific params?
-        this.strictTools = getOrDefault(strictTools, false); // TODO move into OpenAI-specific params?
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
+        this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
 
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
 
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
     }
 
-    // TODO deprecate
+    /**
+     * @deprecated please use {@link #defaultRequestParameters()} and then {@link ChatRequestParameters#modelName()} instead
+     */
+    @Deprecated(forRemoval = true)
     public String modelName() {
         return defaultRequestParameters.modelName();
     }
@@ -280,9 +250,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     public static class OpenAiStreamingChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private String projectId;
 
         private ChatRequestParameters defaultRequestParameters;
         private String modelName;
@@ -304,7 +276,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private Map<String, String> metadata;
         private String serviceTier;
         private Duration timeout;
-        private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
         private Tokenizer tokenizer;
@@ -313,6 +284,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public OpenAiStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         /**
@@ -348,6 +324,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         public OpenAiStreamingChatModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder projectId(String projectId) {
+            this.projectId = projectId;
             return this;
         }
 
@@ -441,11 +422,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             return this;
         }
 
-        public OpenAiStreamingChatModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
-            return this;
-        }
-
         public OpenAiStreamingChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -472,71 +448,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         }
 
         public OpenAiStreamingChatModel build() {
-            return new OpenAiStreamingChatModel(
-                    this.baseUrl,
-                    this.apiKey,
-                    this.organizationId,
-                    this.defaultRequestParameters,
-                    this.modelName,
-                    this.temperature,
-                    this.topP,
-                    this.stop,
-                    this.maxTokens,
-                    this.maxCompletionTokens,
-                    this.presencePenalty,
-                    this.frequencyPenalty,
-                    this.logitBias,
-                    this.responseFormat,
-                    this.strictJsonSchema,
-                    this.seed,
-                    this.user,
-                    this.strictTools,
-                    this.parallelToolCalls,
-                    this.store,
-                    this.metadata,
-                    this.serviceTier,
-                    this.timeout,
-                    this.proxy,
-                    this.logRequests,
-                    this.logResponses,
-                    this.tokenizer,
-                    this.customHeaders,
-                    this.listeners
-            );
-        }
-
-        @Override
-        public String toString() {
-            return new StringJoiner(", ", OpenAiStreamingChatModelBuilder.class.getSimpleName() + "[", "]")
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("organizationId='" + organizationId + "'")
-                    .add("defaultRequestParameters='" + defaultRequestParameters + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("temperature=" + temperature)
-                    .add("topP=" + topP)
-                    .add("stop=" + stop)
-                    .add("maxTokens=" + maxTokens)
-                    .add("maxCompletionTokens=" + maxCompletionTokens)
-                    .add("presencePenalty=" + presencePenalty)
-                    .add("frequencyPenalty=" + frequencyPenalty)
-                    .add("logitBias=" + logitBias)
-                    .add("responseFormat='" + responseFormat + "'")
-                    .add("strictJsonSchema=" + strictJsonSchema)
-                    .add("seed=" + seed)
-                    .add("user='" + user + "'")
-                    .add("strictTools=" + strictTools)
-                    .add("parallelToolCalls=" + parallelToolCalls)
-                    .add("store=" + store)
-                    .add("metadata=" + metadata)
-                    .add("serviceTier=" + serviceTier)
-                    .add("timeout=" + timeout)
-                    .add("proxy=" + proxy)
-                    .add("logRequests=" + logRequests)
-                    .add("logResponses=" + logResponses)
-                    .add("tokenizer=" + tokenizer)
-                    .add("customHeaders=" + customHeaders)
-                    .add("listeners=" + listeners)
-                    .toString();
+            return new OpenAiStreamingChatModel(this);
         }
     }
 }

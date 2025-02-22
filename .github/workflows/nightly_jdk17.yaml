@@ -91,7 +91,7 @@ jobs:
 
       - name: Upload Test Reports
         if: always() # always run even if the previous step failed or was cancelled
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Test-Reports-${{ matrix.java-version }}
           path: '**/target/*-reports/*'
