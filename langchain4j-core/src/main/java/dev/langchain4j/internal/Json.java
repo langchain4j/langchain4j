@@ -2,8 +2,6 @@ package dev.langchain4j.internal;
 
 import dev.langchain4j.spi.json.JsonCodecFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Type;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -54,16 +52,6 @@ public class Json { // TODO move to main?
          * @return the object.
          */
         <T> T fromJson(String json, Type type);
-
-        /**
-         * Convert the given object to an {@link InputStream}.
-         *
-         * @param o    the object to convert.
-         * @param type the type of the object.
-         * @return the {@link InputStream}.
-         * @throws IOException if an I/O error occurs.
-         */
-        InputStream toInputStream(Object o, Class<?> type) throws IOException; // TODO remove?
     }
 
     private static final JsonCodec CODEC = loadCodec();
@@ -114,18 +102,4 @@ public class Json { // TODO move to main?
     public static <T> T fromJson(String json, Type type) {
         return CODEC.fromJson(json, type);
     }
-
-    /**
-     * Convert the given object to an {@link InputStream}.
-     *
-     * @param o    the object to convert.
-     * @param type the type of the object.
-     * @return the {@link InputStream}.
-     * @throws IOException if an I/O error occurs.
-     * @deprecated use Jackson's ObjectMapper
-     */
-    @Deprecated
-    public static InputStream toInputStream(Object o, Class<?> type) throws IOException {
-        return CODEC.toInputStream(o, type);
-    } // TODO remove?
 }

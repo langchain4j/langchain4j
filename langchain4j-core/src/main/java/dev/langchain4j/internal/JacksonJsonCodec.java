@@ -10,9 +10,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -139,10 +137,5 @@ class JacksonJsonCodec implements Json.JsonCodec {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    public InputStream toInputStream(Object o, Class<?> type) throws IOException {
-        return new ByteArrayInputStream(OBJECT_MAPPER.writeValueAsBytes(o));
     }
 }
