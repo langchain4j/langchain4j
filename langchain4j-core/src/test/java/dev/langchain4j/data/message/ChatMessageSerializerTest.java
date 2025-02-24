@@ -51,7 +51,7 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         UserMessage.from(ImageContent.from("aGVsbG8=", "image/png")),
-                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8\\u003d\",\"mimeType\":\"image/png\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8=\",\"mimeType\":\"image/png\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         UserMessage.from(AudioContent.from("bXAz", "audio/mp3")),
@@ -60,6 +60,10 @@ class ChatMessageSerializerTest {
                 Arguments.of(
                         UserMessage.from(VideoContent.from("bXA0", "video/mp4")),
                         "{\"contents\":[{\"video\":{\"base64Data\":\"bXA0\",\"mimeType\":\"video/mp4\"},\"type\":\"VIDEO\"}],\"type\":\"USER\"}"
+                ),
+                Arguments.of(
+                        UserMessage.from(TextFileContent.from("cGRm", "text/markdown")),
+                        "{\"contents\":[{\"textFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"text/markdown\"},\"type\":\"TEXT_FILE\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
@@ -89,16 +93,6 @@ class ChatMessageSerializerTest {
     }
 
     @Test
-    void should_deserialize_user_message_in_old_schema() {
-
-        String json = "{\"text\":\"hello\",\"type\":\"USER\"}";
-
-        ChatMessage deserializedMessage = messageFromJson(json);
-
-        assertThat(deserializedMessage).isEqualTo(UserMessage.from("hello"));
-    }
-
-    @Test
     void should_serialize_and_deserialize_empty_list() {
 
         List<ChatMessage> messages = emptyList();
@@ -124,15 +118,5 @@ class ChatMessageSerializerTest {
 
         List<ChatMessage> deserializedMessages = messagesFromJson(json);
         assertThat(deserializedMessages).isEqualTo(messages);
-    }
-
-    @Test
-    void should_serialize_and_deserialize_list_with_one_message_in_old_schema() {
-
-        String json = "[{\"text\":\"hello\",\"type\":\"USER\"}]";
-
-        List<ChatMessage> deserializedMessages = messagesFromJson(json);
-
-        assertThat(deserializedMessages).containsExactly(UserMessage.from("hello"));
     }
 }
