@@ -1,5 +1,22 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
+import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_OBJECT;
+import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_SCHEMA;
+import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.lang.String.format;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -54,29 +71,11 @@ import dev.langchain4j.model.openai.internal.shared.PromptTokensDetails;
 import dev.langchain4j.model.openai.internal.shared.Usage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
-import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_OBJECT;
-import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_SCHEMA;
-import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.lang.String.format;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 public class InternalOpenAiHelper {
 
@@ -189,7 +188,8 @@ public class InternalOpenAiHelper {
                 .type(ContentType.AUDIO)
                 .inputAudio(InputAudio.builder()
                         .data(ensureNotBlank(audioContent.audio().base64Data(), "audio.base64Data"))
-                        .format(extractSubtype(ensureNotBlank(audioContent.audio().mimeType(), "audio.mimeType")))
+                        .format(extractSubtype(
+                                ensureNotBlank(audioContent.audio().mimeType(), "audio.mimeType")))
                         .build())
                 .build();
     }
@@ -259,10 +259,11 @@ public class InternalOpenAiHelper {
 
         JsonObjectSchema parameters = toolSpecification.parameters();
         if (parameters != null) {
-            dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder = dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder()
-                    .properties(toOpenAiProperties(parameters.properties(), strict))
-                    .required(parameters.required())
-                    .definitions(toOpenAiProperties(parameters.definitions(), strict));
+            dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder =
+                    dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder()
+                            .properties(toOpenAiProperties(parameters.properties(), strict))
+                            .required(parameters.required())
+                            .definitions(toOpenAiProperties(parameters.definitions(), strict));
             if (strict) {
                 builder
                         // when strict, all fields must be required:
@@ -279,7 +280,8 @@ public class InternalOpenAiHelper {
 
         ToolParameters toolParameters = toolSpecification.toolParameters();
         if (toolParameters == null) {
-            dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder = dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder();
+            dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder =
+                    dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder();
             if (strict) {
                 // when strict, additionalProperties must be false:
                 // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects
@@ -288,9 +290,10 @@ public class InternalOpenAiHelper {
             return builder.build();
         }
 
-        dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder = dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder()
-                .properties(toOpenAiPropertiesOld(toolParameters.properties(), strict))
-                .required(toolParameters.required());
+        dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder =
+                dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder()
+                        .properties(toOpenAiPropertiesOld(toolParameters.properties(), strict))
+                        .required(toolParameters.required());
         if (strict) {
             builder
                     // when strict, all fields must be required:
@@ -310,7 +313,8 @@ public class InternalOpenAiHelper {
             return null;
         }
 
-        Map<String, dev.langchain4j.model.openai.internal.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
+        Map<String, dev.langchain4j.model.openai.internal.chat.JsonSchemaElement> openAiProperties =
+                new LinkedHashMap<>();
         properties.forEach((key, value) -> openAiProperties.put(key, toOpenAiJsonSchemaElement(value, strict)));
         return openAiProperties;
     }
@@ -319,11 +323,12 @@ public class InternalOpenAiHelper {
             JsonSchemaElement jsonSchemaElement, boolean strict) {
 
         if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
-            dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder = dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder()
-                    .description(jsonObjectSchema.description())
-                    .properties(toOpenAiProperties(jsonObjectSchema.properties(), strict))
-                    .additionalProperties(strict ? Boolean.FALSE : jsonObjectSchema.additionalProperties())
-                    .definitions(toOpenAiProperties(jsonObjectSchema.definitions(), strict));
+            dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder =
+                    dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder()
+                            .description(jsonObjectSchema.description())
+                            .properties(toOpenAiProperties(jsonObjectSchema.properties(), strict))
+                            .additionalProperties(strict ? Boolean.FALSE : jsonObjectSchema.additionalProperties())
+                            .definitions(toOpenAiProperties(jsonObjectSchema.definitions(), strict));
             if (jsonObjectSchema.required() != null) {
                 builder.required(jsonObjectSchema.required());
             }
@@ -382,7 +387,8 @@ public class InternalOpenAiHelper {
 
     private static Map<String, dev.langchain4j.model.openai.internal.chat.JsonSchemaElement> toOpenAiPropertiesOld(
             Map<String, ?> properties, boolean strict) {
-        Map<String, dev.langchain4j.model.openai.internal.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
+        Map<String, dev.langchain4j.model.openai.internal.chat.JsonSchemaElement> openAiProperties =
+                new LinkedHashMap<>();
         properties.forEach((key, value) ->
                 openAiProperties.put(key, toOpenAiJsonSchemaElementOld((Map<String, ?>) value, strict)));
         return openAiProperties;
@@ -394,9 +400,10 @@ public class InternalOpenAiHelper {
         String description = (String) properties.get("description");
         if ("object".equals(type)) {
             List<String> required = (List<String>) properties.get("required");
-            dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder = dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder()
-                    .description(description)
-                    .properties(toOpenAiPropertiesOld((Map<String, ?>) properties.get("properties"), strict));
+            dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.Builder builder =
+                    dev.langchain4j.model.openai.internal.chat.JsonObjectSchema.builder()
+                            .description(description)
+                            .properties(toOpenAiPropertiesOld((Map<String, ?>) properties.get("properties"), strict));
             if (required != null) {
                 builder.required(required);
             }
@@ -519,7 +526,8 @@ public class InternalOpenAiHelper {
         };
     }
 
-    static dev.langchain4j.model.openai.internal.chat.ResponseFormat toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
+    static dev.langchain4j.model.openai.internal.chat.ResponseFormat toOpenAiResponseFormat(
+            ResponseFormat responseFormat, Boolean strict) {
         if (responseFormat == null || responseFormat.type() == TEXT) {
             return null;
         }
@@ -535,12 +543,13 @@ public class InternalOpenAiHelper {
                         "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
-            dev.langchain4j.model.openai.internal.chat.JsonSchema openAiJsonSchema = dev.langchain4j.model.openai.internal.chat.JsonSchema.builder()
-                    .name(jsonSchema.name())
-                    .strict(strict)
-                    .schema((dev.langchain4j.model.openai.internal.chat.JsonObjectSchema)
-                            toOpenAiJsonSchemaElement(jsonSchema.rootElement(), strict))
-                    .build();
+            dev.langchain4j.model.openai.internal.chat.JsonSchema openAiJsonSchema =
+                    dev.langchain4j.model.openai.internal.chat.JsonSchema.builder()
+                            .name(jsonSchema.name())
+                            .strict(strict)
+                            .schema((dev.langchain4j.model.openai.internal.chat.JsonObjectSchema)
+                                    toOpenAiJsonSchemaElement(jsonSchema.rootElement(), strict))
+                            .build();
             return dev.langchain4j.model.openai.internal.chat.ResponseFormat.builder()
                     .type(JSON_SCHEMA)
                     .jsonSchema(openAiJsonSchema)
