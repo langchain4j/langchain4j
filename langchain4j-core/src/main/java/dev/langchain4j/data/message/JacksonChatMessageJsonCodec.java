@@ -5,16 +5,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
@@ -22,9 +17,7 @@ import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.text.TextFile;
 import dev.langchain4j.data.video.Video;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -37,34 +30,28 @@ import static java.util.Collections.emptyList;
 
 class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
 
-    private static final ObjectMapper MESSAGE_MAPPER = new ObjectMapper()
-            .setVisibility(FIELD, ANY);
-
-    static {
-
-        MESSAGE_MAPPER.addMixIn(ChatMessage.class, ChatMessageMixin.class);
-        MESSAGE_MAPPER.addMixIn(SystemMessage.class, SystemMessageMixin.class);
-        SimpleModule userMessageModule = new SimpleModule();
-        userMessageModule.addDeserializer(UserMessage.class, new UserMessageDeserializer());
-        MESSAGE_MAPPER.registerModule(userMessageModule);
-        MESSAGE_MAPPER.addMixIn(AiMessage.class, AiMessageMixin.class);
-        MESSAGE_MAPPER.addMixIn(ToolExecutionRequest.class, ToolExecutionRequestMixin.class);
-        MESSAGE_MAPPER.addMixIn(ToolExecutionResultMessage.class, ToolExecutionResultMessageMixin.class);
-        MESSAGE_MAPPER.addMixIn(CustomMessage.class, CustomMessageMixin.class);
-
-        MESSAGE_MAPPER.addMixIn(Content.class, ContentMixin.class);
-        MESSAGE_MAPPER.addMixIn(TextContent.class, TextContentMixin.class);
-        MESSAGE_MAPPER.addMixIn(ImageContent.class, ImageContentMixin.class);
-        MESSAGE_MAPPER.addMixIn(Image.class, ImageMixin.class);
-        MESSAGE_MAPPER.addMixIn(AudioContent.class, AudioContentMixin.class);
-        MESSAGE_MAPPER.addMixIn(Audio.class, AudioMixin.class);
-        MESSAGE_MAPPER.addMixIn(VideoContent.class, VideoContentMixin.class);
-        MESSAGE_MAPPER.addMixIn(Video.class, VideoMixin.class);
-        MESSAGE_MAPPER.addMixIn(TextFileContent.class, TextFileContentMixin.class);
-        MESSAGE_MAPPER.addMixIn(TextFile.class, TextFileMixin.class);
-        MESSAGE_MAPPER.addMixIn(PdfFileContent.class, PdfFileContentMixin.class);
-        MESSAGE_MAPPER.addMixIn(PdfFile.class, PdfFileMixin.class);
-    }
+    private static final ObjectMapper MESSAGE_MAPPER = JsonMapper.builder()
+            .visibility(FIELD, ANY)
+            .addMixIn(ChatMessage.class, ChatMessageMixin.class)
+            .addMixIn(SystemMessage.class, SystemMessageMixin.class)
+            .addMixIn(UserMessage.class, UserMessageMixin.class)
+            .addMixIn(AiMessage.class, AiMessageMixin.class)
+            .addMixIn(ToolExecutionRequest.class, ToolExecutionRequestMixin.class)
+            .addMixIn(ToolExecutionResultMessage.class, ToolExecutionResultMessageMixin.class)
+            .addMixIn(CustomMessage.class, CustomMessageMixin.class)
+            .addMixIn(Content.class, ContentMixin.class)
+            .addMixIn(TextContent.class, TextContentMixin.class)
+            .addMixIn(ImageContent.class, ImageContentMixin.class)
+            .addMixIn(Image.class, ImageMixin.class)
+            .addMixIn(AudioContent.class, AudioContentMixin.class)
+            .addMixIn(Audio.class, AudioMixin.class)
+            .addMixIn(VideoContent.class, VideoContentMixin.class)
+            .addMixIn(Video.class, VideoMixin.class)
+            .addMixIn(PdfFileContent.class, PdfFileContentMixin.class)
+            .addMixIn(PdfFile.class, PdfFileMixin.class)
+            .addMixIn(TextFileContent.class, TextFileContentMixin.class)
+            .addMixIn(TextFile.class, TextFileMixin.class)
+            .build();
 
     private static final Type MESSAGE_LIST_TYPE = new TypeReference<List<ChatMessage>>() {
     }.getType();
@@ -132,66 +119,9 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
         }
     }
 
-    private static class UserMessageDeserializer extends StdDeserializer<UserMessage> { // TODO
-
-        public UserMessageDeserializer() {
-            super(UserMessage.class);
-        }
-
-        @Override
-        public UserMessage deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-
-            String text = null;
-            String name = null;
-            List<Content> contents = null;
-            while (p.nextToken() != JsonToken.END_OBJECT) {
-                String key = p.getCurrentName();
-                switch (key) {
-                    case "text":
-                        text = p.getText();
-                        break;
-                    case "name":
-                        name = p.getText();
-                        break;
-                    case "contents":
-                        if (p.currentToken() == JsonToken.FIELD_NAME) {
-                            p.nextToken();
-                        }
-                        if (p.currentToken() != JsonToken.START_ARRAY) {
-                            throw ValueInstantiationException.from(p,
-                                    "Cannot construct instance of `dev.langchain4j.data.message.UserMessage`, problem: expected `"
-                                            + p.currentToken() + "` to be start of array",
-                                    ctxt.constructType(UserMessage.class));
-                        }
-                        contents = new ArrayList<>();
-                        while (p.nextToken() != JsonToken.END_ARRAY) {
-                            contents.add(ctxt.readValue(p, Content.class));
-                        }
-                        break;
-                    default:
-                        // ignore unknown properties
-                }
-            }
-
-            if (text != null) {
-                if (name == null) {
-                    return new UserMessage(text);
-                } else {
-                    return new UserMessage(name, text);
-                }
-            } else if (contents != null) {
-                if (name == null) {
-                    return new UserMessage(contents);
-                } else {
-                    return new UserMessage(name, contents);
-                }
-            } else {
-                throw ValueInstantiationException.from(p,
-                        "Cannot construct instance of `dev.langchain4j.data.message.UserMessage`, problem: No `text` or `contents` field present",
-                        ctxt.constructType(
-                                UserMessage.class));
-            }
-        }
+    @JsonInclude(NON_NULL)
+    @JsonDeserialize(builder = UserMessage.Builder.class)
+    private static abstract class UserMessageMixin {
     }
 
     @JsonInclude(NON_NULL)
@@ -229,8 +159,8 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
             @JsonSubTypes.Type(value = ImageContent.class, name = "IMAGE"),
             @JsonSubTypes.Type(value = AudioContent.class, name = "AUDIO"),
             @JsonSubTypes.Type(value = VideoContent.class, name = "VIDEO"),
+            @JsonSubTypes.Type(value = PdfFileContent.class, name = "PDF"),
             @JsonSubTypes.Type(value = TextFileContent.class, name = "TEXT_FILE"),
-            @JsonSubTypes.Type(value = PdfFileContent.class, name = "PDF"), // TODO notify Georgios about updates
     })
     private static abstract class ContentMixin {
 
@@ -290,20 +220,6 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class TextFileContentMixin {
-
-        @JsonCreator
-        public TextFileContentMixin(@JsonProperty("textFile") TextFile textFile) {
-        }
-    }
-
-    @JsonInclude(NON_NULL)
-    @JsonDeserialize(builder = TextFile.Builder.class)
-    private static abstract class TextFileMixin {
-
-    }
-
-    @JsonInclude(NON_NULL)
     private static abstract class PdfFileContentMixin {
 
         @JsonCreator
@@ -314,6 +230,20 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = PdfFile.Builder.class)
     private static abstract class PdfFileMixin {
+
+    }
+
+    @JsonInclude(NON_NULL)
+    private static abstract class TextFileContentMixin {
+
+        @JsonCreator
+        public TextFileContentMixin(@JsonProperty("textFile") TextFile textFile) {
+        }
+    }
+
+    @JsonInclude(NON_NULL)
+    @JsonDeserialize(builder = TextFile.Builder.class)
+    private static abstract class TextFileMixin {
 
     }
 }

@@ -93,16 +93,6 @@ class ChatMessageSerializerTest {
     }
 
     @Test
-    void should_deserialize_user_message_in_old_schema() {
-
-        String json = "{\"text\":\"hello\",\"type\":\"USER\"}";
-
-        ChatMessage deserializedMessage = messageFromJson(json);
-
-        assertThat(deserializedMessage).isEqualTo(UserMessage.from("hello"));
-    }
-
-    @Test
     void should_serialize_and_deserialize_empty_list() {
 
         List<ChatMessage> messages = emptyList();
@@ -128,15 +118,5 @@ class ChatMessageSerializerTest {
 
         List<ChatMessage> deserializedMessages = messagesFromJson(json);
         assertThat(deserializedMessages).isEqualTo(messages);
-    }
-
-    @Test
-    void should_serialize_and_deserialize_list_with_one_message_in_old_schema() {
-
-        String json = "[{\"text\":\"hello\",\"type\":\"USER\"}]";
-
-        List<ChatMessage> deserializedMessages = messagesFromJson(json);
-
-        assertThat(deserializedMessages).containsExactly(UserMessage.from("hello"));
     }
 }

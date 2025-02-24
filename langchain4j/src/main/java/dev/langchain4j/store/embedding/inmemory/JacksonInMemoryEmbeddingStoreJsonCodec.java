@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.inmemory;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JacksonException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -15,7 +15,7 @@ import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 
 class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJsonCodec {
 
-    private static final ObjectMapper MAPPER = JsonMapper.builder()
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
             .visibility(FIELD, ANY)
             .addMixIn(InMemoryEmbeddingStore.Entry.class, EntryMixIn.class)
             .addMixIn(Embedding.class, EmbeddingMixIn.class)
@@ -28,8 +28,8 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
     @Override
     public InMemoryEmbeddingStore<TextSegment> fromJson(String json) {
         try {
-            return MAPPER.readValue(json, TYPE_REFERENCE);
-        } catch (JacksonException e) {
+            return OBJECT_MAPPER.readValue(json, TYPE_REFERENCE);
+        } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
@@ -37,8 +37,8 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
     @Override
     public String toJson(InMemoryEmbeddingStore<?> store) {
         try {
-            return MAPPER.writeValueAsString(store);
-        } catch (JacksonException e) { // TODO check other mappers what exception type is catched
+            return OBJECT_MAPPER.writeValueAsString(store);
+        } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }

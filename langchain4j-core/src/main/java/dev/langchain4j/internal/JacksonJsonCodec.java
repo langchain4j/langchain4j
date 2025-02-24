@@ -2,6 +2,7 @@ package dev.langchain4j.internal;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -24,8 +25,6 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 
 class JacksonJsonCodec implements Json.JsonCodec {
-
-    // TODO check core and main for any "gson"
 
     private static final ObjectMapper OBJECT_MAPPER = createObjectMapper();
 
@@ -116,7 +115,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
     public String toJson(Object o) {
         try {
             return OBJECT_MAPPER.writeValueAsString(o);
-        } catch (IOException e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
@@ -125,7 +124,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
     public <T> T fromJson(String json, Class<T> type) {
         try {
             return OBJECT_MAPPER.readValue(json, type);
-        } catch (IOException e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
@@ -134,7 +133,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
     public <T> T fromJson(String json, Type type) {
         try {
             return OBJECT_MAPPER.readValue(json, OBJECT_MAPPER.constructType(type));
-        } catch (IOException e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
