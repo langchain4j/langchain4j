@@ -3,8 +3,8 @@ package dev.langchain4j.service.tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.internal.Json;
 
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,8 +19,23 @@ class ToolExecutionRequestUtil {
     private ToolExecutionRequestUtil() {
     }
 
-    // TODO check exact type
-    private static final Type MAP_TYPE = new LinkedHashMap<String, Object>() {}.getClass().getGenericSuperclass();
+    private static final Type MAP_TYPE = new ParameterizedType() {
+
+        @Override
+        public Type[] getActualTypeArguments() {
+            return new Type[]{String.class, Object.class};
+        }
+
+        @Override
+        public Type getRawType() {
+            return Map.class;
+        }
+
+        @Override
+        public Type getOwnerType() {
+            return null;
+        }
+    };
 
     /**
      * Convert arguments to map.
@@ -29,7 +44,6 @@ class ToolExecutionRequestUtil {
      * @return map
      */
     static Map<String, Object> argumentsAsMap(String arguments) {
-        // TODO or use custom object mapper?
         return Json.fromJson(removeTrailingComma(arguments), MAP_TYPE);
     }
 

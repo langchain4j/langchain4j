@@ -23,7 +23,7 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 
-class JacksonJsonCodec implements Json.JsonCodec {
+class JacksonJsonCodec implements Json.JsonCodec { // TODO move to main
 
     // TODO check core and main for any "gson"
 

@@ -7,16 +7,10 @@ import java.lang.reflect.Type;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
- * A utility class for JSON.
- *
- * @deprecated Do not use {@link Json} from third-party modules.
- * If you need to serialize/deserialize JSON in third-party modules, use Jackson's ObjectMapper.
- * {@link Json} can be used only by {@code langchain4j-core} and {@code langchain4j} modules.
+ * JSON helper class. It is supposed to be used by "tools" and "structured output" functionalities.
  */
-@Deprecated
-// TODO check who uses, does it make sense? make it less generic?
-public class Json { // TODO move to main?
-    // TODO un-deprecate what should stay
+public class Json { // TODO move to main
+
     private Json() {
     }
 
@@ -68,9 +62,7 @@ public class Json { // TODO move to main?
      *
      * @param o the object to convert.
      * @return the JSON string.
-     * @deprecated use Jackson's ObjectMapper
      */
-    @Deprecated
     public static String toJson(Object o) {
         return CODEC.toJson(o);
     }
@@ -82,9 +74,7 @@ public class Json { // TODO move to main?
      * @param type the class of the object.
      * @param <T>  the type of the object.
      * @return the object.
-     * @deprecated use Jackson's ObjectMapper
      */
-    @Deprecated
     public static <T> T fromJson(String json, Class<T> type) {
         return CODEC.fromJson(json, type);
     }
@@ -96,9 +86,7 @@ public class Json { // TODO move to main?
      * @param type the type of the object.
      * @param <T>  the type of the object.
      * @return the object.
-     * @deprecated use Jackson's ObjectMapper
      */
-    @Deprecated
     public static <T> T fromJson(String json, Type type) {
         return CODEC.fromJson(json, type);
     }
