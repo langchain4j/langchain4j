@@ -1,11 +1,11 @@
 package dev.langchain4j.rag.query;
 
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Test;
-
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
 
 class QueryTest {
 

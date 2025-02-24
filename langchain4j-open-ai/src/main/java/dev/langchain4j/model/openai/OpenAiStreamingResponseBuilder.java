@@ -219,7 +219,6 @@ public class OpenAiStreamingResponseBuilder {
                             .build())
                     .collect(toList());
 
-
             AiMessage aiMessage;
 
             if (isNullOrBlank(text)) {

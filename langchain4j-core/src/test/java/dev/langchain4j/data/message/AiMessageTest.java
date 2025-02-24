@@ -1,10 +1,9 @@
 package dev.langchain4j.data.message;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.Arrays;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
 
 class AiMessageTest implements WithAssertions {
     @Test
@@ -85,9 +84,9 @@ class AiMessageTest implements WithAssertions {
 
     @Test
     void test_from() {
-        ToolExecutionRequest[] requests = new ToolExecutionRequest[]{
-                ToolExecutionRequest.builder().id("foo").build(),
-                ToolExecutionRequest.builder().id("bar").build()
+        ToolExecutionRequest[] requests = new ToolExecutionRequest[] {
+            ToolExecutionRequest.builder().id("foo").build(),
+            ToolExecutionRequest.builder().id("bar").build()
         };
 
         {

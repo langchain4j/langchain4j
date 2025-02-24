@@ -1,10 +1,5 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.ChatMessageType.AI;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
@@ -12,6 +7,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents a response message from an AI (language model).
@@ -141,11 +140,10 @@ public class AiMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "AiMessage {" +
-                " text = " + quoted(text) +
-                " reasoningContent = " + quoted(reasoningContent) +
-                " toolExecutionRequests = " + toolExecutionRequests +
-                " }";
+        return "AiMessage {" + " text = "
+                + quoted(text) + " reasoningContent = "
+                + quoted(reasoningContent) + " toolExecutionRequests = "
+                + toolExecutionRequests + " }";
     }
 
     /**

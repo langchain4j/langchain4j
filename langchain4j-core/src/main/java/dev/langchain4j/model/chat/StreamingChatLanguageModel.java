@@ -1,5 +1,10 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -16,17 +21,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static java.util.Collections.singletonList;
 
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
@@ -87,9 +86,8 @@ public interface StreamingChatLanguageModel {
     @Experimental
     default void chat(String userMessage, StreamingChatResponseHandler handler) {
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(userMessage))
-                .build();
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
 
         chat(chatRequest, handler);
     }
@@ -97,9 +95,7 @@ public interface StreamingChatLanguageModel {
     @Experimental
     default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .build();
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
 
         chat(chatRequest, handler);
     }
@@ -152,9 +148,9 @@ public interface StreamingChatLanguageModel {
         } else {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                    throw new UnsupportedFeatureException(String.format(
+                            "%s.%s is currently supported only when there is a single tool",
+                            ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
                 generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
             } else {
@@ -225,8 +221,12 @@ public interface StreamingChatLanguageModel {
      * See {@link ChatRequestParameters#toolSpecifications()}.
      */
     @Deprecated(forRemoval = true)
-    default void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        throw new UnsupportedFeatureException("tools are currently not supported by " + getClass().getSimpleName());
+    default void generate(
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecifications,
+            StreamingResponseHandler<AiMessage> handler) {
+        throw new UnsupportedFeatureException(
+                "tools are currently not supported by " + getClass().getSimpleName());
     }
 
     /**
@@ -243,8 +243,12 @@ public interface StreamingChatLanguageModel {
      * See {@link ChatRequestParameters#toolSpecifications()} and {@link ChatRequestParameters#toolChoice()}.
      */
     @Deprecated(forRemoval = true)
-    default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        throw new UnsupportedFeatureException("tools and tool choice are currently not supported by " + getClass().getSimpleName());
+    default void generate(
+            List<ChatMessage> messages,
+            ToolSpecification toolSpecification,
+            StreamingResponseHandler<AiMessage> handler) {
+        throw new UnsupportedFeatureException("tools and tool choice are currently not supported by "
+                + getClass().getSimpleName());
     }
 
     // TODO improve javadoc
