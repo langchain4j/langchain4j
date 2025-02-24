@@ -9,7 +9,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 /**
  * JSON helper class. It is supposed to be used by "tools" and "structured output" functionalities.
  */
-public class Json { // TODO move to main
+public class Json {
 
     private Json() {
     }

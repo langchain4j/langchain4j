@@ -7,7 +7,7 @@ import static dev.langchain4j.data.message.ChatMessageSerializer.CODEC;
 /**
  * A deserializer for {@link ChatMessage} objects.
  */
-public class ChatMessageDeserializer { // TODO move into main, ensure no split package
+public class ChatMessageDeserializer {
     private ChatMessageDeserializer() {}
 
     /**
