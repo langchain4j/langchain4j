@@ -1,9 +1,10 @@
 package dev.langchain4j.service.tool;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.internal.Json;
+
 import java.lang.reflect.Type;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,17 +16,11 @@ class ToolExecutionRequestUtil {
 
     private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
 
-    private ToolExecutionRequestUtil() {}
+    private ToolExecutionRequestUtil() {
+    }
 
-    /**
-     * Gson instance.
-     */
-    private static final Gson GSON = new Gson();
-
-    /**
-     * Utility {@link TypeToken} describing {@code Map<String, Object>}.
-     */
-    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {}.getType();
+    // TODO check exact type
+    private static final Type MAP_TYPE = new LinkedHashMap<String, Object>() {}.getClass().getGenericSuperclass();
 
     /**
      * Convert arguments to map.
@@ -34,7 +29,8 @@ class ToolExecutionRequestUtil {
      * @return map
      */
     static Map<String, Object> argumentsAsMap(String arguments) {
-        return GSON.fromJson(removeTrailingComma(arguments), MAP_TYPE);
+        // TODO or use custom object mapper?
+        return Json.fromJson(removeTrailingComma(arguments), MAP_TYPE);
     }
 
     /**

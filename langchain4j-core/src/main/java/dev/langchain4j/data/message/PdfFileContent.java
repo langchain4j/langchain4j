@@ -46,7 +46,7 @@ public class PdfFileContent implements Content {
      * @param base64Data the base64 data of the PDF.
      * @param mimeType the mime type of the PDF.
      */
-    public PdfFileContent(String base64Data, String mimeType) {
+    public PdfFileContent(String base64Data, String mimeType) { // TODO mimeType unused
         this.pdfFile = PdfFile.builder()
             .base64Data(ensureNotBlank(base64Data, "base64data"))
             .build();

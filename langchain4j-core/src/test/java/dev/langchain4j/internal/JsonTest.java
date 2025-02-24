@@ -1,6 +1,6 @@
 package dev.langchain4j.internal;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -28,7 +28,7 @@ class JsonTest {
 
     // language=json
     assertThat(json)
-      .isEqualTo(
+      .isEqualToIgnoringWhitespace(
         """
         {
           "sampleDate": "2023-01-15",
@@ -66,7 +66,7 @@ class JsonTest {
     try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
       String resultJson = bufferedReader.lines().collect(Collectors.joining());
 
-      assertThat(resultJson).isEqualTo(expectedJson);
+      assertThat(resultJson).isEqualToIgnoringWhitespace(expectedJson);
     }
   }
 
@@ -77,7 +77,7 @@ class JsonTest {
 
     private LocalDate sampleDate;
     private LocalDateTime sampleDateTime;
-    @SerializedName("some_value")
+    @JsonProperty("some_value")
     private String someValue;
 
     LocalDate getSampleDate() {

@@ -1,14 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.Utils.generateUUIDFrom;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -20,17 +11,27 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
+
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 public abstract class AiServicesWithJsonSchemaIT {
     // TODO move to common, use parameterized tests
@@ -46,6 +47,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             int age;
             Double height;
             boolean married;
+            Optional<String> surname;
         }
 
         Person extractPersonFrom(String text);
@@ -499,43 +501,37 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
     }
 
-    interface PersonExtractor9 {
-
-        class Person {
-
-            String name;
-            Set<Pet> pets;
-        }
-
-        class Pet {
-
-            String name;
-        }
-
-        Person extractPersonFrom(String text);
-    }
-
     @Test
     protected void should_extract_pojo_with_set_of_pojos() {
+
+        record Pet(String name) {
+        }
+
+        record Person(String name, Set<Pet> pets) {
+        }
+
+        interface PersonExtractor {
+
+            Person extractPersonFrom(String text);
+        }
 
         for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            PersonExtractor9 personExtractor = AiServices.create(PersonExtractor9.class, model);
+            PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, model);
 
             String text = "Klaus has 2 pets: Peanut and Muffin";
 
             // when
-            PersonExtractor9.Person person = personExtractor.extractPersonFrom(text);
+            Person person = personExtractor.extractPersonFrom(text);
 
             // then
-            assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.pets).hasSize(2);
-            Iterator<PersonExtractor9.Pet> iterator = person.pets.iterator();
-            assertThat(iterator.next().name).isEqualTo("Peanut");
-            assertThat(iterator.next().name).isEqualTo("Muffin");
+            assertThat(person).isEqualTo(new Person("Klaus", Set.of(
+                    new Pet("Peanut"),
+                    new Pet("Muffin")
+            )));
 
             verify(model)
                     .chat(ChatRequest.builder()
@@ -597,7 +593,7 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.groups).containsExactly(PersonExtractor10.Group.A, PersonExtractor10.Group.C);
+            assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor10.Group.A, PersonExtractor10.Group.C);
 
             verify(model)
                     .chat(ChatRequest.builder()
@@ -662,7 +658,7 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.groups).containsExactly(PersonExtractor11.Group.A, PersonExtractor11.Group.C);
+            assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor11.Group.A, PersonExtractor11.Group.C);
 
             verify(model)
                     .chat(ChatRequest.builder()
@@ -727,7 +723,7 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.groups).containsExactly(PersonExtractor12.Group.A, PersonExtractor12.Group.C);
+            assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor12.Group.A, PersonExtractor12.Group.C);
 
             verify(model)
                     .chat(ChatRequest.builder()

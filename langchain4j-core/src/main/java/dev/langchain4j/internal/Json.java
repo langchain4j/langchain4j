@@ -16,7 +16,9 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * {@link Json} can be used only by {@code langchain4j-core} and {@code langchain4j} modules.
  */
 @Deprecated
-public class Json {
+// TODO check who uses, does it make sense? make it less generic?
+public class Json { // TODO move to main?
+    // TODO un-deprecate what should stay
     private Json() {
     }
 
@@ -61,7 +63,7 @@ public class Json {
          * @return the {@link InputStream}.
          * @throws IOException if an I/O error occurs.
          */
-        InputStream toInputStream(Object o, Class<?> type) throws IOException;
+        InputStream toInputStream(Object o, Class<?> type) throws IOException; // TODO remove?
     }
 
     private static final JsonCodec CODEC = loadCodec();
@@ -70,7 +72,7 @@ public class Json {
         for (JsonCodecFactory factory : loadFactories(JsonCodecFactory.class)) {
             return factory.create();
         }
-        return new GsonJsonCodec();
+        return new JacksonJsonCodec();
     }
 
     /**
@@ -125,5 +127,5 @@ public class Json {
     @Deprecated
     public static InputStream toInputStream(Object o, Class<?> type) throws IOException {
         return CODEC.toInputStream(o, type);
-    }
+    } // TODO remove?
 }

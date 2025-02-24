@@ -1,17 +1,16 @@
 package dev.langchain4j.service.tool;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import com.google.gson.internal.LinkedTreeMap;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 class ToolExecutionRequestUtilTest implements WithAssertions {
 
@@ -20,12 +19,13 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("id")
                 .name("name")
-                .arguments("{\"foo\":\"bar\", \"qux\": 12}")
+                .arguments("{\"foo\":\"bar\", \"qux\": 12, \"abc\": 1.23}")
                 .build();
 
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
                 .containsEntry("foo", "bar")
-                .containsEntry("qux", 12.0);
+                .containsEntry("qux", 12)
+                .containsEntry("abc", 1.23);
     }
 
     @Test
@@ -38,7 +38,7 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
 
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
                 .containsEntry("foo", "bar")
-                .containsEntry("qux", 12.0);
+                .containsEntry("qux", 12);
     }
 
     @Test
@@ -54,11 +54,11 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
 
         List<Object> keys = (List<Object>) argumentsAsMap.get("key");
         keys.forEach(key -> {
-            assertThat(key).isInstanceOf(LinkedTreeMap.class);
-            assertThat(((LinkedTreeMap<?, ?>) key).containsKey("foo")).isTrue();
-            assertThat(((LinkedTreeMap<?, ?>) key).containsKey("qux")).isTrue();
-            assertThat(((LinkedTreeMap<?, ?>) key).get("foo")).isEqualTo("bar");
-            assertThat(((LinkedTreeMap<?, ?>) key).get("qux")).isEqualTo(12.0);
+            assertThat(key).isInstanceOf(LinkedHashMap.class);
+            assertThat(((LinkedHashMap<?, ?>) key).containsKey("foo")).isTrue();
+            assertThat(((LinkedHashMap<?, ?>) key).containsKey("qux")).isTrue();
+            assertThat(((LinkedHashMap<?, ?>) key).get("foo")).isEqualTo("bar");
+            assertThat(((LinkedHashMap<?, ?>) key).get("qux")).isEqualTo(12);
         });
     }
 
