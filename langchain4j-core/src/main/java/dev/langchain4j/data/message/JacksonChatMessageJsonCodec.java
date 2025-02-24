@@ -35,7 +35,7 @@ import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import static java.util.Collections.emptyList;
 
-class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
+class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec { // TODO move into main, ensure no split package
 
     private static final ObjectMapper MESSAGE_MAPPER = new ObjectMapper()
             .setVisibility(FIELD, ANY);

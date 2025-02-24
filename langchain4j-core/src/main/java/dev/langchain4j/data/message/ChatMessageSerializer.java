@@ -6,7 +6,7 @@ import java.util.List;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-public class ChatMessageSerializer {
+public class ChatMessageSerializer { // TODO move into main, ensure no split package
 
     static final ChatMessageJsonCodec CODEC = loadCodec();
 

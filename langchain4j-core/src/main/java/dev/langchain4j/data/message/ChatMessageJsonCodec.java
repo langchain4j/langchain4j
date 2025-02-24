@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * A codec for serializing and deserializing {@link ChatMessage} objects to and from JSON.
  */
-public interface ChatMessageJsonCodec {
+public interface ChatMessageJsonCodec { // TODO move into main, ensure no split package
 
     /**
      * Deserializes a JSON string to a {@link ChatMessage} object.
