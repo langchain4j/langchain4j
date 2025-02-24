@@ -30,7 +30,7 @@ import static java.util.Collections.emptyList;
 
 class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
 
-    private static final ObjectMapper MESSAGE_MAPPER = JsonMapper.builder()
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
             .visibility(FIELD, ANY)
             .addMixIn(ChatMessage.class, ChatMessageMixin.class)
             .addMixIn(SystemMessage.class, SystemMessageMixin.class)
@@ -59,7 +59,7 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     @Override
     public ChatMessage messageFromJson(String json) {
         try {
-            return MESSAGE_MAPPER.readValue(json, ChatMessage.class);
+            return OBJECT_MAPPER.readValue(json, ChatMessage.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -71,7 +71,7 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
             return List.of();
         }
         try {
-            List<ChatMessage> messages = MESSAGE_MAPPER.readValue(json, MESSAGE_MAPPER.constructType(MESSAGE_LIST_TYPE));
+            List<ChatMessage> messages = OBJECT_MAPPER.readValue(json, OBJECT_MAPPER.constructType(MESSAGE_LIST_TYPE));
             return messages == null ? emptyList() : messages;
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -81,7 +81,7 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     @Override
     public String messageToJson(ChatMessage message) {
         try {
-            return MESSAGE_MAPPER.writeValueAsString(message);
+            return OBJECT_MAPPER.writeValueAsString(message);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -90,7 +90,7 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     @Override
     public String messagesToJson(List<ChatMessage> messages) {
         try {
-            return MESSAGE_MAPPER.writeValueAsString(messages);
+            return OBJECT_MAPPER.writeValueAsString(messages);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

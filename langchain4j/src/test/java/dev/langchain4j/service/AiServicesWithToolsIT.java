@@ -1033,7 +1033,8 @@ class AiServicesWithToolsIT {
         Result<AiMessage> result = assistant.chat(userMessage);
 
         // then
-        assertThat(result.content().text()).contains("2025", "24");
+        assertThat(result.content().text())
+                .contains(String.valueOf(now.getYear()), String.valueOf(now.getDayOfMonth()));
 
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);
