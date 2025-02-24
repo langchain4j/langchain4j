@@ -13,7 +13,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 
-// TODO make all codecs package-private?
 class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJsonCodec {
 
     private static final ObjectMapper MAPPER = JsonMapper.builder()

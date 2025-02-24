@@ -20,7 +20,6 @@ import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -47,7 +46,6 @@ public abstract class AiServicesWithJsonSchemaIT {
             int age;
             Double height;
             boolean married;
-            Optional<String> surname;
         }
 
         Person extractPersonFrom(String text);

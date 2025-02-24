@@ -111,11 +111,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
         return new ObjectMapper()
                 .setVisibility(FIELD, ANY)
                 .registerModule(module)
-//                .findAndRegisterModules() TODO
-//                .registerModule(new Jdk8Module()) // TODO enable only if found in classpath?
                 .enable(INDENT_OUTPUT);
-//                .disable(FAIL_ON_UNKNOWN_PROPERTIES) // TODO good idea?
-//                .disable(FAIL_ON_NULL_FOR_PRIMITIVES); // TODO good idea?
     }
 
     @Override

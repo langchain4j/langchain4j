@@ -19,7 +19,6 @@ import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 public class DefaultStructuredPromptFactory implements StructuredPromptFactory {
 
     private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
-//            .findAndAddModules() // TODO? add to other object mappers?
             .visibility(FIELD, ANY)
             .build();
 

@@ -38,7 +38,7 @@ import static java.util.Collections.emptyList;
 class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
 
     private static final ObjectMapper MESSAGE_MAPPER = new ObjectMapper()
-            .setVisibility(FIELD, ANY); // TODO register other modules?
+            .setVisibility(FIELD, ANY);
 
     static {
 
