@@ -351,7 +351,7 @@ class OpenAiChatModelIT {
     void should_generate_valid_json() throws JsonProcessingException {
 
         // given
-        @JsonIgnoreProperties(ignoreUnknown = true)
+        @JsonIgnoreProperties(ignoreUnknown = true) // to ignore the "joke" field
         record Person(String name, String surname) {
         }
 
