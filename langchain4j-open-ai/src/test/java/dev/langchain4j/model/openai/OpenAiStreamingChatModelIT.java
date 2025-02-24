@@ -16,6 +16,9 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -24,7 +27,6 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -447,16 +449,14 @@ class OpenAiStreamingChatModelIT {
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
-    static class Person {
-
-        String name;
-        String surname;
-    }
-
     @Test
-    void should_stream_valid_json() {
+    void should_stream_valid_json() throws JsonProcessingException {
 
         // given
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record Person(String name, String surname) {
+        }
+
         String responseFormat = "json_object";
 
         String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. "
@@ -479,7 +479,7 @@ class OpenAiStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         // then
-        Person person = Json.fromJson(response.content().text(), Person.class);
+        Person person = new ObjectMapper().readValue(response.content().text(), Person.class);
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.surname).isEqualTo("Heisler");
     }

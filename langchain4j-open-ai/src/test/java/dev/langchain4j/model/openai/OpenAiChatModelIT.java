@@ -14,6 +14,9 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -23,7 +26,6 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -345,25 +347,25 @@ class OpenAiChatModelIT {
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
-    static class Person {
-
-        String name;
-        String surname;
-    }
-
     @Test
-    void should_generate_valid_json() {
+    void should_generate_valid_json() throws JsonProcessingException {
 
         // given
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record Person(String name, String surname) {
+        }
+
         String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. "
                 + "Before returning, tell me a joke."; // nudging it to say something additionally to json
+
+        String responseFormat = "json_object";
 
         ChatLanguageModel modelGeneratingJson = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
-                .responseFormat("json_object")
+                .responseFormat(responseFormat)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -373,7 +375,7 @@ class OpenAiChatModelIT {
         String json = modelGeneratingJson.generate(userMessage);
 
         // then
-        Person person = Json.fromJson(json, Person.class);
+        Person person = new ObjectMapper().readValue(json, Person.class);
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.surname).isEqualTo("Heisler");
     }
