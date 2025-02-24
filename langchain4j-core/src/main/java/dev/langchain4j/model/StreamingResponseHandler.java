@@ -25,7 +25,7 @@ public interface StreamingResponseHandler<T> {
      *
      * @param token The newly generated token, which is a part of the complete response.
      */
-    default void onReasoning(String token) {};
+    default void onReasoning(String token) {}
 
     /**
      * Invoked when the language model has finished streaming a response.

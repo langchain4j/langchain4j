@@ -63,7 +63,7 @@ public interface StreamingChatLanguageModel {
             }
 
             @Override
-            public void onReasoningResponse (String reasoningContent) {
+            public void onReasoningResponse(String reasoningContent) {
                 handler.onReasoningResponse(reasoningContent);
             }
 

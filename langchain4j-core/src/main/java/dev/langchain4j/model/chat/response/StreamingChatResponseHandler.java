@@ -27,7 +27,7 @@ public interface StreamingChatResponseHandler {
      *
      * @param reasoningContent The partial response (usually a single token), which is a part of the complete response.
      */
-    default void onReasoningResponse(String reasoningContent) {};
+    default void onReasoningResponse(String reasoningContent) {}
 
     /**
      * Invoked when the model has finished streaming a response.
