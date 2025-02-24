@@ -60,6 +60,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -121,7 +122,7 @@ class InternalGitHubModelHelper {
         return new NettyAsyncHttpClientProvider().createInstance(clientOptions);
     }
 
-    private static HttpClientOptions getClientOptions(Duration timeout, ProxyOptions proxyOptions, String applicationIdSuffix, Map<String, String> customHeaders) {
+    private static HttpClientOptions getClientOptions(Duration timeout, ProxyOptions proxyOptions, String userAgentSuffix, Map<String, String> customHeaders) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -134,10 +135,17 @@ class InternalGitHubModelHelper {
         // This user agent string is in the following format:
         // [<application_id> ]{azsdk-<sdk_language>-<package_name>/<package_version> }+<platform_info>
         String applicationId = DEFAULT_APP_ID;
-        if (applicationIdSuffix != null && !applicationIdSuffix.isEmpty()) {
-            applicationId = DEFAULT_APP_ID + "-" + applicationIdSuffix;
+        if (userAgentSuffix != null && !userAgentSuffix.isEmpty()) {
+            applicationId = DEFAULT_APP_ID + "-" + userAgentSuffix;
         }
         clientOptions.setApplicationId(applicationId);
+
+        if (customHeaders != null) {
+            List<Header> headers = customHeaders.entrySet().stream()
+                .map(entry -> new Header(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toUnmodifiableList());
+            clientOptions.setHeaders(headers);
+        }
         return clientOptions;
     }
 
