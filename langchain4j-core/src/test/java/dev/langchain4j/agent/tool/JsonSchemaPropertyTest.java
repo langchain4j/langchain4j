@@ -1,34 +1,26 @@
 package dev.langchain4j.agent.tool;
 
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 
+import java.util.Arrays;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
+
 class JsonSchemaPropertyTest implements WithAssertions {
     @Test
-    public void test_common() {
-        assertThat(JsonSchemaProperty.STRING)
-                .isEqualTo(JsonSchemaProperty.type("string"));
-        assertThat(JsonSchemaProperty.INTEGER)
-                .isEqualTo(JsonSchemaProperty.type("integer"));
-        assertThat(JsonSchemaProperty.NUMBER)
-                .isEqualTo(JsonSchemaProperty.type("number"));
-        assertThat(JsonSchemaProperty.OBJECT)
-                .isEqualTo(JsonSchemaProperty.type("object"));
-        assertThat(JsonSchemaProperty.ARRAY)
-                .isEqualTo(JsonSchemaProperty.type("array"));
-        assertThat(JsonSchemaProperty.BOOLEAN)
-                .isEqualTo(JsonSchemaProperty.type("boolean"));
-        assertThat(JsonSchemaProperty.NULL)
-                .isEqualTo(JsonSchemaProperty.type("null"));
+    void common() {
+        assertThat(JsonSchemaProperty.STRING).isEqualTo(JsonSchemaProperty.type("string"));
+        assertThat(JsonSchemaProperty.INTEGER).isEqualTo(JsonSchemaProperty.type("integer"));
+        assertThat(JsonSchemaProperty.NUMBER).isEqualTo(JsonSchemaProperty.type("number"));
+        assertThat(JsonSchemaProperty.OBJECT).isEqualTo(JsonSchemaProperty.type("object"));
+        assertThat(JsonSchemaProperty.ARRAY).isEqualTo(JsonSchemaProperty.type("array"));
+        assertThat(JsonSchemaProperty.BOOLEAN).isEqualTo(JsonSchemaProperty.type("boolean"));
+        assertThat(JsonSchemaProperty.NULL).isEqualTo(JsonSchemaProperty.type("null"));
     }
 
     @Test
-    public void test_equals_hash() {
+    void equals_hash() {
         JsonSchemaProperty prop1 = new JsonSchemaProperty("key", "value");
         JsonSchemaProperty prop2 = new JsonSchemaProperty("key", "value");
 
@@ -47,66 +39,62 @@ class JsonSchemaPropertyTest implements WithAssertions {
                 .isNotEqualTo(prop4)
                 .doesNotHaveSameHashCodeAs(prop4);
 
-        assertThat(prop3)
-                .isNotEqualTo(prop4)
-                .doesNotHaveSameHashCodeAs(prop4);
+        assertThat(prop3).isNotEqualTo(prop4).doesNotHaveSameHashCodeAs(prop4);
 
         {
             JsonSchemaProperty enum1 = JsonSchemaProperty.enums("value1", "value2");
             JsonSchemaProperty enum2 = JsonSchemaProperty.enums("value1", "value2");
 
-            assertThat(enum1)
-                    .isEqualTo(enum2)
-                    .hasSameHashCodeAs(enum2);
+            assertThat(enum1).isEqualTo(enum2).hasSameHashCodeAs(enum2);
         }
     }
 
     @Test
-    public void test_toString() {
+    void to_string() {
         JsonSchemaProperty prop = new JsonSchemaProperty("key", "value");
-        assertThat(prop.toString())
-                .isEqualTo("JsonSchemaProperty { key = \"key\", value = value }");
+        assertThat(prop.toString()).isEqualTo("JsonSchemaProperty { key = \"key\", value = value }");
 
         assertThat(JsonSchemaProperty.enums("value1", "value2").toString())
                 .isEqualTo("JsonSchemaProperty { key = \"enum\", value = [value1, value2] }");
     }
 
     @Test
-    public void test_type() {
+    void type() {
         JsonSchemaProperty prop = JsonSchemaProperty.type("string");
         assertThat(prop.key()).isEqualTo("type");
         assertThat(prop.value()).isEqualTo("string");
     }
 
     @Test
-    public void test_from() {
+    void from() {
         JsonSchemaProperty prop = JsonSchemaProperty.from("key", "value");
         assertThat(prop.key()).isEqualTo("key");
         assertThat(prop.value()).isEqualTo("value");
     }
 
     @Test
-    public void test_property() {
-        assertThat(JsonSchemaProperty.property("key", "value"))
-                .isEqualTo(JsonSchemaProperty.from("key", "value"));
+    void property() {
+        assertThat(JsonSchemaProperty.property("key", "value")).isEqualTo(JsonSchemaProperty.from("key", "value"));
     }
 
     @Test
-    public void test_description() {
-        assertThat(JsonSchemaProperty.description("value"))
-                .isEqualTo(JsonSchemaProperty.from("description", "value"));
+    void description() {
+        assertThat(JsonSchemaProperty.description("value")).isEqualTo(JsonSchemaProperty.from("description", "value"));
     }
 
     public enum EnumTest {
-        VALUE1, value2, Value3
+        VALUE1,
+        value2,
+        Value3
     }
 
     @Test
-    public void test_enums() {
+    void enums() {
         {
             JsonSchemaProperty prop = JsonSchemaProperty.enums("value1", "value2");
             assertThat(prop.key()).isEqualTo("enum");
-            assertThat(Arrays.equals((String[]) prop.value(), new String[]{"value1", "value2"})).isTrue();
+            assertThat(Arrays.equals((String[]) prop.value(), new String[] {"value1", "value2"}))
+                    .isTrue();
         }
 
         {
@@ -131,7 +119,7 @@ class JsonSchemaPropertyTest implements WithAssertions {
     }
 
     @Test
-    public void test_items() {
+    void items() {
         JsonSchemaProperty prop = JsonSchemaProperty.items(JsonSchemaProperty.STRING);
         assertThat(prop.key()).isEqualTo("items");
         assertThat(prop.value()).isEqualTo(singletonMap("type", "string"));

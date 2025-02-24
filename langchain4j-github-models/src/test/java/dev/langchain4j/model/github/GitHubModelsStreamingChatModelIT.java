@@ -1,5 +1,15 @@
 package dev.langchain4j.model.github;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.github.GitHubModelsChatModelName.PHI_3_5_MINI_INSTRUCT;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.azure.ai.inference.models.ChatCompletionsResponseFormatJson;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -12,26 +22,15 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.github.GitHubModelsChatModelName.PHI_3_5_MINI_INSTRUCT;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
 class GitHubModelsStreamingChatModelIT {
@@ -81,17 +80,15 @@ class GitHubModelsStreamingChatModelIT {
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(10);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount())
-                .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
+                .isEqualTo(response.tokenUsage().inputTokenCount()
+                        + response.tokenUsage().outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @ParameterizedTest(name = "Model name {0}")
-    @CsvSource({
-            "Mistral-nemo",
-            "meta-llama-3-8b-instruct"
-    })
-    void test_different_available_models(String modelName) {
+    @CsvSource({"Mistral-nemo", "meta-llama-3-8b-instruct"})
+    void different_available_models(String modelName) {
 
         StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
@@ -110,7 +107,8 @@ class GitHubModelsStreamingChatModelIT {
         assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount())
-                .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
+                .isEqualTo(response.tokenUsage().inputTokenCount()
+                        + response.tokenUsage().outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
@@ -138,9 +136,7 @@ class GitHubModelsStreamingChatModelIT {
     }
 
     @ParameterizedTest(name = "Model name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
+    @CsvSource({"gpt-4o"})
     void should_call_function_with_argument(String modelName) throws Exception {
 
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
@@ -187,7 +183,8 @@ class GitHubModelsStreamingChatModelIT {
         assertThat(aiMessage.text()).isNull();
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
@@ -195,11 +192,13 @@ class GitHubModelsStreamingChatModelIT {
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(0);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
         assertThat(response.tokenUsage().totalTokenCount())
-                .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
+                .isEqualTo(response.tokenUsage().inputTokenCount()
+                        + response.tokenUsage().outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
 
-        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "four");
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                toolExecutionResultMessage(toolExecutionRequest, "four");
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         CompletableFuture<Response<AiMessage>> futureResponse2 = new CompletableFuture<>();
@@ -207,8 +206,7 @@ class GitHubModelsStreamingChatModelIT {
         model.generate(messages, new StreamingResponseHandler<AiMessage>() {
 
             @Override
-            public void onNext(String token) {
-            }
+            public void onNext(String token) {}
 
             @Override
             public void onComplete(Response<AiMessage> response) {
@@ -239,9 +237,7 @@ class GitHubModelsStreamingChatModelIT {
     }
 
     @ParameterizedTest(name = "Model name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
+    @CsvSource({"gpt-4o"})
     void should_call_three_functions_in_parallel(String modelName) throws Exception {
 
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
@@ -252,7 +248,8 @@ class GitHubModelsStreamingChatModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        UserMessage userMessage = userMessage("Give three numbers, ordered by size: the sum of two plus two, the square of four, and finally the cube of eight.");
+        UserMessage userMessage = userMessage(
+                "Give three numbers, ordered by size: the sum of two plus two, the square of four, and finally the cube of eight.");
 
         List<ToolSpecification> toolSpecifications = asList(
                 ToolSpecification.builder()
@@ -270,8 +267,7 @@ class GitHubModelsStreamingChatModelIT {
                         .name("cube")
                         .description("returns the cube of one number")
                         .addParameter("number", INTEGER)
-                        .build()
-        );
+                        .build());
 
         model.generate(singletonList(userMessage), toolSpecifications, new StreamingResponseHandler<AiMessage>() {
 
@@ -304,7 +300,8 @@ class GitHubModelsStreamingChatModelIT {
             assertThat(toolExecutionRequest.name()).isNotEmpty();
             ToolExecutionResultMessage toolExecutionResultMessage;
             if (toolExecutionRequest.name().equals("sum")) {
-                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+                assertThat(toolExecutionRequest.arguments())
+                        .isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
                 toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "4");
             } else if (toolExecutionRequest.name().equals("square")) {
                 assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"number\": 4}");
@@ -322,8 +319,7 @@ class GitHubModelsStreamingChatModelIT {
         model.generate(messages, new StreamingResponseHandler<AiMessage>() {
 
             @Override
-            public void onNext(String token) {
-            }
+            public void onNext(String token) {}
 
             @Override
             public void onComplete(Response<AiMessage> response) {

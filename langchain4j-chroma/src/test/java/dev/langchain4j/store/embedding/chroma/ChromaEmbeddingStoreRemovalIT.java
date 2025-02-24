@@ -20,7 +20,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-public class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
+class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
     private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:0.5.4");

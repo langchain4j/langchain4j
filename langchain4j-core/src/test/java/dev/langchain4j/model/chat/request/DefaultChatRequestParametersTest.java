@@ -1,17 +1,16 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static dev.langchain4j.model.chat.request.ToolChoice.AUTO;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.agent.tool.ToolSpecification;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class DefaultChatRequestParametersTest {
 
     @Test
-    void test_overrideWith() {
+    void override_with() {
 
         // given
         ChatRequestParameters original = DefaultChatRequestParameters.builder()
@@ -25,8 +24,7 @@ class DefaultChatRequestParametersTest {
                 .stopSequences("stop1", "stop2")
                 .toolSpecifications(List.of(
                         ToolSpecification.builder().name("tool1").build(),
-                        ToolSpecification.builder().name("tool2").build()
-                ))
+                        ToolSpecification.builder().name("tool2").build()))
                 .toolChoice(AUTO)
                 .build();
 

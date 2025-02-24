@@ -1,7 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -15,7 +15,7 @@ import software.amazon.awssdk.core.document.Document;
 class AwsDocumentConverterTest {
 
     @Test
-    void test_convert_primitive_types_to_json() {
+    void convert_primitive_types_to_json() {
         // Given
         Map<String, Document> docMap = new HashMap<>();
         docMap.put("string", Document.fromString("test"));
@@ -35,7 +35,7 @@ class AwsDocumentConverterTest {
     }
 
     @Test
-    void test_convert_list_to_json() {
+    void convert_list_to_json() {
         // Given
         List<Document> list =
                 Arrays.asList(Document.fromString("item1"), Document.fromNumber(2), Document.fromBoolean(true));
@@ -54,7 +54,7 @@ class AwsDocumentConverterTest {
     }
 
     @Test
-    void test_convert_nested_object_to_json() {
+    void convert_nested_object_to_json() {
         // Given
         Map<String, Document> innerMap = new HashMap<>();
         innerMap.put("inner_key", Document.fromString("inner_value"));
@@ -72,7 +72,7 @@ class AwsDocumentConverterTest {
     }
 
     @Test
-    void test_convert_json_to_primitive_types() {
+    void convert_json_to_primitive_types() {
         // Given
         String json =
                 """
@@ -95,7 +95,7 @@ class AwsDocumentConverterTest {
     }
 
     @Test
-    void test_convert_json_to_list() {
+    void convert_json_to_list() {
         // Given
         String json =
                 """
@@ -115,7 +115,7 @@ class AwsDocumentConverterTest {
     }
 
     @Test
-    void test_convert_json_to_nested_object() {
+    void convert_json_to_nested_object() {
         // Given
         String json =
                 """
@@ -135,7 +135,7 @@ class AwsDocumentConverterTest {
     }
 
     @Test
-    void test_convert_tool_specification_to_document() {
+    void convert_tool_specification_to_document() {
         // Given
         ToolSpecification toolSpec = ToolSpecification.builder()
                 .name("test-tool")
@@ -163,7 +163,7 @@ class AwsDocumentConverterTest {
     }
 
     @Test
-    void test_handle_empty_document() {
+    void handle_empty_document() {
         // Given
         Document emptyDoc = Document.fromMap(new HashMap<>());
 
@@ -175,11 +175,12 @@ class AwsDocumentConverterTest {
     }
 
     @Test
-    void test_handle_invalid_json() {
+    void handle_invalid_json() {
         // Given
         String invalidJson = "invalid json";
 
         // When/Then
-        assertThrows(RuntimeException.class, () -> AwsDocumentConverter.documentFromJson(invalidJson));
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> AwsDocumentConverter.documentFromJson(invalidJson));
     }
 }

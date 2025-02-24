@@ -1,25 +1,24 @@
 package dev.langchain4j.internal;
 
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureEq;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
-import static dev.langchain4j.internal.ValidationUtils.ensureEq;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @SuppressWarnings("ConstantConditions")
 class ValidationUtilsTest implements WithAssertions {
     @Test
-    public void test_ensureEq() {
+    void ensure_eq() {
         ensureEq(1, 1, "test");
         ensureEq("abc", "abc", "test");
         ensureEq(null, null, "test");
@@ -37,7 +36,7 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
-    public void test_ensureNotNull() {
+    void ensure_not_null() {
         {
             Object obj = new Object();
             assertThat(ValidationUtils.ensureNotNull(obj, "test")).isSameAs(obj);
@@ -53,12 +52,11 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
-    public void test_ensureNotEmpty_collection() {
+    void ensure_not_empty_collection() {
         {
             List<Object> list = new ArrayList<>();
             list.add(new Object());
-            assertThat(ValidationUtils.ensureNotEmpty(list, "test"))
-                    .isSameAs(list);
+            assertThat(ValidationUtils.ensureNotEmpty(list, "test")).isSameAs(list);
         }
 
         {
@@ -76,11 +74,10 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
-    public void test_ensureNotEmpty_array() {
+    void ensure_not_empty_array() {
         {
             Object[] array = {new Object()};
-            assertThat(ValidationUtils.ensureNotEmpty(array, "test"))
-                    .isSameAs(array);
+            assertThat(ValidationUtils.ensureNotEmpty(array, "test")).isSameAs(array);
         }
 
         {
@@ -99,12 +96,11 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
-    public void test_ensureNotEmpty_map() {
+    void ensure_not_empty_map() {
         {
             Map<Object, Object> map = new HashMap<>();
             map.put(new Object(), new Object());
-            assertThat(ValidationUtils.ensureNotEmpty(map, "test"))
-                    .isSameAs(map);
+            assertThat(ValidationUtils.ensureNotEmpty(map, "test")).isSameAs(map);
         }
 
         {
@@ -122,11 +118,10 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
-    public void test_ensureNotBlank() {
+    void ensure_not_blank() {
         {
             String str = " abc  ";
-            assertThat(ValidationUtils.ensureNotBlank(str, "test"))
-                    .isSameAs(str);
+            assertThat(ValidationUtils.ensureNotBlank(str, "test")).isSameAs(str);
         }
 
         {
@@ -141,11 +136,10 @@ class ValidationUtilsTest implements WithAssertions {
                     .isThrownBy(() -> ValidationUtils.ensureNotBlank(null, "test"))
                     .withMessageContaining("test cannot be null or blank");
         }
-
     }
 
     @Test
-    public void test_ensureTrue() {
+    void ensure_true() {
         {
             ValidationUtils.ensureTrue(true, "test");
         }
@@ -188,7 +182,7 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
-    public void test_ensureBetween_int() {
+    void ensure_between_int() {
         {
             ValidationUtils.ensureBetween(1, 0, 1, "test");
         }
@@ -205,7 +199,7 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
-    public void test_ensureBetween_long() {
+    void ensure_between_long() {
         {
             ValidationUtils.ensureBetween(1L, 0, 1, "test");
         }

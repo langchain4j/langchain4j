@@ -1,14 +1,13 @@
 package dev.langchain4j.data.message;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.Arrays;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-
 class AiMessageTest implements WithAssertions {
     @Test
-    public void test_accessors() {
+    void accessors() {
         {
             AiMessage m = new AiMessage("text");
             assertThat(m.type()).isEqualTo(ChatMessageType.AI);
@@ -20,7 +19,8 @@ class AiMessageTest implements WithAssertions {
                     .hasToString("AiMessage { text = \"text\" reasoningContent = null toolExecutionRequests = null }");
         }
         {
-            AiMessage m = new AiMessage(Arrays.asList(                    ToolExecutionRequest.builder().id("foo").build(),
+            AiMessage m = new AiMessage(Arrays.asList(
+                    ToolExecutionRequest.builder().id("foo").build(),
                     ToolExecutionRequest.builder().id("bar").build()));
             assertThat(m.type()).isEqualTo(ChatMessageType.AI);
             assertThat(m.text()).isNull();
@@ -46,7 +46,7 @@ class AiMessageTest implements WithAssertions {
     }
 
     @Test
-    public void test_equals_and_hashCode() {
+    void equals_and_hash_code() {
         AiMessage m1 = new AiMessage("text");
         AiMessage m2 = new AiMessage("text");
         assertThat(m1)
@@ -83,10 +83,11 @@ class AiMessageTest implements WithAssertions {
     }
 
     @Test
-    public void test_from() {
+    void test_from() {
         ToolExecutionRequest[] requests = new ToolExecutionRequest[]{
                 ToolExecutionRequest.builder().id("foo").build(),
-                ToolExecutionRequest.builder().id("bar").build()};
+                ToolExecutionRequest.builder().id("bar").build()
+        };
 
         {
             AiMessage m = AiMessage.from(requests);

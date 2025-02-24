@@ -11,10 +11,10 @@ import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
-public class McpToolsStdioTransportIT extends McpToolsTestBase {
+class McpToolsStdioTransportIT extends McpToolsTestBase {
 
     @BeforeAll
-    public static void setup() {
+    static void setup() {
         McpTransport transport = new StdioMcpTransport.Builder()
                 .command(List.of(
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("tools_mcp_server.java")))
@@ -27,7 +27,7 @@ public class McpToolsStdioTransportIT extends McpToolsTestBase {
     }
 
     @AfterAll
-    public static void teardown() throws Exception {
+    static void teardown() throws Exception {
         if (mcpClient != null) {
             mcpClient.close();
         }

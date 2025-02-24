@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class UrlDocumentLoaderTest implements WithAssertions {
     @Test
-    void test_bad_url() {
+    void bad_url() {
         String url = "bad_url";
 
         assertThatExceptionOfType(IllegalArgumentException.class)
@@ -17,7 +17,8 @@ class UrlDocumentLoaderTest implements WithAssertions {
 
     @Test
     void should_load_text_document() {
-        String url = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/langchain4j/src/test/resources/test-file-utf8.txt";
+        String url =
+                "https://raw.githubusercontent.com/langchain4j/langchain4j/main/langchain4j/src/test/resources/test-file-utf8.txt";
 
         Document document = UrlDocumentLoader.load(url, new TextDocumentParser());
 
