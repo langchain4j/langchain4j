@@ -53,7 +53,6 @@ class OpenAiStreamingChatModelIT {
             .logRequests(true)
             .logResponses(true)
             .build();
-
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
             .description("returns a sum of two numbers")
@@ -454,8 +453,7 @@ class OpenAiStreamingChatModelIT {
 
         // given
         @JsonIgnoreProperties(ignoreUnknown = true) // to ignore the "joke" field
-        record Person(String name, String surname) {
-        }
+        record Person(String name, String surname) {}
 
         String responseFormat = "json_object";
 
