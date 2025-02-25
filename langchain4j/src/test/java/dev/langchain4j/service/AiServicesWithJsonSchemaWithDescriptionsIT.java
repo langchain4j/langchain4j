@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Set;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
@@ -47,7 +48,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_O_MINI)
-            .responseFormat("json_schema")
+            .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
             .strictJsonSchema(true)
             .temperature(0.0)
             .logRequests(true)
