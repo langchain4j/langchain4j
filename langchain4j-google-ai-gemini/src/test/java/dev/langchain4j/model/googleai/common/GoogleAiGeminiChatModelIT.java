@@ -1,16 +1,18 @@
 package dev.langchain4j.model.googleai.common;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
+
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
-
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
-// TODO add streaming counterpart
+    // TODO add streaming counterpart
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
@@ -21,11 +23,19 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
-        return List.of(
-                GOOGLE_AI_GEMINI_CHAT_MODEL
-                // TODO add more model configs, see OpenAiChatModelIT
-        );
+    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
+        return List.of(ChatLanguageModelCapabilities.builder()
+                .model(GOOGLE_AI_GEMINI_CHAT_MODEL)
+                .mnemonicName("google ai gemini chat model")
+                .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO check if supported
+                .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
+                .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO fix
+                .assertExceptionType(false) // TODO fix
+                .assertResponseId(false) // TODO implement
+                .assertFinishReason(false) // TODO implement
+                .assertResponseModel(false) // TODO implement
+                .build());
+        // TODO add more model configs, see OpenAiChatModelIT
     }
 
     @Override
@@ -46,7 +56,6 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
                 .maxOutputTokens(parameters.maxOutputTokens())
                 .stopSequences(parameters.stopSequences())
                 .responseFormat(parameters.responseFormat())
-
                 .build();
     }
 
@@ -58,23 +67,8 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequired() {
         return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return false; // TODO fix
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // TODO check if supported
     }
 
     @Override

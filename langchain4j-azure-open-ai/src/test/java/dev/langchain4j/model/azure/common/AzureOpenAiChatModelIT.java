@@ -1,12 +1,12 @@
 package dev.langchain4j.model.azure.common;
 
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
+
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
+import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelCapabilities;
 import java.util.List;
 
 class AzureOpenAiChatModelIT extends AbstractChatModelIT {
@@ -29,32 +29,38 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
         return List.of(
-                AZURE_OPEN_AI_CHAT_MODEL,
-                AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
-        );
-    }
-
-    @Override
-    @Disabled
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_single_image_as_public_URL(ChatLanguageModel model) {
-        // TODO fix
-    }
-
-    @Override
-    @Disabled
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_public_URLs(ChatLanguageModel model) {
-        // TODO fix
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
+                ChatLanguageModelCapabilities.builder()
+                        .model(AZURE_OPEN_AI_CHAT_MODEL)
+                        .mnemonicName("azure open ai chat model")
+                        .supportsSingleImageInputAsBase64EncodedString(
+                                NOT_SUPPORTED) // Azure OpenAI does not support base64-encoded images
+                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED)
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
+                        .supportsModelNameParameter(NOT_SUPPORTED)
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+                        .supportsStopSequencesParameter(NOT_SUPPORTED)
+                        .assertExceptionType(false)
+                        .assertResponseId(false)
+                        .assertResponseModel(false)
+                        .assertFinishReason(false)
+                        .build(),
+                ChatLanguageModelCapabilities.builder()
+                        .model(AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA)
+                        .mnemonicName("azure open ai chat model with strict schema")
+                        .supportsSingleImageInputAsBase64EncodedString(
+                                NOT_SUPPORTED) // Azure OpenAI does not support base64-encoded images
+                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED)
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
+                        .supportsModelNameParameter(NOT_SUPPORTED)
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+                        .supportsStopSequencesParameter(NOT_SUPPORTED)
+                        .assertExceptionType(false)
+                        .assertResponseId(false)
+                        .assertResponseModel(false)
+                        .assertFinishReason(false)
+                        .build());
     }
 
     @Override
@@ -70,16 +76,6 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsStopSequencesParameter() {
         return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // Azure OpenAI does not support base64-encoded images
     }
 
     @Override

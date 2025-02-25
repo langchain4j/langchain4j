@@ -1,15 +1,8 @@
 package dev.langchain4j.model.ollama.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.ollama.LC4jOllamaContainer;
-import dev.langchain4j.model.ollama.OllamaChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import org.junit.jupiter.api.Disabled;
-
-import java.util.List;
-
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.DISABLED;
+import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
@@ -17,6 +10,15 @@ import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2_VISION;
 import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
+
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelCapabilities;
+import dev.langchain4j.model.ollama.LC4jOllamaContainer;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import java.util.List;
 
 class OllamaChatModelIT extends AbstractChatModelIT {
 
@@ -44,110 +46,96 @@ class OllamaChatModelIT extends AbstractChatModelIT {
         }
     }
 
-    static final OllamaChatModel OLLAMA_CHAT_MODEL_WITH_TOOLS = OllamaChatModel.builder()
-            .baseUrl(ollamaBaseUrl(ollamaWithTools))
-            .modelName(MODEL_WITH_TOOLS)
-            .temperature(0.0)
+    static final ChatLanguageModelCapabilities OLLAMA_CHAT_MODEL_WITH_TOOLS = ChatLanguageModelCapabilities.builder()
+            .model(OllamaChatModel.builder()
+                    .baseUrl(ollamaBaseUrl(ollamaWithTools))
+                    .modelName(MODEL_WITH_TOOLS)
+                    .temperature(0.0)
+                    .build())
+            .mnemonicName("ollama_chat_model_with_tools")
+            .supportsSingleImageInputAsPublicURL(DISABLED) // no exception thrown, image is just silently ignored
+            .supportsSingleImageInputAsBase64EncodedString(
+                    DISABLED) // no exception thrown, image is just silently ignored
+            .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsStopSequencesParameter(NOT_SUPPORTED)
+            .supportsToolChoiceRequired(NOT_SUPPORTED)
+            .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
+            .supportsToolsAndJsonResponseFormatWithSchema(DISABLED)
+            .assertExceptionType(false)
+            .assertResponseId(false)
+            .assertFinishReason(false)
+            .assertResponseModel(false)
             .build();
 
-    static final OllamaChatModel OLLAMA_CHAT_MODEL_WITH_VISION = OllamaChatModel.builder()
-            .baseUrl(ollamaBaseUrl(ollamaWithVision))
-            .modelName(MODEL_WITH_VISION)
-            .temperature(0.0)
+    static final ChatLanguageModelCapabilities OLLAMA_CHAT_MODEL_WITH_VISION = ChatLanguageModelCapabilities.builder()
+            .model(OllamaChatModel.builder()
+                    .baseUrl(ollamaBaseUrl(ollamaWithVision))
+                    .modelName(MODEL_WITH_VISION)
+                    .temperature(0.0)
+                    .build())
+            .mnemonicName("ollama_chat_model_with_vision")
+            .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsTools(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsBase64EncodedStrings(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsPublicURLs(NOT_SUPPORTED)
+            .supportsStopSequencesParameter(NOT_SUPPORTED)
+            .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
+            .assertExceptionType(false)
+            .assertResponseId(false)
+            .assertFinishReason(false)
+            .assertResponseModel(false)
             .build();
 
-    static final OpenAiChatModel OPEN_AI_CHAT_MODEL_WITH_TOOLS = OpenAiChatModel.builder()
-            .apiKey("does not matter")
-            .baseUrl(ollamaBaseUrl(ollamaWithTools) + "/v1")
-            .modelName(MODEL_WITH_TOOLS)
-            .temperature(0.0)
+    static final ChatLanguageModelCapabilities OPEN_AI_CHAT_MODEL_WITH_TOOLS = ChatLanguageModelCapabilities.builder()
+            .model(OpenAiChatModel.builder()
+                    .apiKey("does not matter")
+                    .baseUrl(ollamaBaseUrl(ollamaWithTools) + "/v1")
+                    .modelName(MODEL_WITH_TOOLS)
+                    .temperature(0.0)
+                    .build())
+            .mnemonicName("open_ai_chat_model_with_tools")
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
+            .supportsSingleImageInputAsBase64EncodedString(
+                    DISABLED) // no exception thrown, image is just silently ignored
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
+            .supportsToolsAndJsonResponseFormatWithSchema(DISABLED)
+            .assertExceptionType(false)
+            .assertResponseId(false)
+            .assertFinishReason(false)
+            .assertResponseModel(false)
             .build();
 
-    static final OpenAiChatModel OPEN_AI_CHAT_MODEL_WITH_VISION = OpenAiChatModel.builder()
-            .apiKey("does not matter")
-            .baseUrl(ollamaBaseUrl(ollamaWithVision) + "/v1")
-            .modelName(MODEL_WITH_VISION)
-            .temperature(0.0)
+    static final ChatLanguageModelCapabilities OPEN_AI_CHAT_MODEL_WITH_VISION = ChatLanguageModelCapabilities.builder()
+            .model(OpenAiChatModel.builder()
+                    .apiKey("does not matter")
+                    .baseUrl(ollamaBaseUrl(ollamaWithVision) + "/v1")
+                    .modelName(MODEL_WITH_VISION)
+                    .temperature(0.0)
+                    .build())
+            .mnemonicName("open_ai_chat_model_with_vision")
+            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsTools(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsBase64EncodedStrings(NOT_SUPPORTED)
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // getting invalid image input from model
+            .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
+            .assertExceptionType(false)
+            .assertResponseId(false)
+            .assertFinishReason(false)
+            .assertResponseModel(false)
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_TOOLS,
-                OPEN_AI_CHAT_MODEL_WITH_TOOLS
-                // TODO add more model configs, see OpenAiChatModelIT
-        );
-    }
-
-    @Override
-    protected List<ChatLanguageModel> modelsSupportingImageInputs() {
-        return List.of(
+                OPEN_AI_CHAT_MODEL_WITH_TOOLS,
                 OLLAMA_CHAT_MODEL_WITH_VISION,
                 OPEN_AI_CHAT_MODEL_WITH_VISION
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
-    }
-
-    @Override
-    protected void should_fail_if_modelName_is_not_supported(ChatLanguageModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return;
-        }
-        super.should_fail_if_modelName_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(ChatLanguageModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return;
-        }
-        super.should_fail_if_maxOutputTokens_parameter_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatLanguageModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return;
-        }
-        super.should_fail_if_stopSequences_parameter_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(ChatLanguageModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return;
-        }
-        super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_JSON_response_format_is_not_supported(ChatLanguageModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return;
-        }
-        super.should_fail_if_JSON_response_format_is_not_supported(model);
-    }
-
-    @Override
-    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(ChatLanguageModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return;
-        }
-        super.should_fail_if_JSON_response_format_with_schema_is_not_supported(model);
-    }
-
-    @Override
-    @Disabled("enable after validation is implemented in OllamaChatModel")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(ChatLanguageModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return;
-        }
-        super.should_fail_if_images_as_public_URLs_are_not_supported(model);
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
+                );
     }
 
     @Override
@@ -162,46 +150,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO check if Ollama supports this
-    }
-
-    @Override
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return false; // TODO fix
-    }
-
-    @Override
-    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
-        return false; // vision model only supports a single image per message
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // Ollama supports only base64-encoded images
-    }
-
-    @Override
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return false; // Ollama supports only base64-encoded images
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
         return false; // TODO implement
     }
 }
