@@ -46,6 +46,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlock
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 public class DefaultAnthropicClient extends AnthropicClient {
@@ -304,7 +305,10 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             private Response<AiMessage> build() {
 
-                String text = String.join("\n", contents);
+                String text = contents.stream()
+                        .filter(content -> !content.isEmpty())
+                        .collect(joining("\n"));
+
                 TokenUsage tokenUsage = new AnthropicTokenUsage(inputTokenCount.get(), outputTokenCount.get(), cacheCreationInputTokens.get(), cacheReadInputTokens.get());
                 FinishReason finishReason = toFinishReason(stopReason);
                 Map<String, Object> metadata = createMetadata();
