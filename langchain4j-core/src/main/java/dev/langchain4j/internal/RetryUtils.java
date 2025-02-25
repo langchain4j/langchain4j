@@ -1,5 +1,6 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.exception.UnrecoverableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -190,9 +191,11 @@ public final class RetryUtils {
             while (true) {
                 try {
                     return action.call();
+                } catch (UnrecoverableException e) {
+                    throw e;
                 } catch (Exception e) {
                     if (attempt >= maxAttempts) {
-                        throw new RuntimeException(e);
+                        throw e instanceof RuntimeException re ? re : new RuntimeException(e);
                     }
 
                     log.warn(String.format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);

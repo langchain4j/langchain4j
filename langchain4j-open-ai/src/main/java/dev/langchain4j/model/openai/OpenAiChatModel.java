@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static dev.langchain4j.internal.ExceptionMapper.mappingException;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -163,31 +164,23 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
-        try {
-            ChatCompletionResponse openAiResponse = withRetry(() ->
-                    client.chatCompletion(openAiRequest).execute(), maxRetries);
+        ChatCompletionResponse openAiResponse = withRetry(() ->
+                mappingException(() -> client.chatCompletion(openAiRequest).execute()), maxRetries);
 
-            OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
-                    .id(openAiResponse.id())
-                    .modelName(openAiResponse.model())
-                    .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
-                    .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
-                    .created(openAiResponse.created().longValue())
-                    .serviceTier(openAiResponse.serviceTier())
-                    .systemFingerprint(openAiResponse.systemFingerprint())
-                    .build();
+        OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
+                .id(openAiResponse.id())
+                .modelName(openAiResponse.model())
+                .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
+                .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
+                .created(openAiResponse.created().longValue())
+                .serviceTier(openAiResponse.serviceTier())
+                .systemFingerprint(openAiResponse.systemFingerprint())
+                .build();
 
-            return ChatResponse.builder()
-                    .aiMessage(aiMessageFrom(openAiResponse))
-                    .metadata(responseMetadata)
-                    .build();
-        } catch (RuntimeException e) {
-            if (e.getCause() instanceof HttpException httpException) {
-                throw httpException;
-            } else {
-                throw e;
-            }
-        }
+        return ChatResponse.builder()
+                .aiMessage(aiMessageFrom(openAiResponse))
+                .metadata(responseMetadata)
+                .build();
     }
 
     @Override
