@@ -21,13 +21,13 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.SessionConfig;
 
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.*;
+import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
 
 /**
  * Represents a Vector index as an embedding store.
@@ -37,6 +37,7 @@ import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.*;
 public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(Neo4jEmbeddingStore.class);
+    public static final String FULL_TEXT_CONFIG_ERROR = "You have to populate both `fullTextIndex` and `fullTextQuery` configs";
 
     /* Neo4j Java Driver settings */
     private final Driver driver;
@@ -59,6 +60,11 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final String databaseName;
     private final String retrievalQuery;
     private final Set<String> notMetaKeys;
+
+    private final String fullTextIndexName;
+    private final String fullTextQuery;
+    private final String fullTextRetrievalQuery;
+    private final boolean fullTextAutocreate;
 
     /**
      * Creates an instance of Neo4jEmbeddingStore defining a {@link Driver} 
@@ -98,7 +104,13 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
             String indexName,
             String databaseName,
             String retrievalQuery,
-            long awaitIndexTimeout) {
+            long awaitIndexTimeout,
+
+            String fullTextIndexName,
+            String fullTextQuery,
+            String fullTextRetrievalQuery,
+            boolean fullTextAutocreate
+    ) {
         
         /* required configs */
         this.driver = ensureNotNull(driver, "driver");
@@ -133,9 +145,16 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
                 this.sanitizedIdProperty, this.sanitizedText, this.sanitizedEmbeddingProperty
         );
         this.retrievalQuery = getOrDefault(retrievalQuery, defaultRetrievalQuery);
-        
+
+
         this.notMetaKeys = new HashSet<>(Arrays.asList(this.idProperty, this.embeddingProperty, this.textProperty));
-        
+
+        /* optional full text index */
+        this.fullTextAutocreate = fullTextAutocreate;
+        this.fullTextIndexName = fullTextIndexName;
+        this.fullTextQuery = fullTextQuery;
+        this.fullTextRetrievalQuery = getOrDefault(fullTextRetrievalQuery, this.retrievalQuery);
+
         /* auto-schema creation */
         createSchema();
     }
@@ -174,19 +193,40 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
         var embeddingValue = Values.value(request.queryEmbedding().vector());
 
         try (var session = session()) {
-            Map<String, Object> params = Map.of("indexName", indexName,
+            Map<String, Object> params = new HashMap<>(Map.of("indexName", indexName,
                     "embeddingValue", embeddingValue,
                     "minScore", request.minScore(),
-                    "maxResults", request.maxResults());
+                    "maxResults", request.maxResults())
+            );
+
+            String query = """
+                    CALL db.index.vector.queryNodes($indexName, $maxResults, $embeddingValue)
+                    YIELD node, score
+                    WHERE score >= $minScore
+                    """;
+            String s = query + retrievalQuery;
+
+            if (fullTextIndexName != null) {
+                if (fullTextQuery == null) {
+                    throw new RuntimeException(FULL_TEXT_CONFIG_ERROR);
+                }
+                s += """
+                   \nUNION
+                   CALL db.index.fulltext.queryNodes($fullTextIndexName, $question, {limit: $maxResults})
+                   YIELD node, score
+                   WHERE score >= $minScore
+                   """ + fullTextRetrievalQuery;
+
+                params.putAll(Map.of(
+                        "fullTextIndexName", fullTextIndexName,
+                        "question", fullTextQuery
+                ));
+            }
 
             List<EmbeddingMatch<TextSegment>> matches = session
-                .run("""
-                        CALL db.index.vector.queryNodes($indexName, $maxResults, $embeddingValue)
-                        YIELD node, score
-                        WHERE score >= $minScore
-                        """ + retrievalQuery,
-                    params)
-                .list(item -> toEmbeddingMatch(this, item));
+                    .run(s,
+                            params)
+                    .list(item -> toEmbeddingMatch(this, item));
 
             return new EmbeddingSearchResult<>(matches);
         }
@@ -243,6 +283,7 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (!indexExists()) {
             createIndex();
         }
+        createFullTextIndex();
         createUniqueConstraint();
     }
 
@@ -285,6 +326,19 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
                 throw new RuntimeException(errMessage);
             }
             return true;
+        }
+    }
+
+    private void createFullTextIndex() {
+        if (!fullTextAutocreate) {
+            return;
+        }
+
+        try (var session = session()) {
+
+            final String query = "CREATE FULLTEXT INDEX %s IF NOT EXISTS FOR (n:%s) ON EACH [n.%s]"
+                    .formatted(this.fullTextIndexName, this.sanitizedLabel, this.sanitizedIdProperty);
+            session.run(query).consume();
         }
     }
 
