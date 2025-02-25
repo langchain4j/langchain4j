@@ -1,7 +1,6 @@
 package dev.langchain4j.memory;
 
 import dev.langchain4j.data.message.ChatMessage;
-
 import java.util.List;
 
 /**
@@ -24,6 +23,13 @@ public interface ChatMemory {
      * @param message The {@link ChatMessage} to add.
      */
     void add(ChatMessage message);
+
+    /**
+     * Add a list of messages to the chat memory.
+     *
+     * @param messages The list of {@link ChatMessage} objects to add.
+     */
+    void addAll(List<ChatMessage> messages);
 
     /**
      * Retrieves messages from the chat memory.
