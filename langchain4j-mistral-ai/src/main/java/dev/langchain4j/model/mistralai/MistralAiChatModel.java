@@ -6,12 +6,14 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
@@ -20,7 +22,10 @@ import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a Mistral AI Chat Model with a chat completion interface, such as open-mistral-7b and open-mixtral-8x7b
@@ -30,6 +35,8 @@ import java.util.List;
  */
 public class MistralAiChatModel implements ChatLanguageModel {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MistralAiChatModel.class);
+
     private final MistralAiClient client;
     private final String modelName;
     private final Double temperature;
@@ -38,8 +45,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
     private final Boolean safePrompt;
     private final Integer randomSeed;
     private final String responseFormat;
-
     private final Integer maxRetries;
+    private final List<ChatModelListener> listeners;
 
     /**
      * Constructs a MistralAiChatModel with the specified parameters.
@@ -61,6 +68,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
      * @param logRequests a flag indicating whether to log API requests
      * @param logResponses a flag indicating whether to log API responses
      * @param maxRetries the maximum number of retries for API requests. It uses the default value 3 if not specified
+     * @param listeners  the list of ChatModelListener listening on the StreamingChatModelL usage.
      */
     public MistralAiChatModel(
             String baseUrl,
@@ -75,7 +83,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
             Duration timeout,
             Boolean logRequests,
             Boolean logResponses,
-            Integer maxRetries) {
+            Integer maxRetries,
+            List<ChatModelListener> listeners) {
 
         this.client = MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
@@ -92,6 +101,12 @@ public class MistralAiChatModel implements ChatLanguageModel {
         this.randomSeed = randomSeed;
         this.responseFormat = responseFormat;
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return this.listeners;
     }
 
     /**
@@ -211,6 +226,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
         private Boolean logResponses;
 
         private Integer maxRetries;
+
+        private List<ChatModelListener> listeners;
 
         public MistralAiChatModelBuilder() {}
 
@@ -335,6 +352,15 @@ public class MistralAiChatModel implements ChatLanguageModel {
             return this;
         }
 
+        /**
+         * @param listeners    the list of ChatModelListener listening on the StreamingChatModelL usage.
+         * @return {@code this}.
+         */
+        public MistralAiChatModelBuilder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
         public MistralAiChatModel build() {
             return new MistralAiChatModel(
                     this.baseUrl,
@@ -349,7 +375,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
                     this.timeout,
                     this.logRequests,
                     this.logResponses,
-                    this.maxRetries);
+                    this.maxRetries,
+                    this.listeners);
         }
 
         @Override
