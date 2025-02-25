@@ -7,6 +7,9 @@ import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIServiceVersion;
 import com.azure.ai.openai.models.*;
+import com.azure.core.http.HttpHeader;
+import com.azure.core.http.HttpHeaderName;
+import com.azure.core.http.rest.RequestOptions;
 import com.azure.json.JsonOptions;
 import com.azure.json.JsonReader;
 import com.azure.json.implementation.DefaultJsonReader;
@@ -18,11 +21,15 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InternalAzureOpenAiHelperTest {
 
@@ -55,6 +62,30 @@ class InternalAzureOpenAiHelperTest {
 
         assertThat(client).isNotNull();
     }
+
+    @Test
+    void setupOpenAIAsyncClientShouldReturnClientWithAppIdSuffix() {
+        String endpoint = "https://test-endpoint";
+        String serviceVersion = "test-service-version";
+        String apiKey = "test-api-key";
+        Duration timeout = Duration.ofSeconds(30);
+        Integer maxRetries = 1;
+        boolean logRequestsAndResponses = true;
+        String userAgentSuffix = "test-user-agent-suffix";
+
+        OpenAIClient syncClient = InternalAzureOpenAiHelper.setupOpenAIClientBuilder(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, "", null)
+            .addPolicy((request, next) -> {
+                HttpHeader httpHeader = request.getHttpRequest().getHeaders().get(HttpHeaderName.USER_AGENT);
+                assertTrue(httpHeader.getValue().startsWith(InternalAzureOpenAiHelper.DEFAULT_APP_ID + "-" + userAgentSuffix));
+                return next.process();
+            })
+            .buildClient();
+        assertThat(syncClient).isNotNull();
+
+        ChatCompletionsOptions chatCompletionsOptions = new ChatCompletionsOptions(List.of(new ChatRequestUserMessage("What is the value of pi?")));
+        assertThrows(UncheckedIOException.class, () -> syncClient.getChatCompletionsWithResponse("gpt-4-turbo", chatCompletionsOptions, new RequestOptions()));
+    }
+
 
     @Test
     void getOpenAIServiceVersionShouldReturnCorrectVersion() {
