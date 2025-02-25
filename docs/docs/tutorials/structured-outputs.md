@@ -354,7 +354,7 @@ interface PersonExtractor {
 ChatLanguageModel chatModel = OpenAiChatModel.builder() // see [1] below
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
-        .responseFormat("json_schema") // see [2] below
+        .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA)) // see [2] below
         .strictJsonSchema(true) // see [2] below
         .logRequests(true)
         .logResponses(true)
@@ -422,10 +422,6 @@ The `name` of the generated `JsonSchema` is a simple name of the return type (`g
 in this case: "Person".
 
 Once LLM responds, the output is parsed into an object and returned from the AI Service method.
-:::note
-While we are gradually migrating to Jackson, Gson is still used for parsing the outputs in AI Service,
-so Jackson annotations on your POJOs will have no effect.
-:::
 
 You can find many examples of supported use cases
 [here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaIT.java)

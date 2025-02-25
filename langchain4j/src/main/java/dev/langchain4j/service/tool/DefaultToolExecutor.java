@@ -15,6 +15,7 @@ import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
@@ -220,14 +221,19 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {
+            // Conversion to JSON and back is required when parameterType is a POJO
             return Json.fromJson(Json.toJson(argument), parameterType);
+        }
+
+        if (parameterClass == UUID.class) {
+            return UUID.fromString(argument.toString());
         }
 
         if (argument instanceof String) {
             return Json.fromJson(argument.toString(), parameterClass);
         } else {
-            String result = Json.toJson(argument);
-            return Json.fromJson(result, parameterClass);
+            // Conversion to JSON and back is required when parameterClass is a POJO
+            return Json.fromJson(Json.toJson(argument), parameterClass);
         }
     }
 

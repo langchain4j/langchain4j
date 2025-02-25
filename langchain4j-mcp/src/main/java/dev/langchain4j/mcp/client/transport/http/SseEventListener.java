@@ -36,7 +36,7 @@ public class SseEventListener extends EventSourceListener {
     public void onEvent(EventSource eventSource, String id, String type, String data) {
         if (type.equals("message")) {
             if (logEvents) {
-                log.debug("< {}", data);
+                log.info("< {}", data);
             }
             try {
                 JsonNode jsonNode = OBJECT_MAPPER.readTree(data);

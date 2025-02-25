@@ -19,7 +19,6 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -35,6 +34,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
+import static dev.langchain4j.model.jlama.Json.fromJson;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
@@ -114,7 +114,7 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
 
                     if (aiMessage.hasToolExecutionRequests())
                         for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                            ToolCall toolCall = new ToolCall(toolExecutionRequest.name(), toolExecutionRequest.id(), Json.fromJson(toolExecutionRequest.arguments(), LinkedHashMap.class));
+                            ToolCall toolCall = new ToolCall(toolExecutionRequest.name(), toolExecutionRequest.id(), fromJson(toolExecutionRequest.arguments(), LinkedHashMap.class));
                             promptBuilder.addToolCall(toolCall);
                         }
                 }

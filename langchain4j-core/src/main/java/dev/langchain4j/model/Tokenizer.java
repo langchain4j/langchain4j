@@ -18,6 +18,7 @@ public interface Tokenizer {
 
     /**
      * Estimates the count of tokens in the given text.
+     *
      * @param text the text.
      * @return the estimated count of tokens.
      */
@@ -25,6 +26,7 @@ public interface Tokenizer {
 
     /**
      * Estimates the count of tokens in the given message.
+     *
      * @param message the message.
      * @return the estimated count of tokens.
      */
@@ -32,6 +34,7 @@ public interface Tokenizer {
 
     /**
      * Estimates the count of tokens in the given messages.
+     *
      * @param messages the messages.
      * @return the estimated count of tokens.
      */
@@ -39,18 +42,26 @@ public interface Tokenizer {
 
     /**
      * Estimates the count of tokens in {@code Tool} annotations of the given object.
+     *
      * @param objectWithTools the object.
      * @return the estimated count of tokens.
+     * @deprecated This functionality will not be supported in future versions.
+     * Please reach out if you have any concerns.
      */
+    @Deprecated(forRemoval = true)
     default int estimateTokenCountInTools(Object objectWithTools) {
         return estimateTokenCountInTools(singletonList(objectWithTools));
     }
 
     /**
      * Estimates the count of tokens in {@code Tool} annotations of the given objects.
+     *
      * @param objectsWithTools the objects.
      * @return the estimated count of tokens.
+     * @deprecated This functionality will not be supported in future versions.
+     * Please reach out if you have any concerns.
      */
+    @Deprecated(forRemoval = true)
     default int estimateTokenCountInTools(Iterable<Object> objectsWithTools) {
         List<ToolSpecification> toolSpecifications = new ArrayList<>();
         objectsWithTools.forEach(objectWithTools ->
@@ -60,32 +71,48 @@ public interface Tokenizer {
 
     /**
      * Estimates the count of tokens in the given tool specifications.
+     *
      * @param toolSpecifications the tool specifications.
      * @return the estimated count of tokens.
+     * @deprecated This functionality will not be supported in future versions.
+     * Please reach out if you have any concerns.
      */
+    @Deprecated(forRemoval = true)
     int estimateTokenCountInToolSpecifications(Iterable<ToolSpecification> toolSpecifications);
 
     /**
      * Estimates the count of tokens in the given tool specification.
+     *
      * @param toolSpecification the tool specification.
      * @return the estimated count of tokens.
+     * @deprecated This functionality will not be supported in future versions.
+     * Please reach out if you have any concerns.
      */
+    @Deprecated(forRemoval = true)
     default int estimateTokenCountInForcefulToolSpecification(ToolSpecification toolSpecification) {
         return estimateTokenCountInToolSpecifications(singletonList(toolSpecification));
     }
 
     /**
      * Estimates the count of tokens in the given tool execution requests.
+     *
      * @param toolExecutionRequests the tool execution request.
      * @return the estimated count of tokens.
+     * @deprecated This functionality will not be supported in future versions.
+     * Please reach out if you have any concerns.
      */
+    @Deprecated(forRemoval = true)
     int estimateTokenCountInToolExecutionRequests(Iterable<ToolExecutionRequest> toolExecutionRequests);
 
     /**
      * Estimates the count of tokens in the given tool execution request.
+     *
      * @param toolExecutionRequest the tool execution request.
      * @return the estimated count of tokens.
+     * @deprecated This functionality will not be supported in future versions.
+     * Please reach out if you have any concerns.
      */
+    @Deprecated(forRemoval = true)
     default int estimateTokenCountInForcefulToolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
         return estimateTokenCountInToolExecutionRequests(singletonList(toolExecutionRequest));
     }

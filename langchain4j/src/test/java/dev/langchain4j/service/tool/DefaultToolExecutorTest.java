@@ -1,13 +1,12 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.service.tool.DefaultToolExecutor.coerceArgument;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonMap;
-
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
+
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -17,8 +16,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
+
+import static dev.langchain4j.service.tool.DefaultToolExecutor.coerceArgument;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
 
 class DefaultToolExecutorTest implements WithAssertions {
 
@@ -257,18 +258,21 @@ class DefaultToolExecutorTest implements WithAssertions {
                         "Argument \"arg\" is not convertable to java.math.BigInteger, got java.lang.String: <abc>");
 
         assertThat(coerceArgument(
-                        asList(1.0, 2.0, 3.0), "arg", List.class, new TypeToken<List<Integer>>() {}.getType()))
+                asList(1.0, 2.0, 3.0), "arg", List.class, new TypeReference<List<Integer>>() {
+                }.getType()))
                 .isEqualTo(asList(1, 2, 3));
 
         assertThat(coerceArgument(
-                        new HashSet<>(asList("A", "B")),
-                        "arg",
-                        List.class,
-                        new TypeToken<Set<ExampleEnum>>() {}.getType()))
+                new HashSet<>(asList("A", "B")),
+                "arg",
+                List.class,
+                new TypeReference<Set<ExampleEnum>>() {
+                }.getType()))
                 .isEqualTo(new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
 
         assertThat(coerceArgument(
-                        singletonMap("A", 1.0), "arg", List.class, new TypeToken<Map<String, Integer>>() {}.getType()))
+                singletonMap("A", 1.0), "arg", List.class, new TypeReference<Map<String, Integer>>() {
+                }.getType()))
                 .isEqualTo(singletonMap("A", 1));
     }
 
@@ -405,7 +409,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new PersonTool(), request);
 
         String result = toolExecutor.execute(request, "DEFAULT");
-        assertThat(result).isEqualTo("{\n" + "  \"name\": \"Klaus\",\n" + "  \"age\": 42\n" + "}");
+        assertThat(result).isEqualToIgnoringWhitespace("{\"name\": \"Klaus\",\"age\": 42}");
 
         ToolExecutionRequest request2 = ToolExecutionRequest.builder()
                 .id("2")
@@ -414,16 +418,17 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
         String result2 = toolExecutor2.execute(request2, "DEFAULT");
-        assertThat(result2)
-                .isEqualTo("[\n" + "  {\n"
-                        + "    \"name\": \"Klaus\",\n"
-                        + "    \"age\": 42\n"
-                        + "  },\n"
-                        + "  {\n"
-                        + "    \"name\": \"Peter\",\n"
-                        + "    \"age\": 43\n"
-                        + "  }\n"
-                        + "]");
+        assertThat(result2).isEqualToIgnoringWhitespace("""
+                [
+                  {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                ]""");
 
         ToolExecutionRequest request3 = ToolExecutionRequest.builder()
                 .id("3")
@@ -432,16 +437,17 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
         String result3 = toolExecutor3.execute(request3, "DEFAULT");
-        assertThat(result3)
-                .isEqualTo("[\n" + "  {\n"
-                        + "    \"name\": \"Klaus\",\n"
-                        + "    \"age\": 42\n"
-                        + "  },\n"
-                        + "  {\n"
-                        + "    \"name\": \"Peter\",\n"
-                        + "    \"age\": 43\n"
-                        + "  }\n"
-                        + "]");
+        assertThat(result3).isEqualToIgnoringWhitespace("""
+                [
+                  {
+                    "name": "Peter",
+                    "age": 43
+                  },
+                  {
+                    "name": "Klaus",
+                    "age": 42
+                  }
+                ]""");
 
         ToolExecutionRequest request4 = ToolExecutionRequest.builder()
                 .id("4")
@@ -451,16 +457,17 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
         String result4 = toolExecutor4.execute(request4, "DEFAULT");
-        assertThat(result4)
-                .isEqualTo("{\n" + "  \"p1\": {\n"
-                        + "    \"name\": \"Klaus\",\n"
-                        + "    \"age\": 42\n"
-                        + "  },\n"
-                        + "  \"p2\": {\n"
-                        + "    \"name\": \"Peter\",\n"
-                        + "    \"age\": 43\n"
-                        + "  }\n"
-                        + "}");
+        assertThat(result4).isEqualToIgnoringWhitespace("""
+                {
+                  "p1": {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  "p2": {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                }""");
 
         ToolExecutionRequest request5 = ToolExecutionRequest.builder()
                 .id("5")
@@ -469,15 +476,16 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
         String result5 = toolExecutor5.execute(request5, "DEFAULT");
-        assertThat(result5)
-                .isEqualTo("[\n" + "  {\n"
-                        + "    \"name\": \"Klaus\",\n"
-                        + "    \"age\": 42\n"
-                        + "  },\n"
-                        + "  {\n"
-                        + "    \"name\": \"Peter\",\n"
-                        + "    \"age\": 43\n"
-                        + "  }\n"
-                        + "]");
+        assertThat(result5).isEqualToIgnoringWhitespace("""
+                [
+                  {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                ]""");
     }
 }

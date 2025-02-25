@@ -46,7 +46,7 @@ public class PdfFileContent implements Content {
      * @param base64Data the base64 data of the PDF.
      * @param mimeType the mime type of the PDF.
      */
-    public PdfFileContent(String base64Data, String mimeType) {
+    public PdfFileContent(String base64Data, String mimeType) { // TODO remove mimeType?
         this.pdfFile = PdfFile.builder()
             .base64Data(ensureNotBlank(base64Data, "base64data"))
             .build();
@@ -116,7 +116,7 @@ public class PdfFileContent implements Content {
      * @param mimeType the mime type of the PDF.
      * @return the new {@link PdfFileContent}.
      */
-    public static PdfFileContent from(String base64Data, String mimeType) {
+    public static PdfFileContent from(String base64Data, String mimeType) { // TODO remove mimeType?
         return new PdfFileContent(base64Data, mimeType);
     }
 

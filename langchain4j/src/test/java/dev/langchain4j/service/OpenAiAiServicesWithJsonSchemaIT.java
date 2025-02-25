@@ -6,6 +6,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Arrays.asList;
 
@@ -21,7 +22,7 @@ class OpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                         .modelName(GPT_4_O_MINI)
-                        .responseFormat("json_schema")
+                        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                         .strictJsonSchema(true)
                         .temperature(0.0)
                         .logRequests(true)
@@ -32,7 +33,29 @@ class OpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                         .modelName(GPT_4_O_MINI)
-                        .responseFormat("json_schema")
+                        .responseFormat("json_schema") // testing backward compatibility
+                        .strictJsonSchema(true)
+                        .temperature(0.0)
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build(),
+                OpenAiChatModel.builder()
+                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                        .apiKey(System.getenv("OPENAI_API_KEY"))
+                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .modelName(GPT_4_O_MINI)
+                        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+                        .strictJsonSchema(false)
+                        .temperature(0.0)
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build(),
+                OpenAiChatModel.builder()
+                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                        .apiKey(System.getenv("OPENAI_API_KEY"))
+                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .modelName(GPT_4_O_MINI)
+                        .responseFormat("json_schema") // testing backward compatibility
                         .strictJsonSchema(false)
                         .temperature(0.0)
                         .logRequests(true)

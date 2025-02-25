@@ -4,7 +4,6 @@ import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
-
 import java.util.function.Consumer;
 
 class StreamingRequestExecutor<Response> {
@@ -13,11 +12,7 @@ class StreamingRequestExecutor<Response> {
     private final HttpRequest streamingHttpRequest;
     private final Class<Response> responseClass;
 
-    StreamingRequestExecutor(
-            HttpClient httpClient,
-            HttpRequest streamingHttpRequest,
-            Class<Response> responseClass
-    ) {
+    StreamingRequestExecutor(HttpClient httpClient, HttpRequest streamingHttpRequest, Class<Response> responseClass) {
         this.httpClient = httpClient;
         this.streamingHttpRequest = streamingHttpRequest;
         this.responseClass = responseClass;
@@ -37,11 +32,7 @@ class StreamingRequestExecutor<Response> {
 
                             @Override
                             public ResponseHandle execute() {
-                                return stream(
-                                        partialResponseHandler,
-                                        streamingCompletionCallback,
-                                        errorHandler
-                                );
+                                return stream(partialResponseHandler, streamingCompletionCallback, errorHandler);
                             }
                         };
                     }
@@ -52,13 +43,9 @@ class StreamingRequestExecutor<Response> {
 
                             @Override
                             public ResponseHandle execute() {
-                                return stream(
-                                        partialResponseHandler,
-                                        streamingCompletionCallback,
-                                        (e) -> {
-                                            // intentionally ignoring because user called ignoreErrors()
-                                        }
-                                );
+                                return stream(partialResponseHandler, streamingCompletionCallback, (e) -> {
+                                    // intentionally ignoring because user called ignoreErrors()
+                                });
                             }
                         };
                     }
@@ -76,8 +63,7 @@ class StreamingRequestExecutor<Response> {
                                 () -> {
                                     // intentionally ignoring because user did not provide callback
                                 },
-                                errorHandler
-                        );
+                                errorHandler);
                     }
                 };
             }
@@ -95,8 +81,7 @@ class StreamingRequestExecutor<Response> {
                                 },
                                 (e) -> {
                                     // intentionally ignoring because user called ignoreErrors()
-                                }
-                        );
+                                });
                     }
                 };
             }
@@ -106,8 +91,7 @@ class StreamingRequestExecutor<Response> {
     private ResponseHandle stream(
             Consumer<Response> partialResponseHandler,
             Runnable streamingCompletionCallback,
-            Consumer<Throwable> errorHandler
-    ) {
+            Consumer<Throwable> errorHandler) {
 
         ServerSentEventListener listener = new ServerSentEventListener() {
 
@@ -117,8 +101,11 @@ class StreamingRequestExecutor<Response> {
                 if ("[DONE]".equals(event.data())) {
                     return;
                 }
-
                 try {
+                    if ("error".equals(event.event())) {
+                        errorHandler.accept(new RuntimeException(event.data()));
+                        return;
+                    }
                     Response response = Json.fromJson(event.data(), responseClass);
                     if (response != null) {
                         partialResponseHandler.accept(response); // do not handle exception, fail-fast

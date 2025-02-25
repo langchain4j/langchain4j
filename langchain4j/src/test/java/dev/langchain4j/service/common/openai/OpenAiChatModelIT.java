@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,7 +48,11 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                         .strictTools(true)
                         .build(),
                 defaultModelBuilder()
-                        .responseFormat("json_schema")
+                        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+                        .strictJsonSchema(true)
+                        .build(),
+                defaultModelBuilder()
+                        .responseFormat("json_schema") // testing backward compatibility
                         .strictJsonSchema(true)
                         .build()
                 // TODO json_object?
