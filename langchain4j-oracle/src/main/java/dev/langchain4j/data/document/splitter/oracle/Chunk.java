@@ -7,7 +7,5 @@ public class Chunk {
     public int chunk_length;
     public String chunk_data;
 
-    public Chunk() {
-    }
-
+    public Chunk() {}
 }

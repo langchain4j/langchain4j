@@ -2,12 +2,10 @@ package dev.langchain4j.model.oracle;
 
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

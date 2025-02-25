@@ -1,21 +1,19 @@
 package dev.langchain4j.data.document.loader;
 
-import dev.langchain4j.data.document.loader.oracle.OracleDocumentLoader;
-import dev.langchain4j.data.document.Document;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.loader.oracle.OracleDocumentLoader;
+import io.github.cdimascio.dotenv.Dotenv;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import static org.assertj.core.api.Assertions.assertThat;
 import org.slf4j.LoggerFactory;
-
-import io.github.cdimascio.dotenv.Dotenv;
 
 public class OracleDocumentLoaderTest {
 
@@ -25,17 +23,11 @@ public class OracleDocumentLoaderTest {
     OracleDocumentLoader loader;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws SQLException {
         dotenv = Dotenv.configure().load();
-
-        try {
-            Connection conn = DriverManager.getConnection(
-                    dotenv.get("ORACLE_JDBC_URL"), dotenv.get("ORACLE_JDBC_USER"), dotenv.get("ORACLE_JDBC_PASSWORD"));
-            loader = new OracleDocumentLoader(conn);
-        } catch (SQLException ex) {
-            String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-            log.error(message);
-        }
+        Connection conn = DriverManager.getConnection(
+                dotenv.get("ORACLE_JDBC_URL"), dotenv.get("ORACLE_JDBC_USER"), dotenv.get("ORACLE_JDBC_PASSWORD"));
+        loader = new OracleDocumentLoader(conn);
     }
 
     @Test
@@ -74,7 +66,8 @@ public class OracleDocumentLoaderTest {
     @DisplayName("load from table")
     void testTable() {
         try {
-            String pref = "{\"owner\": \"" + dotenv.get("DEMO_DS_OWNER") + "\", \"tablename\": \"" + dotenv.get("DEMO_DS_TABLE") + "\", \"colname\": \"" + dotenv.get("DEMO_DS_COLUMN") + "\"}";
+            String pref = "{\"owner\": \"" + dotenv.get("DEMO_DS_OWNER") + "\", \"tablename\": \""
+                    + dotenv.get("DEMO_DS_TABLE") + "\", \"colname\": \"" + dotenv.get("DEMO_DS_COLUMN") + "\"}";
             List<Document> docs = loader.loadDocuments(pref);
             assertThat(docs.size()).isGreaterThan(1);
             for (Document doc : docs) {
@@ -85,5 +78,4 @@ public class OracleDocumentLoaderTest {
             log.error(message);
         }
     }
-
 }

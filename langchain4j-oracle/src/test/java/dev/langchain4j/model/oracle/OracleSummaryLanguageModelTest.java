@@ -1,7 +1,9 @@
 package dev.langchain4j.model.oracle;
 
-import dev.langchain4j.model.output.Response;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.output.Response;
+import io.github.cdimascio.dotenv.Dotenv;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -9,15 +11,10 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import static org.assertj.core.api.Assertions.assertThat;
-
-import io.github.cdimascio.dotenv.Dotenv;
-import io.github.cdimascio.dotenv.DotenvException;
 
 public class OracleSummaryLanguageModelTest {
 
@@ -27,16 +24,11 @@ public class OracleSummaryLanguageModelTest {
     Connection conn;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws SQLException {
         dotenv = Dotenv.configure().load();
 
-        try {
-            conn = DriverManager.getConnection(
-                    dotenv.get("ORACLE_JDBC_URL"), dotenv.get("ORACLE_JDBC_USER"), dotenv.get("ORACLE_JDBC_PASSWORD"));
-        } catch (SQLException ex) {
-            String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-            log.error(message);
-        }
+        conn = DriverManager.getConnection(
+                dotenv.get("ORACLE_JDBC_URL"), dotenv.get("ORACLE_JDBC_USER"), dotenv.get("ORACLE_JDBC_PASSWORD"));
     }
 
     @Test
@@ -65,7 +57,7 @@ public class OracleSummaryLanguageModelTest {
                     + "  \"provider\": \"ocigenai\",\n"
                     + "  \"credential_name\": \"OCI_CRED\",\n"
                     + "  \"url\": \"https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/chat\",\n"
-                    + "  \"model\": \"cohere.command-r-16k\",\n"
+                    + "  \"model\": \"cohere.command-r-08-2024\",\n"
                     + "}";
             String proxy = dotenv.get("DEMO_PROXY");
 
@@ -81,8 +73,7 @@ public class OracleSummaryLanguageModelTest {
         }
     }
 
-    static String readFile(String path, Charset encoding)
-            throws IOException {
+    static String readFile(String path, Charset encoding) throws IOException {
         byte[] bytes = Files.readAllBytes(Paths.get(path));
         return new String(bytes, encoding);
     }

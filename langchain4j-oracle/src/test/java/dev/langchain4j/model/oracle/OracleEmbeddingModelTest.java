@@ -1,22 +1,20 @@
 package dev.langchain4j.model.oracle;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
-
+import io.github.cdimascio.dotenv.Dotenv;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import static org.assertj.core.api.Assertions.assertThat;
 import org.slf4j.LoggerFactory;
-
-import io.github.cdimascio.dotenv.Dotenv;
 
 public class OracleEmbeddingModelTest {
 
@@ -26,16 +24,11 @@ public class OracleEmbeddingModelTest {
     Connection conn;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws SQLException {
         dotenv = Dotenv.configure().load();
 
-        try {
-            conn = DriverManager.getConnection(
-                    dotenv.get("ORACLE_JDBC_URL"), dotenv.get("ORACLE_JDBC_USER"), dotenv.get("ORACLE_JDBC_PASSWORD"));
-        } catch (SQLException ex) {
-            String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-            log.error(message);
-        }
+        conn = DriverManager.getConnection(
+                dotenv.get("ORACLE_JDBC_URL"), dotenv.get("ORACLE_JDBC_USER"), dotenv.get("ORACLE_JDBC_PASSWORD"));
     }
 
     @Test
@@ -43,19 +36,20 @@ public class OracleEmbeddingModelTest {
     void testEmbedONNX() {
         try {
             String pref = "{\"provider\": \"database\", \"model\": \"" + dotenv.get("DEMO_ONNX_MODEL") + "\"}";
-            
+
             OracleEmbeddingModel embedder = new OracleEmbeddingModel(conn, pref);
-            
-            boolean result = OracleEmbeddingModel.loadOnnxModel(conn, dotenv.get("DEMO_ONNX_DIR"), dotenv.get("DEMO_ONNX_FILE"), dotenv.get("DEMO_ONNX_MODEL"));
+
+            boolean result = OracleEmbeddingModel.loadOnnxModel(
+                    conn, dotenv.get("DEMO_ONNX_DIR"), dotenv.get("DEMO_ONNX_FILE"), dotenv.get("DEMO_ONNX_MODEL"));
             assertThat(result).isEqualTo(true);
-            
+
             Response<Embedding> resp = embedder.embed("hello world");
             assertThat(resp.content().dimension()).isGreaterThan(1);
-            
+
             TextSegment segment = TextSegment.from("hello world");
             Response<Embedding> resp2 = embedder.embed(segment);
             assertThat(resp2.content().dimension()).isGreaterThan(1);
-            
+
             List<TextSegment> textSegments = new ArrayList<>();
             textSegments.add(TextSegment.from("hello world"));
             textSegments.add(TextSegment.from("goodbye world"));

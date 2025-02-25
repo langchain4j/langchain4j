@@ -1,14 +1,14 @@
 package dev.langchain4j.model.oracle;
 
+import static java.util.stream.Collectors.toList;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import dev.langchain4j.data.document.splitter.oracle.Chunk;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
-
 import java.sql.Array;
 import java.sql.Clob;
 import java.sql.Connection;
@@ -17,10 +17,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import static java.util.stream.Collectors.toList;
-
 import oracle.jdbc.OracleConnection;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,9 +71,7 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<String> texts = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(toList());
+        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
 
         return embedTexts(texts);
     }
@@ -95,7 +90,8 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
 
             if (!batching) {
                 for (String input : inputs) {
-                    String query = "select t.column_value as data from dbms_vector_chain.utl_to_embeddings(?, json(?)) t";
+                    String query =
+                            "select t.column_value as data from dbms_vector_chain.utl_to_embeddings(?, json(?)) t";
                     try (PreparedStatement stmt = conn.prepareStatement(query)) {
                         stmt.setObject(1, input);
                         stmt.setObject(2, pref);
@@ -104,7 +100,8 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
                                 String text = rs.getString("data");
 
                                 ObjectMapper mapper = new ObjectMapper();
-                                dev.langchain4j.model.oracle.Embedding dbmsEmbedding = mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
+                                dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
+                                        mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
                                 Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.embed_vector));
                                 embeddings.add(embedding);
                             }
@@ -126,10 +123,10 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
                             String text = rs.getString("data");
 
                             ObjectMapper mapper = new ObjectMapper();
-                            dev.langchain4j.model.oracle.Embedding dbmsEmbedding = mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
+                            dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
+                                    mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
                             Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.embed_vector));
                             embeddings.add(embedding);
-
                         }
                     }
                 }

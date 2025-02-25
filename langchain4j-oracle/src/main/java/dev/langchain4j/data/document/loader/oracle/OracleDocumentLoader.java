@@ -3,10 +3,8 @@ package dev.langchain4j.data.document.loader.oracle;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,11 +17,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,13 +44,13 @@ public class OracleDocumentLoader {
         JsonNode tableNode = rootNode.path("tablename");
         JsonNode colNode = rootNode.path("colname");
 
-        if (fileNode.textValue() != null) {
+        if (fileNode.textValue() != null && !fileNode.textValue().equals("null")) {
             String filename = fileNode.textValue();
             Document doc = loadDocument(filename, pref);
             if (doc != null) {
                 documents.add(doc);
             }
-        } else if (dirNode.textValue() != null) {
+        } else if (dirNode.textValue() != null && !dirNode.textValue().equals("null")) {
             String dir = dirNode.textValue();
             Path root = Paths.get(dir);
             Files.walk(root).forEach(path -> {
@@ -71,15 +67,15 @@ public class OracleDocumentLoader {
                     }
                 }
             });
-        } else if (colNode.textValue() != null) {
+        } else if (colNode.textValue() != null && !colNode.textValue().equals("null")) {
             String column = colNode.textValue();
 
             String table = tableNode.textValue();
             String owner = ownerNode.textValue();
-            if (table == null) {
+            if (table == null || table.equals("null")) {
                 throw new InvalidParameterException("Missing table in preference");
             }
-            if (owner == null) {
+            if (owner == null || owner.equals("null")) {
                 throw new InvalidParameterException("Missing owner in preference");
             }
 
@@ -96,7 +92,8 @@ public class OracleDocumentLoader {
 
         byte[] bytes = Files.readAllBytes(Paths.get(filename));
 
-        String query = "select dbms_vector_chain.utl_to_text(?, json(?)) text, dbms_vector_chain.utl_to_text(?, json('{\"plaintext\": \"false\"}')) metadata from dual";
+        String query =
+                "select dbms_vector_chain.utl_to_text(?, json(?)) text, dbms_vector_chain.utl_to_text(?, json('{\"plaintext\": \"false\"}')) metadata from dual";
 
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             Blob blob = conn.createBlob();
@@ -114,7 +111,8 @@ public class OracleDocumentLoader {
                     Metadata metadata = getMetadata(html);
                     Path path = Paths.get(filename);
                     metadata.put(Document.FILE_NAME, path.getFileName().toString());
-                    metadata.put(Document.ABSOLUTE_DIRECTORY_PATH, path.getParent().toString());
+                    metadata.put(
+                            Document.ABSOLUTE_DIRECTORY_PATH, path.getParent().toString());
                     document = Document.from(text, metadata);
                 }
             }
@@ -126,7 +124,8 @@ public class OracleDocumentLoader {
     private List<Document> loadDocuments(String owner, String table, String column, String pref) throws SQLException {
         List<Document> documents = new ArrayList<>();
 
-        String query = String.format("select dbms_vector_chain.utl_to_text(t.%s, json(?)) text, dbms_vector_chain.utl_to_text(t.%s, json('{\"plaintext\": \"false\"}')) metadata from %s.%s t",
+        String query = String.format(
+                "select dbms_vector_chain.utl_to_text(t.%s, json(?)) text, dbms_vector_chain.utl_to_text(t.%s, json('{\"plaintext\": \"false\"}')) metadata from %s.%s t",
                 column, column, owner, table);
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setObject(1, pref);
