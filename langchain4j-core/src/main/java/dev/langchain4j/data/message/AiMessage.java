@@ -1,16 +1,17 @@
 package dev.langchain4j.data.message;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+
+import java.util.List;
+import java.util.Objects;
+
 import static dev.langchain4j.data.message.ChatMessageType.AI;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
-
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * Represents a response message from an AI (language model).
@@ -52,9 +53,9 @@ public class AiMessage implements ChatMessage {
      * @param toolExecutionRequests the tool execution requests of the message.
      */
     public AiMessage(String text, List<ToolExecutionRequest> toolExecutionRequests) {
-        this.text = ensureNotBlank(text, "text");
+        this.text = text;
         this.reasoningContent = null;
-        this.toolExecutionRequests = ensureNotEmpty(toolExecutionRequests, "toolExecutionRequests");
+        this.toolExecutionRequests = copyIfNotNull(toolExecutionRequests);
     }
 
     /**
@@ -64,8 +65,8 @@ public class AiMessage implements ChatMessage {
      * @param reasoningContent the reasoning content of the message.
      */
     public AiMessage(String text, String reasoningContent) {
-        this.text = ensureNotNull(text, "text");
-        this.reasoningContent = ensureNotNull(reasoningContent, "reasoningContent");
+        this.text = text;
+        this.reasoningContent = reasoningContent;
         this.toolExecutionRequests = null;
     }
 
@@ -77,9 +78,9 @@ public class AiMessage implements ChatMessage {
      * @param toolExecutionRequests the tool execution requests of the message.
      */
     public AiMessage(String text, String reasoningContent, List<ToolExecutionRequest> toolExecutionRequests) {
-        this.text = ensureNotBlank(text, "text");
-        this.reasoningContent = ensureNotBlank(reasoningContent, "reasoningContent");
-        this.toolExecutionRequests = ensureNotEmpty(toolExecutionRequests, "toolExecutionRequests");
+        this.text = text;
+        this.reasoningContent = reasoningContent;
+        this.toolExecutionRequests = copyIfNotNull(toolExecutionRequests);
     }
 
     /**
@@ -140,10 +141,35 @@ public class AiMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "AiMessage {" + " text = "
-                + quoted(text) + " reasoningContent = "
-                + quoted(reasoningContent) + " toolExecutionRequests = "
-                + toolExecutionRequests + " }";
+        return "AiMessage {" +
+                " text = " + quoted(text) +
+                " reasoningContent = " + quoted(reasoningContent) +
+                " toolExecutionRequests = " + toolExecutionRequests +
+                " }";
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String text;
+        private List<ToolExecutionRequest> toolExecutionRequests;
+
+        public Builder text(String text) {
+            this.text = text;
+            return this;
+        }
+
+        public Builder toolExecutionRequests(List<ToolExecutionRequest> toolExecutionRequests) {
+            this.toolExecutionRequests = toolExecutionRequests;
+            return this;
+        }
+
+        public AiMessage build() {
+            return new AiMessage(text, toolExecutionRequests);
+        }
     }
 
     /**
