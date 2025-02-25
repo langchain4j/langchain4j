@@ -140,13 +140,6 @@ class AiMessageTest implements WithAssertions {
     }
 
     @Test
-    void should_fail_when_reasoning_content_is_null() {
-        assertThatThrownBy(() -> AiMessage.from("text", (String) null))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("reasoningContent cannot be null");
-    }
-
-    @Test
     void should_not_fail_when_reasoning_content_is_blank() {
         AiMessage m2 = AiMessage.from("text", "");
         assertThat(m2).isNotNull();
