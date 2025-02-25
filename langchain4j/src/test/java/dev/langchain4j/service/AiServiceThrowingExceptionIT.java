@@ -57,7 +57,9 @@ class AiServiceThrowingExceptionIT {
                 .chatMemory(chatMemory)
                 .build();
 
-        assertThrows(RuntimeException.class, () -> assistant.chat("hi"));
+        assertThatThrownBy(() -> assistant.chat("hi"))
+                .isExactlyInstanceOf(HttpException.class)
+                .hasMessage("Insufficient quota");
         assertThat(invocationCount.get()).isEqualTo(3);
     }
 }
