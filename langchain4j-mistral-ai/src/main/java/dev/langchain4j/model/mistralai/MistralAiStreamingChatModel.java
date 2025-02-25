@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toMistralAiTools;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -13,12 +14,14 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolChoiceName;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiStreamingChatModelBuilderFactory;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -36,6 +39,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
     private final Boolean safePrompt;
     private final Integer randomSeed;
     private final String responseFormat;
+    private final List<ChatModelListener> listeners;
 
     /**
      * Constructs a MistralAiStreamingChatModel with the specified parameters.
@@ -53,6 +57,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
      * @param logRequests  a flag indicating whether to log raw HTTP requests
      * @param logResponses a flag indicating whether to log raw HTTP responses
      * @param timeout      the timeout duration for API requests
+     * @param listeners    the list of ChatModelListener listening on the StreamingChatModelL usage.
      */
     public MistralAiStreamingChatModel(
             String baseUrl,
@@ -66,7 +71,8 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
             String responseFormat,
             Boolean logRequests,
             Boolean logResponses,
-            Duration timeout) {
+            Duration timeout,
+            List<ChatModelListener> listeners) {
 
         this.client = MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
@@ -82,6 +88,12 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
         this.safePrompt = safePrompt;
         this.randomSeed = randomSeed;
         this.responseFormat = responseFormat;
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return this.listeners;
     }
 
     /**
@@ -204,6 +216,8 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
 
         private Duration timeout;
 
+        private List<ChatModelListener> listeners;
+
         public MistralAiStreamingChatModelBuilder() {}
 
         public MistralAiStreamingChatModelBuilder modelName(String modelName) {
@@ -316,6 +330,15 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
+        /**
+         * @param listeners    the list of ChatModelListener listening on the StreamingChatModelL usage.
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
         public MistralAiStreamingChatModel build() {
             return new MistralAiStreamingChatModel(
                     this.baseUrl,
@@ -329,7 +352,8 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
                     this.responseFormat,
                     this.logRequests,
                     this.logResponses,
-                    this.timeout);
+                    this.timeout,
+                    this.listeners);
         }
 
         @Override
@@ -350,6 +374,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
                             + ", logRequests=" + this.logRequests
                             + ", logResponses=" + this.logResponses
                             + ", timeout=" + this.timeout
+                            + ", listeners=" + this.listeners
                             + ")";
         }
     }
