@@ -155,11 +155,11 @@ and set `additionalProperties=false` for each `object` in json schema. This is d
 
 ### Structured Outputs for Response Format
 To enable the Structured Outputs feature for response formatting when using AI Services,
-set `.responseFormat("json_schema")` and `.strictJsonSchema(true)` when building the model:
+set `.supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)` and `.strictJsonSchema(true)` when building the model:
 ```java
 OpenAiChatModel.builder()
     ...
-    .responseFormat("json_schema")
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
     .strictJsonSchema(true)
     .build();
 ```

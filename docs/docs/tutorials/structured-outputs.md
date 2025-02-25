@@ -354,7 +354,7 @@ interface PersonExtractor {
 ChatLanguageModel chatModel = OpenAiChatModel.builder() // see [1] below
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
-        .responseFormat("json_schema") // see [2] below
+        .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA)) // see [2] below
         .strictJsonSchema(true) // see [2] below
         .logRequests(true)
         .logResponses(true)
