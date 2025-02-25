@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -71,6 +72,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final List<String> stopSequences;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
+    private final String thinkingType;
+    private final Integer thinkingBudgetTokens;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
 
@@ -108,6 +111,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
                                List<String> stopSequences,
                                Boolean cacheSystemMessages,
                                Boolean cacheTools,
+                               String thinkingType,
+                               Integer thinkingBudgetTokens,
                                Duration timeout,
                                Integer maxRetries,
                                Boolean logRequests,
@@ -130,6 +135,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
         this.stopSequences = stopSequences;
         this.cacheSystemMessages = getOrDefault(cacheSystemMessages, false);
         this.cacheTools = getOrDefault(cacheTools, false);
+        this.thinkingType = thinkingType;
+        this.thinkingBudgetTokens = thinkingBudgetTokens;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
@@ -179,6 +186,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .topP(topP)
                 .topK(topK)
                 .tools(toAnthropicTools(toolSpecifications, cacheTools ? EPHEMERAL : NO_CACHE))
+                .thinking(toThinking(thinkingType, thinkingBudgetTokens))
                 .build();
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
@@ -243,5 +251,16 @@ public class AnthropicChatModel implements ChatLanguageModel {
             throw e;
         }
     }
+
+    static AnthropicThinking toThinking(String thinkingType, Integer thinkingBudgetTokens) {
+        if (thinkingType != null || thinkingBudgetTokens != null) {
+            return AnthropicThinking.builder()
+                    .type(thinkingType)
+                    .budgetTokens(thinkingBudgetTokens)
+                    .build();
+        }
+        return null;
+    }
+
     // TODO forcing tool use?
 }
