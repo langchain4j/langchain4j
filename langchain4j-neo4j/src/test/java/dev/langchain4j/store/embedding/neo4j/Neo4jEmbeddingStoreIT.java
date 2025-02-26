@@ -48,7 +48,6 @@ import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore.FULL_TEXT_CONFIG_ERROR;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_EMBEDDING_PROP;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_ID_PROP;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_TEXT_PROP;
@@ -118,32 +117,6 @@ class Neo4jEmbeddingStoreIT {
     }
 
     @Test
-    void should_throws_error_if_full_text_query_not_exists() {
-        Neo4jEmbeddingStore embeddingStore = Neo4jEmbeddingStore.builder()
-                .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
-                .dimension(384)
-                .fullTextIndexName("full_text_without_query")
-                .label(LABEL_TO_SANITIZE)
-                .build();
-
-        List<Embedding> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
-        embeddingStore.addAll(embeddings);
-
-        final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
-
-        final EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
-                .queryEmbedding(queryEmbedding)
-                .maxResults(3)
-                .build();
-        try {
-            embeddingStore.search(embeddingSearchRequest).matches();
-            fail("should fail due to not existent index");
-        } catch (Exception e) {
-            assertThat(e.getMessage()).contains(FULL_TEXT_CONFIG_ERROR);
-        }
-    }
-
-    @Test
     void should_throws_error_if_full_text_retrieval_is_invalid() {
         Neo4jEmbeddingStore embeddingStore = Neo4jEmbeddingStore.builder()
                 .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
@@ -155,7 +128,8 @@ class Neo4jEmbeddingStoreIT {
                 .label(LABEL_TO_SANITIZE)
                 .build();
 
-        List<Embedding> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
+        List<Embedding> embeddings =
+                embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
         embeddingStore.addAll(embeddings);
 
         final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
@@ -173,6 +147,22 @@ class Neo4jEmbeddingStoreIT {
     }
 
     @Test
+    void row_batches_20000_elements_and_full_text() {
+        Neo4jEmbeddingStore embeddingStore = Neo4jEmbeddingStore.builder()
+                .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
+                .dimension(384)
+                .label("labelBatch")
+                .indexName("movie_vector")
+                .fullTextIndexName("fullTextIndexNameBatch")
+                .fullTextQuery("fullTextSearchBatch")
+                .build();
+        List<List<Map<String, Object>>> rowsBatched = getListRowsBatched(20000, embeddingStore);
+        assertThat(rowsBatched).hasSize(2);
+        assertThat(rowsBatched.get(0)).hasSize(10000);
+        assertThat(rowsBatched.get(1)).hasSize(10000);
+    }
+
+    @Test
     void should_throws_error_if_fulltext_doesnt_exist() {
         Neo4jEmbeddingStore embeddingStore = Neo4jEmbeddingStore.builder()
                 .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
@@ -182,7 +172,8 @@ class Neo4jEmbeddingStoreIT {
                 .label(LABEL_TO_SANITIZE)
                 .build();
 
-        List<Embedding> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
+        List<Embedding> embeddings =
+                embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
         embeddingStore.addAll(embeddings);
 
         final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
@@ -211,7 +202,8 @@ class Neo4jEmbeddingStoreIT {
                 .label(LABEL_TO_SANITIZE)
                 .build();
 
-        List<Embedding> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
+        List<Embedding> embeddings =
+                embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
         embeddingStore.addAll(embeddings);
 
         final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
@@ -221,12 +213,13 @@ class Neo4jEmbeddingStoreIT {
                 .maxResults(1)
                 .build();
 
-        final List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(embeddingSearchRequest).matches();
+        final List<EmbeddingMatch<TextSegment>> matches =
+                embeddingStore.search(embeddingSearchRequest).matches();
         assertThat(matches).hasSize(1);
     }
 
     @Test
-    void should_add_embedding_with_id1() {
+    void should_add_embedding_with_id() {
 
         final String fullTextIndexName = "movie_text";
         final String label = "Movie";
@@ -249,8 +242,7 @@ class Neo4jEmbeddingStoreIT {
                 "Top Gun: I feel the need, the need for speed.",
                 "Jerry Maguire: The rest of his life begins now.",
                 "Stand By Me: For some, it's the last real taste of innocence, and the first real taste of life. But for everyone, it's the time that memories are made of.",
-                "As Good as It Gets: A comedy from the heart that goes for the throat."
-        );
+                "As Good as It Gets: A comedy from the heart that goes for the throat.");
 
         final List<TextSegment> segments = texts.stream().map(TextSegment::from).toList();
 
@@ -270,7 +262,8 @@ class Neo4jEmbeddingStoreIT {
                 .queryEmbedding(queryEmbedding)
                 .maxResults(3)
                 .build();
-        final List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(embeddingSearchRequest).matches();
+        final List<EmbeddingMatch<TextSegment>> matches =
+                embeddingStore.search(embeddingSearchRequest).matches();
         assertThat(matches).hasSize(3);
         matches.forEach(i -> {
             final String embeddedText = i.embedded().text();
@@ -330,8 +323,7 @@ class Neo4jEmbeddingStoreIT {
             return null;
         });
 
-        final List<TextSegment> split = new DocumentByParagraphSplitter(20, 10)
-                .split(textDocument);
+        final List<TextSegment> split = new DocumentByParagraphSplitter(20, 10).split(textDocument);
 
         List<Embedding> embeddings = embeddingModel.embedAll(split).content();
         embeddingStore.addAll(embeddings, split);
@@ -342,7 +334,8 @@ class Neo4jEmbeddingStoreIT {
                 .queryEmbedding(queryEmbedding)
                 .maxResults(3)
                 .build();
-        final List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(embeddingSearchRequest).matches();
+        final List<EmbeddingMatch<TextSegment>> matches =
+                embeddingStore.search(embeddingSearchRequest).matches();
         matches.forEach(i -> {
             final String embeddedText = i.embedded().text();
             assertThat(embeddedText).contains("Elizabeth");
@@ -350,7 +343,7 @@ class Neo4jEmbeddingStoreIT {
 
         String wikiContent = textDocument.text().split("Signature ")[1];
         wikiContent = wikiContent.substring(0, 5000);
-
+        
         final String userMessage = String.format("""
                         Can you transform the following text into Cypher statements using both nodes and relationships?
                         Each node and relation should have a single property "id",\s
@@ -382,7 +375,8 @@ class Neo4jEmbeddingStoreIT {
             });
         }
 
-        final List<EmbeddingMatch<TextSegment>> matchesWithFullText = embeddingStore.search(embeddingSearchRequest).matches();
+        final List<EmbeddingMatch<TextSegment>> matchesWithFullText =
+                embeddingStore.search(embeddingSearchRequest).matches();
         assertThat(matchesWithFullText).hasSize(3);
         matchesWithFullText.forEach(i -> {
             final String embeddedText = i.embedded().text();
@@ -698,6 +692,10 @@ class Neo4jEmbeddingStoreIT {
     }
 
     private List<List<Map<String, Object>>> getListRowsBatched(int numElements) {
+        return getListRowsBatched(numElements, (Neo4jEmbeddingStore) embeddingStore);
+    }
+
+    private List<List<Map<String, Object>>> getListRowsBatched(int numElements, Neo4jEmbeddingStore embeddingStore) {
         List<TextSegment> embedded = IntStream.range(0, numElements)
                 .mapToObj(i -> TextSegment.from("text-" + i))
                 .toList();
@@ -705,7 +703,7 @@ class Neo4jEmbeddingStoreIT {
                 IntStream.range(0, numElements).mapToObj(i -> "id-" + i).toList();
         List<Embedding> embeddings = embeddingModel.embedAll(embedded).content();
 
-        return Neo4jEmbeddingUtils.getRowsBatched((Neo4jEmbeddingStore) embeddingStore, ids, embeddings, embedded)
+        return Neo4jEmbeddingUtils.getRowsBatched(embeddingStore, ids, embeddings, embedded)
                 .toList();
     }
 

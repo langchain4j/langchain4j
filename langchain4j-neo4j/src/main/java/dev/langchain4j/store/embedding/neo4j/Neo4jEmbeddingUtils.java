@@ -28,6 +28,7 @@ class Neo4jEmbeddingUtils {
     public static final String DEFAULT_EMBEDDING_PROP = "embedding";
     public static final String PROPS = "props";
     public static final String DEFAULT_IDX_NAME = "vector";
+    public static final String DEFAULT_FULLTEXT_IDX_NAME = "fulltext";
     public static final String DEFAULT_LABEL = "Document";
     public static final String DEFAULT_TEXT_PROP = "text";
     public static final long DEFAULT_AWAIT_INDEX_TIMEOUT = 60L;
