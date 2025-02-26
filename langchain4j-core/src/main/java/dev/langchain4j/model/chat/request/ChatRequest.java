@@ -122,7 +122,7 @@ public class ChatRequest {
         /**
          * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#toolSpecifications()} instead
          */
-        @Deprecated(forRemoval = true)
+        @Deprecated(forRemoval = true) // TODO keep?
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return this;
@@ -131,7 +131,7 @@ public class ChatRequest {
         /**
          * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#toolSpecifications()} instead
          */
-        @Deprecated(forRemoval = true)
+        @Deprecated(forRemoval = true) // TODO keep?
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
@@ -139,7 +139,7 @@ public class ChatRequest {
         /**
          * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#responseFormat()} instead
          */
-        @Deprecated(forRemoval = true)
+        @Deprecated(forRemoval = true) // TODO keep?
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;

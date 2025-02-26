@@ -1,7 +1,7 @@
 package dev.langchain4j.model.vertexai;
 
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponse;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT;
@@ -467,12 +467,12 @@ class VertexAiGeminiStreamingChatModelIT {
         String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
         StringBuilder accumulatedResponse = new StringBuilder();
-        model.generate(userMessage, onNext(accumulatedResponse::append));
+        model.generate(userMessage, onPartialResponse(accumulatedResponse::append));
         assertThat(accumulatedResponse.toString()).isNotEqualToIgnoringWhitespace(expectedJson);
 
         // when
         accumulatedResponse = new StringBuilder();
-        modelWithResponseMimeType.generate(userMessage, onNext(accumulatedResponse::append));
+        modelWithResponseMimeType.generate(userMessage, onPartialResponse(accumulatedResponse::append));
 
         // then
         assertThat(accumulatedResponse.toString()).isEqualToIgnoringWhitespace(expectedJson);
@@ -498,7 +498,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         Exception exception = assertThrows(
-                RuntimeException.class, () -> model.generate("You're a dumb bastard!!!", onNext(System.out::println)));
+                RuntimeException.class, () -> model.generate("You're a dumb bastard!!!", onPartialResponse(System.out::println)));
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -537,7 +537,7 @@ class VertexAiGeminiStreamingChatModelIT {
         messages.add(UserMessage.from("Anna is a 23 year old artist from New York City. She's got a dog and a cat."));
 
         StringBuilder accumulatedResponse = new StringBuilder();
-        model.generate(messages, onNext(accumulatedResponse::append));
+        model.generate(messages, onPartialResponse(accumulatedResponse::append));
         String response = accumulatedResponse.toString();
 
         // then

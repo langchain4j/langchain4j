@@ -1,21 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
-import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,19 +11,39 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.Base64;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+
+import java.util.Base64;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
+import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelIT {
@@ -65,21 +69,21 @@ class OpenAiStreamingChatModelIT {
     void should_stream_answer() throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        model.generate("What is the capital of Germany?", new StreamingResponseHandler<AiMessage>() {
+        model.chat("What is the capital of Germany?", new StreamingChatResponseHandler() {
 
             private final StringBuilder answerBuilder = new StringBuilder();
 
             @Override
-            public void onNext(String token) {
-                answerBuilder.append(token);
+            public void onPartialResponse(String partialResponse) {
+                answerBuilder.append(partialResponse);
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
+            public void onCompleteResponse(ChatResponse completeResponse) {
                 futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(response);
+                futureResponse.complete(completeResponse);
             }
 
             @Override
@@ -90,10 +94,10 @@ class OpenAiStreamingChatModelIT {
         });
 
         String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
 
         assertThat(answer).contains("Berlin");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
 
         assertTokenUsage(response.tokenUsage());
 
@@ -117,17 +121,18 @@ class OpenAiStreamingChatModelIT {
                 .logResponses(true)
                 .build();
 
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
-        model.generate("Tell me a long story", new StreamingResponseHandler<AiMessage>() {
+        model.chat("Tell me a long story", new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {}
+            public void onPartialResponse(String partialResponse) {
+            }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                futureResponse.complete(response);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
             }
 
             @Override
@@ -136,10 +141,10 @@ class OpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(maxTokens);
         assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
@@ -161,17 +166,18 @@ class OpenAiStreamingChatModelIT {
                 .logResponses(true)
                 .build();
 
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
-        model.generate("Tell me a long story", new StreamingResponseHandler<AiMessage>() {
+        model.chat("Tell me a long story", new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {}
+            public void onPartialResponse(String partialResponse) {
+            }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                futureResponse.complete(response);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
             }
 
             @Override
@@ -180,10 +186,10 @@ class OpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(maxCompletionTokens);
         assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
@@ -193,22 +199,26 @@ class OpenAiStreamingChatModelIT {
 
         // given
         UserMessage userMessage = userMessage("2+2=?");
-        List<ToolSpecification> toolSpecifications = singletonList(calculator);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(calculator)
+                .build();
 
         // when
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        model.generate(singletonList(userMessage), toolSpecifications, new StreamingResponseHandler<AiMessage>() {
+        model.chat(chatRequest, new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {
+            public void onPartialResponse(String partialResponse) {
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                futureResponse.complete(response);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
             }
 
             @Override
@@ -217,8 +227,8 @@ class OpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
-        AiMessage aiMessage = response.content();
+        ChatResponse response = futureResponse.get(30, SECONDS);
+        AiMessage aiMessage = response.aiMessage();
 
         // then
         assertThat(aiMessage.text()).isNull();
@@ -240,16 +250,17 @@ class OpenAiStreamingChatModelIT {
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         // when
-        CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
 
-        model.generate(messages, new StreamingResponseHandler<AiMessage>() {
-
-            @Override
-            public void onNext(String token) {}
+        model.chat(messages, new StreamingChatResponseHandler() {
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                secondFutureResponse.complete(response);
+            public void onPartialResponse(String partialResponse) {
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                secondFutureResponse.complete(completeResponse);
             }
 
             @Override
@@ -258,8 +269,8 @@ class OpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.content();
+        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
+        AiMessage secondAiMessage = secondResponse.aiMessage();
 
         // then
         assertThat(secondAiMessage.text()).contains("4");
@@ -276,20 +287,28 @@ class OpenAiStreamingChatModelIT {
         // given
         UserMessage userMessage = userMessage("2+2=?");
 
-        // when
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(calculator)
+                        .toolChoice(REQUIRED)
+                        .build())
+                .build();
 
-        model.generate(singletonList(userMessage), calculator, new StreamingResponseHandler<AiMessage>() {
+        // when
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        model.chat(chatRequest, new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {
+            public void onPartialResponse(String partialResponse) {
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                futureResponse.complete(response);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
             }
 
             @Override
@@ -298,8 +317,8 @@ class OpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
-        AiMessage aiMessage = response.content();
+        ChatResponse response = futureResponse.get(30, SECONDS);
+        AiMessage aiMessage = response.aiMessage();
 
         // then
         assertThat(aiMessage.text()).isNull();
@@ -321,16 +340,17 @@ class OpenAiStreamingChatModelIT {
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         // when
-        CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
 
-        model.generate(messages, new StreamingResponseHandler<AiMessage>() {
-
-            @Override
-            public void onNext(String token) {}
+        model.chat(messages, new StreamingChatResponseHandler() {
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                secondFutureResponse.complete(response);
+            public void onPartialResponse(String partialResponse) {
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                secondFutureResponse.complete(completeResponse);
             }
 
             @Override
@@ -339,8 +359,8 @@ class OpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.content();
+        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
+        AiMessage secondAiMessage = secondResponse.aiMessage();
 
         // then
         assertThat(secondAiMessage.text()).contains("4");
@@ -366,22 +386,26 @@ class OpenAiStreamingChatModelIT {
                 .build();
 
         UserMessage userMessage = userMessage("2+2=? 3+3=?");
-        List<ToolSpecification> toolSpecifications = singletonList(calculator);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(calculator)
+                .build();
 
         // when
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        model.generate(singletonList(userMessage), toolSpecifications, new StreamingResponseHandler<AiMessage>() {
+        model.chat(chatRequest, new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {
+            public void onPartialResponse(String partialResponse) {
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                futureResponse.complete(response);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
             }
 
             @Override
@@ -390,8 +414,8 @@ class OpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
-        AiMessage aiMessage = response.content();
+        ChatResponse response = futureResponse.get(30, SECONDS);
+        AiMessage aiMessage = response.aiMessage();
 
         // then
         assertThat(aiMessage.text()).isNull();
@@ -419,16 +443,17 @@ class OpenAiStreamingChatModelIT {
                 asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
 
         // when
-        CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
 
-        model.generate(messages, new StreamingResponseHandler<AiMessage>() {
-
-            @Override
-            public void onNext(String token) {}
+        model.chat(messages, new StreamingChatResponseHandler() {
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                secondFutureResponse.complete(response);
+            public void onPartialResponse(String partialResponse) {
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                secondFutureResponse.complete(completeResponse);
             }
 
             @Override
@@ -437,8 +462,8 @@ class OpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.content();
+        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
+        AiMessage secondAiMessage = secondResponse.aiMessage();
 
         // then
         assertThat(secondAiMessage.text()).contains("4", "6");
@@ -474,12 +499,12 @@ class OpenAiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
 
         // then
-        Person person = new ObjectMapper().readValue(response.content().text(), Person.class);
+        Person person = new ObjectMapper().readValue(response.aiMessage().text(), Person.class);
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.surname).isEqualTo("Heisler");
     }
@@ -492,12 +517,12 @@ class OpenAiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(imageContent);
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -509,12 +534,12 @@ class OpenAiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(imageContent);
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -525,12 +550,12 @@ class OpenAiStreamingChatModelIT {
                 TextContent.from("What do you see? Reply in one word."), ImageContent.from(CAT_IMAGE_URL));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -543,12 +568,12 @@ class OpenAiStreamingChatModelIT {
                 ImageContent.from(DICE_IMAGE_URL));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -561,12 +586,12 @@ class OpenAiStreamingChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @ParameterizedTest
@@ -574,10 +599,10 @@ class OpenAiStreamingChatModelIT {
             value = OpenAiChatModelName.class,
             mode = EXCLUDE,
             names = {
-                "GPT_4_32K", // don't have access
-                "GPT_4_32K_0613", // don't have access
-                "O1", // don't have access
-                "O1_2024_12_17", // don't have access
+                    "GPT_4_32K", // don't have access
+                    "GPT_4_32K_0613", // don't have access
+                    "O1", // don't have access
+                    "O1_2024_12_17", // don't have access
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
@@ -594,12 +619,12 @@ class OpenAiStreamingChatModelIT {
         String question = "What is the capital of Germany?";
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(question, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(question, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("Berlin");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
     }
 
     @Test
