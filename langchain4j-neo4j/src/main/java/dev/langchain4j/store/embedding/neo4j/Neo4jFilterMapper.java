@@ -19,8 +19,12 @@ import java.util.AbstractMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
+
 
 public class Neo4jFilterMapper {
+
+    public static final String UNSUPPORTED_FILTER_TYPE_ERROR = "Unsupported filter type: ";
 
     public static class IncrementalKeyMap {
         @Getter
@@ -68,7 +72,7 @@ public class Neo4jFilterMapper {
         } else if (filter instanceof Or item) {
             return mapOr(item);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException(UNSUPPORTED_FILTER_TYPE_ERROR + filter.getClass().getName());
         }
     }
 
@@ -76,8 +80,17 @@ public class Neo4jFilterMapper {
         // put ($param_N, <value>) entry map
         final String param = map.put(value);
 
-        return "n.`%s` %s $%s".formatted(
-                key, operator, param
+        String sanitizedKey = sanitize(key)
+                .orElseThrow(() -> {
+                    String invalidSanitizeValue = String.format("The key %s, to assign to the operator %s and value %s, cannot be safely quoted",
+                            key,
+                            operator,
+                            value);
+                    return new RuntimeException(invalidSanitizeValue);
+                });
+        
+        return "n.%s %s $%s".formatted(
+                sanitizedKey, operator, param
         );
     }
 
