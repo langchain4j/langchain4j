@@ -102,7 +102,7 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
                                 ObjectMapper mapper = new ObjectMapper();
                                 dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
                                         mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
-                                Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.embed_vector));
+                                Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.getVector()));
                                 embeddings.add(embedding);
                             }
                         }
@@ -125,7 +125,7 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
                             ObjectMapper mapper = new ObjectMapper();
                             dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
                                     mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
-                            Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.embed_vector));
+                            Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.getVector()));
                             embeddings.add(embedding);
                         }
                     }
@@ -146,8 +146,8 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
         for (int i = 0; i < inputs.size(); i++) {
             // Create JSON string
             Chunk chunk = new Chunk();
-            chunk.chunk_id = i;
-            chunk.chunk_data = inputs.get(i);
+            chunk.setId(i);
+            chunk.setData(inputs.get(i));
             String jsonString = objectMapper.writeValueAsString(chunk);
 
             Clob clob = conn.createClob();

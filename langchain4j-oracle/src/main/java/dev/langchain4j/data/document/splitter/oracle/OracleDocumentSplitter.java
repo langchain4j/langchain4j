@@ -71,7 +71,7 @@ public class OracleDocumentSplitter implements DocumentSplitter {
 
                     ObjectMapper mapper = new ObjectMapper();
                     Chunk chunk = mapper.readValue(text, Chunk.class);
-                    strArr.add(chunk.chunk_data);
+                    strArr.add(chunk.getData());
                 }
             }
         }
