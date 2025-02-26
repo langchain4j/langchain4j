@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
@@ -22,7 +23,10 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
-        assertThat(completeResponse.aiMessage().text()).isEqualTo(responseBuilder.toString());
+        AiMessage aiMessage = completeResponse.aiMessage();
+        if (!aiMessage.hasToolExecutionRequests()) {
+            assertThat(aiMessage.text()).isEqualTo(responseBuilder.toString());
+        }
         futureResponse.complete(completeResponse);
     }
 

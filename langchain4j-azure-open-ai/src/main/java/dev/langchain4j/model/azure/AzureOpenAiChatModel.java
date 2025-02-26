@@ -13,6 +13,7 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toOpenAiMess
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -29,6 +30,7 @@ import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
@@ -43,6 +45,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -380,33 +383,36 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null, this.responseFormat);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null, this.responseFormat);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification, this.responseFormat);
-    }
-
-    @Override
     public ChatResponse chat(ChatRequest request) {
 
         ChatRequestParameters parameters = request.parameters();
         ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.toolChoice());
+        if (parameters.toolChoice() == REQUIRED) {
+            if (parameters.toolSpecifications().size() != 1) {
+                throw new UnsupportedFeatureException(
+                        String.format("%s.%s is currently supported only when there is a single tool",
+                                ToolChoice.class.getSimpleName(), REQUIRED.name()));
+            }
+        }
 
         // If the response format is not specified in the request, use the one specified in the model
-        ResponseFormat responseFormat = request.responseFormat();
+        ResponseFormat responseFormat = parameters.responseFormat();
         if (responseFormat == null) {
             responseFormat = this.responseFormat;
         }
-        Response<AiMessage> response = generate(request.messages(), request.toolSpecifications(), null, responseFormat);
+
+        ToolSpecification toolThatMustBeExecuted = null;
+        if (parameters.toolChoice() == REQUIRED) {
+            toolThatMustBeExecuted = parameters.toolSpecifications().get(0);
+        }
+
+        Response<AiMessage> response = generate(
+                request.messages(),
+                parameters.toolSpecifications(),
+                toolThatMustBeExecuted,
+                responseFormat
+        );
+
         return ChatResponse.builder()
                 .aiMessage(response.content())
                 .metadata(ChatResponseMetadata.builder()

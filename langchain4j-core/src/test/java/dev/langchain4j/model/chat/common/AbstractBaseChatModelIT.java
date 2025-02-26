@@ -1218,7 +1218,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return true;
     }
 
-    protected boolean supportsToolChoiceRequired() {
+    protected boolean supportsToolChoiceRequired() { // TODO everyone should override supportsToolChoiceRequiredWithMultipleTools instead
         return true;
     }
 
