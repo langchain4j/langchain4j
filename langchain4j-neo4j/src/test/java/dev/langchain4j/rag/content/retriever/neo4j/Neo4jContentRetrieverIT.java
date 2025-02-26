@@ -139,9 +139,7 @@ class Neo4jContentRetrieverIT {
         // remove existing `Book` and `Person` entities
         driver.session().run("MATCH (n) DETACH DELETE n");
         // recreate Neo4jGraph instead of reuse `this.graph`, otherwise it remains the old one with (:Book), etc..
-        final Neo4jGraph graphStreamer = Neo4jGraph.builder()
-                .driver(driver)
-                .build();
+        final Neo4jGraph graphStreamer = Neo4jGraph.builder().driver(driver).build();
         
         URI resource =  getClass().getClassLoader().getResource("streamer_dataset.cypher")
                 .toURI();
@@ -197,14 +195,18 @@ class Neo4jContentRetrieverIT {
 
         // Then
         // retry mechanism since the result is not deterministic
-        final String text = RetryUtils.withRetry(() -> {
-            List<Content> contents = neo4jContentRetriever.retrieve(query);
-            assertThat(contents).hasSize(1);
-            return contents.get(0).textSegment().text();
-        }, 5);
+        final String text = RetryUtils.withRetry(
+                () -> {
+                    List<Content> contents = neo4jContentRetriever.retrieve(query);
+                    assertThat(contents).hasSize(1);
+                    return contents.get(0).textSegment().text();
+                },
+                5);
 
         // check validity of the response
-        final String name = driver.session().run("MATCH (s:Stream)-[:HAS_LANGUAGE]->(l:Language {name: 'Italian'}) RETURN s.name ORDER BY s.followers DESC LIMIT 1")
+        final String name = driver.session()
+                .run(
+                        "MATCH (s:Stream)-[:HAS_LANGUAGE]->(l:Language {name: 'Italian'}) RETURN s.name ORDER BY s.followers DESC LIMIT 1")
                 .single()
                 .values()
                 .get(0)

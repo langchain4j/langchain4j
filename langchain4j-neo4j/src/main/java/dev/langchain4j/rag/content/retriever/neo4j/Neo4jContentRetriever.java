@@ -77,9 +77,7 @@ public class Neo4jContentRetriever implements ContentRetriever {
 
     private String generateCypherQuery(String schema, String question) {
 
-        final Map<String, Object> variables = Map.of("schema", schema,
-                "question", question,
-                "examples", examples);
+        final Map<String, Object> variables = Map.of("schema", schema, "question", question, "examples", examples);
         Prompt cypherPrompt = promptTemplate.apply(variables);
         String cypherQuery = chatLanguageModel.generate(cypherPrompt.text());
         Matcher matcher = BACKTICKS_PATTERN.matcher(cypherQuery);
