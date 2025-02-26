@@ -149,7 +149,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         }
     }
 
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         ensureNotEmpty(messages, "messages");
 
         ChatRequest request = ChatRequest.builder()
@@ -163,7 +163,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         client.streamingChat(request, handler, listeners, messages);
     }
 
-    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         ensureNotEmpty(messages, "messages");
 
         ChatRequest request = ChatRequest.builder()

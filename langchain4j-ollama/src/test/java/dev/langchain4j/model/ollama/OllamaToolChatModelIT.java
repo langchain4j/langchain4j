@@ -8,9 +8,12 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -140,15 +143,18 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     void should_handle_tools_call_in_streaming_scenario() throws Exception {
         // given
         UserMessage userMessage = userMessage("What is the weather today in Paris?");
-        List<ToolSpecification> toolSpecifications = singletonList(weatherToolSpecification);
 
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(weatherToolSpecification)
+                .build();
 
         // when
-        ollamaStreamingChatModel.generate(singletonList(userMessage), toolSpecifications, handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        ollamaStreamingChatModel.chat(request, handler);
 
-        Response<AiMessage> aiMessageResponse = handler.get();
-        AiMessage aiMessage = aiMessageResponse.content();
+        ChatResponse response = handler.get();
+        AiMessage aiMessage = response.aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -161,19 +167,19 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "{\"format\": \"celsius\", \"location\": \"Paris\", \"temperature\": \"32\"}");
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
-        CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
 
-        AtomicInteger onNextCounter = new AtomicInteger(0);
-        ollamaStreamingChatModel.generate(messages, new StreamingResponseHandler<>() {
+        AtomicInteger onPartialResponseCounter = new AtomicInteger(0);
+        ollamaStreamingChatModel.chat(messages, new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {
-                onNextCounter.incrementAndGet();
+            public void onPartialResponse(String partialResponse) {
+                onPartialResponseCounter.incrementAndGet();
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                secondFutureResponse.complete(response);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                secondFutureResponse.complete(completeResponse);
             }
 
             @Override
@@ -182,13 +188,13 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             }
         });
 
-        Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.content();
+        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
+        AiMessage secondAiMessage = secondResponse.aiMessage();
 
         // then
         assertThat(secondAiMessage.text()).contains("32");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
-        assertThat(onNextCounter.get()).isPositive();
+        assertThat(onPartialResponseCounter.get()).isPositive();
     }
 
     @Test
