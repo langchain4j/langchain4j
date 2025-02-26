@@ -7,12 +7,14 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -20,6 +22,12 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +49,7 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
@@ -161,17 +170,62 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.responseFormat());
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .build())
+                        .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            generate(chatRequest.messages(), legacyHandler);
+        } else {
+            if (parameters.toolChoice() == REQUIRED) {
+                if (toolSpecifications.size() != 1) {
+                    throw new UnsupportedFeatureException(
+                            String.format("%s.%s is currently supported only when there is a single tool",
+                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                }
+                generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
+            } else {
+                generate(chatRequest.messages(), toolSpecifications, legacyHandler);
+            }
+        }
+    }
+
+    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, null, null, handler);
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, toolSpecifications, null, handler);
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, null, toolSpecification, handler);
     }
 

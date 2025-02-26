@@ -2,7 +2,12 @@ package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
@@ -14,6 +19,11 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -26,14 +36,21 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerResponse;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Collections.emptyList;
 
 /**
@@ -158,11 +175,35 @@ public class AnthropicChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, (List<ToolSpecification>) null);
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.responseFormat());
+
+        Response<AiMessage> response;
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            response = generate(chatRequest.messages(), List.of());
+        } else {
+            if (parameters.toolChoice() == REQUIRED) {
+                if (toolSpecifications.size() != 1) {
+                    throw new UnsupportedFeatureException(
+                            String.format("%s.%s is currently supported only when there is a single tool",
+                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                }
+            }
+            response = generate(chatRequest.messages(), toolSpecifications);
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
     }
 
-    @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
 
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
@@ -243,5 +284,6 @@ public class AnthropicChatModel implements ChatLanguageModel {
             throw e;
         }
     }
+
     // TODO forcing tool use?
 }
