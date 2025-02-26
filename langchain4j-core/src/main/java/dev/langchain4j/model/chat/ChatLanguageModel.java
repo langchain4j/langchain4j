@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -36,7 +35,6 @@ public interface ChatLanguageModel {
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link ChatResponse}, containing all the outputs from the LLM
      */
-    @Experimental
     default ChatResponse chat(ChatRequest chatRequest) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
@@ -58,10 +56,10 @@ public interface ChatLanguageModel {
         }
     }
 
-    @Experimental
-    ChatResponse doChat(ChatRequest chatRequest);
+    default ChatResponse doChat(ChatRequest chatRequest) {
+        throw new RuntimeException("Not implemented");
+    }
 
-    @Experimental
     default String chat(String userMessage) {
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -73,7 +71,6 @@ public interface ChatLanguageModel {
         return chatResponse.aiMessage().text();
     }
 
-    @Experimental
     default ChatResponse chat(ChatMessage... messages) {
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -83,7 +80,6 @@ public interface ChatLanguageModel {
         return chat(chatRequest);
     }
 
-    @Experimental
     default ChatResponse chat(List<ChatMessage> messages) {
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -97,7 +93,7 @@ public interface ChatLanguageModel {
         return Collections.emptyList();
     }
 
-//    @Experimental
+    // TODO
 //    default ChatResponse doChat(ChatRequest chatRequest) {
 //
 //        ChatRequestParameters parameters = chatRequest.parameters();
@@ -131,7 +127,7 @@ public interface ChatLanguageModel {
 //                .build();
 //    }
 
-    static void validate(ChatRequestParameters parameters) {
+    static void validate(ChatRequestParameters parameters) { // TODO
         String errorTemplate = "%s is not supported yet by this model provider";
 
         if (parameters.modelName() != null) {
@@ -160,14 +156,14 @@ public interface ChatLanguageModel {
         }
     }
 
-    static void validate(ToolChoice toolChoice) {
+    static void validate(ToolChoice toolChoice) { // TODO
         if (toolChoice == REQUIRED) {
             throw new UnsupportedFeatureException(String.format("%s.%s is not supported yet by this model provider",
                     ToolChoice.class.getSimpleName(), REQUIRED.name()));
         }
     }
 
-    static void validate(ResponseFormat responseFormat) {
+    static void validate(ResponseFormat responseFormat) { // TODO
         String errorTemplate = "%s is not supported yet by this model provider";
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             // TODO check supportedCapabilities() instead?
@@ -175,12 +171,10 @@ public interface ChatLanguageModel {
         }
     }
 
-    @Experimental
     default ChatRequestParameters defaultRequestParameters() {
         return ChatRequestParameters.builder().build();
     }
 
-    @Experimental
     default Set<Capability> supportedCapabilities() {
         return Set.of();
     }

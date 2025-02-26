@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -32,7 +31,6 @@ public interface StreamingChatLanguageModel {
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
      */
-    @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
@@ -73,10 +71,10 @@ public interface StreamingChatLanguageModel {
      * @param chatRequest
      * @param handler
      */
-    @Experimental
-    void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler);
+    default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        throw new RuntimeException("Not implemented");
+    }
 
-    @Experimental
     default void chat(String userMessage, StreamingChatResponseHandler handler) {
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -86,7 +84,6 @@ public interface StreamingChatLanguageModel {
         chat(chatRequest, handler);
     }
 
-    @Experimental
     default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -100,7 +97,6 @@ public interface StreamingChatLanguageModel {
         return Collections.emptyList();
     }
 
-//    @Experimental
 //    default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 //
 //        ChatRequestParameters parameters = chatRequest.parameters();
@@ -150,12 +146,10 @@ public interface StreamingChatLanguageModel {
 //        }
 //    }
 
-    @Experimental
     default ChatRequestParameters defaultRequestParameters() {
         return ChatRequestParameters.builder().build();
     }
 
-    @Experimental
     default Set<Capability> supportedCapabilities() {
         return Set.of();
     }

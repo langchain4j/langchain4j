@@ -3,13 +3,19 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
+import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -19,8 +25,11 @@ import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
@@ -91,14 +100,55 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         this.supportedCapabilities = new HashSet<>(getOrDefault(supportedCapabilities, emptySet()));
     }
 
-    public static OllamaStreamingChatModelBuilder builder() {
-        for (OllamaStreamingChatModelBuilderFactory factory : loadFactories(OllamaStreamingChatModelBuilderFactory.class)) {
-            return factory.get();
+    @Override
+    public void doChat(dev.langchain4j.model.chat.request.ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        ChatRequestParameters parameters = chatRequest.parameters();
+        validate(parameters);
+        validate(parameters.toolChoice());
+        validate(parameters.responseFormat());
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                dev.langchain4j.model.chat.response.ChatResponse chatResponse =
+                        dev.langchain4j.model.chat.response.ChatResponse.builder()
+                                .aiMessage(response.content())
+                                .metadata(ChatResponseMetadata.builder()
+                                        .tokenUsage(response.tokenUsage())
+                                        .finishReason(response.finishReason())
+                                        .build())
+                                .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            generate(chatRequest.messages(), legacyHandler);
+        } else {
+            if (parameters.toolChoice() == REQUIRED) {
+                if (toolSpecifications.size() != 1) {
+                    throw new UnsupportedFeatureException(
+                            String.format("%s.%s is currently supported only when there is a single tool",
+                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                }
+            }
+            generate(chatRequest.messages(), toolSpecifications, legacyHandler);
         }
-        return new OllamaStreamingChatModelBuilder();
     }
 
-    @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         ensureNotEmpty(messages, "messages");
 
@@ -113,7 +163,6 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         client.streamingChat(request, handler, listeners, messages);
     }
 
-    @Override
     public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         ensureNotEmpty(messages, "messages");
 
@@ -131,6 +180,13 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
 
     public Set<Capability> supportedCapabilities() {
         return supportedCapabilities;
+    }
+
+    public static OllamaStreamingChatModelBuilder builder() {
+        for (OllamaStreamingChatModelBuilderFactory factory : loadFactories(OllamaStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaStreamingChatModelBuilder();
     }
 
     public static class OllamaStreamingChatModelBuilder {

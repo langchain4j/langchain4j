@@ -9,6 +9,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -71,13 +73,17 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
 
         // given
         UserMessage userMessage = userMessage("What is the weather today in Paris?");
-        List<ToolSpecification> toolSpecifications = singletonList(weatherToolSpecification);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(weatherToolSpecification)
+                .build();
 
         // when
-        Response<AiMessage> response = ollamaChatModel.generate(singletonList(userMessage), toolSpecifications);
+        ChatResponse response = ollamaChatModel.chat(chatRequest);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
@@ -90,10 +96,10 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         // when
-        Response<AiMessage> secondResponse = ollamaChatModel.generate(messages);
+        ChatResponse secondResponse = ollamaChatModel.chat(messages);
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("32");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
     }
@@ -103,17 +109,16 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     void should_not_execute_a_tool_and_tell_a_joke() {
 
         // given
-        List<ToolSpecification> toolSpecifications = singletonList(weatherToolSpecification);
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(systemMessage("Use tools only if needed"), userMessage("Tell a joke"))
+                .toolSpecifications(toolWithoutParameter)
+                .build();
 
         // when
-        List<ChatMessage> chatMessages = asList(
-                systemMessage("Use tools only if needed"),
-                userMessage("Tell a joke")
-        );
-        Response<AiMessage> response = ollamaChatModel.generate(chatMessages, toolSpecifications);
+        ChatResponse response = ollamaChatModel.chat(chatRequest);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNotNull();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
     }
@@ -122,18 +127,13 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     void should_handle_tool_without_parameter() {
 
         // given
-        List<ToolSpecification> toolSpecifications = singletonList(toolWithoutParameter);
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the current time?"))
+                .toolSpecifications(toolWithoutParameter)
+                .build();
 
-        // when
-        List<ChatMessage> chatMessages = singletonList(
-                userMessage("What is the current time?")
-        );
-
-        // then
-        assertDoesNotThrow(() -> {
-            ollamaChatModel.generate(chatMessages, toolSpecifications);
-        });
-
+        // when-then
+        assertDoesNotThrow(() -> ollamaChatModel.chat(chatRequest));
     }
 
     @Test
