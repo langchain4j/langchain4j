@@ -63,42 +63,23 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
             ConverseResponseFromStreamBuilder converseResponseBuilder = ConverseResponseFromStreamBuilder.builder();
             final ConverseStreamResponseHandler built = ConverseStreamResponseHandler.builder()
                     .subscriber(ConverseStreamResponseHandler.Visitor.builder()
-                            .onContentBlockStart(chunk -> {
-                                System.out.println(
-                                        "onContentBlockStart: " + chunk.start().toString());
-                                converseResponseBuilder.append(chunk);
-                            })
+                            .onContentBlockStart(converseResponseBuilder::append)
                             .onContentBlockDelta(chunk -> {
                                 if (chunk.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
-                                    // System.out.print(chunk.delta().text());
                                     handler.onPartialResponse(chunk.delta().text());
                                 }
-                                System.out.println(
-                                        "contentBlockDelta: " + chunk.delta().toString());
                                 converseResponseBuilder.append(chunk);
                             })
-                            .onContentBlockStop(chunk -> {
-                                System.out.println("onContentBlockStop: "
-                                        + chunk.contentBlockIndex().toString());
-                                converseResponseBuilder.append(chunk);
-                            })
+                            .onContentBlockStop(converseResponseBuilder::append)
                             .onMetadata(chunk -> {
-                                System.out.println(
-                                        "onMetadata: " + chunk.usage().toString());
                                 converseResponseBuilder.append(chunk);
                                 final ChatResponse completeResponse = chatResponseFrom(
                                         converseResponseBuilder.build(), converseStreamRequest.modelId());
                                 ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
                                 handler.onCompleteResponse(completeResponse);
                             })
-                            .onMessageStart(chunk -> {
-                                System.out.println("onMessageStart: " + chunk.roleAsString());
-                                converseResponseBuilder.append(chunk);
-                            })
-                            .onMessageStop(messageStop -> {
-                                System.out.println("onMessageStop: " + messageStop.stopReasonAsString());
-                                converseResponseBuilder.append(messageStop);
-                            })
+                            .onMessageStart(converseResponseBuilder::append)
+                            .onMessageStop(converseResponseBuilder::append)
                             .build())
                     .onError(error -> {
                         handler.onError(error);
