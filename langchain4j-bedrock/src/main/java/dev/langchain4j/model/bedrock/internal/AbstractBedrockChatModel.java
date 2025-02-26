@@ -9,6 +9,10 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -37,7 +41,25 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
     private volatile BedrockRuntimeClient client;
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.toolSpecifications());
+        ChatLanguageModel.validate(parameters.toolChoice());
+        ChatLanguageModel.validate(parameters.responseFormat());
+
+        Response<AiMessage> response = generate(chatRequest.messages());
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
+    }
+
+    protected Response<AiMessage> generate(List<ChatMessage> messages) {
 
         final String body = convertMessagesToAwsBody(messages);
 

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 
 /**
@@ -153,6 +155,12 @@ public interface ChatLanguageModel {
         }
         if (parameters.stopSequences() != null) {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'stopSequences' parameter"));
+        }
+    }
+
+    static void validate(List<ToolSpecification> toolSpecifications) { // TODO
+        if (!isNullOrEmpty(toolSpecifications)) {
+            throw new RuntimeException("tools are not supported yet by this model provider");
         }
     }
 

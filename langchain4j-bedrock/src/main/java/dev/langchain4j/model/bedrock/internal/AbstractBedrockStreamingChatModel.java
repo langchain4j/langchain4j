@@ -2,15 +2,19 @@ package dev.langchain4j.model.bedrock.internal;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -39,14 +43,42 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
     }
 
     @Override
-    public void generate(String userMessage, StreamingResponseHandler<AiMessage> handler) {
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(new UserMessage(userMessage));
-        generate(messages, handler);
+    public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.toolSpecifications());
+        ChatLanguageModel.validate(parameters.toolChoice());
+        ChatLanguageModel.validate(parameters.responseFormat());
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .build())
+                        .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        generate(chatRequest.messages(), legacyHandler);
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         InvokeModelWithResponseStreamRequest request = InvokeModelWithResponseStreamRequest.builder()
                 .body(SdkBytes.fromUtf8String(convertMessagesToAwsBody(messages)))
                 .modelId(getModelId())
@@ -136,7 +168,4 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                 .build();
         return client;
     }
-
-
-
 }
