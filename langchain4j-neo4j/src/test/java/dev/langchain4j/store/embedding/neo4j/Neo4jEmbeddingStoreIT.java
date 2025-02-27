@@ -1,5 +1,15 @@
 package dev.langchain4j.store.embedding.neo4j;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_EMBEDDING_PROP;
+import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_ID_PROP;
+import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_TEXT_PROP;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.data.Percentage.withPercentage;
+
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.Metadata;
@@ -17,6 +27,15 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,26 +54,6 @@ import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.stream.IntStream;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_EMBEDDING_PROP;
-import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_ID_PROP;
-import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_TEXT_PROP;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.assertj.core.data.Percentage.withPercentage;
 
 @Testcontainers
 class Neo4jEmbeddingStoreIT {
@@ -195,7 +194,6 @@ class Neo4jEmbeddingStoreIT {
         Neo4jEmbeddingStore embeddingStore = Neo4jEmbeddingStore.builder()
                 .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
                 .dimension(384)
-
                 .fullTextIndexName("movie_text")
                 .fullTextQuery("Matrix")
                 .fullTextAutocreate(true)
@@ -278,8 +276,8 @@ class Neo4jEmbeddingStoreIT {
                 .build();
 
         embeddingStoreWithoutFullText.addAll(embeddings, segments);
-        final List<EmbeddingMatch<TextSegment>> matchesWithoutFullText = embeddingStore.search(embeddingSearchRequest)
-                .matches();
+        final List<EmbeddingMatch<TextSegment>> matchesWithoutFullText =
+                embeddingStore.search(embeddingSearchRequest).matches();
         assertThat(matchesWithoutFullText).hasSize(3);
         matchesWithoutFullText.forEach(i -> {
             final String embeddedText = i.embedded().text();
@@ -304,8 +302,8 @@ class Neo4jEmbeddingStoreIT {
 
         DocumentParser parser = new TextDocumentParser();
         HtmlToTextDocumentTransformer extractor = new HtmlToTextDocumentTransformer();
-        BrowserWebDriverContainer<?> chromeContainer = new BrowserWebDriverContainer<>()
-                .withCapabilities(new ChromeOptions());
+        BrowserWebDriverContainer<?> chromeContainer =
+                new BrowserWebDriverContainer<>().withCapabilities(new ChromeOptions());
         chromeContainer.start();
         RemoteWebDriver webDriver = new RemoteWebDriver(chromeContainer.getSeleniumAddress(), new ChromeOptions());
         SeleniumDocumentLoader loader = SeleniumDocumentLoader.builder()
@@ -343,22 +341,22 @@ class Neo4jEmbeddingStoreIT {
 
         String wikiContent = textDocument.text().split("Signature ")[1];
         wikiContent = wikiContent.substring(0, 5000);
-        
-        final String userMessage = String.format("""
+
+        final String userMessage = String.format(
+                """
                         Can you transform the following text into Cypher statements using both nodes and relationships?
                         Each node and relation should have a single property "id",\s
                         and each node has an additional label named __Entity__
                         The id property values should have whitespace instead of _ or other special characters.
-                                        
+
                         Just returns an unique query non ; separated,
                         without the ``` wrapping.
-                                        
+
                         ```
                         %s
                         ```
                         """,
-                wikiContent
-        );
+                wikiContent);
 
         final OpenAiChatModel openAiChatModel = OpenAiChatModel.builder()
                 .apiKey("demo")
@@ -368,7 +366,7 @@ class Neo4jEmbeddingStoreIT {
                 .build();
         final String generate = openAiChatModel.generate(userMessage);
 
-        for (String query: generate.split(";")) {
+        for (String query : generate.split(";")) {
             session.executeWrite(tx -> {
                 tx.run(query).consume();
                 return null;
