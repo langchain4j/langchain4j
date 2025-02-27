@@ -16,9 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import java.util.stream.Collectors;
 
 /**
  * A {@link ContentRetriever} that retrieves from an {@link Neo4jGraph}.
@@ -45,10 +43,9 @@ public class Neo4jContentRetriever implements ContentRetriever {
 
     @Builder
     public Neo4jContentRetriever(Neo4jGraph graph, ChatLanguageModel chatLanguageModel, PromptTemplate promptTemplate) {
-
-        this.graph = ensureNotNull(graph, "graph");
-        this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
+        this.graph = graph;
+        this.chatLanguageModel = chatLanguageModel;
+        this.promptTemplate = promptTemplate != null ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
     }
 
     @Override
@@ -57,8 +54,11 @@ public class Neo4jContentRetriever implements ContentRetriever {
         String question = query.text();
         String schema = graph.getSchema();
         String cypherQuery = generateCypherQuery(schema, question);
+        if (cypherQuery == null || cypherQuery.trim().isEmpty()) {
+            throw new IllegalArgumentException("Generated Cypher query is empty.");
+        }
         List<String> response = executeQuery(cypherQuery);
-        return response.stream().map(Content::from).toList();
+        return response.stream().map(Content::from).collect(Collectors.toList());
     }
 
     private String generateCypherQuery(String schema, String question) {
@@ -66,18 +66,13 @@ public class Neo4jContentRetriever implements ContentRetriever {
         Prompt cypherPrompt = promptTemplate.apply(Map.of("schema", schema, "question", question));
         String cypherQuery = chatLanguageModel.generate(cypherPrompt.text());
         Matcher matcher = BACKTICKS_PATTERN.matcher(cypherQuery);
-        if (matcher.find()) {
-            return matcher.group(1);
-        }
-        return cypherQuery;
+        return matcher.find() ? matcher.group(1) : cypherQuery;  // Directly return cypherQuery without redundant processing
     }
 
     private List<String> executeQuery(String cypherQuery) {
-
-        List<Record> records = graph.executeRead(cypherQuery);
-        return records.stream()
-                .flatMap(r -> r.values().stream())
+        return graph.executeRead(cypherQuery).stream()
+                .flatMap(record -> record.values().stream())
                 .map(value -> NODE.isTypeOf(value) ? value.asMap().toString() : value.toString())
-                .toList();
+                .collect(Collectors.toList());  // Using collect() for better performance in large datasets
     }
 }
