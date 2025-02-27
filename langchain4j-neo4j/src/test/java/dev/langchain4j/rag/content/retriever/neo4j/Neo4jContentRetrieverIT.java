@@ -80,7 +80,7 @@ class Neo4jContentRetrieverIT {
     void shouldRetrieveContentWhenQueryIsValid() {
         // Given
         Query query = new Query("Who is the author of the book 'Dune'?");
-        when(chatLanguageModel.generate(anyString())).thenReturn("MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
+        when(chatLanguageModel.chat(anyString())).thenReturn("MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
 
         // When
         List<Content> contents = retriever.retrieve(query);
@@ -93,7 +93,7 @@ class Neo4jContentRetrieverIT {
     void shouldRetrieveContentWhenQueryIsValidAndResponseHasBackticks() {
         // Given
         Query query = new Query("Who is the author of the book 'Dune'?");
-        when(chatLanguageModel.generate(anyString())).thenReturn("```MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output```");
+        when(chatLanguageModel.chat(anyString())).thenReturn("```MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output```");
 
         // When
         List<Content> contents = retriever.retrieve(query);
@@ -134,7 +134,7 @@ class Neo4jContentRetrieverIT {
     void shouldReturnEmptyListWhenQueryIsInvalid() {
         // Given
         Query query = new Query("Who is the author of the movie 'Dune'?");
-        when(chatLanguageModel.generate(anyString())).thenReturn("MATCH(movie:Movie {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
+        when(chatLanguageModel.chat(anyString())).thenReturn("MATCH(movie:Movie {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
 
         // When
         List<Content> contents = retriever.retrieve(query);

@@ -5,10 +5,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
@@ -38,15 +38,15 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         String userMessage = "What is the capital of Germany?";
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
-        String answer = response.content().text();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        dev.langchain4j.model.chat.response.ChatResponse response = handler.get();
+        String answer = response.aiMessage().text();
 
         // then
         assertThat(answer).contains("Berlin");
 
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isEqualTo(answer);
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
@@ -77,14 +77,14 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
-        String answer = response.content().text();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(userMessage), handler);
+        dev.langchain4j.model.chat.response.ChatResponse response = handler.get();
+        String answer = response.aiMessage().text();
 
         // then
         assertThat(answer).doesNotContain("Berlin");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
 
         assertThat(response.tokenUsage().outputTokenCount()).isBetween(numPredict, numPredict + 2); // bug in Ollama
     }
@@ -97,14 +97,14 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         UserMessage userMessage = UserMessage.from("I love you");
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(asList(systemMessage, userMessage), handler);
-        Response<AiMessage> response = handler.get();
-        String answer = response.content().text();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(asList(systemMessage, userMessage), handler);
+        dev.langchain4j.model.chat.response.ChatResponse response = handler.get();
+        String answer = response.aiMessage().text();
 
         // then
         assertThat(answer).containsIgnoringCase("liebe");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
     }
 
     @Test
@@ -119,14 +119,14 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
                 UserMessage.from("4 + 4 ="));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(messages, handler);
-        Response<AiMessage> response = handler.get();
-        String answer = response.content().text();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(messages, handler);
+        dev.langchain4j.model.chat.response.ChatResponse response = handler.get();
+        String answer = response.aiMessage().text();
 
         // then
         assertThat(answer).startsWith(">>> 8");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
     }
 
     @Test
@@ -143,14 +143,14 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         String userMessage = "Return JSON with two fields: name and age of John Doe, 42 years old.";
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
-        String answer = response.content().text();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        dev.langchain4j.model.chat.response.ChatResponse response = handler.get();
+        String answer = response.aiMessage().text();
 
         // then
         assertThat(answer).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
     }
 
     @Test
@@ -167,16 +167,16 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         CompletableFuture<Throwable> future = new CompletableFuture<>();
 
         // when
-        model.generate("does not matter", new StreamingResponseHandler<AiMessage>() {
+        model.chat("does not matter", new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {
-                future.completeExceptionally(new Exception("onNext should never be called"));
+            public void onPartialResponse(String partialResponse) {
+                future.completeExceptionally(new Exception("onPartialResponse() should never be called"));
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                future.completeExceptionally(new Exception("onComplete should never be called"));
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.completeExceptionally(new Exception("onCompleteResponse() should never be called"));
             }
 
             @Override

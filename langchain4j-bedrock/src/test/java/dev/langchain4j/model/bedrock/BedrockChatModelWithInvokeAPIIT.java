@@ -7,6 +7,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.Mistral7bInstructV0_2;
 import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.MistralMixtral8x7bInstructV0_1;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -24,6 +25,9 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
@@ -61,13 +65,11 @@ class BedrockChatModelWithInvokeAPIIT {
                 .timeout(Duration.ofMinutes(2L))
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
         assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(2L);
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
@@ -83,17 +85,15 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
         assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(1L);
 
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");
         UserMessage userMessage = UserMessage.from(imageContent);
 
-        Response<AiMessage> response = bedrockChatModel.generate(userMessage);
+        ChatResponse response = bedrockChatModel.chat(userMessage);
 
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
@@ -109,8 +109,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
-
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
@@ -118,13 +116,16 @@ class BedrockChatModelWithInvokeAPIIT {
                 .addParameter("second", INTEGER)
                 .build();
 
-        assertThat(calculator).isNotNull();
-
         UserMessage userMessage = UserMessage.from("2+2=?");
 
-        Response<AiMessage> response = bedrockChatModel.generate(singletonList(userMessage), singletonList(calculator));
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(calculator)
+                .build();
+        
+        ChatResponse response = bedrockChatModel.chat(request);
 
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
@@ -142,13 +143,18 @@ class BedrockChatModelWithInvokeAPIIT {
 
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
-        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
-
         sleepIfNeeded();
-        Response<AiMessage> secondResponse = bedrockChatModel.generate(messages, singletonList(calculator));
+        
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
 
-        AiMessage secondAiMessage = secondResponse.content();
+        ChatRequest secondRequest = ChatRequest.builder()
+                .messages(userMessage, aiMessage, toolExecutionResultMessage)
+                .toolSpecifications(calculator)
+                .build();
+        
+        ChatResponse secondResponse = bedrockChatModel.chat(secondRequest);
+
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
@@ -172,8 +178,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
-
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
@@ -181,27 +185,24 @@ class BedrockChatModelWithInvokeAPIIT {
                 .addParameter("second", INTEGER)
                 .build();
 
-        assertThat(calculator).isNotNull();
-
         ToolSpecification currentTemperature = ToolSpecification.builder()
                 .name("currentTemperature")
                 .description("returns the temperature of a city in degrees Celsius")
                 .addParameter("city", STRING)
                 .build();
 
-        assertThat(currentTemperature).isNotNull();
-
         List<ToolSpecification> toolSpecifications = asList(calculator, currentTemperature);
-
-        assertThat(currentTemperature).isNotNull();
-        assertThat(toolSpecifications).hasSize(2);
 
         UserMessage userMessageCalc = UserMessage.from("2+2=?");
 
-        Response<AiMessage> responseCalc =
-                bedrockChatModel.generate(singletonList(userMessageCalc), toolSpecifications);
+        ChatRequest requestCalc = ChatRequest.builder()
+                .messages(userMessageCalc)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
-        AiMessage aiMessageCalc = responseCalc.content();
+        ChatResponse responseCalc = bedrockChatModel.chat(requestCalc);
+
+        AiMessage aiMessageCalc = responseCalc.aiMessage();
         assertThat(aiMessageCalc.text()).isNull();
         assertThat(aiMessageCalc.toolExecutionRequests()).hasSize(1);
 
@@ -223,9 +224,15 @@ class BedrockChatModelWithInvokeAPIIT {
         List<ChatMessage> messagesCalc = asList(userMessageCalc, aiMessageCalc, toolExecutionResultMessageCalc);
 
         sleepIfNeeded();
-        Response<AiMessage> secondResponseCalc = bedrockChatModel.generate(messagesCalc, toolSpecifications);
 
-        AiMessage secondAiMessageCalc = secondResponseCalc.content();
+        ChatRequest secondRequestCalc = ChatRequest.builder()
+                .messages(messagesCalc)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        ChatResponse secondResponseCalc = bedrockChatModel.chat(secondRequestCalc);
+
+        AiMessage secondAiMessageCalc = secondResponseCalc.aiMessage();
         assertThat(secondAiMessageCalc.text()).contains("4");
         assertThat(secondAiMessageCalc.toolExecutionRequests()).isNull();
 
@@ -240,10 +247,15 @@ class BedrockChatModelWithInvokeAPIIT {
         UserMessage userMessageTemp = UserMessage.from("Temperature in New York = ?");
 
         sleepIfNeeded();
-        Response<AiMessage> responseTemp =
-                bedrockChatModel.generate(singletonList(userMessageTemp), toolSpecifications);
 
-        AiMessage aiMessageTemp = responseTemp.content();
+        ChatRequest requestTemp = ChatRequest.builder()
+                .messages(userMessageTemp)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        ChatResponse responseTemp = bedrockChatModel.chat(requestTemp);
+
+        AiMessage aiMessageTemp = responseTemp.aiMessage();
         assertThat(aiMessageTemp.text()).isNull();
         assertThat(aiMessageTemp.toolExecutionRequests()).hasSize(1);
 
@@ -265,9 +277,15 @@ class BedrockChatModelWithInvokeAPIIT {
         List<ChatMessage> messagesTemp = asList(userMessageTemp, aiMessageTemp, toolExecutionResultMessageTemp);
 
         sleepIfNeeded();
-        Response<AiMessage> secondResponseTemp = bedrockChatModel.generate(messagesTemp, toolSpecifications);
 
-        AiMessage secondAiMessageTemp = secondResponseTemp.content();
+        ChatRequest secondRequestTemp = ChatRequest.builder()
+                .messages(messagesTemp)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        ChatResponse secondResponseTemp = bedrockChatModel.chat(secondRequestTemp);
+
+        AiMessage secondAiMessageTemp = secondResponseTemp.aiMessage();
         assertThat(secondAiMessageTemp.text()).contains("25");
         assertThat(secondAiMessageTemp.toolExecutionRequests()).isNull();
 
@@ -291,8 +309,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
-
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
@@ -300,15 +316,18 @@ class BedrockChatModelWithInvokeAPIIT {
                 .addParameter("second", INTEGER)
                 .build();
 
-        assertThat(calculator).isNotNull();
-
         List<ToolSpecification> toolSpecifications = singletonList(calculator);
 
         UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
 
-        Response<AiMessage> response = bedrockChatModel.generate(singletonList(userMessage), toolSpecifications);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = bedrockChatModel.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
@@ -332,15 +351,21 @@ class BedrockChatModelWithInvokeAPIIT {
 
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
+        sleepIfNeeded();
+
         ToolExecutionResultMessage firstToolExecutionResultMessageCalc = from(firstToolExecutionRequest, "4");
         ToolExecutionResultMessage secondToolExecutionResultMessageCalc = from(secondToolExecutionRequest, "6");
         List<ChatMessage> messages = asList(
                 userMessage, aiMessage, firstToolExecutionResultMessageCalc, secondToolExecutionResultMessageCalc);
 
-        sleepIfNeeded();
-        Response<AiMessage> secondeResponse = bedrockChatModel.generate(messages, toolSpecifications);
+        ChatRequest secondRequest = ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
-        AiMessage secondAiMessage = secondeResponse.content();
+        ChatResponse secondeResponse = bedrockChatModel.chat(secondRequest);
+
+        AiMessage secondAiMessage = secondeResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4", "6");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
@@ -364,21 +389,21 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
-
         ToolSpecification currentDateTime = ToolSpecification.builder()
                 .name("currentDateTime")
                 .description("returns current date and time")
                 .build();
 
-        assertThat(currentDateTime).isNotNull();
-
         UserMessage userMessageCalc = UserMessage.from("Current date and time is = ?");
 
-        Response<AiMessage> responseCalc =
-                bedrockChatModel.generate(singletonList(userMessageCalc), singletonList(currentDateTime));
+        ChatRequest requestCalc = ChatRequest.builder()
+                .messages(userMessageCalc)
+                .toolSpecifications(List.of(currentDateTime))
+                .build();
 
-        AiMessage aiMessageCalc = responseCalc.content();
+        ChatResponse responseCalc = bedrockChatModel.chat(requestCalc);
+
+        AiMessage aiMessageCalc = responseCalc.aiMessage();
         assertThat(aiMessageCalc.text()).isNull();
         assertThat(aiMessageCalc.toolExecutionRequests()).hasSize(1);
 
@@ -398,14 +423,19 @@ class BedrockChatModelWithInvokeAPIIT {
 
         String nowDateTime = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 
+        sleepIfNeeded();
+
         ToolExecutionResultMessage toolExecutionResultMessageCalc = from(toolExecutionRequestCalc, nowDateTime);
         List<ChatMessage> messagesCalc = asList(userMessageCalc, aiMessageCalc, toolExecutionResultMessageCalc);
 
-        sleepIfNeeded();
-        Response<AiMessage> secondResponseCalc =
-                bedrockChatModel.generate(messagesCalc, singletonList(currentDateTime));
+        ChatRequest secondRequestCalc = ChatRequest.builder()
+                .messages(messagesCalc)
+                .toolSpecifications(List.of(currentDateTime))
+                .build();
 
-        AiMessage secondAiMessageCalc = secondResponseCalc.content();
+        ChatResponse secondResponseCalc = bedrockChatModel.chat(secondRequestCalc);
+
+        AiMessage secondAiMessageCalc = secondResponseCalc.aiMessage();
         assertThat(secondAiMessageCalc.text()).contains(nowDateTime);
         assertThat(secondAiMessageCalc.toolExecutionRequests()).isNull();
 
@@ -428,8 +458,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
-
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
@@ -437,13 +465,19 @@ class BedrockChatModelWithInvokeAPIIT {
                 .addParameter("second", INTEGER)
                 .build();
 
-        assertThat(calculator).isNotNull();
-
         UserMessage userMessage = UserMessage.from("2+2=?");
 
-        Response<AiMessage> response = bedrockChatModel.generate(singletonList(userMessage), calculator);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(calculator)
+                        .toolChoice(REQUIRED)
+                        .build())
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = bedrockChatModel.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
@@ -465,9 +499,18 @@ class BedrockChatModelWithInvokeAPIIT {
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         sleepIfNeeded();
-        Response<AiMessage> secondResponse = bedrockChatModel.generate(messages, calculator);
 
-        AiMessage secondAiMessage = secondResponse.content();
+        ChatRequest secondRequest = ChatRequest.builder()
+                .messages(messages)
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(calculator)
+                        .toolChoice(REQUIRED)
+                        .build())
+                .build();
+
+        ChatResponse secondResponse = bedrockChatModel.chat(secondRequest);
+
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).isNull();
         assertThat(secondAiMessage.toolExecutionRequests()).hasSize(1);
 
@@ -496,8 +539,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
-
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
@@ -505,13 +546,11 @@ class BedrockChatModelWithInvokeAPIIT {
                 .addParameter("second", INTEGER)
                 .build();
 
-        assertThat(calculator).isNotNull();
-
         UserMessage userMessage = UserMessage.from("2+2=?");
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> bedrockChatModel.generate(singletonList(userMessage), singletonList(calculator)),
+                () -> bedrockChatModel.chat(ChatRequest.builder().messages(userMessage).toolSpecifications(calculator).build()),
                 "Expected generate() to throw, but it didn't");
 
         assertThat(exception.getMessage()).isEqualTo("Tools are currently not supported by this model");
@@ -561,12 +600,9 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
+        ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
-
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
@@ -582,16 +618,13 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
-
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");
         UserMessage userMessage = UserMessage.from(imageContent);
 
-        Response<AiMessage> response = bedrockChatModel.generate(userMessage);
+        ChatResponse response = bedrockChatModel.chat(userMessage);
 
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
@@ -607,12 +640,9 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
+        ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
-
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
@@ -628,12 +658,9 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
+        ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
-
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
@@ -649,12 +676,9 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
+        ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
-
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
@@ -676,12 +700,9 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
+        ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
-
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
@@ -697,13 +718,10 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
+        ChatResponse response =
+                bedrockChatModel.chat(UserMessage.from("Draw me a flower with any human in background."));
 
-        Response<AiMessage> response =
-                bedrockChatModel.generate(UserMessage.from("Draw me a flower with any human in background."));
-
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
@@ -724,10 +742,10 @@ class BedrockChatModelWithInvokeAPIIT {
                 .build();
 
         // when
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("What is the capital of Germany?"));
+        ChatResponse response = bedrockChatModel.chat(UserMessage.from("What is the capital of Germany?"));
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
@@ -749,17 +767,14 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
-
         List<ChatMessage> messages = Arrays.asList(
                 UserMessage.from("hi, how are you doing"),
                 AiMessage.from("I am an AI model so I don't have feelings"),
                 UserMessage.from("Ok no worries, tell me story about a man who wears a tin hat."));
 
-        Response<AiMessage> response = bedrockChatModel.generate(messages);
+        ChatResponse response = bedrockChatModel.chat(messages);
 
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
@@ -774,12 +789,9 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        assertThat(bedrockChatModel).isNotNull();
+        ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
-
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
@@ -799,12 +811,11 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxRetries(1)
                 .build();
 
-        final Response<AiMessage> aiMessageResponse = bedrockChatModel.generate(messages);
+        ChatResponse response = bedrockChatModel.chat(messages);
 
-        assertThat(aiMessageResponse).isNotNull();
-        assertThat(aiMessageResponse.content().text()).isNotBlank();
-        assertThat(aiMessageResponse.content().text()).contains("Ronaldo");
-        assertThat(aiMessageResponse.finishReason()).isIn(STOP, LENGTH);
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).contains("Ronaldo");
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test

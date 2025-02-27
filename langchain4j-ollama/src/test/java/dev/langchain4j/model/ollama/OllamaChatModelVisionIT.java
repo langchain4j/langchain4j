@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
@@ -30,13 +31,13 @@ class OllamaChatModelVisionIT extends AbstractOllamaVisionModelInfrastructure {
                 .build();
 
         // when
-        Response<AiMessage> response = model.generate(UserMessage.userMessage(
+        ChatResponse response = model.chat(UserMessage.userMessage(
                 TextContent.from("What animal is on this picture?"),
                 ImageContent.from(CAT_IMAGE_URL)
         ));
 
         // then
-        assertThat(response.content().text())
+        assertThat(response.aiMessage().text())
                 .containsIgnoringCase("cat");
     }
 }

@@ -15,8 +15,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.PromptTemplate;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.injector.DefaultContentInjector;
@@ -55,7 +55,7 @@ class ConversationalRetrievalChainTest {
 
     @BeforeEach
     void beforeEach() {
-        when(chatLanguageModel.generate(anyList())).thenReturn(Response.from(aiMessage(ANSWER)));
+        when(chatLanguageModel.chat(anyList())).thenReturn(ChatResponse.builder().aiMessage(aiMessage(ANSWER)).build());
     }
 
     @Test
@@ -76,7 +76,7 @@ class ConversationalRetrievalChainTest {
         // then
         assertThat(answer).isEqualTo(ANSWER);
 
-        verify(chatLanguageModel).generate(messagesCaptor.capture());
+        verify(chatLanguageModel).chat(messagesCaptor.capture());
         UserMessage expectedUserMessage = UserMessage.from(
                 "query\n" + "\n" + "Answer using the following information:\n" + "Segment 1\n" + "\n" + "Segment 2");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
@@ -109,7 +109,7 @@ class ConversationalRetrievalChainTest {
         // then
         assertThat(answer).isEqualTo(ANSWER);
 
-        verify(chatLanguageModel).generate(messagesCaptor.capture());
+        verify(chatLanguageModel).chat(messagesCaptor.capture());
         UserMessage expectedUserMessage = UserMessage.from("Answer 'query' using 'Segment 1\n\nSegment 2'");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
 
@@ -136,7 +136,7 @@ class ConversationalRetrievalChainTest {
         // then
         assertThat(answer).isEqualTo(ANSWER);
 
-        verify(chatLanguageModel).generate(messagesCaptor.capture());
+        verify(chatLanguageModel).chat(messagesCaptor.capture());
         UserMessage expectedUserMessage =
                 UserMessage.from("Answer the following question to the best of your ability: query\n" + "\n"
                         + "Base your answer on the following information:\n"
@@ -169,7 +169,7 @@ class ConversationalRetrievalChainTest {
         // then
         assertThat(answer).isEqualTo(ANSWER);
 
-        verify(chatLanguageModel).generate(messagesCaptor.capture());
+        verify(chatLanguageModel).chat(messagesCaptor.capture());
         UserMessage expectedUserMessage = UserMessage.from("Answer 'query' using 'Segment 1\n\nSegment 2'");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
 

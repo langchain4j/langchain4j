@@ -54,7 +54,7 @@ public class ChatController {
 
     @GetMapping("/chat")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.generate(message);
+        return chatLanguageModel.chat(message);
     }
 }
 ```

@@ -3,11 +3,13 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
-import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -34,12 +36,12 @@ class OllamaOpenAiStreamingChatModelIT extends AbstractOllamaLanguageModelInfras
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).contains("Berlin");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 

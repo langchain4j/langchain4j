@@ -1,13 +1,15 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.DisabledModelTest;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
+import java.util.List;
 
 class DisabledStreamingChatLanguageModelTest extends DisabledModelTest<StreamingChatLanguageModel> {
-    private StreamingChatLanguageModel model = new DisabledStreamingChatLanguageModel();
+
+    private final StreamingChatLanguageModel model = new DisabledStreamingChatLanguageModel();
 
     public DisabledStreamingChatLanguageModelTest() {
         super(StreamingChatLanguageModel.class);
@@ -15,9 +17,9 @@ class DisabledStreamingChatLanguageModelTest extends DisabledModelTest<Streaming
 
     @Test
     void methodsShouldThrowException() {
-        performAssertion(() -> this.model.generate("Hello", null));
-        performAssertion(() -> this.model.generate(Collections.emptyList(), null));
-        performAssertion(() -> this.model.generate(Collections.emptyList(), Collections.emptyList(), null));
-        performAssertion(() -> this.model.generate(Collections.emptyList(), (ToolSpecification) null, null));
+        UserMessage userMessage = UserMessage.from("Hello");
+        performAssertion(() -> model.chat(ChatRequest.builder().messages(userMessage).build(), null));
+        performAssertion(() -> model.chat(userMessage.singleText(), null));
+        performAssertion(() -> model.chat(List.of(userMessage), null));
     }
 }

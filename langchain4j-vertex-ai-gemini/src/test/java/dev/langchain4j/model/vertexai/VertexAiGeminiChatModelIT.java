@@ -6,7 +6,6 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.vertexai.HarmCategory.*;
 import static dev.langchain4j.model.vertexai.SafetyThreshold.*;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
@@ -25,7 +24,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import java.io.File;
@@ -78,10 +78,10 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).contains("Berlin");
+        assertThat(response.aiMessage().text()).contains("Berlin");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
@@ -97,10 +97,10 @@ class VertexAiGeminiChatModelIT {
     void should_support_system_instructions(List<ChatMessage> messages) {
 
         // when
-        Response<AiMessage> response = model.generate(messages);
+        ChatResponse response = model.chat(messages);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("lieb");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("lieb");
     }
 
     static Stream<Arguments> should_support_system_instructions() {
@@ -139,10 +139,10 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from("Tell me a joke");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(4);
@@ -166,10 +166,10 @@ class VertexAiGeminiChatModelIT {
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).contains("Berlin");
+        assertThat(response.aiMessage().text()).contains("Berlin");
     }
 
     @Test
@@ -180,10 +180,10 @@ class VertexAiGeminiChatModelIT {
                 ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see? Reply in one word."));
 
         // when
-        Response<AiMessage> response = imageModel.generate(userMessage);
+        ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -195,10 +195,10 @@ class VertexAiGeminiChatModelIT {
                 TextContent.from("What do you see? Reply in one word."));
 
         // when
-        Response<AiMessage> response = imageModel.generate(userMessage);
+        ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -210,10 +210,10 @@ class VertexAiGeminiChatModelIT {
                 ImageContent.from(base64Data, "image/png"), TextContent.from("What do you see? Reply in one word."));
 
         // when
-        Response<AiMessage> response = imageModel.generate(userMessage);
+        ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -226,10 +226,10 @@ class VertexAiGeminiChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."));
 
         // when
-        Response<AiMessage> response = imageModel.generate(userMessage);
+        ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -242,10 +242,10 @@ class VertexAiGeminiChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."));
 
         // when
-        Response<AiMessage> response = imageModel.generate(userMessage);
+        ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -260,10 +260,10 @@ class VertexAiGeminiChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."));
 
         // when
-        Response<AiMessage> response = imageModel.generate(userMessage);
+        ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -277,10 +277,10 @@ class VertexAiGeminiChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."));
 
         // when
-        Response<AiMessage> response = imageModel.generate(userMessage);
+        ChatResponse response = imageModel.chat(userMessage);
 
         // then
-        assertThat(response.content().text())
+        assertThat(response.aiMessage().text())
                 .containsIgnoringCase("cat")
                 //                .containsIgnoringCase("dog")  // sometimes the model replies "puppy" instead of "dog"
                 .containsIgnoringCase("dice");
@@ -310,28 +310,33 @@ class VertexAiGeminiChatModelIT {
         UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
         allMessages.add(weatherQuestion);
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(allMessages)
+                .toolSpecifications(weatherToolSpec)
+                .build();
+        
         // when
-        Response<AiMessage> messageResponse = model.generate(allMessages, weatherToolSpec);
+        ChatResponse messageResponse = model.chat(request);
 
         // then
-        assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
+        assertThat(messageResponse.aiMessage().hasToolExecutionRequests()).isTrue();
         ToolExecutionRequest toolExecutionRequest =
-                messageResponse.content().toolExecutionRequests().get(0);
+                messageResponse.aiMessage().toolExecutionRequests().get(0);
 
         assertThat(toolExecutionRequest.arguments()).contains("Paris");
         assertThat(toolExecutionRequest.name()).isEqualTo("getWeatherForecast");
 
-        allMessages.add(messageResponse.content());
+        allMessages.add(messageResponse.aiMessage());
 
         // when (feeding the function return value back)
         ToolExecutionResultMessage toolExecResMsg = ToolExecutionResultMessage.from(
                 toolExecutionRequest, "{\"location\":\"Paris\",\"forecast\":\"sunny\", \"temperature\": 20}");
         allMessages.add(toolExecResMsg);
 
-        Response<AiMessage> weatherResponse = model.generate(allMessages);
+        ChatResponse weatherResponse = model.chat(allMessages);
 
         // then
-        assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
+        assertThat(weatherResponse.aiMessage().text()).containsIgnoringCase("sunny");
     }
 
     @RetryingTest(5)
@@ -361,13 +366,18 @@ class VertexAiGeminiChatModelIT {
         UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789?");
         allMessages.add(inventoryQuestion);
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(allMessages)
+                .toolSpecifications(stockInventoryToolSpec)
+                .build();
+
         // when
-        Response<AiMessage> messageResponse = model.generate(allMessages, stockInventoryToolSpec);
+        ChatResponse messageResponse = model.chat(request);
 
         // then
-        assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
+        assertThat(messageResponse.aiMessage().hasToolExecutionRequests()).isTrue();
 
-        List<ToolExecutionRequest> executionRequests = messageResponse.content().toolExecutionRequests();
+        List<ToolExecutionRequest> executionRequests = messageResponse.aiMessage().toolExecutionRequests();
         assertThat(executionRequests).hasSize(2); // ie. parallel function execution requests
 
         String inventoryStock =
@@ -377,17 +387,17 @@ class VertexAiGeminiChatModelIT {
         assertThat(inventoryStock).containsIgnoringCase("XYZ789");
 
         // when
-        allMessages.add(messageResponse.content());
+        allMessages.add(messageResponse.aiMessage());
 
         allMessages.add(ToolExecutionResultMessage.toolExecutionResultMessage(
                 null, "getProductInventory", "{\"product_id\":\"ABC123\", \"stock\": 10}"));
         allMessages.add(ToolExecutionResultMessage.toolExecutionResultMessage(
                 null, "getProductInventory", "{\"product_id\":\"XYZ789\", \"stock\": 5}"));
 
-        messageResponse = model.generate(allMessages, stockInventoryToolSpec);
+        messageResponse = model.chat(allMessages);
 
         // then
-        String text = messageResponse.content().text();
+        String text = messageResponse.aiMessage().text();
         List<String> sequence = Arrays.asList("ABC123", "more", "XYZ789");
         assertThat(text.split(" ")).containsSubsequence(sequence);
     }
@@ -585,7 +595,7 @@ class VertexAiGeminiChatModelIT {
                 .build();
 
         // when
-        String resp = modelWithSearch.generate("Why is the sky blue?");
+        String resp = modelWithSearch.chat("Why is the sky blue?");
 
         // then
         assertThat(resp).contains("scatter");
@@ -607,10 +617,10 @@ class VertexAiGeminiChatModelIT {
 
         String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
-        assertThat(model.generate(userMessage)).isNotEqualToIgnoringWhitespace(expectedJson);
+        assertThat(model.chat(userMessage)).isNotEqualToIgnoringWhitespace(expectedJson);
 
         // when
-        String json = modelWithResponseMimeType.generate(userMessage);
+        String json = modelWithResponseMimeType.chat(userMessage);
 
         // then
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
@@ -640,7 +650,7 @@ class VertexAiGeminiChatModelIT {
 
         // when
         Exception exception = assertThrows(
-                RuntimeException.class, () -> model.generate("You're a dumb fucking bastard!!! I'm gonna kill you!"));
+                RuntimeException.class, () -> model.chat("You're a dumb fucking bastard!!! I'm gonna kill you!"));
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -680,10 +690,10 @@ class VertexAiGeminiChatModelIT {
         messages.add(SystemMessage.from("Return a JSON object, as defined in the JSON schema."));
         messages.add(UserMessage.from("Anna is a 23 year old artist from New York City. She's got a dog and a cat."));
 
-        Response<AiMessage> response = model.generate(messages);
+        ChatResponse response = model.chat(messages);
 
         // then
-        Artist artist = new Gson().fromJson(response.content().text(), Artist.class);
+        Artist artist = new Gson().fromJson(response.aiMessage().text(), Artist.class);
         assertThat(artist.artistName).contains("Anna");
         assertThat(artist.artistAge).isEqualTo(23);
         assertThat(artist.artistAdult).isTrue();
@@ -711,14 +721,20 @@ class VertexAiGeminiChatModelIT {
                 .addParameter("b", JsonSchemaProperty.INTEGER)
                 .build();
 
-        // when
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
-        Response<AiMessage> answer = model.generate(asList(msg), adder);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(msg)
+                .toolSpecifications(adder)
+                .build();
+
+        // when
+        ChatResponse answer = model.chat(request);
 
         // then
-        assertThat(answer.content().hasToolExecutionRequests()).isEqualTo(true);
-        assertThat(answer.content().toolExecutionRequests().get(0).name()).isEqualTo("add");
-        assertThat(answer.content().toolExecutionRequests().get(0).arguments()).isEqualTo("{\"a\":1.0,\"b\":2.0}");
+        assertThat(answer.aiMessage().hasToolExecutionRequests()).isEqualTo(true);
+        assertThat(answer.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("add");
+        assertThat(answer.aiMessage().toolExecutionRequests().get(0).arguments()).isEqualTo("{\"a\":1.0,\"b\":2.0}");
     }
 
     @Test
@@ -740,12 +756,18 @@ class VertexAiGeminiChatModelIT {
                 .addParameter("b", JsonSchemaProperty.INTEGER)
                 .build();
 
-        // when
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
-        Response<AiMessage> answer = model.generate(asList(msg), adder);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(msg)
+                .toolSpecifications(adder)
+                .build();
+
+        // when
+        ChatResponse answer = model.chat(request);
 
         // then
-        assertThat(answer.content().hasToolExecutionRequests()).isEqualTo(false);
+        assertThat(answer.aiMessage().hasToolExecutionRequests()).isEqualTo(false);
     }
 
     @Test
@@ -765,10 +787,10 @@ class VertexAiGeminiChatModelIT {
                 TextContent.from("Give a summary of the audio"));
 
         // when
-        Response<AiMessage> response = model.generate(singletonList(msg));
+        ChatResponse response = model.chat(msg);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("Pixel");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("Pixel");
     }
 
     @Test
@@ -788,10 +810,10 @@ class VertexAiGeminiChatModelIT {
                 TextContent.from("What is in this video?"));
 
         // when
-        Response<AiMessage> response = model.generate(singletonList(msg));
+        ChatResponse response = model.chat(msg);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("animal");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("animal");
     }
 
     @Test
@@ -814,10 +836,10 @@ class VertexAiGeminiChatModelIT {
                 TextContent.from("What's in this video?"));
 
         // when
-        Response<AiMessage> response = model.generate(singletonList(msg));
+        ChatResponse response = model.chat(msg);
 
         // then
-        assertThat(response.content().text()).containsAnyOf("finger", "hand");
+        assertThat(response.aiMessage().text()).containsAnyOf("finger", "hand");
     }
 
     @Test
@@ -838,10 +860,10 @@ class VertexAiGeminiChatModelIT {
                 TextContent.from("Provide a summary of the document"));
 
         // when
-        Response<AiMessage> response = model.generate(singletonList(msg));
+        ChatResponse response = model.chat(msg);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("Gemini");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("Gemini");
     }
 
     @Test
@@ -861,19 +883,19 @@ class VertexAiGeminiChatModelIT {
 
         // when
         String instruction = "What is the sentiment expressed in the following sentence: ";
-        String response = model.generate(instruction + "This is super exciting news, congratulations!");
+        String response = model.chat(instruction + "This is super exciting news, congratulations!");
 
         // then
         assertThat(response).isEqualTo("POSITIVE");
 
         // when
-        response = model.generate(instruction + "The sky is blue.");
+        response = model.chat(instruction + "The sky is blue.");
 
         // then
         assertThat(response).isEqualTo("NEUTRAL");
 
         // when
-        response = model.generate(instruction + "This is the worst movie I've ever watched! Boring!");
+        response = model.chat(instruction + "This is the worst movie I've ever watched! Boring!");
 
         // then
         assertThat(response).isEqualTo("NEGATIVE");

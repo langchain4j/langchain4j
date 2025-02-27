@@ -124,7 +124,7 @@ ChatLanguageModel model = OpenAiChatModel.builder()
         .listeners(List.of(listener))
         .build();
 
-model.generate("Tell me a joke about Java");
+model.chat("Tell me a joke about Java");
 ```
 
 The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same

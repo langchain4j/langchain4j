@@ -15,8 +15,9 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,13 +65,18 @@ class JlamaStreamingChatModelToolsIT {
         UserMessage userMessage = userMessage("What is the temp in Paris right now?");
         chatMessages.add(userMessage);
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(chatMessages)
+                .toolSpecifications(weatherToolSpecification)
+                .build();
+
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(chatMessages, List.of(weatherToolSpecification), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
+        ChatResponse response = handler.get();
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         chatMessages.add(aiMessage);
@@ -88,12 +94,12 @@ class JlamaStreamingChatModelToolsIT {
         chatMessages.add(toolExecutionResultMessage);
 
         // when
-        handler = new TestStreamingResponseHandler<>();
-        model.generate(chatMessages, handler);
-        Response<AiMessage> secondResponse = handler.get();
+        handler = new TestStreamingChatResponseHandler();
+        model.chat(chatMessages, handler);
+        ChatResponse secondResponse = handler.get();
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("32");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
     }

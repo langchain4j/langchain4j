@@ -2,13 +2,13 @@ package dev.langchain4j.model.azure;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -69,7 +69,7 @@ class AzureOpenAiTokenizerIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
+        int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
         Tokenizer tokenizer = new AzureOpenAiTokenizer("gpt-3.5-turbo");
 
@@ -133,7 +133,7 @@ class AzureOpenAiTokenizerIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
+        int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
         Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
@@ -349,7 +349,7 @@ class AzureOpenAiTokenizerIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
+        int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
         Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
@@ -779,7 +779,12 @@ class AzureOpenAiTokenizerIT {
 
         Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
-        int expectedTokenCount = model.generate(dummyMessages, toolSpecifications).tokenUsage().inputTokenCount()
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(dummyMessages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        int expectedTokenCount = model.chat(chatRequest).tokenUsage().inputTokenCount()
                 - tokenizer.estimateTokenCountInMessages(dummyMessages);
 
         // when
@@ -1170,9 +1175,14 @@ class AzureOpenAiTokenizerIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        Response<AiMessage> response = model.generate(singletonList(userMessage), singletonList(toolSpecification));
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
 
-        List<ToolExecutionRequest> toolExecutionRequests = response.content().toolExecutionRequests();
+        ChatResponse response = model.chat(request);
+
+        List<ToolExecutionRequest> toolExecutionRequests = response.aiMessage().toolExecutionRequests();
         // we need to ensure that model generated expected tool execution request,
         // then we can use output token count as a reference
         assertThat(toolExecutionRequests).hasSize(1);
@@ -1220,7 +1230,12 @@ class AzureOpenAiTokenizerIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecification);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
+
+        ChatResponse response = model.chat(request);
 
         Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
@@ -1234,7 +1249,7 @@ class AzureOpenAiTokenizerIT {
         assertThat(tokenCountInSpecification).isEqualTo(expectedTokenCountInSpecification);
 
         // given
-        List<ToolExecutionRequest> toolExecutionRequests = response.content().toolExecutionRequests();
+        List<ToolExecutionRequest> toolExecutionRequests = response.aiMessage().toolExecutionRequests();
         // we need to ensure that model generated expected tool execution request,
         // then we can use output token count as a reference
         assertThat(toolExecutionRequests).hasSize(1);
@@ -1479,9 +1494,14 @@ class AzureOpenAiTokenizerIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
-        List<ToolExecutionRequest> toolExecutionRequests = response.content().toolExecutionRequests();
+        ChatResponse response = model.chat(request);
+
+        List<ToolExecutionRequest> toolExecutionRequests = response.aiMessage().toolExecutionRequests();
         // we need to ensure that model generated expected tool execution requests,
         // then we can use output token count as a reference
         assertThat(toolExecutionRequests).hasSize(expectedToolExecutionRequests.size());

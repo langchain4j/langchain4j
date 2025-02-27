@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createModelListenerRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
@@ -111,20 +110,6 @@ public class OllamaChatModel implements ChatLanguageModel {
             return factory.get();
         }
         return new OllamaChatModelBuilder();
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ensureNotEmpty(messages, "messages");
-
-        return doGenerate(messages, null, responseFormat);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ensureNotEmpty(messages, "messages");
-
-        return doGenerate(messages, toolSpecifications, responseFormat);
     }
 
     @Override

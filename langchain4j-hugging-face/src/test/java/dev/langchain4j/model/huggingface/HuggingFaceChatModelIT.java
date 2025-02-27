@@ -28,10 +28,10 @@ class HuggingFaceChatModelIT {
                 .waitForModel(true)
                 .build();
 
-        AiMessage aiMessage = model.generate(
+        AiMessage aiMessage = model.chat(
                         systemMessage("You are a good friend of mine, who likes to answer with jokes"),
                         userMessage("Hey Bro, what are you doing?"))
-                .content();
+                .aiMessage();
 
         assertThat(aiMessage.text()).isNotBlank();
     }
@@ -49,10 +49,10 @@ class HuggingFaceChatModelIT {
                 .waitForModel(true)
                 .build();
 
-        AiMessage aiMessage = model.generate(
+        AiMessage aiMessage = model.chat(
                         systemMessage("You are a good friend of mine, who likes to answer with jokes"),
                         userMessage("Hey Bro, what are you doing?"))
-                .content();
+                .aiMessage();
 
         assertThat(aiMessage.text()).isNotBlank();
     }

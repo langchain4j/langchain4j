@@ -19,7 +19,6 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
@@ -119,6 +118,9 @@ public abstract class ChatModelListenerIT {
 
         UserMessage userMessage = UserMessage.from("hello");
 
+        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
+                .messages(userMessage);
+
         ToolSpecification toolSpecification = null;
         if (supportToolCalls()) {
             toolSpecification = ToolSpecification.builder()
@@ -126,21 +128,19 @@ public abstract class ChatModelListenerIT {
                     .addParameter("a", INTEGER)
                     .addParameter("b", INTEGER)
                     .build();
+            chatRequestBuilder.toolSpecifications(toolSpecification);
         }
+
+        ChatRequest chatRequest = chatRequestBuilder.build();
 
         // when
-        AiMessage aiMessage;
-        if (supportToolCalls()) {
-            aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
-        } else {
-            aiMessage = model.generate(singletonList(userMessage)).content();
-        }
+        AiMessage aiMessage = model.chat(chatRequest).aiMessage();
 
         // then
-        ChatRequest chatRequest = chatRequestReference.get();
-        assertThat(chatRequest.messages()).containsExactly(userMessage);
+        ChatRequest observedChatRequest = chatRequestReference.get();
+        assertThat(observedChatRequest.messages()).containsExactly(userMessage);
 
-        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestParameters parameters = observedChatRequest.parameters();
         assertThat(parameters.modelName()).isEqualTo(modelName());
         assertThat(parameters.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
         assertThat(parameters.topP()).isEqualTo(topP());
@@ -245,7 +245,7 @@ public abstract class ChatModelListenerIT {
         // when
         Throwable thrown = null;
         try {
-            model.generate(userMessage);
+            model.chat(userMessage);
         } catch (Exception e) {
             thrown = e;
         }

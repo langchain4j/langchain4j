@@ -73,42 +73,6 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ChatRequest request = ChatRequest.builder()
-            .messages(messages)
-            .build();
-
-        ChatResponse response = chat(request);
-
-        return Response.from(
-                response.aiMessage(),
-                response.metadata().tokenUsage(),
-                response.metadata().finishReason()
-        );
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, Collections.singletonList(toolSpecification));
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ChatRequest request = ChatRequest.builder()
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
-
-        ChatResponse response = chat(request);
-
-        return Response.from(
-                response.aiMessage(),
-                response.metadata().tokenUsage(),
-                response.metadata().finishReason()
-        );
-    }
-
-    @Override
     public ChatResponse chat(ChatRequest chatRequest) {
 
         ChatRequestParameters parameters = chatRequest.parameters();

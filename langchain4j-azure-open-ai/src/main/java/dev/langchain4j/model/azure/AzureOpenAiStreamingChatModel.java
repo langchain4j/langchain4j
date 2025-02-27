@@ -438,33 +438,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, null, this.responseFormat, handler);
-    }
-
-    @Override
-    public void generate(
-            List<ChatMessage> messages,
-            List<ToolSpecification> toolSpecifications,
-            StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, toolSpecifications, null, this.responseFormat, handler);
-    }
-
-    @Override
-    public void generate(
-            List<ChatMessage> messages,
-            ToolSpecification toolSpecification,
-            StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, toolSpecification, this.responseFormat, handler);
-    }
-
-    @Override
     public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = request.parameters();
         validate(parameters);
 
         // If the response format is not specified in the request, use the one specified in the model
-        ResponseFormat responseFormat = request.responseFormat();
+        ResponseFormat responseFormat = parameters.responseFormat();
         if (responseFormat == null) {
             responseFormat = this.responseFormat;
         }

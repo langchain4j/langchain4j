@@ -56,13 +56,13 @@ public class ChatLanguageModel {
             .temperature(0.0)
             .build();
 
-        Response<AiMessage> response = model.generate(
+        ChatResponse response = model.chat(
             UserMessage.from(
                 "Describe in several sentences what language model you are: \n" +
                 "Describe in several sentences what is your code name: "
             )
         );
-        System.out.println(response.content().text());
+        System.out.println(response.aiMessage().text());
 
         // I am a large language model, trained by Google. 
         // I am a transformer-based language model that has been trained 

@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.Response;
@@ -33,10 +34,10 @@ class OllamaOpenAiChatModelIT extends AbstractOllamaLanguageModelInfrastructure 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).contains("Berlin");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
