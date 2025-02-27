@@ -13,6 +13,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.config.GuardrailsConfigBuilderFactory;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -421,6 +424,75 @@ public abstract class AiServices<T> {
         }
         retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
+        return this;
+    }
+
+    /**
+     * Configures a set of input guardrails given the config interface
+     * @param inputGuardrailsConfig The {@link dev.langchain4j.guardrail.config.InputGuardrailsConfig} instance
+     * @return The builder
+     */
+    public AiServices<T> inputGuardrailsConfig(
+            dev.langchain4j.guardrail.config.InputGuardrailsConfig inputGuardrailsConfig) {
+        context.guardrailService.inputGuardrailsConfig(inputGuardrailsConfig);
+        return this;
+    }
+
+    /**
+     * Configures a set of input guardrails given the annotation config
+     * @param inputGuardrailsConfig The {@link dev.langchain4j.service.guardrail.InputGuardrailsConfig} annotation
+     * @return The builder
+     */
+    public AiServices<T> inputGuardrailsConfig(
+            dev.langchain4j.service.guardrail.InputGuardrailsConfig inputGuardrailsConfig) {
+        var config =
+                GuardrailsConfigBuilderFactory.inputGuardrailsConfigBuilder().build();
+
+        return inputGuardrailsConfig(config);
+    }
+
+    /**
+     * Configures a set of output guardrails given the config interface
+     * @param outputGuardrailsConfig The {@link dev.langchain4j.guardrail.config.OutputGuardrailsConfig} instance
+     * @return The builder
+     */
+    public AiServices<T> outputGuardrailsConfig(
+            dev.langchain4j.guardrail.config.OutputGuardrailsConfig outputGuardrailsConfig) {
+        context.guardrailService.outputGuardrailsConfig(outputGuardrailsConfig);
+        return this;
+    }
+
+    /**
+     * Configures a set of output guardrails given the annotation config
+     * @param outputGuardrailsConfig The {@link dev.langchain4j.service.guardrail.OutputGuardrailsConfig} annotation
+     * @return The builder
+     */
+    public AiServices<T> outputGuardrailsConfig(
+            dev.langchain4j.service.guardrail.OutputGuardrailsConfig outputGuardrailsConfig) {
+        var config = GuardrailsConfigBuilderFactory.outputGuardrailsConfigBuilder()
+                .maxRetries(outputGuardrailsConfig.maxRetries())
+                .build();
+
+        return outputGuardrailsConfig(config);
+    }
+
+    /**
+     * Configures a set of input guardrails
+     * @param inputGuardrails The input guardrails
+     * @return The builder
+     */
+    public AiServices<T> inputGuardrails(InputGuardrail... inputGuardrails) {
+        context.guardrailService.inputGuardrails(inputGuardrails);
+        return this;
+    }
+
+    /**
+     * Configures a set of output guardrails
+     * @param outputGuardrails The output guardrails
+     * @return The builder
+     */
+    public AiServices<T> outputGuardrails(OutputGuardrail... outputGuardrails) {
+        context.guardrailService.outputGuardrails(outputGuardrails);
         return this;
     }
 

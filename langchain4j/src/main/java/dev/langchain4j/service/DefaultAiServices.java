@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -129,7 +130,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Object memoryId = findMemoryId(method, args).orElse(DEFAULT);
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
-                        UserMessage userMessage = prepareUserMessage(method, args);
+                        var userMessageTemplate = getUserMessageTemplate(method, args);
+                        UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate);
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemory = context.hasChatMemory()
@@ -140,6 +142,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
+
+                        // Invoke input guardrails
 
                         // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
@@ -212,7 +216,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .parameters(parameters)
                                 .build();
 
-                        ChatResponse chatResponse = context.chatModel.chat(chatRequest);
+                        ChatExecutor chatExecutor = () -> context.chatModel.chat(chatRequest);
+                        ChatResponse chatResponse = chatExecutor.get();
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -365,11 +370,12 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private static UserMessage prepareUserMessage(Method method, Object[] args) {
+        return prepareUserMessage(method, args, getUserMessageTemplate(method, args));
+    }
 
-        String template = getUserMessageTemplate(method, args);
-        Map<String, Object> variables = findTemplateVariables(template, method, args);
-
-        Prompt prompt = PromptTemplate.from(template).apply(variables);
+    private static UserMessage prepareUserMessage(Method method, Object[] args, String userMessageTemplate) {
+        Map<String, Object> variables = findTemplateVariables(userMessageTemplate, method, args);
+        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
         return maybeUserName
