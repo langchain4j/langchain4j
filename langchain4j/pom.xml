@@ -36,10 +36,7 @@
             <artifactId>opennlp-tools</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
