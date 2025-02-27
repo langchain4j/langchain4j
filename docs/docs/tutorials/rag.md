@@ -617,8 +617,8 @@ The following diagram shows how these components work together:
 The process is as follows:
 1. The user produces a `UserMessage`, which is converted into a `Query`
 2. The `QueryTransformer` transforms the `Query` into one or multiple `Query`s
-3. Each `Query` is routed by the `QueryRouter` to one or more `ContetRetriever`s
-4. Each `ContetRetriever` retrieves relevant `Content`s for each `Query`
+3. Each `Query` is routed by the `QueryRouter` to one or more `ContentRetriever`s
+4. Each `ContentRetriever` retrieves relevant `Content`s for each `Query`
 5. The `ContentAggregator` combines all retrieved `Content`s into a single final ranked list
 6. This list of `Content`s is injected into the original `UserMessage`
 7. Finally, the `UserMessage`, containing the original query along with the injected relevant content, is sent to the LLM
