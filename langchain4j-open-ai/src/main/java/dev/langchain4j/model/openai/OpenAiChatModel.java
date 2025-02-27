@@ -42,7 +42,9 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequ
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
@@ -55,6 +57,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
     private final String responseFormat;
+    private final Set<Capability> supportedCapabilities;
     private final Boolean strictJsonSchema;
     private final Boolean strictTools;
 
@@ -125,6 +128,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
         this.responseFormat = builder.responseFormat;
+        this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
 
@@ -148,8 +152,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        Set<Capability> capabilities = new HashSet<>();
-        if ("json_schema".equals(responseFormat)) { // TODO
+        Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
+        if ("json_schema".equals(responseFormat)) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
@@ -268,6 +272,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private Double presencePenalty;
         private Double frequencyPenalty;
         private Map<String, Integer> logitBias;
+        private Set<Capability> supportedCapabilities;
         private String responseFormat;
         private Boolean strictJsonSchema;
         private Integer seed;
@@ -378,6 +383,15 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         public OpenAiChatModelBuilder responseFormat(String responseFormat) {
             this.responseFormat = responseFormat;
             return this;
+        }
+
+        public OpenAiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
         public OpenAiChatModelBuilder strictJsonSchema(Boolean strictJsonSchema) {

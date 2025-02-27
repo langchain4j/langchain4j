@@ -3,7 +3,7 @@ package dev.langchain4j.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.lang.reflect.Type;
@@ -22,7 +22,7 @@ class TypeUtilsTest {
     @Test
     void integerReturnType() {
         // Given Integer
-        Type returnType = new TypeToken<Integer>() {}.getType();
+        Type returnType = new TypeReference<Integer>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Integer.class);
@@ -33,7 +33,7 @@ class TypeUtilsTest {
     @Test
     void stringReturnType() {
         // Given String
-        Type returnType = new TypeToken<String>() {}.getType();
+        Type returnType = new TypeReference<String>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(String.class);
@@ -44,7 +44,7 @@ class TypeUtilsTest {
     @Test
     void resultStringReturnType() {
         // Given Result<String>
-        Type returnType = new TypeToken<Result<String>>() {}.getType();
+        Type returnType = new TypeReference<Result<String>>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Result.class);
@@ -55,7 +55,7 @@ class TypeUtilsTest {
     @Test
     void listOfStringsReturnType() {
         // Given List<String>
-        Type returnType = new TypeToken<List<String>>() {}.getType();
+        Type returnType = new TypeReference<List<String>>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(List.class);
@@ -66,7 +66,7 @@ class TypeUtilsTest {
     @Test
     void setOfIntegersReturnType() {
         // Given Set<Integer>
-        Type returnType = new TypeToken<Set<Integer>>() {}.getType();
+        Type returnType = new TypeReference<Set<Integer>>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Set.class);
@@ -77,7 +77,7 @@ class TypeUtilsTest {
     @Test
     void resultSetOfIntegersReturnType() {
         // Given Result<Set<Integer>
-        Type returnType = new TypeToken<Result<Set<Integer>>>() {}.getType();
+        Type returnType = new TypeReference<Result<Set<Integer>>>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Result.class);

@@ -403,7 +403,7 @@ Here is how to enable JSON mode:
     ```java
     OpenAiChatModel.builder()
         ...
-        .responseFormat("json_schema")
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
         .strictJsonSchema(true)
         .build();
     ```
