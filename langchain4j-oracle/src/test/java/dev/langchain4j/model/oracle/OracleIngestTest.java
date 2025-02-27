@@ -12,11 +12,13 @@ import dev.langchain4j.store.embedding.oracle.OracleEmbeddingStore;
 import io.github.cdimascio.dotenv.Dotenv;
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import oracle.ucp.jdbc.PoolDataSource;
+import oracle.ucp.jdbc.PoolDataSourceFactory;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,8 +35,12 @@ public class OracleIngestTest {
     void setUp() throws SQLException {
         dotenv = Dotenv.configure().load();
 
-        conn = DriverManager.getConnection(
-                dotenv.get("ORACLE_JDBC_URL"), dotenv.get("ORACLE_JDBC_USER"), dotenv.get("ORACLE_JDBC_PASSWORD"));
+        PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
+        pds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
+        pds.setURL(dotenv.get("ORACLE_JDBC_URL"));
+        pds.setUser(dotenv.get("ORACLE_JDBC_USER"));
+        pds.setPassword(dotenv.get("ORACLE_JDBC_PASSWORD"));
+        conn = pds.getConnection();
     }
 
     @Test
@@ -113,5 +119,10 @@ public class OracleIngestTest {
             }
         }
         return count;
+    }
+
+    @AfterEach
+    void tearDown() throws SQLException {
+        conn.close();
     }
 }

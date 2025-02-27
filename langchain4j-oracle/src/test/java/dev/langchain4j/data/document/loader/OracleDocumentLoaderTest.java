@@ -7,9 +7,10 @@ import dev.langchain4j.data.document.loader.oracle.OracleDocumentLoader;
 import io.github.cdimascio.dotenv.Dotenv;
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
+import oracle.ucp.jdbc.PoolDataSource;
+import oracle.ucp.jdbc.PoolDataSourceFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,8 +26,14 @@ public class OracleDocumentLoaderTest {
     @BeforeEach
     void setUp() throws SQLException {
         dotenv = Dotenv.configure().load();
-        Connection conn = DriverManager.getConnection(
-                dotenv.get("ORACLE_JDBC_URL"), dotenv.get("ORACLE_JDBC_USER"), dotenv.get("ORACLE_JDBC_PASSWORD"));
+
+        PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
+        pds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
+        pds.setURL(dotenv.get("ORACLE_JDBC_URL"));
+        pds.setUser(dotenv.get("ORACLE_JDBC_USER"));
+        pds.setPassword(dotenv.get("ORACLE_JDBC_PASSWORD"));
+        Connection conn = pds.getConnection();
+
         loader = new OracleDocumentLoader(conn);
     }
 
