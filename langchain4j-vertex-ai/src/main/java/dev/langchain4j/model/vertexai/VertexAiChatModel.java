@@ -9,6 +9,10 @@ import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.vertexai.spi.VertexAiChatModelBuilderFactory;
@@ -80,7 +84,25 @@ public class VertexAiChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.toolSpecifications());
+        ChatLanguageModel.validate(parameters.toolChoice());
+        ChatLanguageModel.validate(parameters.responseFormat());
+
+        Response<AiMessage> response = generate(chatRequest.messages());
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
+    }
+
+    private Response<AiMessage> generate(List<ChatMessage> messages) {
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
             VertexAiChatInstance vertexAiChatInstance = new VertexAiChatInstance(
