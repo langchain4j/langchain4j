@@ -2,7 +2,12 @@ package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
@@ -26,13 +31,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerResponse;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 import static java.util.Collections.emptyList;
 
@@ -183,7 +194,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
 
         listeners.forEach(listener -> {
             try {
@@ -209,6 +220,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
                     modelListenerResponse,
                     modelListenerRequest,
+                    provider(),
                     attributes
             );
 
@@ -229,6 +241,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
             ChatModelErrorContext errorContext = createErrorContext(
                     e,
                     modelListenerRequest,
+                    provider(),
                     attributes
             );
 
@@ -244,4 +257,14 @@ public class AnthropicChatModel implements ChatLanguageModel {
         }
     }
     // TODO forcing tool use?
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return ANTHROPIC;
+    }
 }

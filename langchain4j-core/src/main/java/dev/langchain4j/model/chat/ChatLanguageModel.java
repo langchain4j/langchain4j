@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -24,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Arrays.asList;
 
@@ -53,13 +55,13 @@ public interface ChatLanguageModel {
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, provider(), attributes, listeners);
         try {
             ChatResponse chatResponse = doChat(finalChatRequest);
-            ListenersUtil.onResponse(chatResponse, finalChatRequest, attributes, listeners);
+            ListenersUtil.onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
             return chatResponse;
         } catch (Exception error) {
-            ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+            ListenersUtil.onError(error, finalChatRequest, provider(), attributes, listeners);
             throw error;
         }
     }
@@ -98,6 +100,10 @@ public interface ChatLanguageModel {
 
     default List<ChatModelListener> listeners() {
         return Collections.emptyList();
+    }
+
+    default ModelProvider provider() {
+        return OTHER;
     }
 
     @Experimental

@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -33,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
@@ -207,7 +209,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -227,6 +229,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                 ChatModelErrorContext errorContext = InternalAnthropicHelper.createErrorContext(
                         error,
                         modelListenerRequest,
+                        provider(),
                         attributes
                 );
 
@@ -251,6 +254,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                 ChatModelResponseContext responseContext = new ChatModelResponseContext(
                         modelListenerResponse,
                         modelListenerRequest,
+                        provider(),
                         attributes
                 );
 
@@ -267,5 +271,15 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         };
 
         client.createMessage(request, listenerHandler);
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return ANTHROPIC;
     }
 }

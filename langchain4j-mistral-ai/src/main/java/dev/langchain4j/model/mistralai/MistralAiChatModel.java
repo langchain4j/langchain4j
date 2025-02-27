@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ModelProvider.MISTRAL_AI;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
@@ -11,6 +12,7 @@ import static java.util.Collections.singletonList;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
@@ -175,6 +177,11 @@ public class MistralAiChatModel implements ChatLanguageModel {
                 aiMessageFrom(response),
                 tokenUsageFrom(response.getUsage()),
                 finishReasonFrom(response.getChoices().get(0).getFinishReason()));
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return MISTRAL_AI;
     }
 
     public static MistralAiChatModelBuilder builder() {

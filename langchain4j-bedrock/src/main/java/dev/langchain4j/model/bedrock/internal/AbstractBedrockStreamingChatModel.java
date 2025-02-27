@@ -3,8 +3,10 @@ package dev.langchain4j.model.bedrock.internal;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
@@ -23,6 +25,8 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamResponseHandler;
+
+import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 
 /**
  * Bedrock Streaming chat model
@@ -56,7 +60,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -87,6 +91,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
                             modelListenerResponse,
                             modelListenerRequest,
+                            provider(),
                             attributes
                     );
 
@@ -100,7 +105,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                     handler.onComplete(response);
                 })
                 .onError(throwable -> {
-                    listenerErrorResponse(throwable, modelListenerRequest, attributes);
+                    listenerErrorResponse(throwable, modelListenerRequest, provider(), attributes);
                     handler.onError(throwable);
                 })
                 .build();
@@ -137,6 +142,13 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
         return client;
     }
 
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
 
-
+    @Override
+    public ModelProvider provider() {
+        return AMAZON_BEDROCK;
+    }
 }

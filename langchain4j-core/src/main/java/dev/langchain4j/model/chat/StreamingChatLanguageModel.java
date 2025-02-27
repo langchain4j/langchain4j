@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
@@ -64,18 +65,18 @@ public interface StreamingChatLanguageModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
+                ListenersUtil.onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+                ListenersUtil.onError(error, finalChatRequest, provider(), attributes, listeners);
                 handler.onError(error);
             }
         };
 
-        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, provider(), attributes, listeners);
         doChat(finalChatRequest, observingHandler);
     }
 
@@ -101,6 +102,10 @@ public interface StreamingChatLanguageModel {
 
     default List<ChatModelListener> listeners() {
         return Collections.emptyList();
+    }
+
+    default ModelProvider provider() {
+        return null;
     }
 
     @Experimental
