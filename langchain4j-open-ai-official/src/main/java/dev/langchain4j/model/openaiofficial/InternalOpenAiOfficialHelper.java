@@ -122,7 +122,7 @@ class InternalOpenAiOfficialHelper {
             ensureNotBlank(azureDeploymentName, "azureDeploymentName");
             baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
             if (azureOpenAiServiceVersion == null) {
-                azureOpenAiServiceVersion = AzureOpenAIServiceVersion.getV2025_01_01_PREVIEW();
+                azureOpenAiServiceVersion = AzureOpenAIServiceVersion.latestStableVersion();
             }
             builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
                     + azureOpenAiServiceVersion.value());
@@ -207,7 +207,7 @@ class InternalOpenAiOfficialHelper {
             ensureNotBlank(azureDeploymentName, "azureDeploymentName");
             baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
             if (azureOpenAiServiceVersion == null) {
-                azureOpenAiServiceVersion = AzureOpenAIServiceVersion.getV2025_01_01_PREVIEW();
+                azureOpenAiServiceVersion = AzureOpenAIServiceVersion.latestStableVersion();
             }
             builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
                     + azureOpenAiServiceVersion.value());
