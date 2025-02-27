@@ -351,7 +351,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
         /**
          * The {@link VectorIndexExtractor} to use to create a vector index used to query the {@link NamedMap}.
          */
-        private VectorIndexExtractor<DocumentChunk, Vector<?>> extractor;
+        private VectorIndexExtractor<DocumentChunk, float[]> extractor;
 
         /**
          * A flag that when {@code true} forces normalization of embeddings on adding and searching
@@ -413,7 +413,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
          *
          * @return this builder for fluent method calls
          */
-        public Builder index(VectorIndexExtractor<DocumentChunk, Vector<?>> extractor) {
+        public Builder index(VectorIndexExtractor<DocumentChunk, float[]> extractor) {
             this.extractor = extractor;
             return this;
         }
