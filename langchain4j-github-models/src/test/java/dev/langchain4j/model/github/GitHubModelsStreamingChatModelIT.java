@@ -168,7 +168,7 @@ class GitHubModelsStreamingChatModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
+                Exception e = new IllegalStateException("onPartialResponse() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
@@ -284,7 +284,7 @@ class GitHubModelsStreamingChatModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
+                Exception e = new IllegalStateException("onPartialResponse() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 

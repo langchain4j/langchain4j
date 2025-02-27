@@ -15,7 +15,7 @@ import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResp
 class LambdaStreamingResponseHandlerTest implements WithAssertions {
 
     @Test
-    void testOnNext() {
+    void testOnPartialResponse() {
         // given
         List<Object> tokens = new ArrayList<>();
         tokens.add("The sky ");
@@ -34,7 +34,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
     }
 
     @Test
-    void testOnNextAndError() {
+    void testOnPartialResponseAndError() {
         // given
         List<Object> tokens = new ArrayList<>();
         tokens.add("Three ");
