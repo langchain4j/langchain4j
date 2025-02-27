@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.neo4j;
 
+import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
+
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
@@ -12,15 +14,10 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-import lombok.Getter;
-
 import java.util.AbstractMap;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
-
+import lombok.Getter;
 
 public class Neo4jFilterMapper {
 
@@ -29,6 +26,7 @@ public class Neo4jFilterMapper {
     public static class IncrementalKeyMap {
         @Getter
         private final Map<String, Object> map = new ConcurrentHashMap<>();
+
         private int counter = 1;
 
         public String put(Object value) {
@@ -37,7 +35,6 @@ public class Neo4jFilterMapper {
             return key;
         }
     }
-
 
     public Neo4jFilterMapper() {}
 
@@ -72,7 +69,8 @@ public class Neo4jFilterMapper {
         } else if (filter instanceof Or item) {
             return mapOr(item);
         } else {
-            throw new UnsupportedOperationException(UNSUPPORTED_FILTER_TYPE_ERROR + filter.getClass().getName());
+            throw new UnsupportedOperationException(
+                    UNSUPPORTED_FILTER_TYPE_ERROR + filter.getClass().getName());
         }
     }
 
@@ -80,18 +78,14 @@ public class Neo4jFilterMapper {
         // put ($param_N, <value>) entry map
         final String param = map.put(value);
 
-        String sanitizedKey = sanitize(key)
-                .orElseThrow(() -> {
-                    String invalidSanitizeValue = String.format("The key %s, to assign to the operator %s and value %s, cannot be safely quoted",
-                            key,
-                            operator,
-                            value);
-                    return new RuntimeException(invalidSanitizeValue);
-                });
-        
-        return "n.%s %s $%s".formatted(
-                sanitizedKey, operator, param
-        );
+        String sanitizedKey = sanitize(key).orElseThrow(() -> {
+            String invalidSanitizeValue = String.format(
+                    "The key %s, to assign to the operator %s and value %s, cannot be safely quoted",
+                    key, operator, value);
+            return new RuntimeException(invalidSanitizeValue);
+        });
+
+        return "n.%s %s $%s".formatted(sanitizedKey, operator, param);
     }
 
     public String mapIn(IsIn filter) {
@@ -104,20 +98,14 @@ public class Neo4jFilterMapper {
     }
 
     private String mapAnd(And filter) {
-        return "(%s) AND (%s)".formatted(
-                getStringMapping(filter.left()), getStringMapping(filter.right())
-        );
+        return "(%s) AND (%s)".formatted(getStringMapping(filter.left()), getStringMapping(filter.right()));
     }
 
     private String mapOr(Or filter) {
-        return "(%s) OR (%s)".formatted(
-                getStringMapping(filter.left()), getStringMapping(filter.right())
-        );
+        return "(%s) OR (%s)".formatted(getStringMapping(filter.left()), getStringMapping(filter.right()));
     }
 
     private String mapNot(Not filter) {
-        return "NOT (%s)".formatted(
-                getStringMapping(filter.expression())
-        );
+        return "NOT (%s)".formatted(getStringMapping(filter.expression()));
     }
 }

@@ -1,5 +1,10 @@
 package dev.langchain4j.store.embedding.neo4j;
 
+import static dev.langchain4j.store.embedding.neo4j.Neo4jFilterMapper.UNSUPPORTED_FILTER_TYPE_ERROR;
+import static java.util.AbstractMap.SimpleEntry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
+
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
@@ -12,15 +17,9 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-import org.junit.jupiter.api.Test;
-
 import java.util.Map;
 import java.util.Set;
-
-import static dev.langchain4j.store.embedding.neo4j.Neo4jFilterMapper.UNSUPPORTED_FILTER_TYPE_ERROR;
-import static java.util.AbstractMap.SimpleEntry;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
+import org.junit.jupiter.api.Test;
 
 public class Neo4jFilterMapperTest {
 
@@ -94,8 +93,7 @@ public class Neo4jFilterMapperTest {
     void should_map_and() {
         And filter = new And(new IsEqualTo("key1", "value1"), new IsEqualTo("key2", "value2"));
         final SimpleEntry<String, Map> result = new Neo4jFilterMapper().map(filter);
-        assertThat(result.getKey())
-                .isEqualTo("(n.key1 = $param_1) AND (n.key2 = $param_2)");
+        assertThat(result.getKey()).isEqualTo("(n.key1 = $param_1) AND (n.key2 = $param_2)");
         assertThat(result.getValue()).isEqualTo(Map.of("param_1", "value1", "param_2", "value2"));
     }
 
@@ -103,8 +101,7 @@ public class Neo4jFilterMapperTest {
     void should_map_or() {
         Or filter = new Or(new IsEqualTo("key1", "value1"), new IsEqualTo("key2", "value2"));
         final SimpleEntry<String, Map> result = new Neo4jFilterMapper().map(filter);
-        assertThat(result.getKey())
-                .isEqualTo("(n.key1 = $param_1) OR (n.key2 = $param_2)");
+        assertThat(result.getKey()).isEqualTo("(n.key1 = $param_1) OR (n.key2 = $param_2)");
         assertThat(result.getValue()).isEqualTo(Map.of("param_1", "value1", "param_2", "value2"));
     }
 
@@ -112,21 +109,14 @@ public class Neo4jFilterMapperTest {
     void should_map_or_not_and() {
         final Set<String> valueKey3 = Set.of("1", "2");
         Or filter = new Or(
-                new And(
-                        new IsEqualTo("key1", "value1"),
-                        new IsGreaterThan("key2", "value2")
-                ),
-                new Not(
-                        new And(
-                                new IsIn("key3", valueKey3),
-                                new IsLessThan("key4", "value4")
-                        )
-                )
-        );
+                new And(new IsEqualTo("key1", "value1"), new IsGreaterThan("key2", "value2")),
+                new Not(new And(new IsIn("key3", valueKey3), new IsLessThan("key4", "value4"))));
         final SimpleEntry<String, Map> result = new Neo4jFilterMapper().map(filter);
         assertThat(result.getKey())
-                .isEqualTo("((n.key1 = $param_1) AND (n.key2 > $param_2)) OR (NOT ((n.key3 IN $param_3) AND (n.key4 < $param_4)))");
-        assertThat(result.getValue()).isEqualTo(Map.of("param_1", "value1", "param_2", "value2", "param_3", valueKey3, "param_4", "value4"));
+                .isEqualTo(
+                        "((n.key1 = $param_1) AND (n.key2 > $param_2)) OR (NOT ((n.key3 IN $param_3) AND (n.key4 < $param_4)))");
+        assertThat(result.getValue())
+                .isEqualTo(Map.of("param_1", "value1", "param_2", "value2", "param_3", valueKey3, "param_4", "value4"));
     }
 
     @Test
@@ -147,7 +137,7 @@ public class Neo4jFilterMapperTest {
             assertThat(e.getMessage()).contains(UNSUPPORTED_FILTER_TYPE_ERROR);
         }
     }
-    
+
     private static class MockFilter implements Filter {
 
         @Override

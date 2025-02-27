@@ -1,5 +1,14 @@
 package dev.langchain4j.store.embedding.neo4j;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_EMBEDDING_PROP;
+import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_ID_PROP;
+import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_TEXT_PROP;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.data.Percentage.withPercentage;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -17,6 +26,14 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,24 +49,6 @@ import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.stream.IntStream;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_EMBEDDING_PROP;
-import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_ID_PROP;
-import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_TEXT_PROP;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.assertj.core.data.Percentage.withPercentage;
 
 @Testcontainers
 class Neo4jEmbeddingStoreIT {
@@ -134,13 +133,12 @@ class Neo4jEmbeddingStoreIT {
     @Test
     void should_add_embedding_with_id_and_retrieve_with_and_without_prefilter() {
 
-        final List<TextSegment> segments = IntStream.range(0, 10).boxed()
+        final List<TextSegment> segments = IntStream.range(0, 10)
+                .boxed()
                 .map(i -> {
                     if (i == 0) {
-                        final Map<String, Object> metas = Map.of("key1", "value1",
-                                "key2", 10,
-                                "key3", "3",
-                                "key4", "value4");
+                        final Map<String, Object> metas =
+                                Map.of("key1", "value1", "key2", 10, "key3", "3", "key4", "value4");
                         final Metadata metadata = new Metadata(metas);
                         return TextSegment.from(randomUUID(), metadata);
                     }
@@ -148,27 +146,17 @@ class Neo4jEmbeddingStoreIT {
                 })
                 .toList();
 
-
-        final List<Embedding> embeddings = embeddingModel.embedAll(segments)
-                .content();
+        final List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
 
         embeddingStore.addAll(embeddings, segments);
 
         final And filter = new And(
-                new And(
-                        new IsEqualTo("key1", "value1"),
-                        new IsEqualTo("key2", "10")
-                ),
-                new Not(
-                        new Or(
-                                new IsIn("key3", asList("1", "2")),
-                                new IsNotEqualTo("key4", "value4")
-                        )
-                )
-        );
+                new And(new IsEqualTo("key1", "value1"), new IsEqualTo("key2", "10")),
+                new Not(new Or(new IsIn("key3", asList("1", "2")), new IsNotEqualTo("key4", "value4"))));
 
         TextSegment segmentToSearch = TextSegment.from(randomUUID());
-        Embedding embeddingToSearch = embeddingModel.embed(segmentToSearch.text()).content();
+        Embedding embeddingToSearch =
+                embeddingModel.embed(segmentToSearch.text()).content();
         final EmbeddingSearchRequest requestWithFilter = EmbeddingSearchRequest.builder()
                 .maxResults(5)
                 .minScore(0.0)
