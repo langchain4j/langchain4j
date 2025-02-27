@@ -33,4 +33,5 @@ public class AnthropicCreateMessageRequest {
     public Integer topK;
     public List<AnthropicTool> tools;
     public AnthropicToolChoice toolChoice;
+    public AnthropicThinking thinking;
 }
