@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -30,7 +30,7 @@ class LocalAiChatModelIT {
         String userMessage = "hello";
 
         // when
-        String response = model.generate(userMessage);
+        String response = model.chat(userMessage);
 
         // then
         assertThat(response).isNotBlank();
@@ -43,10 +43,10 @@ class LocalAiChatModelIT {
         List<ChatMessage> messages = singletonList(UserMessage.from("hello"));
 
         // when
-        Response<AiMessage> response = model.generate(messages);
+        ChatResponse response = model.chat(messages);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNotBlank();
 
         assertThat(response.tokenUsage()).isNull();
