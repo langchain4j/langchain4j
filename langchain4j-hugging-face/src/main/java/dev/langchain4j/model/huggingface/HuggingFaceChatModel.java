@@ -1,7 +1,6 @@
 package dev.langchain4j.model.huggingface;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.joining;
 
@@ -146,7 +145,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
         private String baseUrl;
         private String accessToken;
-        private String modelId = TII_UAE_FALCON_7B_INSTRUCT;
+        private String modelId;
         private Duration timeout = Duration.ofSeconds(15);
         private Double temperature;
         private Integer maxNewTokens;

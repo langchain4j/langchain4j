@@ -1,6 +1,5 @@
 package dev.langchain4j.model.huggingface;
 
-import static dev.langchain4j.model.huggingface.HuggingFaceModelName.SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
@@ -61,7 +60,7 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
 
             @Override
             public String modelId() {
-                return modelId == null ? SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2 : modelId;
+                return modelId;
             }
 
             @Override
