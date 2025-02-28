@@ -370,7 +370,7 @@ streamingModel.chat(userMessage, new StreamingChatResponseHandler() {
 });
 
 futureResponse.join();
-``` 
+```
 Toggling the safe prompt will prepend your messages with the following `@SystemMessage`:
 
 ```plaintext
