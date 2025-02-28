@@ -126,7 +126,7 @@ public interface ChatLanguageModel {
 
     static void validate(List<ToolSpecification> toolSpecifications) { // TODO
         if (!isNullOrEmpty(toolSpecifications)) {
-            throw new RuntimeException("tools are not supported yet by this model provider");
+            throw new UnsupportedFeatureException("tools are not supported yet by this model provider");
         }
     }
 
