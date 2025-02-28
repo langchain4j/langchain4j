@@ -84,6 +84,8 @@ public abstract class AbstractAiServiceIT {
     @EnabledIf("supportsToolsAndJsonResponseFormatWithSchema")
     void should_execute_tool_then_return_structured_output(ChatLanguageModel model) {
 
+        // TODO fail if model does not support RESPONSE_FORMAT_JSON_SCHEMA and tools
+
         // given
         model = spy(model);
 
