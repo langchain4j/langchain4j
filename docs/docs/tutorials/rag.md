@@ -900,9 +900,10 @@ interface Assistant {
 }
 
 assistant.chat("How to do Easy RAG with LangChain4j?")
-    .onRetrieved(sources -> ...)
-    .onNext(token -> ...)
-    .onError(error -> ...)
+    .onRetrieved((List<Content> sources) -> ...)
+    .onPartialResponse(...)
+    .onCompleteResponse(...)
+    .onError(...)
     .start();
 ```
 

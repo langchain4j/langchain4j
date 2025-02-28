@@ -293,7 +293,7 @@ LLMs generate text one token at a time, so many LLM providers offer a way to str
   IAiService assistant = AiServices.create(IAiService.class, qianfanStreamingChatModel);
   
   TokenStream tokenStream = assistant.chatInTokenStream("Tell me a story.");
-  tokenStream.onNext(System.out::println)
+  tokenStream.onPartialResponse(System.out::println)
           .onError(Throwable::printStackTrace)
           .start();
 ```
