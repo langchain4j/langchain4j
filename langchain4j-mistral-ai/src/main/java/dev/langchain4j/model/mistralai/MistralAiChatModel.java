@@ -1,7 +1,5 @@
 package dev.langchain4j.model.mistralai;
 
-import static dev.langchain4j.data.message.ContentType.IMAGE;
-import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -14,12 +12,11 @@ import static java.util.Collections.singletonList;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -117,7 +114,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-        validate(chatRequest.messages());
+        ChatRequestValidator.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatLanguageModel.validate(parameters);
         ChatLanguageModel.validate(parameters.responseFormat());
@@ -146,22 +143,6 @@ public class MistralAiChatModel implements ChatLanguageModel {
                         .finishReason(response.finishReason())
                         .build())
                 .build();
-    }
-
-    static void validate(List<ChatMessage> messages) {
-        for (ChatMessage message : messages) {
-            if (message instanceof UserMessage userMessage) {
-                for (Content content : userMessage.contents()) {
-                    if (content.type() == IMAGE) {
-                        throw new UnsupportedFeatureException("This integration does not support image inputs yet");
-                    }
-                    if (content.type() != TEXT) {
-                        throw new UnsupportedFeatureException(String.format(
-                                "This integration does not support %s yet", content.getClass().getSimpleName()));
-                    }
-                }
-            }
-        }
     }
 
     private Response<AiMessage> generate(List<ChatMessage> messages) {
