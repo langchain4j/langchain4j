@@ -14,7 +14,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -24,6 +23,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -48,7 +48,6 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.contentFilterManagement;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerRequest;
@@ -152,8 +151,8 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     @Override
     public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = request.parameters();
-        ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.responseFormat());
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 

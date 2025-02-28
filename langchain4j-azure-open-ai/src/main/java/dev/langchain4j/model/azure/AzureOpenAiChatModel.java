@@ -44,6 +44,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -386,7 +387,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     public ChatResponse chat(ChatRequest request) {
 
         ChatRequestParameters parameters = request.parameters();
-        ChatLanguageModel.validate(parameters);
+        ChatRequestValidator.validateParameters(parameters);
         if (parameters.toolChoice() == REQUIRED) {
             if (parameters.toolSpecifications().size() != 1) {
                 throw new UnsupportedFeatureException(

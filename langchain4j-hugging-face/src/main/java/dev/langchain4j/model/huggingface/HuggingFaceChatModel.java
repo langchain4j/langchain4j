@@ -102,10 +102,10 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     public ChatResponse chat(ChatRequest chatRequest) {
         ChatRequestValidator.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.toolSpecifications());
-        ChatLanguageModel.validate(parameters.toolChoice());
-        ChatLanguageModel.validate(parameters.responseFormat());
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolSpecifications());
+        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.responseFormat());
 
         Response<AiMessage> response = generate(chatRequest.messages());
 

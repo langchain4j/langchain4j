@@ -21,7 +21,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -93,9 +92,9 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestValidator.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.toolChoice());
-        ChatLanguageModel.validate(parameters.responseFormat());
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 

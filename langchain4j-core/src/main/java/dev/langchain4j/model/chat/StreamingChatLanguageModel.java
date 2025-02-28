@@ -65,6 +65,14 @@ public interface StreamingChatLanguageModel {
         doChat(finalChatRequest, observingHandler);
     }
 
+    default ChatRequestParameters defaultRequestParameters() {
+        return ChatRequestParameters.builder().build();
+    }
+
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
+    }
+
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         throw new RuntimeException("Not implemented");
     }
@@ -85,14 +93,6 @@ public interface StreamingChatLanguageModel {
                 .build();
 
         chat(chatRequest, handler);
-    }
-
-    default List<ChatModelListener> listeners() {
-        return Collections.emptyList();
-    }
-
-    default ChatRequestParameters defaultRequestParameters() {
-        return ChatRequestParameters.builder().build();
     }
 
     default Set<Capability> supportedCapabilities() {

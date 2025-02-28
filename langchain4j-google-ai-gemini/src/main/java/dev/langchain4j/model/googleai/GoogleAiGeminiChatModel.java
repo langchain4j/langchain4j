@@ -1,7 +1,6 @@
 package dev.langchain4j.model.googleai;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -13,6 +12,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -25,7 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -77,7 +76,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
-        ChatLanguageModel.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.toolChoice());
 
         GeminiGenerateContentRequest request = createGenerateContentRequest(
                 chatRequest.messages(),

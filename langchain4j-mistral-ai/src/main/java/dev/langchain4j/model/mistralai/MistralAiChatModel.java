@@ -116,8 +116,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
     public ChatResponse chat(ChatRequest chatRequest) {
         ChatRequestValidator.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.responseFormat());
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.responseFormat());
 
         Response<AiMessage> response;
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();

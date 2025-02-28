@@ -1,16 +1,11 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 import java.util.Collections;
@@ -18,9 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 
 /**
  * Represents a language model that has a chat API.
@@ -58,6 +50,14 @@ public interface ChatLanguageModel {
         }
     }
 
+    default ChatRequestParameters defaultRequestParameters() {
+        return ChatRequestParameters.builder().build();
+    }
+
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
+    }
+
     default ChatResponse doChat(ChatRequest chatRequest) {
         throw new RuntimeException("Not implemented");
     }
@@ -89,64 +89,6 @@ public interface ChatLanguageModel {
                 .build();
 
         return chat(chatRequest);
-    }
-
-    default List<ChatModelListener> listeners() {
-        return Collections.emptyList();
-    }
-
-    static void validate(ChatRequestParameters parameters) { // TODO
-        String errorTemplate = "%s is not supported yet by this model provider";
-
-        if (parameters.modelName() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "'modelName' parameter"));
-        }
-        if (parameters.temperature() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "'temperature' parameter"));
-        }
-        if (parameters.topP() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "'topP' parameter"));
-        }
-        if (parameters.topK() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "'topK' parameter"));
-        }
-        if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "'frequencyPenalty' parameter"));
-        }
-        if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "'presencePenalty' parameter"));
-        }
-        if (parameters.maxOutputTokens() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "'maxOutputTokens' parameter"));
-        }
-        if (parameters.stopSequences() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "'stopSequences' parameter"));
-        }
-    }
-
-    static void validate(List<ToolSpecification> toolSpecifications) { // TODO
-        if (!isNullOrEmpty(toolSpecifications)) {
-            throw new UnsupportedFeatureException("tools are not supported yet by this model provider");
-        }
-    }
-
-    static void validate(ToolChoice toolChoice) { // TODO
-        if (toolChoice == REQUIRED) {
-            throw new UnsupportedFeatureException(String.format("%s.%s is not supported yet by this model provider",
-                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
-        }
-    }
-
-    static void validate(ResponseFormat responseFormat) { // TODO
-        String errorTemplate = "%s is not supported yet by this model provider";
-        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
-            // TODO check supportedCapabilities() instead?
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
-        }
-    }
-
-    default ChatRequestParameters defaultRequestParameters() {
-        return ChatRequestParameters.builder().build();
     }
 
     default Set<Capability> supportedCapabilities() {

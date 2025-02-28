@@ -14,7 +14,6 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageReques
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -24,6 +23,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -172,8 +172,8 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.responseFormat());
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 

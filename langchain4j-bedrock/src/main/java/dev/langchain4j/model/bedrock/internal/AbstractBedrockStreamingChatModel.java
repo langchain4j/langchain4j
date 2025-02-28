@@ -3,7 +3,6 @@ package dev.langchain4j.model.bedrock.internal;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -47,10 +46,10 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestValidator.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.toolSpecifications());
-        ChatLanguageModel.validate(parameters.toolChoice());
-        ChatLanguageModel.validate(parameters.responseFormat());
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolSpecifications());
+        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 
