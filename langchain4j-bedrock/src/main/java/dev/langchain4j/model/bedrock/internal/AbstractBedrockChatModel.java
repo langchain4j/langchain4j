@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -42,6 +43,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestValidator.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatLanguageModel.validate(parameters);
         ChatLanguageModel.validate(parameters.toolSpecifications());
