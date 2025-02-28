@@ -3,6 +3,7 @@ package dev.langchain4j.model.mistralai;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
@@ -92,7 +93,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralAiChatModelName.OPEN_MISTRAL_7B.toString());
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
         this.topP = topP;
         this.maxTokens = maxTokens;
@@ -100,16 +101,6 @@ public class MistralAiChatModel implements ChatLanguageModel {
         this.randomSeed = randomSeed;
         this.responseFormat = responseFormat;
         this.maxRetries = getOrDefault(maxRetries, 3);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static MistralAiChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
     }
 
     @Override

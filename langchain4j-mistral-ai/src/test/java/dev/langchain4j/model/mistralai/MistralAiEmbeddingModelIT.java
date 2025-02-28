@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static dev.langchain4j.model.mistralai.MistralAiEmbeddingModelName.MISTRAL_EMBED;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,6 +17,7 @@ class MistralAiEmbeddingModelIT {
 
     EmbeddingModel model = MistralAiEmbeddingModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MISTRAL_EMBED)
             .logRequests(true)
             .logResponses(true)
             .build();
