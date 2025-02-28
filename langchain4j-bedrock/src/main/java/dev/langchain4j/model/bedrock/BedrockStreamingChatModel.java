@@ -171,6 +171,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .system(extractSystemMessages(messages))
                 .messages(extractRegularMessages(messages))
                 .toolConfig(extractToolConfigurationFrom(toolSpecs, parameters))
+                .additionalModelRequestFields(additionalRequestModelFieldsFrom(parameters))
                 .build();
     }
 

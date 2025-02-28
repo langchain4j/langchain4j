@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertAdditionalModelRequestFields;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentToJson;
@@ -36,11 +37,14 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.model.AnyToolChoice;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
@@ -67,7 +71,7 @@ public abstract class AbstractBedrockChatModel {
     protected final String modelId;
     protected final Integer maxRetries;
     protected final Duration timeout;
-    protected final ChatRequestParameters defaultRequestParameters;
+    protected final BedrockChatRequestParameters defaultRequestParameters;
     protected final List<ChatModelListener> listeners;
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
@@ -85,13 +89,14 @@ public abstract class AbstractBedrockChatModel {
 
         if (builder.defaultRequestParameters != null) {
             validate(builder.defaultRequestParameters);
-            this.defaultRequestParameters = ChatRequestParameters.builder()
+            this.defaultRequestParameters = BedrockChatRequestParameters.builder()
                     .overrideWith(builder.defaultRequestParameters)
                     .modelName(this.modelId)
                     .build();
         } else {
-            this.defaultRequestParameters =
-                    ChatRequestParameters.builder().modelName(this.modelId).build();
+            this.defaultRequestParameters = BedrockChatRequestParameters.builder()
+                    .modelName(this.modelId)
+                    .build();
         }
     }
 
@@ -304,6 +309,8 @@ public abstract class AbstractBedrockChatModel {
                         .build());
             } else if (cBlock.type() == ContentBlock.Type.TEXT) {
                 textAnswer = cBlock.text();
+            } else if (cBlock.type() == ContentBlock.Type.REASONING_CONTENT) {
+                // TODO Implement full support of reasoning in lc4j
             } else {
                 throw new IllegalArgumentException(
                         "Unsupported content in LLM response. Content type: " + cBlock.type());
@@ -356,6 +363,22 @@ public abstract class AbstractBedrockChatModel {
                     .topP(dblToFloat(this.defaultRequestParameters.topP()))
                     .stopSequences(this.defaultRequestParameters.stopSequences())
                     .build();
+        }
+    }
+
+    protected Document additionalRequestModelFieldsFrom(ChatRequestParameters chatRequestParameters) {
+        Map<String, Object> additionalModelRequestFieldsMap =
+                new HashMap<>(this.defaultRequestParameters.additionalModelRequestFields());
+
+        if ((chatRequestParameters instanceof BedrockChatRequestParameters bedrockChatRequestParameters)
+                && (nonNull(bedrockChatRequestParameters.additionalModelRequestFields()))) {
+
+            additionalModelRequestFieldsMap.putAll(bedrockChatRequestParameters.additionalModelRequestFields());
+        }
+        if (isNullOrEmpty(additionalModelRequestFieldsMap)) {
+            return null;
+        } else {
+            return convertAdditionalModelRequestFields(additionalModelRequestFieldsMap);
         }
     }
 

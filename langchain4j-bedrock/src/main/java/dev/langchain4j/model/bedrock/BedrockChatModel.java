@@ -113,6 +113,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
                 .system(extractSystemMessages(messages))
                 .messages(extractRegularMessages(messages))
                 .toolConfig(extractToolConfigurationFrom(toolSpecs, parameters))
+                .additionalModelRequestFields(additionalRequestModelFieldsFrom(parameters))
                 .build();
     }
 
