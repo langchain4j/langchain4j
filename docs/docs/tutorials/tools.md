@@ -378,9 +378,9 @@ interface Assistant {
 TokenStream tokenStream = assistant.chat("Cancel my booking");
 
 tokenStream
-    .onNext(...)
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
-    .onComplete(...)
+    .onPartialResponse(...)
+    .onCompleteResponse(...)
     .onError(...)
     .start();
 ```

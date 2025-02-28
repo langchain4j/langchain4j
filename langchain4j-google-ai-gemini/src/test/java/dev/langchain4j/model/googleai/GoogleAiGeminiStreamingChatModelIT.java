@@ -6,7 +6,6 @@ import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.InstanceOfAssertFactories.list;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -27,7 +26,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -38,7 +36,6 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -683,28 +680,28 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .build();
 
         // then
-        CompletableFuture<Response<AiMessage>> future1 = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future1 = new CompletableFuture<>();
         assistant
                 .chat("What is the amount of transaction T001?")
-                .onNext(System.out::println)
-                .onComplete(future1::complete)
+                .onPartialResponse(System.out::println)
+                .onCompleteResponse(future1::complete)
                 .onError(future1::completeExceptionally)
                 .start();
-        Response<AiMessage> response1 = future1.get(30, TimeUnit.SECONDS);
+        ChatResponse response1 = future1.get(30, TimeUnit.SECONDS);
 
-        assertThat(response1.content().text()).containsIgnoringCase("11.1");
+        assertThat(response1.aiMessage().text()).containsIgnoringCase("11.1");
         verify(spyTransactions).getTransactionAmount("T001");
 
-        CompletableFuture<Response<AiMessage>> future2 = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future2 = new CompletableFuture<>();
         assistant
                 .chat("What is the amount of transaction T002?")
-                .onNext(System.out::println)
-                .onComplete(future2::complete)
+                .onPartialResponse(System.out::println)
+                .onCompleteResponse(future2::complete)
                 .onError(future2::completeExceptionally)
                 .start();
-        Response<AiMessage> response2 = future2.get(30, TimeUnit.SECONDS);
+        ChatResponse response2 = future2.get(30, TimeUnit.SECONDS);
 
-        assertThat(response2.content().text()).containsIgnoringCase("22.2");
+        assertThat(response2.aiMessage().text()).containsIgnoringCase("22.2");
         verify(spyTransactions).getTransactionAmount("T002");
 
         verifyNoMoreInteractions(spyTransactions);
