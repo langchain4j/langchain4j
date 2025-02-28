@@ -44,6 +44,7 @@ class AnthropicStreamingChatModelIT {
 
     StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
             .apiKey(getenv("ANTHROPIC_API_KEY"))
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
             .logRequests(true)
             .logResponses(true)
@@ -68,6 +69,13 @@ class AnthropicStreamingChatModelIT {
     void should_stream_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
+        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+                .apiKey(getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         String userMessage = "What is the capital of Germany?";
 
         // when
@@ -93,6 +101,7 @@ class AnthropicStreamingChatModelIT {
         // given
         StreamingChatLanguageModel visionModel = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .maxTokens(20)
                 .logRequests(false) // base64-encoded images are huge
                 .logResponses(true)
@@ -237,7 +246,7 @@ class AnthropicStreamingChatModelIT {
     @Test
     void should_fail_to_create_without_api_key() {
 
-        assertThatThrownBy(() -> AnthropicStreamingChatModel.withApiKey(null))
+        assertThatThrownBy(() -> AnthropicStreamingChatModel.builder().apiKey(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Anthropic API key must be defined. "
                         + "It can be generated here: https://console.anthropic.com/settings/keys");

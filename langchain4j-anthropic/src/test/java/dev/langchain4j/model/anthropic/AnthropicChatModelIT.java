@@ -47,6 +47,7 @@ class AnthropicChatModelIT {
 
     ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
             .logRequests(true)
             .logResponses(true)
@@ -54,6 +55,7 @@ class AnthropicChatModelIT {
 
     ChatLanguageModel visionModel = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
             .logRequests(false) // base64-encoded images are huge
             .logResponses(true)
@@ -78,6 +80,13 @@ class AnthropicChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         UserMessage userMessage = userMessage("What is the capital of Germany?");
 
         // when
@@ -148,6 +157,7 @@ class AnthropicChatModelIT {
 
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .maxTokens(maxTokens)
                 .build();
 
@@ -187,6 +197,7 @@ class AnthropicChatModelIT {
 
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .stopSequences(stopSequences)
                 .logRequests(true)
                 .logResponses(true)
@@ -382,7 +393,7 @@ class AnthropicChatModelIT {
     @Test
     void should_fail_to_create_without_api_key() {
 
-        assertThatThrownBy(() -> AnthropicChatModel.withApiKey(null))
+        assertThatThrownBy(() -> AnthropicChatModel.builder().apiKey(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Anthropic API key must be defined. "
                         + "It can be generated here: https://console.anthropic.com/settings/keys");

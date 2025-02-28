@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerResponse;
@@ -95,7 +95,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
      * @param apiKey              The API key for authentication with the Anthropic API.
      * @param version             The value of the "anthropic-version" HTTP header. Default: "2023-06-01"
      * @param beta                The value of the "anthropic-beta" HTTP header.
-     * @param modelName           The name of the Anthropic model to use. Default: "claude-3-haiku-20240307"
+     * @param modelName           The name of the Anthropic model to use.
      * @param temperature         The temperature
      * @param topP                The top-P
      * @param topK                The top-K
@@ -136,7 +136,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, CLAUDE_3_HAIKU_20240307.toString());
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
         this.topP = topP;
         this.topK = topK;
@@ -159,16 +159,6 @@ public class AnthropicChatModel implements ChatLanguageModel {
             this.modelName = modelName.toString();
             return this;
         }
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static AnthropicChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
     }
 
     @Override
