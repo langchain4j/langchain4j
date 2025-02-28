@@ -2,9 +2,8 @@ package dev.langchain4j.model.vertexai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
@@ -26,9 +25,9 @@ class VertexAiChatModelIT {
                 .maxRetries(3)
                 .build();
 
-        Response<AiMessage> response = vertexAiChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        ChatResponse response = vertexAiChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);

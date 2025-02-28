@@ -1,7 +1,7 @@
 package dev.langchain4j.model.vertexai;
 
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponse;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT;
@@ -33,7 +33,9 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -73,12 +75,12 @@ class VertexAiGeminiStreamingChatModelIT {
         String userMessage = "What is the capital of Germany?";
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).contains("Berlin");
+        assertThat(response.aiMessage().text()).contains("Berlin");
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(7);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
@@ -94,12 +96,12 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_support_system_instructions(List<ChatMessage> messages) {
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(messages, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(messages, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("lieb");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("lieb");
     }
 
     static Stream<Arguments> should_support_system_instructions() {
@@ -138,12 +140,12 @@ class VertexAiGeminiStreamingChatModelIT {
         String userMessage = "Tell me a joke";
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(4);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(1);
@@ -167,12 +169,12 @@ class VertexAiGeminiStreamingChatModelIT {
         String userMessage = "What is the capital of Germany?";
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).contains("Berlin");
+        assertThat(response.aiMessage().text()).contains("Berlin");
     }
 
     @Test
@@ -183,12 +185,12 @@ class VertexAiGeminiStreamingChatModelIT {
                 ImageContent.from(CAT_IMAGE_URL), TextContent.from("What do you see? Reply in one word."));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -200,12 +202,12 @@ class VertexAiGeminiStreamingChatModelIT {
                 TextContent.from("What do you see? Reply in one word."));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -217,12 +219,12 @@ class VertexAiGeminiStreamingChatModelIT {
                 ImageContent.from(base64Data, "image/png"), TextContent.from("What do you see? Reply in one word."));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -235,12 +237,12 @@ class VertexAiGeminiStreamingChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -253,12 +255,12 @@ class VertexAiGeminiStreamingChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -273,12 +275,12 @@ class VertexAiGeminiStreamingChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -292,12 +294,12 @@ class VertexAiGeminiStreamingChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text())
+        assertThat(response.aiMessage().text())
                 .containsIgnoringCase("cat")
                 //                .containsIgnoringCase("dog")  // sometimes model replies with "puppy" instead of "dog"
                 .containsIgnoringCase("dice");
@@ -327,32 +329,37 @@ class VertexAiGeminiStreamingChatModelIT {
         UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
         allMessages.add(weatherQuestion);
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(allMessages)
+                .toolSpecifications(weatherToolSpec)
+                .build();
+        
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(allMessages, weatherToolSpec, handler);
-        Response<AiMessage> messageResponse = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
+        ChatResponse messageResponse = handler.get();
 
         // then
-        assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
+        assertThat(messageResponse.aiMessage().hasToolExecutionRequests()).isTrue();
         ToolExecutionRequest toolExecutionRequest =
-                messageResponse.content().toolExecutionRequests().get(0);
+                messageResponse.aiMessage().toolExecutionRequests().get(0);
 
         assertThat(toolExecutionRequest.arguments()).contains("Paris");
         assertThat(toolExecutionRequest.name()).isEqualTo("getWeatherForecast");
 
-        allMessages.add(messageResponse.content());
+        allMessages.add(messageResponse.aiMessage());
 
         // when (feeding the function return value back)
         ToolExecutionResultMessage toolExecResMsg = ToolExecutionResultMessage.from(
                 toolExecutionRequest, "{\"location\":\"Paris\",\"forecast\":\"sunny\", \"temperature\": 20}");
         allMessages.add(toolExecResMsg);
 
-        handler = new TestStreamingResponseHandler<>();
-        model.generate(allMessages, handler);
-        Response<AiMessage> weatherResponse = handler.get();
+        handler = new TestStreamingChatResponseHandler();
+        model.chat(allMessages, handler);
+        ChatResponse weatherResponse = handler.get();
 
         // then
-        assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
+        assertThat(weatherResponse.aiMessage().text()).containsIgnoringCase("sunny");
     }
 
     static class StockInventory {
@@ -441,13 +448,13 @@ class VertexAiGeminiStreamingChatModelIT {
                 .useGoogleSearch(true)
                 .build();
 
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
 
         // when
-        modelWithSearch.generate("Why is the sky blue?", handler);
+        modelWithSearch.chat("Why is the sky blue?", handler);
 
         // then
-        assertThat(handler.get().content().text()).containsIgnoringCase("scatter");
+        assertThat(handler.get().aiMessage().text()).containsIgnoringCase("scatter");
     }
 
     @Test
@@ -467,12 +474,12 @@ class VertexAiGeminiStreamingChatModelIT {
         String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
         StringBuilder accumulatedResponse = new StringBuilder();
-        model.generate(userMessage, onNext(accumulatedResponse::append));
+        model.chat(userMessage, onPartialResponse(accumulatedResponse::append));
         assertThat(accumulatedResponse.toString()).isNotEqualToIgnoringWhitespace(expectedJson);
 
         // when
         accumulatedResponse = new StringBuilder();
-        modelWithResponseMimeType.generate(userMessage, onNext(accumulatedResponse::append));
+        modelWithResponseMimeType.chat(userMessage, onPartialResponse(accumulatedResponse::append));
 
         // then
         assertThat(accumulatedResponse.toString()).isEqualToIgnoringWhitespace(expectedJson);
@@ -498,7 +505,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         Exception exception = assertThrows(
-                RuntimeException.class, () -> model.generate("You're a dumb bastard!!!", onNext(System.out::println)));
+                RuntimeException.class, () -> model.chat("You're a dumb bastard!!!", onPartialResponse(System.out::println)));
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -537,7 +544,7 @@ class VertexAiGeminiStreamingChatModelIT {
         messages.add(UserMessage.from("Anna is a 23 year old artist from New York City. She's got a dog and a cat."));
 
         StringBuilder accumulatedResponse = new StringBuilder();
-        model.generate(messages, onNext(accumulatedResponse::append));
+        model.chat(messages, onPartialResponse(accumulatedResponse::append));
         String response = accumulatedResponse.toString();
 
         // then
@@ -569,16 +576,22 @@ class VertexAiGeminiStreamingChatModelIT {
                 .addParameter("b", JsonSchemaProperty.INTEGER)
                 .build();
 
-        // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
-        model.generate(Arrays.asList(msg), adder, handler);
+        
+        ChatRequest request = ChatRequest.builder()
+                .messages(msg)
+                .toolSpecifications(adder)
+                .build();
+        
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
 
         // then
-        assertThat(handler.get().content().hasToolExecutionRequests()).isEqualTo(true);
-        assertThat(handler.get().content().toolExecutionRequests().get(0).name())
+        assertThat(handler.get().aiMessage().hasToolExecutionRequests()).isEqualTo(true);
+        assertThat(handler.get().aiMessage().toolExecutionRequests().get(0).name())
                 .isEqualTo("add");
-        assertThat(handler.get().content().toolExecutionRequests().get(0).arguments())
+        assertThat(handler.get().aiMessage().toolExecutionRequests().get(0).arguments())
                 .isEqualTo("{\"a\":1.0,\"b\":2.0}");
     }
 
@@ -601,13 +614,19 @@ class VertexAiGeminiStreamingChatModelIT {
                 .addParameter("b", JsonSchemaProperty.INTEGER)
                 .build();
 
-        // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
-        model.generate(Arrays.asList(msg), adder, handler);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(msg)
+                .toolSpecifications(adder)
+                .build();
+        
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
 
         // then
-        assertThat(handler.get().content().hasToolExecutionRequests()).isEqualTo(false);
+        assertThat(handler.get().aiMessage().hasToolExecutionRequests()).isEqualTo(false);
     }
 
     @Test
@@ -627,11 +646,11 @@ class VertexAiGeminiStreamingChatModelIT {
                 TextContent.from("Give a summary of the audio"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(msg), handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(msg), handler);
 
         // then
-        assertThat(handler.get().content().text()).containsIgnoringCase("Pixel");
+        assertThat(handler.get().aiMessage().text()).containsIgnoringCase("Pixel");
     }
 
     @Test
@@ -651,11 +670,11 @@ class VertexAiGeminiStreamingChatModelIT {
                 TextContent.from("What's in this video?"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(msg), handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(msg), handler);
 
         // then
-        assertThat(handler.get().content().text()).containsIgnoringCase("animal");
+        assertThat(handler.get().aiMessage().text()).containsIgnoringCase("animal");
     }
 
     @Test
@@ -678,11 +697,11 @@ class VertexAiGeminiStreamingChatModelIT {
                 TextContent.from("What's in this video?"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(msg), handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(msg), handler);
 
         // then
-        assertThat(handler.get().content().text()).containsAnyOf("finger", "hand");
+        assertThat(handler.get().aiMessage().text()).containsAnyOf("finger", "hand");
     }
 
     @Test
@@ -703,11 +722,11 @@ class VertexAiGeminiStreamingChatModelIT {
                 TextContent.from("Provide a summary of the document"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(msg), handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(singletonList(msg), handler);
 
         // then
-        assertThat(handler.get().content().text()).containsIgnoringCase("Gemini");
+        assertThat(handler.get().aiMessage().text()).containsIgnoringCase("Gemini");
     }
 
     @Test
@@ -726,26 +745,26 @@ class VertexAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         String instruction = "What is the sentiment expressed in the following sentence: ";
-        model.generate(instruction + "This is super exciting news, congratulations!", handler);
+        model.chat(instruction + "This is super exciting news, congratulations!", handler);
 
         // then
-        assertThat(handler.get().content().text()).isEqualTo("POSITIVE");
+        assertThat(handler.get().aiMessage().text()).isEqualTo("POSITIVE");
 
         // when
-        handler = new TestStreamingResponseHandler<>();
-        model.generate(instruction + "The sky is blue.", handler);
+        handler = new TestStreamingChatResponseHandler();
+        model.chat(instruction + "The sky is blue.", handler);
 
         // then
-        assertThat(handler.get().content().text()).isEqualTo("NEUTRAL");
+        assertThat(handler.get().aiMessage().text()).isEqualTo("NEUTRAL");
 
         // when
-        handler = new TestStreamingResponseHandler<>();
-        model.generate(instruction + "This is the worst movie I've ever watched! Boring!", handler);
+        handler = new TestStreamingChatResponseHandler();
+        model.chat(instruction + "This is the worst movie I've ever watched! Boring!", handler);
 
         // then
-        assertThat(handler.get().content().text()).isEqualTo("NEGATIVE");
+        assertThat(handler.get().aiMessage().text()).isEqualTo("NEGATIVE");
     }
 
     @AfterEach

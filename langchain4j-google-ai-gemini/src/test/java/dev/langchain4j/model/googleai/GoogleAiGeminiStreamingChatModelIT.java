@@ -6,6 +6,7 @@ import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.list;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -25,7 +26,9 @@ import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -33,6 +36,7 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -77,12 +81,12 @@ class GoogleAiGeminiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from("What is the capital of France?");
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        String text = response.content().text();
+        String text = response.aiMessage().text();
         assertThat(text).containsIgnoringCase("Paris");
 
         assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
@@ -101,12 +105,12 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate("How much is 3+4? Reply with just the answer", handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat("How much is 3+4? Reply with just the answer", handler);
+        ChatResponse response = handler.get();
 
         // then
-        String text = response.content().text();
+        String text = response.aiMessage().text();
         assertThat(text.trim()).isEqualTo("7");
     }
 
@@ -119,17 +123,17 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .responseFormat(ResponseFormat.JSON)
                 .logRequestsAndResponses(true)
                 .build();
+        
+        UserMessage userMessage = UserMessage.from("What is the firstname of the John Doe?\n"
+                + "Reply in JSON following with the following format: {\"firstname\": string}");
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(
-                UserMessage.from("What is the firstname of the John Doe?\n"
-                        + "Reply in JSON following with the following format: {\"firstname\": string}"),
-                handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        String jsonText = response.content().text();
+        String jsonText = response.aiMessage().text();
 
         assertThat(jsonText).contains("\"firstname\"");
         assertThat(jsonText).contains("\"John\"");
@@ -155,12 +159,12 @@ class GoogleAiGeminiStreamingChatModelIT {
         messages.add(UserMessage.from("What is my name? Reply with just my name."));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(messages, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(messages, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).contains("Guillaume");
+        assertThat(response.aiMessage().text()).contains("Guillaume");
     }
 
     @Test
@@ -176,12 +180,12 @@ class GoogleAiGeminiStreamingChatModelIT {
                 TextContent.from("Describe this image in a single word"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -197,12 +201,12 @@ class GoogleAiGeminiStreamingChatModelIT {
                 TextContent.from("What project does this markdown file mention?"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("LangChain4j");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("LangChain4j");
     }
 
     @Test
@@ -224,12 +228,12 @@ class GoogleAiGeminiStreamingChatModelIT {
                 TextContent.from("Give a summary of the audio"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("Pixel");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("Pixel");
     }
 
     @Test
@@ -250,12 +254,12 @@ class GoogleAiGeminiStreamingChatModelIT {
                 List.of(SystemMessage.from("Translate from English into French"), UserMessage.from("apple"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(chatMessages, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(chatMessages, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("pomme");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("pomme");
     }
 
     @Test
@@ -269,15 +273,14 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .includeCodeExecutionOutput(true)
                 .build();
 
+        UserMessage userMessage = UserMessage.from("Calculate `fibonacci(13)`. Write code in Python and execute it to get the result.");
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(
-                UserMessage.from("Calculate `fibonacci(13)`. Write code in Python and execute it to get the result."),
-                handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        String text = response.content().text();
+        String text = response.aiMessage().text();
         System.out.println("text = " + text);
 
         assertThat(text).containsIgnoringCase("233");
@@ -292,30 +295,34 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        // when
         List<ChatMessage> allMessages = new ArrayList<>();
         allMessages.add(UserMessage.from("Return a JSON list containing the first 10 fibonacci numbers."));
 
-        TestStreamingResponseHandler<AiMessage> handler1 = new TestStreamingResponseHandler<>();
-        gemini.generate(
-                allMessages,
-                List.of(ToolSpecification.builder()
-                        .name("getFirstNFibonacciNumbers")
-                        .description("Get the first n fibonacci numbers")
-                        .parameters(JsonObjectSchema.builder()
-                                .addNumberProperty("n")
-                                .build())
-                        .build()),
-                handler1);
-        Response<AiMessage> response1 = handler1.get();
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("getFirstNFibonacciNumbers")
+                .description("Get the first n fibonacci numbers")
+                .parameters(JsonObjectSchema.builder()
+                        .addNumberProperty("n")
+                        .build())
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(allMessages)
+                .toolSpecifications(toolSpecification)
+                .build();
+        
+        // when
+        TestStreamingChatResponseHandler handler1 = new TestStreamingChatResponseHandler();
+        gemini.chat(request, handler1);
+        ChatResponse response1 = handler1.get();
 
         // then
-        assertThat(response1.content().hasToolExecutionRequests()).isTrue();
-        assertThat(response1.content().toolExecutionRequests().get(0).name()).isEqualTo("getFirstNFibonacciNumbers");
-        assertThat(response1.content().toolExecutionRequests().get(0).arguments())
+        assertThat(response1.aiMessage().hasToolExecutionRequests()).isTrue();
+        assertThat(response1.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getFirstNFibonacciNumbers");
+        assertThat(response1.aiMessage().toolExecutionRequests().get(0).arguments())
                 .contains("\"n\":10");
 
-        allMessages.add(response1.content());
+        allMessages.add(response1.aiMessage());
 
         // when
         ToolExecutionResultMessage forecastResult =
@@ -323,12 +330,12 @@ class GoogleAiGeminiStreamingChatModelIT {
         allMessages.add(forecastResult);
 
         // then
-        TestStreamingResponseHandler<AiMessage> handler2 = new TestStreamingResponseHandler<>();
-        gemini.generate(allMessages, handler2);
-        Response<AiMessage> response2 = handler2.get();
+        TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
+        gemini.chat(allMessages, handler2);
+        ChatResponse response2 = handler2.get();
 
         // then
-        assertThat(response2.content().text()).contains("[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]");
+        assertThat(response2.aiMessage().text()).contains("[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]");
     }
 
     // Test is flaky, because Gemini doesn't 100% always ask for parallel tool calls
@@ -342,27 +349,31 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        // when
         List<ChatMessage> allMessages = new ArrayList<>();
         allMessages.add(UserMessage.from("Which warehouse has more stock, ABC or XYZ?"));
 
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(
-                allMessages,
-                List.of(ToolSpecification.builder()
-                        .name("getWarehouseStock")
-                        .description("Retrieve the amount of stock available in a warehouse designated by its name")
-                        .parameters(JsonObjectSchema.builder()
-                                .addStringProperty("name", "The name of the warehouse")
-                                .build())
-                        .build()),
-                handler);
-        Response<AiMessage> response = handler.get();
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("getWarehouseStock")
+                .description("Retrieve the amount of stock available in a warehouse designated by its name")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("name", "The name of the warehouse")
+                        .build())
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(allMessages)
+                .toolSpecifications(toolSpecification)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(request, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().hasToolExecutionRequests()).isTrue();
+        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
 
-        List<ToolExecutionRequest> executionRequests = response.content().toolExecutionRequests();
+        List<ToolExecutionRequest> executionRequests = response.aiMessage().toolExecutionRequests();
         assertThat(executionRequests).hasSize(2);
 
         String allArgs =
@@ -386,9 +397,9 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate("You're a dumb f*cking idiot bastard!", handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat("You're a dumb f*cking idiot bastard!", handler);
+        ChatResponse response = handler.get();
 
         // then
         assertThat(response.finishReason())
@@ -421,19 +432,19 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(
                 List.of(
                         SystemMessage.from("Your role is to extract information related to a person,"
                                 + "like their name, their address, the city the live in."),
                         UserMessage.from("In the town of Liverpool, lived Tommy Skybridge, a young little boy.")),
                 handler);
-        Response<AiMessage> response = handler.get();
+        ChatResponse response = handler.get();
 
         System.out.println("response = " + response);
 
         // then
-        assertThat(response.content().text().trim())
+        assertThat(response.aiMessage().text().trim())
                 .isEqualTo("{\"address\": {\"city\": \"Liverpool\"}, \"name\": \"Tommy Skybridge\"}");
     }
 
@@ -465,18 +476,18 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(
                 List.of(
                         SystemMessage.from("Your role is to analyze the sentiment of the text you receive."),
                         UserMessage.from("This is super exciting news, congratulations!")),
                 handler);
-        Response<AiMessage> response = handler.get();
+        ChatResponse response = handler.get();
 
         System.out.println("response = " + response);
 
         // then
-        assertThat(response.content().text().trim()).isEqualTo("{\"sentiment\": \"POSITIVE\"}");
+        assertThat(response.aiMessage().text().trim()).isEqualTo("{\"sentiment\": \"POSITIVE\"}");
     }
 
     @Test
@@ -497,16 +508,16 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(
                 List.of(
                         SystemMessage.from("Your role is to analyze the sentiment of the text you receive."),
                         UserMessage.from("This is super exciting news, congratulations!")),
                 handler);
-        Response<AiMessage> response = handler.get();
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text().trim()).isEqualTo("POSITIVE");
+        assertThat(response.aiMessage().text().trim()).isEqualTo("POSITIVE");
     }
 
     @Test
@@ -527,18 +538,18 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(
                 List.of(
                         SystemMessage.from("Your role is to return a list of 6-faces dice rolls"),
                         UserMessage.from("Give me 3 dice rolls")),
                 handler);
-        Response<AiMessage> response = handler.get();
+        ChatResponse response = handler.get();
 
         System.out.println("response = " + response);
 
         // then
-        Integer[] diceRolls = new Gson().fromJson(response.content().text(), Integer[].class);
+        Integer[] diceRolls = new Gson().fromJson(response.aiMessage().text(), Integer[].class);
         assertThat(diceRolls.length).isEqualTo(3);
     }
 
@@ -564,18 +575,18 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        gemini.generate(
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat(
                 List.of(
                         SystemMessage.from("Your role is to extract information from the description of a color"),
                         UserMessage.from(
                                 "Cobalt blue is a blend of a lot of blue, a bit of green, and almost no red.")),
                 handler);
-        Response<AiMessage> response = handler.get();
+        ChatResponse response = handler.get();
 
         System.out.println("response = " + response);
 
-        Color color = new Gson().fromJson(response.content().text(), Color.class);
+        Color color = new Gson().fromJson(response.aiMessage().text(), Color.class);
 
         // then
         assertThat(color.name).isEqualToIgnoringCase("Cobalt blue");
@@ -598,14 +609,19 @@ class GoogleAiGeminiStreamingChatModelIT {
                 ToolSpecification.builder().name("toolOne").build(),
                 ToolSpecification.builder().name("toolTwo").build());
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(chatMessages)
+                .toolSpecifications(listOfTools)
+                .build();
+
         // when
-        TestStreamingResponseHandler<AiMessage> handler1 = new TestStreamingResponseHandler<>();
-        gemini.generate(chatMessages, listOfTools, handler1);
-        Response<AiMessage> response1 = handler1.get();
+        TestStreamingChatResponseHandler handler1 = new TestStreamingChatResponseHandler();
+        gemini.chat(request, handler1);
+        ChatResponse response1 = handler1.get();
 
         // then
-        assertThat(response1.content().hasToolExecutionRequests()).isTrue();
-        assertThat(response1.content().toolExecutionRequests().get(0).name()).isEqualTo("toolOne");
+        assertThat(response1.aiMessage().hasToolExecutionRequests()).isTrue();
+        assertThat(response1.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("toolOne");
 
         // given
         gemini = GoogleAiGeminiStreamingChatModel.builder()
@@ -616,12 +632,12 @@ class GoogleAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler2 = new TestStreamingResponseHandler<>();
-        gemini.generate("Call toolOne", handler2);
-        Response<AiMessage> response2 = handler2.get();
+        TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
+        gemini.chat("Call toolOne", handler2);
+        ChatResponse response2 = handler2.get();
 
         // then
-        assertThat(response2.content().hasToolExecutionRequests()).isFalse();
+        assertThat(response2.aiMessage().hasToolExecutionRequests()).isFalse();
     }
 
     static class Transactions {
