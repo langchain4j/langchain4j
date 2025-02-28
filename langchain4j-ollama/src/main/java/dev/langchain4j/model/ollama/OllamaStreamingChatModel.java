@@ -3,7 +3,6 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.Capability;
@@ -11,7 +10,6 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
@@ -29,7 +27,6 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
@@ -138,13 +135,6 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         if (isNullOrEmpty(toolSpecifications)) {
             generate(chatRequest.messages(), legacyHandler);
         } else {
-            if (parameters.toolChoice() == REQUIRED) {
-                if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
-                }
-            }
             generate(chatRequest.messages(), toolSpecifications, legacyHandler);
         }
     }
