@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai.common;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
+import org.junit.jupiter.api.AfterEach;
 
 import java.util.List;
 
@@ -72,5 +73,13 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
 
     protected boolean assertFinishReason() {
         return false; // TODO implement
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

@@ -13,7 +13,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 
@@ -25,13 +25,14 @@ Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-2.0-flash`
 * `gemini-1.5-flash`
 * `gemini-1.5-pro`
 * `gemini-1.0-pro`
 
 ## GoogleAiGeminiChatModel
 
-The usual `generate(...)` methods are available:
+The usual `chat(...)` methods are available:
 
 ```java
 ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
@@ -40,7 +41,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     ...
     .build();
 
-String response = gemini.generate("Hello Gemini!");
+String response = gemini.chat("Hello Gemini!");
 ```
 
 As well, as the `ChatResponse chat(ChatRequest req)` method:
@@ -83,24 +84,26 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 ```
 
 ## GoogleAiGeminiStreamingChatModel
-The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token. The response must be managed by a `StreamingResponseHandler`. 
+The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.
+The response must be handled by a `StreamingChatResponseHandler`. 
 ```java
 StreamingChatLanguageModel gemini = GoogleAiGeminiStreamingChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-1.5-flash")
         .build();
 
-CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        gemini.generate("Tell me a joke about Java", new StreamingResponseHandler<AiMessage>() {
+gemini.chat("Tell me a joke about Java", new StreamingChatResponseHandler() {
+
     @Override
-    public void onNext(String token) {
-        System.out.print(token);
+    public void onPartialResponse(String partialResponse) {
+        System.out.print(partialResponse);
     }
 
     @Override
-    public void onComplete(Response<AiMessage> response) {
-        futureResponse.complete(response);
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        futureResponse.complete(completeResponse);
     }
 
     @Override
@@ -115,7 +118,9 @@ CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>(
 ## Tools
 
 Tools (aka Function Calling) is supported, including parallel calls.
-You can either use the `generate(...)` methods that take a single or a list of tool specifications to let Gemini know it can request a function to be called. Or you can use LangChain4j's `AiServices` to define them.
+You can either use the `chat(ChatRequest)` method that accepts a `ChatRequest` that can be configured with
+one or more `ToolSpecification`s to let Gemini know it can request a function to be called.
+Or you can use LangChain4j's `AiServices` to define them.
 
 Here is an example of a weather tool, using `AiServices`:
 
@@ -255,7 +260,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
         .responseFormat(responseFormat)
         .build();
 
-String recipeResponse = gemini.generate("Suggest a dessert recipe with strawberries");
+String recipeResponse = gemini.chat("Suggest a dessert recipe with strawberries");
 
 System.out.println(recipeResponse);
 ```
@@ -295,7 +300,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     .responseFormat(ResponseFormat.JSON)
     .build();
 
-String roll = gemini.generate("Roll a 6-sided dice");
+String roll = gemini.chat("Roll a 6-sided dice");
 
 System.out.println(roll);
 // {"roll": "3"}
@@ -325,7 +330,7 @@ There are 2 builder methods:
 * `includeCodeExecutionOutput(true)`: if you want to see the actual Python script it came up with, and the output of its execution
 
 ```java
-Response<AiMessage> mathQuizz = gemini.generate(
+ChatResponse mathQuizz = gemini.chat(
     SystemMessage.from("""
         You are an expert mathematician.
         When asked a math problem or logic problem,
@@ -405,7 +410,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     .modelName("gemini-1.5-flash")
     .build();
 
-Response<AiMessage> response = gemini.generate(
+ChatResponse response = gemini.chat(
     UserMessage.from(
         TextFileContent.from(base64Text, "text/x-markdown"),
         ImageContent.from(base64Img, "image/png"),

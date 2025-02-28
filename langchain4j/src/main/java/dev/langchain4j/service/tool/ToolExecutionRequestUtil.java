@@ -1,9 +1,9 @@
 package dev.langchain4j.service.tool;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.internal.Json;
 
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -19,16 +19,23 @@ class ToolExecutionRequestUtil {
     private ToolExecutionRequestUtil() {
     }
 
-    /**
-     * Gson instance.
-     */
-    private static final Gson GSON = new Gson();
+    private static final Type MAP_TYPE = new ParameterizedType() {
 
-    /**
-     * Utility {@link TypeToken} describing {@code Map<String, Object>}.
-     */
-    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
-    }.getType();
+        @Override
+        public Type[] getActualTypeArguments() {
+            return new Type[]{String.class, Object.class};
+        }
+
+        @Override
+        public Type getRawType() {
+            return Map.class;
+        }
+
+        @Override
+        public Type getOwnerType() {
+            return null;
+        }
+    };
 
     /**
      * Convert arguments to map.
@@ -37,7 +44,7 @@ class ToolExecutionRequestUtil {
      * @return map
      */
     static Map<String, Object> argumentsAsMap(String arguments) {
-        return GSON.fromJson(removeTrailingComma(arguments), MAP_TYPE);
+        return Json.fromJson(removeTrailingComma(arguments), MAP_TYPE);
     }
 
     /**

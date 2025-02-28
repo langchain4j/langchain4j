@@ -10,14 +10,14 @@ sidebar_position: 3
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 
 
 ## APIs
 
-- `FileSystemDocumentLoader`
+- `FileSystemSource` / `FileSystemDocumentLoader`
 
 
 ## Examples

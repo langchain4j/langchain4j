@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.0.0-alpha2-SNAPSHOT</version>
+        <version>1.0.0-beta2-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -36,10 +36,7 @@
             <artifactId>opennlp-tools</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -104,12 +101,6 @@
         </dependency>
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
             <scope>test</scope>
@@ -121,7 +112,28 @@
             <scope>test</scope>
         </dependency>
 
+        <!--  Contains references to a jar file created specifically for the ClasspathFileSystemDocumentLoaderTest tests  -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-classpath-test-lib</artifactId>
+            <version>999-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
+
+    <!--  Contains references to a jar file created specifically for the ClasspathFileSystemDocumentLoaderTest tests  -->
+    <repositories>
+        <repository>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+                <checksumPolicy>ignore</checksumPolicy>
+            </snapshots>
+            <id>local-classpath-test-repo</id>
+            <url>file:///${project.basedir}/src/test/externalLib</url>
+        </repository>
+    </repositories>
 
     <build>
         <plugins>
@@ -154,7 +166,16 @@
                 </executions>
             </plugin>
 
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <!-- This was manually built  -->
+                        <exclude>dev.langchain4j:langchain4j-classpath-test-lib</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
-
 </project>

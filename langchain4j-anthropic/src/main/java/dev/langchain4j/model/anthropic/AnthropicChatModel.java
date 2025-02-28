@@ -2,7 +2,11 @@ package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
@@ -14,6 +18,11 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +41,12 @@ import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createMode
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerResponse;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 import static java.util.Collections.emptyList;
 
@@ -158,12 +172,24 @@ public class AnthropicChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, (List<ToolSpecification>) null);
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.responseFormat());
+
+        Response<AiMessage> response = generate(chatRequest.messages(), parameters.toolSpecifications());
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
     }
 
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    private Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
 
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages, cacheSystemMessages ? EPHEMERAL : NO_CACHE);
@@ -243,5 +269,6 @@ public class AnthropicChatModel implements ChatLanguageModel {
             throw e;
         }
     }
+
     // TODO forcing tool use?
 }

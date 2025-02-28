@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;

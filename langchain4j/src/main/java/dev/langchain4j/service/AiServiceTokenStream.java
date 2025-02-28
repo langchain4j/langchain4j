@@ -1,13 +1,10 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -33,19 +30,13 @@ public class AiServiceTokenStream implements TokenStream {
     private final Object memoryId;
 
     private Consumer<String> partialResponseHandler;
-
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
-
     private Consumer<ChatResponse> completeResponseHandler;
-    private Consumer<Response<AiMessage>> completionHandler;
-
     private Consumer<Throwable> errorHandler;
 
     private int onPartialResponseInvoked;
-    private int onNextInvoked;
     private int onCompleteResponseInvoked;
-    private int onCompleteInvoked;
     private int onRetrievedInvoked;
     private int onToolExecutedInvoked;
     private int onErrorInvoked;
@@ -74,13 +65,6 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onNext(Consumer<String> tokenHandler) {
-        this.partialResponseHandler = tokenHandler;
-        this.onNextInvoked++;
-        return this;
-    }
-
-    @Override
     public TokenStream onRetrieved(Consumer<List<Content>> contentsHandler) {
         this.contentsHandler = contentsHandler;
         this.onRetrievedInvoked++;
@@ -98,13 +82,6 @@ public class AiServiceTokenStream implements TokenStream {
     public TokenStream onCompleteResponse(Consumer<ChatResponse> completionHandler) {
         this.completeResponseHandler = completionHandler;
         this.onCompleteResponseInvoked++;
-        return this;
-    }
-
-    @Override
-    public TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler) {
-        this.completionHandler = completionHandler;
-        this.onCompleteInvoked++;
         return this;
     }
 
@@ -137,7 +114,6 @@ public class AiServiceTokenStream implements TokenStream {
                 partialResponseHandler,
                 toolExecutionHandler,
                 completeResponseHandler,
-                completionHandler,
                 errorHandler,
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
@@ -153,13 +129,11 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     private void validateConfiguration() {
-        if (onPartialResponseInvoked + onNextInvoked != 1) {
-            throw new IllegalConfigurationException("One of [onPartialResponse, onNext] " +
-                    "must be invoked on TokenStream exactly 1 time");
+        if (onPartialResponseInvoked != 1) {
+            throw new IllegalConfigurationException("onPartialResponse must be invoked on TokenStream exactly 1 time");
         }
-        if (onCompleteResponseInvoked + onCompleteInvoked > 1) {
-            throw new IllegalConfigurationException("One of [onCompleteResponse, onComplete] " +
-                    "can be invoked on TokenStream at most 1 time");
+        if (onCompleteResponseInvoked > 1) {
+            throw new IllegalConfigurationException("onCompleteResponse can be invoked on TokenStream at most 1 time");
         }
         if (onRetrievedInvoked > 1) {
             throw new IllegalConfigurationException("onRetrieved can be invoked on TokenStream at most 1 time");

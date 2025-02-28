@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiHttpException;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -21,7 +21,7 @@ class OpenAiChatModelListenerIT extends ChatModelListenerIT {
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
-                .maxCompletionTokens(maxTokens())
+                .maxTokens(maxTokens())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -44,6 +44,6 @@ class OpenAiChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return OpenAiHttpException.class;
+        return HttpException.class;
     }
 }

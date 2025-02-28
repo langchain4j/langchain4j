@@ -1,24 +1,34 @@
 package dev.langchain4j.model.localai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.chat.ChatCompletionChoice;
-import dev.ai4j.openai4j.chat.ChatCompletionRequest;
-import dev.ai4j.openai4j.chat.ChatCompletionResponse;
-import dev.ai4j.openai4j.chat.Delta;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.localai.spi.LocalAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertResponse;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
@@ -51,14 +61,11 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
         timeout = timeout == null ? ofSeconds(60) : timeout;
 
         this.client = OpenAiClient.builder()
-                .openAiApiKey("ignored")
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
+                .logResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
@@ -67,17 +74,62 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.responseFormat());
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .build())
+                        .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            generate(chatRequest.messages(), legacyHandler);
+        } else {
+            if (parameters.toolChoice() == REQUIRED) {
+                if (toolSpecifications.size() != 1) {
+                    throw new UnsupportedFeatureException(
+                            String.format("%s.%s is currently supported only when there is a single tool",
+                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                }
+                generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
+            } else {
+                generate(chatRequest.messages(), toolSpecifications, legacyHandler);
+            }
+        }
+    }
+
+    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, null, null, handler);
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, toolSpecifications, null, handler);
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, singletonList(toolSpecification), toolSpecification, handler);
     }
 

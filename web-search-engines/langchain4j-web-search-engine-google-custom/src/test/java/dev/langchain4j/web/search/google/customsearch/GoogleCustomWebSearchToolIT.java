@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.service.AiServices;
@@ -63,8 +64,14 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         messages.add(systemMessage);
         UserMessage userMessage = UserMessage.from(query);
         messages.add(userMessage);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(tools)
+                .build();
+
         // when
-        AiMessage aiMessage = chatLanguageModel().generate(messages, tools).content();
+        AiMessage aiMessage = chatLanguageModel().chat(request).aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -83,7 +90,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(aiMessage.toolExecutionRequests().get(0), strResult);
         messages.add(toolExecutionResultMessage);
 
-        AiMessage finalResponse = chatLanguageModel().generate(messages).content();
+        AiMessage finalResponse = chatLanguageModel().chat(messages).aiMessage();
 
         // then
         assertThat(finalResponse.text())
@@ -110,8 +117,14 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         messages.add(systemMessage);
         UserMessage userMessage = UserMessage.from(query);
         messages.add(userMessage);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(tools)
+                .build();
+
         // when
-        AiMessage aiMessage = chatLanguageModel().generate(messages, tools).content();
+        AiMessage aiMessage = chatLanguageModel().chat(request).aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -130,13 +143,13 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(aiMessage.toolExecutionRequests().get(0), strResult);
         messages.add(toolExecutionResultMessage);
 
-        AiMessage finalResponse = chatLanguageModel().generate(messages).content();
+        AiMessage finalResponse = chatLanguageModel().chat(messages).aiMessage();
 
         // then
         assertThat(finalResponse.text())
                 .as("At least the string result should be contains 'madrid' and 'tourist' ignoring case")
                 .containsIgnoringCase("Madrid")
-                .containsIgnoringCase("Royal Palace");
+                .containsIgnoringCase("tourist");
     }
 
     @Test

@@ -7,15 +7,14 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -38,6 +37,7 @@ import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherServ
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -107,17 +107,16 @@ class StreamingAiServicesWithToolsIT {
         String userMessage = "What is the amounts of transaction T001?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
-                .onError(future::completeExceptionally)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(futureResponse::complete)
+                .onError(futureResponse::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, SECONDS);
+        ChatResponse response = futureResponse.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("11.1");
+        assertThat(response.aiMessage().text()).contains("11.1");
 
         // then
         verify(transactionService).getTransactionAmount("T001");
@@ -189,17 +188,16 @@ class StreamingAiServicesWithToolsIT {
         String userMessage = "What is the temperature in Munich now, in Celsius?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, SECONDS);
+        ChatResponse response = future.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains(String.valueOf(TEMPERATURE));
+        assertThat(response.aiMessage().text()).contains(String.valueOf(TEMPERATURE));
 
         verify(weatherService).currentTemperature("Munich", CELSIUS);
         verifyNoMoreInteractions(weatherService);
@@ -248,17 +246,16 @@ class StreamingAiServicesWithToolsIT {
         String userMessage = "What is the amounts of transactions T001?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, SECONDS);
+        ChatResponse response = future.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("11.1");
+        assertThat(response.aiMessage().text()).contains("11.1");
 
         // then
         verify(toolExecutor).execute(any(), any());
@@ -329,20 +326,19 @@ class StreamingAiServicesWithToolsIT {
         String userMessage = "What is the temperature in Munich and London, in Celsius?";
 
         List<ToolExecution> toolExecutions = new ArrayList<>();
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
 
         // when
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
+                .onPartialResponse(ignored -> {})
                 .onToolExecuted(toolExecutions::add)
-                .onComplete(future::complete)
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, SECONDS);
+        ChatResponse response = future.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
+        assertThat(response.aiMessage().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
 
         // then
         verify(weatherService).currentTemperature("Munich", CELSIUS);
@@ -363,12 +359,22 @@ class StreamingAiServicesWithToolsIT {
 
     public static void verifyNoMoreInteractionsFor(StreamingChatLanguageModel model) {
         try {
-            verify(model).defaultRequestParameters();
+            verify(model, atLeastOnce()).doChat(any(), any());
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }
         try {
-            verify(model).supportedCapabilities();
+            verify(model, atLeastOnce()).defaultRequestParameters();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).supportedCapabilities();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).listeners();
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }

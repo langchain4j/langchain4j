@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -26,8 +27,13 @@ public abstract class WebSearchToolIT {
 
         UserMessage userMessage = UserMessage.from("What is LangChain4j project?");
 
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(tools)
+                .build();
+
         // when
-        AiMessage aiMessage = chatLanguageModel().generate(singletonList(userMessage), tools).content();
+        AiMessage aiMessage = chatLanguageModel().chat(chatRequest).aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();

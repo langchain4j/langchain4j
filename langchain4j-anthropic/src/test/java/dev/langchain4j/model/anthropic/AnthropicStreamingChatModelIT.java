@@ -3,16 +3,16 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,6 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -61,9 +60,9 @@ class AnthropicStreamingChatModelIT {
             .name("weather")
             .description("returns a weather forecast for a given location")
             // TODO simplify defining nested properties
-            .addParameter("location", OBJECT, property("properties", singletonMap("city", singletonMap("type", "string"))))
+            .addParameter(
+                    "location", OBJECT, property("properties", singletonMap("city", singletonMap("type", "string"))))
             .build();
-
 
     @Test
     void should_stream_answer_and_return_token_usage_and_finish_reason_stop() {
@@ -72,12 +71,12 @@ class AnthropicStreamingChatModelIT {
         String userMessage = "What is the capital of Germany?";
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).contains("Berlin");
+        assertThat(response.aiMessage().text()).contains("Berlin");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
@@ -104,12 +103,12 @@ class AnthropicStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(imageContent);
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        visionModel.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        visionModel.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @ParameterizedTest
@@ -128,16 +127,16 @@ class AnthropicStreamingChatModelIT {
         String userMessage = "Hi";
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
     }
 
     @Test
-    void test_all_parameters() {
+    void all_parameters() {
 
         // given
         StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
@@ -158,12 +157,12 @@ class AnthropicStreamingChatModelIT {
         UserMessage userMessage = userMessage("Hi");
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
     }
 
     @Test
@@ -171,21 +170,24 @@ class AnthropicStreamingChatModelIT {
 
         // given
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
-            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .beta("prompt-caching-2024-07-31")
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
-            .cacheSystemMessages(true)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .beta("prompt-caching-2024-07-31")
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .cacheSystemMessages(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
-        SystemMessage systemMessage = SystemMessage.from("What types of messages are supported in LangChain?".repeat(172) + randomString(2));
-        UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
+        SystemMessage systemMessage =
+                SystemMessage.from("What types of messages are supported in LangChain?".repeat(172) + randomString(2));
+        UserMessage userMessage =
+                new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(asList(userMessage, systemMessage), handler);
-        AnthropicTokenUsage responseAnthropicTokenUsage = (AnthropicTokenUsage) handler.get().tokenUsage();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage, systemMessage), handler);
+        AnthropicTokenUsage responseAnthropicTokenUsage =
+                (AnthropicTokenUsage) handler.get().tokenUsage();
 
         // then
         assertThat(responseAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
@@ -197,29 +199,35 @@ class AnthropicStreamingChatModelIT {
 
         // given
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
-            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .beta("prompt-caching-2024-07-31")
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
-            .cacheTools(true)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .beta("prompt-caching-2024-07-31")
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .cacheTools(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
         UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
-            .name("calculator")
-            .description("returns a sum of two numbers".repeat(214) + randomString(2))
-            .parameters(JsonObjectSchema.builder()
-                .addIntegerProperty("first")
-                .addIntegerProperty("second")
-                .build())
-            .build();
+                .name("calculator")
+                .description("returns a sum of two numbers".repeat(214) + randomString(2))
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .build())
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), List.of(toolSpecification), handler);
-        AnthropicTokenUsage responseAnthropicTokenUsage = (AnthropicTokenUsage) handler.get().tokenUsage();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
+        AnthropicTokenUsage responseAnthropicTokenUsage =
+                (AnthropicTokenUsage) handler.get().tokenUsage();
 
         // then
         assertThat(responseAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
@@ -231,8 +239,8 @@ class AnthropicStreamingChatModelIT {
 
         assertThatThrownBy(() -> AnthropicStreamingChatModel.withApiKey(null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Anthropic API key must be defined. " +
-                        "It can be generated here: https://console.anthropic.com/settings/keys");
+                .hasMessage("Anthropic API key must be defined. "
+                        + "It can be generated here: https://console.anthropic.com/settings/keys");
     }
 
     @Test
@@ -248,15 +256,19 @@ class AnthropicStreamingChatModelIT {
                 .build();
 
         UserMessage userMessage = userMessage("2+2=?");
-        List<ToolSpecification> toolSpecifications = singletonList(calculator);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(calculator)
+                .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), toolSpecifications, handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
 
         // then
-        Response<AiMessage> response = handler.get();
-        AiMessage aiMessage = response.content();
+        ChatResponse response = handler.get();
+        AiMessage aiMessage = response.aiMessage();
 
         List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
         assertThat(toolExecutionRequests).hasSize(1);
@@ -269,16 +281,21 @@ class AnthropicStreamingChatModelIT {
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, "4");
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+
+        ChatRequest secondRequest = ChatRequest.builder()
+                .messages(userMessage, aiMessage, toolExecutionResultMessage)
+                .toolSpecifications(calculator)
+                .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
-        model.generate(messages, toolSpecifications, secondHandler);
-        Response<AiMessage> secondResponse = secondHandler.get();
+        TestStreamingChatResponseHandler secondHandler = new TestStreamingChatResponseHandler();
+        model.chat(secondRequest, secondHandler);
+        ChatResponse secondResponse = secondHandler.get();
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
@@ -299,16 +316,20 @@ class AnthropicStreamingChatModelIT {
                 .build();
 
         UserMessage userMessage = userMessage("2+2=?");
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(calculator)
+                .build();
 
         // when
-        model.generate(singletonList(userMessage), calculator, handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
 
         // then
-        Response<AiMessage> response = handler.get();
-        AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNull();
+        ChatResponse response = handler.get();
 
+        AiMessage aiMessage = response.aiMessage();
         List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
         assertThat(toolExecutionRequests).hasSize(1);
 
@@ -319,7 +340,6 @@ class AnthropicStreamingChatModelIT {
         assertTokenUsage(response.tokenUsage());
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
     }
-
 
     @Test
     void should_execute_multiple_tools_in_parallel_then_answer() {
@@ -333,27 +353,34 @@ class AnthropicStreamingChatModelIT {
                 .logResponses(true)
                 .build();
 
-        SystemMessage systemMessage = systemMessage("Do not think, nor explain step by step what you do. Output the result only.");
+        SystemMessage systemMessage =
+                systemMessage("Do not think, nor explain step by step what you do. Output the result only.");
         UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
-        List<ToolSpecification> toolSpecifications = singletonList(calculator);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(systemMessage, userMessage)
+                .toolSpecifications(calculator)
+                .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(asList(systemMessage, userMessage), toolSpecifications, handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
 
         // then
-        Response<AiMessage> response = handler.get();
-        AiMessage aiMessage = response.content();
+        ChatResponse response = handler.get();
+        AiMessage aiMessage = response.aiMessage();
 
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
         List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
         assertThat(toolExecutionRequests).hasSize(2);
 
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage.toolExecutionRequests().get(1);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage.toolExecutionRequests().get(1);
         assertThat(toolExecutionRequest2.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
 
@@ -361,17 +388,23 @@ class AnthropicStreamingChatModelIT {
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage1 = ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
-        ToolExecutionResultMessage toolExecutionResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
-        List<ChatMessage> messages = asList(systemMessage, userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
+        ToolExecutionResultMessage toolExecutionResultMessage1 =
+                ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage2 =
+                ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
+
+        ChatRequest secondRequest = ChatRequest.builder()
+                .messages(systemMessage, userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2)
+                .toolSpecifications(calculator)
+                .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
-        model.generate(messages, toolSpecifications, secondHandler);
-        Response<AiMessage> secondResponse = secondHandler.get();
+        TestStreamingChatResponseHandler secondHandler = new TestStreamingChatResponseHandler();
+        model.chat(secondRequest, secondHandler);
+        ChatResponse secondResponse = secondHandler.get();
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4", "6");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
@@ -392,36 +425,47 @@ class AnthropicStreamingChatModelIT {
                 .build();
 
         UserMessage userMessage = userMessage("What is the weather in Berlin in Celsius?");
-        List<ToolSpecification> toolSpecifications = singletonList(weather);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(weather)
+                .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), toolSpecifications, handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
 
         // then
-        Response<AiMessage> response = handler.get();
-        AiMessage aiMessage = response.content();
+        ChatResponse response = handler.get();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.id()).isNotBlank();
         assertThat(toolExecutionRequest.name()).isEqualTo("weather");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"location\": {\"city\": \"Berlin\"}}");
+        assertThat(toolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"location\": {\"city\": \"Berlin\"}}");
 
         assertTokenUsage(response.tokenUsage());
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, "Super hot, 42 Celsius");
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                ToolExecutionResultMessage.from(toolExecutionRequest, "Super hot, 42 Celsius");
+
+        ChatRequest secondRequest = ChatRequest.builder()
+                .messages(userMessage, aiMessage, toolExecutionResultMessage)
+                .toolSpecifications(weather)
+                .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
-        model.generate(messages, toolSpecifications, secondHandler);
-        Response<AiMessage> secondResponse = secondHandler.get();
+        TestStreamingChatResponseHandler secondHandler = new TestStreamingChatResponseHandler();
+        model.chat(secondRequest, secondHandler);
+        ChatResponse secondResponse = secondHandler.get();
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("42");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 

@@ -3,11 +3,13 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
@@ -25,7 +27,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createModelListenerRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
@@ -35,7 +36,6 @@ import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseF
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toToolExecutionRequests;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
@@ -55,7 +55,8 @@ public class OllamaChatModel implements ChatLanguageModel {
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
 
-    public OllamaChatModel(String baseUrl,
+    public OllamaChatModel(HttpClientBuilder httpClientBuilder,
+                           String baseUrl,
                            String modelName,
                            Double temperature,
                            Integer topK,
@@ -80,12 +81,14 @@ public class OllamaChatModel implements ChatLanguageModel {
         }
 
         this.client = OllamaClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .customHeaders(customHeaders)
-                .logRequests(getOrDefault(logRequests, false))
+                .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
+
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.options = Options.builder()
                 .temperature(temperature)
@@ -111,25 +114,11 @@ public class OllamaChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ensureNotEmpty(messages, "messages");
-
-        return doGenerate(messages, null, responseFormat);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ensureNotEmpty(messages, "messages");
-
-        return doGenerate(messages, toolSpecifications, responseFormat);
-    }
-
-    @Override
     public dev.langchain4j.model.chat.response.ChatResponse chat(dev.langchain4j.model.chat.request.ChatRequest request) {
 
         ChatRequestParameters parameters = request.parameters();
-        ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.toolChoice());
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolChoice());
 
         Response<AiMessage> response = doGenerate(
                 request.messages(),
@@ -184,6 +173,7 @@ public class OllamaChatModel implements ChatLanguageModel {
 
     public static class OllamaChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String modelName;
         private Double temperature;
@@ -207,6 +197,18 @@ public class OllamaChatModel implements ChatLanguageModel {
         public OllamaChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        /**
+         * TODO
+         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
+         *
+         * @param httpClientBuilder
+         * @return
+         */
+        public OllamaChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OllamaChatModelBuilder baseUrl(String baseUrl) {
@@ -318,6 +320,7 @@ public class OllamaChatModel implements ChatLanguageModel {
 
         public OllamaChatModel build() {
             return new OllamaChatModel(
+                    httpClientBuilder,
                     baseUrl,
                     modelName,
                     temperature,

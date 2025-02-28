@@ -1,24 +1,23 @@
 package dev.langchain4j.model;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
-import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNextAndError;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponse;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseAndError;
 
-public class LambdaStreamingResponseHandlerTest implements WithAssertions {
+class LambdaStreamingResponseHandlerTest implements WithAssertions {
+
     @Test
-    void testOnNext() {
+    void testOnPartialResponse() {
         // given
-        List tokens = new ArrayList<>();
+        List<Object> tokens = new ArrayList<>();
         tokens.add("The sky ");
         tokens.add("is blue because of ");
         tokens.add("a phenomenon called ");
@@ -27,18 +26,17 @@ public class LambdaStreamingResponseHandlerTest implements WithAssertions {
         StreamingChatLanguageModel model = new DummyModel(tokens);
 
         // when
-        List receivedTokens = new ArrayList<>();
-        model.generate("Why is the sky blue?",
-            onNext(text -> receivedTokens.add(text)));
+        List<Object> receivedTokens = new ArrayList<>();
+        model.chat("Why is the sky blue?", onPartialResponse(receivedTokens::add));
 
         // then
         assertThat(receivedTokens).containsSequence(tokens);
     }
 
     @Test
-    void testOnNextAndError() {
+    void testOnPartialResponseAndError() {
         // given
-        List tokens = new ArrayList<>();
+        List<Object> tokens = new ArrayList<>();
         tokens.add("Three ");
         tokens.add("Two ");
         tokens.add("One ");
@@ -47,55 +45,35 @@ public class LambdaStreamingResponseHandlerTest implements WithAssertions {
         StreamingChatLanguageModel model = new DummyModel(tokens);
 
         // when
-        List receivedTokens = new ArrayList<>();
-        final Throwable[] thrown = { null };
+        List<Object> receivedTokens = new ArrayList<>();
+        final Throwable[] thrown = {null};
 
-        model.generate("Create a countdown",
-            onNextAndError(text -> receivedTokens.add(text), t -> thrown[0] = t));
+        model.chat("Create a countdown", onPartialResponseAndError(receivedTokens::add, t -> thrown[0] = t));
 
         // then
         assertThat(tokens).containsSubsequence(receivedTokens);
         assertThat(thrown[0]).isNotNull();
         assertThat(thrown[0]).isInstanceOf(RuntimeException.class);
-        assertThat(((Throwable)thrown[0]).getMessage()).isEqualTo("BOOM");
+        assertThat((thrown[0]).getMessage()).isEqualTo("BOOM");
     }
 
-    class DummyModel implements StreamingChatLanguageModel {
-        private final List stringsAndError;
+    static class DummyModel implements StreamingChatLanguageModel {
 
-        public DummyModel(List stringsAndError) {
+        private final List<Object> stringsAndError;
+
+        public DummyModel(List<Object> stringsAndError) {
             this.stringsAndError = stringsAndError;
         }
 
         @Override
-        public void generate(String userMessage, StreamingResponseHandler<AiMessage> handler) {
-            StreamingChatLanguageModel.super.generate(userMessage, handler);
-        }
-
-        @Override
-        public void generate(UserMessage userMessage, StreamingResponseHandler<AiMessage> handler) {
-            StreamingChatLanguageModel.super.generate(userMessage, handler);
-        }
-
-        @Override
-        public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+        public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
             stringsAndError.forEach(obj -> {
-                if (obj instanceof String msg) {
-                    handler.onNext(msg);
+                if (obj instanceof String message) {
+                    handler.onPartialResponse(message);
                 } else if (obj instanceof Throwable problem) {
                     handler.onError(problem);
                 }
             });
-        }
-
-        @Override
-        public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-            StreamingChatLanguageModel.super.generate(messages, toolSpecifications, handler);
-        }
-
-        @Override
-        public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-            StreamingChatLanguageModel.super.generate(messages, toolSpecification, handler);
         }
     }
 }

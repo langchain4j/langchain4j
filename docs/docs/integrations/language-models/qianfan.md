@@ -3,23 +3,28 @@ sidebar_position: 16
 ---
 
 # Qianfan
+
 [百度智能云千帆大模型](https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application)
 ![image](https://github.com/langchain4j/langchain4j/assets/95265298/600f8006-4484-4a75-829c-c8c16a3130c2)
 
 
 ## Maven Dependency
 
+You can use DashScope with LangChain4j in plain Java or Spring Boot applications.
+
+### Plain Java
+
 :::note
 Since `1.0.0-alpha1`, `langchain4j-qianfan` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-qianfan`.
 :::
 
-`0.36.2` and previous:
+Before `1.0.0-alpha1`:
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-qianfan</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>${previous version here}</version>
 </dependency>
 ```
 
@@ -29,37 +34,67 @@ Since `1.0.0-alpha1`, `langchain4j-qianfan` has migrated to `langchain4j-communi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-qianfan</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>${latest version here}</version>
+</dependency>
+```
+
+### Spring Boot
+
+:::note
+Since `1.0.0-alpha1`, `langchain4j-qianfan-spring-boot-starter` has migrated to `langchain4j-community` and is renamed
+to `langchain4j-community-qianfan-spring-boot-starter`.
+:::
+
+Before `1.0.0-alpha1`:
+
+```xml
+
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-qianfan-spring-boot-starter</artifactId>
+    <version>${previous version here}</version>
+</dependency>
+```
+
+`1.0.0-alpha1` and later:
+
+```xml
+
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-community-qianfan-spring-boot-starter</artifactId>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
 Or, you can use BOM to manage dependencies consistently:
 
 ```xml
+
 <dependencyManagement>
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>1.0.0-alpha1</version>
+        <version>${latest version here}</version>
         <typ>pom</typ>
         <scope>import</scope>
     </dependency>
 </dependencyManagement>
 ```
 
-
 ## QianfanChatModel
+
 [千帆所有模型及付费状态](https://console.bce.baidu.com/qianfan/ais/console/onlineService)
 ```java
-  QianfanChatModel model = QianfanChatModel.builder()
-          .apiKey("apiKey")
-          .secretKey("secretKey")
-          .modelName("Yi-34B-Chat") // 一个免费的模型名称 
-          .build();
+QianfanChatModel model = QianfanChatModel.builder()
+        .apiKey("apiKey")
+        .secretKey("secretKey")
+        .modelName("Yi-34B-Chat") // 一个免费的模型名称 
+        .build();
 
-   String answer = model.generate("雷军");
+String answer = model.chat("雷军");
 
-   System.out.println(answer)
+System.out.println(answer);
 ```
 ### Customizing
 
@@ -224,21 +259,23 @@ class PersistentChatMemoryTest{
 
 #### QianfanStreamingChatModel(流式回复)
 LLMs generate text one token at a time, so many LLM providers offer a way to stream the response token-by-token instead of waiting for the entire text to be generated. This significantly improves the user experience, as the user does not need to wait an unknown amount of time and can start reading the response almost immediately.（因此许多LLM提供者提供了一种逐个token地传输响应的方法，而不是等待生成整个文本。这极大地改善了用户体验，因为用户不需要等待未知的时间，几乎可以立即开始阅读响应。）
-以下是一个通过StreamingResponseHandler来实现
+以下是一个通过StreamingChatResponseHandler来实现
 ```java
   QianfanStreamingChatModel qianfanStreamingChatModel = QianfanStreamingChatModel.builder()
           .apiKey("apiKey")
           .secretKey("secretKey")
           .modelName("Yi-34B-Chat")
           .build();
-  qianfanStreamingChatModel.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
+
+  qianfanStreamingChatModel.chat(userMessage, new StreamingChatResponseHandler() {
+
         @Override
-        public void onNext(String token) {
-            System.out.print(token);
+        public void onPartialResponse(String partialResponse) {
+            System.out.print(partialResponse);
         }
         @Override
-        public void onComplete(Response<AiMessage> response) {
-            System.out.println("onComplete: " + response);
+        public void onCompleteResponse(ChatResponse completeResponse) {
+            System.out.println("onCompleteResponse: " + completeResponse);
         }
         @Override
         public void onError(Throwable throwable) {
@@ -256,7 +293,7 @@ LLMs generate text one token at a time, so many LLM providers offer a way to str
   IAiService assistant = AiServices.create(IAiService.class, qianfanStreamingChatModel);
   
   TokenStream tokenStream = assistant.chatInTokenStream("Tell me a story.");
-  tokenStream.onNext(System.out::println)
+  tokenStream.onPartialResponse(System.out::println)
           .onError(Throwable::printStackTrace)
           .start();
 ```
@@ -271,7 +308,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 - Use
@@ -302,4 +339,4 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 
 ## Examples
 
-- [Qianfan Examples](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-qianfan/src/test/java/dev/langchain4j/model/qianfan)
+- [Qianfan Examples](https://github.com/langchain4j/langchain4j-community/tree/main/models/langchain4j-community-qianfan/src/test/java/dev/langchain4j/community/model/qianfan)
