@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -151,7 +152,8 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     @Override
     public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = request.parameters();
-        validate(parameters);
+        ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 
