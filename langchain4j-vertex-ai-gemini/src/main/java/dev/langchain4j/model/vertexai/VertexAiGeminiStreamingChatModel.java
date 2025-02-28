@@ -11,14 +11,12 @@ import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -29,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 
@@ -245,16 +241,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         if (isNullOrEmpty(toolSpecifications)) {
             generate(chatRequest.messages(), legacyHandler);
         } else {
-            if (parameters.toolChoice() == REQUIRED) {
-                if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
-                }
-                generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
-            } else {
-                generate(chatRequest.messages(), toolSpecifications, legacyHandler);
-            }
+            generate(chatRequest.messages(), toolSpecifications, legacyHandler);
         }
     }
 
@@ -360,14 +347,6 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             });
 
             handler.onError(exception);
-        }
-    }
-
-    private void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        if (toolSpecification == null) {
-            generate(messages, Collections.emptyList(), handler);
-        } else {
-            generate(messages, Collections.singletonList(toolSpecification), handler);
         }
     }
 
