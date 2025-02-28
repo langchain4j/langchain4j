@@ -95,40 +95,6 @@ public interface ChatLanguageModel {
         return Collections.emptyList();
     }
 
-    // TODO
-//    default ChatResponse doChat(ChatRequest chatRequest) {
-//
-//        ChatRequestParameters parameters = chatRequest.parameters();
-//        validate(parameters);
-//        validate(parameters.toolChoice());
-//        validate(parameters.responseFormat());
-//
-//        Response<AiMessage> response;
-//        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-//        if (isNullOrEmpty(toolSpecifications)) {
-//            response = generate(chatRequest.messages());
-//        } else {
-//            if (parameters.toolChoice() == REQUIRED) {
-//                if (toolSpecifications.size() != 1) {
-//                    throw new UnsupportedFeatureException(
-//                            String.format("%s.%s is currently supported only when there is a single tool",
-//                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
-//                }
-//                response = generate(chatRequest.messages(), toolSpecifications.get(0));
-//            } else {
-//                response = generate(chatRequest.messages(), toolSpecifications);
-//            }
-//        }
-//
-//        return ChatResponse.builder()
-//                .aiMessage(response.content())
-//                .metadata(ChatResponseMetadata.builder()
-//                        .tokenUsage(response.tokenUsage())
-//                        .finishReason(response.finishReason())
-//                        .build())
-//                .build();
-//    }
-
     static void validate(ChatRequestParameters parameters) { // TODO
         String errorTemplate = "%s is not supported yet by this model provider";
 

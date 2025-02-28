@@ -65,12 +65,6 @@ public interface StreamingChatLanguageModel {
         doChat(finalChatRequest, observingHandler);
     }
 
-    /**
-     * TODO
-     *
-     * @param chatRequest
-     * @param handler
-     */
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         throw new RuntimeException("Not implemented");
     }
@@ -96,55 +90,6 @@ public interface StreamingChatLanguageModel {
     default List<ChatModelListener> listeners() {
         return Collections.emptyList();
     }
-
-//    default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-//
-//        ChatRequestParameters parameters = chatRequest.parameters();
-//        validate(parameters);
-//        validate(parameters.toolChoice());
-//        validate(parameters.responseFormat());
-//
-//        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
-//
-//            @Override
-//            public void onNext(String token) {
-//                handler.onPartialResponse(token);
-//            }
-//
-//            @Override
-//            public void onComplete(Response<AiMessage> response) {
-//                ChatResponse chatResponse = ChatResponse.builder()
-//                        .aiMessage(response.content())
-//                        .metadata(ChatResponseMetadata.builder()
-//                                .tokenUsage(response.tokenUsage())
-//                                .finishReason(response.finishReason())
-//                                .build())
-//                        .build();
-//                handler.onCompleteResponse(chatResponse);
-//            }
-//
-//            @Override
-//            public void onError(Throwable error) {
-//                handler.onError(error);
-//            }
-//        };
-//
-//        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-//        if (isNullOrEmpty(toolSpecifications)) {
-//            generate(chatRequest.messages(), legacyHandler);
-//        } else {
-//            if (parameters.toolChoice() == REQUIRED) {
-//                if (toolSpecifications.size() != 1) {
-//                    throw new UnsupportedFeatureException(
-//                            String.format("%s.%s is currently supported only when there is a single tool",
-//                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
-//                }
-//                generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
-//            } else {
-//                generate(chatRequest.messages(), toolSpecifications, legacyHandler);
-//            }
-//        }
-//    }
 
     default ChatRequestParameters defaultRequestParameters() {
         return ChatRequestParameters.builder().build();
