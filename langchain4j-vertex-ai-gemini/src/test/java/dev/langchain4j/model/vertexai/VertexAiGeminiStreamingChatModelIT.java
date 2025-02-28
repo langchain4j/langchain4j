@@ -36,7 +36,6 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import java.io.File;
@@ -401,17 +400,17 @@ class VertexAiGeminiStreamingChatModelIT {
                 .build();
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant
                 .chat("Is there more stock of ABC or of XYZ?")
-                .onNext(System.out::println)
-                .onComplete(future::complete)
+                .onPartialResponse(System.out::println)
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(30, TimeUnit.SECONDS);
+        ChatResponse response = future.get(30, TimeUnit.SECONDS);
 
         // then
-        assertThat(response.content().toString()).contains("XYZ");
+        assertThat(response.aiMessage().toString()).contains("XYZ");
 
         chatMemory.messages().forEach(System.out::println);
 
