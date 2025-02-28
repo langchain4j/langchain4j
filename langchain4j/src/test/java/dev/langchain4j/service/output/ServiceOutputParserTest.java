@@ -218,7 +218,7 @@ class ServiceOutputParserTest {
     void should_parse_list_of_pojo(String json, List<Pojo> expected) {
 
         // given
-        Type type = new TypeToken<List<Pojo>>() {
+        Type type = new TypeReference<List<Pojo>>() {
         }.getType();
 
         // when

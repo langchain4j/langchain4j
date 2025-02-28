@@ -30,7 +30,6 @@ import java.util.UUID;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumExtractor.MaritalStatus.SINGLE;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumListExtractor.MaritalStatus.MARRIED;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.CLOUDY;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.RAINY;
@@ -555,7 +554,7 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.maritalStatus).isEqualTo(SINGLE);
+            assertThat(person.maritalStatus).isEqualTo(PersonExtractor3.MaritalStatus.SINGLE);
 
             verify(model)
                     .chat(ChatRequest.builder()
@@ -1500,7 +1499,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             EnumExtractor.MaritalStatus maritalStatus = enumExtractor.extractEnumFrom(text);
 
             // then
-            assertThat(maritalStatus).isEqualTo(SINGLE);
+            assertThat(maritalStatus).isEqualTo(EnumExtractor.MaritalStatus.SINGLE);
 
             verify(model).chat(ChatRequest.builder()
                     .messages(singletonList(userMessage(text)))
