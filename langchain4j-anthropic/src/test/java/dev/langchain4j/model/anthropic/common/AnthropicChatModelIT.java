@@ -27,27 +27,27 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsDefaultRequestParameters() {
-        return false;
+        return false; // TODO implement
     }
 
     @Override
     protected boolean supportsModelNameParameter() {
-        return false;
+        return false; // TODO implement
     }
 
     @Override
     protected boolean supportsMaxOutputTokensParameter() {
-        return false;
+        return false; // TODO implement
     }
 
     @Override
     protected boolean supportsStopSequencesParameter() {
-        return false;
+        return false; // TODO implement
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false;
+    protected boolean supportsToolChoiceRequired() {
+        return false; // TODO implement
     }
 
     @Override
@@ -72,11 +72,11 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean assertResponseId() {
-        return false;
+        return false; // TODO implement
     }
 
     @Override
     protected boolean assertResponseModel() {
-        return false;
+        return false; // TODO implement
     }
 }

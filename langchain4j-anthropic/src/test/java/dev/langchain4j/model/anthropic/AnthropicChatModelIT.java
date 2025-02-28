@@ -404,13 +404,13 @@ class AnthropicChatModelIT {
 
         UserMessage userMessage = userMessage("2+2=?");
 
-        ChatRequest chatRequest = ChatRequest.builder()
+        ChatRequest request = ChatRequest.builder()
                 .messages(userMessage)
                 .toolSpecifications(toolSpecifications)
                 .build();
 
         // when
-        ChatResponse response = model.chat(chatRequest);
+        ChatResponse response = model.chat(request);
 
         // then
         AiMessage aiMessage = response.aiMessage();

@@ -7,7 +7,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
@@ -21,7 +20,6 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -36,7 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
@@ -50,7 +47,6 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Collections.emptyList;
 
 /**
@@ -178,22 +174,10 @@ public class AnthropicChatModel implements ChatLanguageModel {
     public ChatResponse chat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.toolChoice());
         ChatLanguageModel.validate(parameters.responseFormat());
 
-        Response<AiMessage> response;
-        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-        if (isNullOrEmpty(toolSpecifications)) {
-            response = generate(chatRequest.messages(), List.of());
-        } else {
-            if (parameters.toolChoice() == REQUIRED) {
-                if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
-                }
-            }
-            response = generate(chatRequest.messages(), toolSpecifications);
-        }
+        Response<AiMessage> response = generate(chatRequest.messages(), parameters.toolSpecifications());
 
         return ChatResponse.builder()
                 .aiMessage(response.content())

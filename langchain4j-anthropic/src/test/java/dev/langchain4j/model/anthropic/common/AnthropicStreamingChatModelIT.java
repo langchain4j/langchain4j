@@ -14,6 +14,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     static final StreamingChatLanguageModel ANTHROPIC_STREAMING_CHAT_MODEL = AnthropicStreamingChatModel.builder()
             .apiKey(getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
             .build();
