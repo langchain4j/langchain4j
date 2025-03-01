@@ -42,4 +42,15 @@ public class AnthropicTokenUsage extends TokenUsage {
     public Integer cacheReadInputTokens() {
         return cacheReadInputTokens;
     }
+    
+    @Override
+    public String toString() {
+        return "AnthropicTokenUsage {" +
+                " inputTokenCount = " + inputTokenCount() +
+                ", outputTokenCount = " + outputTokenCount() +
+                ", totalTokenCount = " + totalTokenCount() +
+                ", cacheCreationInputTokens = " + cacheCreationInputTokens +
+                ", cacheReadInputTokens = " + cacheReadInputTokens +
+                " }";
+    }
 }
