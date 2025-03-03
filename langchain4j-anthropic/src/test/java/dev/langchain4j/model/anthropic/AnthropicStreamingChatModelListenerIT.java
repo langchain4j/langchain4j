@@ -33,6 +33,7 @@ class AnthropicStreamingChatModelListenerIT extends StreamingChatModelListenerIT
     protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
         return AnthropicStreamingChatModel.builder()
                 .apiKey("banana")
+                .modelName(modelName())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))

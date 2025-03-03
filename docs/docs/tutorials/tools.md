@@ -127,8 +127,10 @@ LangChain4j provides two levels of abstraction for using tools:
 
 ## Low Level Tool API
 
-At the low level, you can use the `generate(List<ChatMessage>, List<ToolSpecification>)` method
+At the low level, you can use the `chat(ChatRequest)` method
 of the `ChatLanguageModel`. A similar method is also present in the `StreamingChatLanguageModel`.
+
+You can specify one or more `ToolSpecification`s when creating the `ChatRequest`.
 
 `ToolSpecification` is an object that contains all the information about the tool:
 - The `name` of the tool
@@ -177,9 +179,12 @@ List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificatio
 
 Once you have a `List<ToolSpecification>`, you can call the model:
 ```java
-UserMessage userMessage = UserMessage.from("What will the weather be like in London tomorrow?");
-Response<AiMessage> response = model.generate(List.of(userMessage), toolSpecifications);
-AiMessage aiMessage = response.content();
+ChatRequest request = ChatRequest.builder()
+    .messages(UserMessage.from("What will the weather be like in London tomorrow?"))
+    .toolSpecifications(toolSpecifications)
+    .build();
+ChatResponse response = model.chat(request);
+AiMessage aiMessage = response.aiMessage();
 ```
 
 If the LLM decides to call the tool, the returned `AiMessage` will contain data
@@ -199,10 +204,14 @@ If you want to send the result of the tool execution back to the LLM,
 you need to create a `ToolExecutionResultMessage` (one for each `ToolExecutionRequest`)
 and send it along with all previous messages:
 ```java
+
 String result = "It is expected to rain in London tomorrow.";
 ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, result);
-List<ChatMessage> messages = List.of(userMessage, aiMessage, toolExecutionResultMessage);
-Response<AiMessage> response2 = model.generate(messages, toolSpecifications);
+ChatRequest request2 = ChatRequest.builder()
+        .messages(List.of(userMessage, aiMessage, toolExecutionResultMessage))
+        .toolSpecifications(toolSpecifications)
+        .build();
+ChatResponse response2 = model.chat(request2);
 ```
 
 ## High Level Tool API
@@ -369,9 +378,9 @@ interface Assistant {
 TokenStream tokenStream = assistant.chat("Cancel my booking");
 
 tokenStream
-    .onNext(...)
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
-    .onComplete(...)
+    .onPartialResponse(...)
+    .onCompleteResponse(...)
     .onError(...)
     .start();
 ```

@@ -153,7 +153,7 @@ public class ToolService {
                 ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
 
                 ToolExecutionResultMessage toolExecutionResultMessage = toolExecutor == null
-                        ? toolHallucinationStrategy.apply(toolExecutionRequest)
+                        ? applyToolHallucinationStrategy(toolExecutionRequest)
                         : ToolExecutionResultMessage.from(
                                 toolExecutionRequest, toolExecutor.execute(toolExecutionRequest, memoryId));
 
@@ -185,6 +185,10 @@ public class ToolService {
         }
 
         return new ToolExecutionResult(chatResponse, toolExecutions, tokenUsageAccumulator);
+    }
+
+    public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {
+        return toolHallucinationStrategy.apply(toolExecutionRequest);
     }
 
     public List<ToolSpecification> toolSpecifications() {

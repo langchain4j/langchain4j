@@ -33,6 +33,7 @@ class AnthropicChatModelListenerIT extends ChatModelListenerIT {
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return AnthropicChatModel.builder()
                 .apiKey("banana")
+                .modelName(modelName())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
