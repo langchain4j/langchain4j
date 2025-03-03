@@ -10,12 +10,13 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
+import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 class MessageWindowChatMemoryTest implements WithAssertions {
     @Test
-    void id() {
+    void test_id() {
         {
             ChatMemory chatMemory =
                     MessageWindowChatMemory.builder().maxMessages(1).build();
@@ -29,7 +30,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
     }
 
     @Test
-    void store_and_clear() {
+    void test_store_and_clear() {
         ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(2).build();
 
         chatMemory.add(userMessage("hello"));
@@ -396,6 +397,107 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         ToolExecutionResultMessage toolExecutionResultMessage2 =
                 ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
         chatMemory.add(toolExecutionResultMessage2);
+
+        // then
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
+
+        // when aiMessage2 is added and aiMessage has to be evicted
+        AiMessage aiMessage2 = AiMessage.from("2 + 2 = 4, 3 + 3 = 6");
+        chatMemory.add(aiMessage2);
+
+        // then orphan toolExecutionResultMessage1 and toolExecutionResultMessage2 are evicted together with aiMessage
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, aiMessage2);
+    }
+
+    @Test
+    void
+            should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests_addAll() {
+
+        // given
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(3);
+
+        // when
+        UserMessage userMessage = UserMessage.from("How much is 2+2 and 3+3?");
+        chatMemory.add(userMessage);
+
+        // then
+        assertThat(chatMemory.messages()).containsExactly(userMessage);
+
+        // when
+        ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
+                .id("1")
+                .name("calculator")
+                .arguments("{ \"a\": 2, \"b\": 2 }")
+                .build();
+        ToolExecutionRequest toolExecutionRequest2 = ToolExecutionRequest.builder()
+                .id("2")
+                .name("calculator")
+                .arguments("{ \"a\": 3, \"b\": 3 }")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest1, toolExecutionRequest2);
+        chatMemory.add(aiMessage);
+
+        // then
+        assertThat(chatMemory.messages()).containsExactly(userMessage, aiMessage);
+
+        // when
+        ToolExecutionResultMessage toolExecutionResultMessage1 =
+                ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage2 =
+                ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
+        chatMemory.addAll(List.of(toolExecutionResultMessage1, toolExecutionResultMessage2));
+
+        // then
+        assertThat(chatMemory.messages())
+                .containsExactly(aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
+
+        // when aiMessage2 is added and aiMessage has to be evicted
+        AiMessage aiMessage2 = AiMessage.from("2 + 2 = 4, 3 + 3 = 6");
+        chatMemory.add(aiMessage2);
+
+        // then orphan toolExecutionResultMessage1 and toolExecutionResultMessage2 are evicted together with aiMessage
+        assertThat(chatMemory.messages()).containsExactly(aiMessage2);
+    }
+
+    @Test
+    void
+            should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests_when_SystemMessage_is_present_addAll() {
+
+        // given
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(4);
+
+        // when
+        SystemMessage systemMessage = SystemMessage.from("Use calculator for math questions");
+        UserMessage userMessage = UserMessage.from("How much is 2+2 and 3+3?");
+        chatMemory.addAll(List.of(systemMessage, userMessage));
+
+        // then
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage);
+
+        // when
+        ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
+                .id("1")
+                .name("calculator")
+                .arguments("{ \"a\": 2, \"b\": 2 }")
+                .build();
+        ToolExecutionRequest toolExecutionRequest2 = ToolExecutionRequest.builder()
+                .id("2")
+                .name("calculator")
+                .arguments("{ \"a\": 3, \"b\": 3 }")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest1, toolExecutionRequest2);
+        chatMemory.add(aiMessage);
+
+        // then
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
+
+        // when
+        ToolExecutionResultMessage toolExecutionResultMessage1 =
+                ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage2 =
+                ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
+        chatMemory.addAll(List.of(toolExecutionResultMessage1, toolExecutionResultMessage2));
 
         // then
         assertThat(chatMemory.messages())

@@ -17,6 +17,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
+import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +27,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
     private static final int EXTRA_TOKENS_PER_REQUEST = 3;
 
     @Test
-    void id() {
+    void test_id() {
         {
             ChatMemory chatMemory =
                     TokenWindowChatMemory.builder().maxTokens(2, TOKENIZER).build();
@@ -42,7 +43,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
     }
 
     @Test
-    void store_and_clear() {
+    void test_store_and_clear() {
 
         ChatMessage m1 = userMessage("hello");
         ChatMessage m2 = userMessage("world");
@@ -591,6 +592,88 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // then orphan toolExecutionResultMessage1 and toolExecutionResultMessage2 are evicted together with aiMessage
         assertThat(chatMemory.messages()).containsExactly(systemMessage, aiMessage2);
         assertThat(TOKENIZER.estimateTokenCountInMessages(chatMemory.messages()))
+                .isEqualTo(EXTRA_TOKENS_PER_REQUEST + systemMessageTokens + aiMessage2Tokens)
+                .isEqualTo(32);
+    }
+
+    @Test
+    void test_addAll() {
+
+        // given
+        int maxTokens = 88;
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(maxTokens, TOKENIZER);
+
+        // when
+        SystemMessage systemMessage = SystemMessage.from("Use calculator for math questions");
+        int systemMessageTokens = TOKENIZER.estimateTokenCountInMessage(systemMessage);
+        UserMessage userMessage = UserMessage.from("How much is 2+2 and 3+3?");
+        int userMessageTokens = TOKENIZER.estimateTokenCountInMessage(userMessage);
+        List<ChatMessage> chatMessages = List.of(systemMessage, userMessage);
+        chatMemory.addAll(chatMessages);
+
+        // then
+        List<ChatMessage> currentMessages = chatMemory.messages();
+        assertThat(currentMessages).containsExactly(systemMessage, userMessage);
+        int currentTokens = TOKENIZER.estimateTokenCountInMessages(currentMessages);
+        assertThat(currentTokens)
+                .isEqualTo(EXTRA_TOKENS_PER_REQUEST + systemMessageTokens + userMessageTokens)
+                .isEqualTo(29);
+
+        // when
+        ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
+                .id("1")
+                .name("calculator")
+                .arguments("{ \"a\": 2, \"b\": 2 }")
+                .build();
+        ToolExecutionRequest toolExecutionRequest2 = ToolExecutionRequest.builder()
+                .id("2")
+                .name("calculator")
+                .arguments("{ \"a\": 3, \"b\": 3 }")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest1, toolExecutionRequest2);
+        int aiMessageTokens = TOKENIZER.estimateTokenCountInMessage(aiMessage);
+        chatMemory.add(aiMessage);
+
+        // then
+        currentMessages = chatMemory.messages();
+        assertThat(currentMessages).containsExactly(systemMessage, userMessage, aiMessage);
+        currentTokens = TOKENIZER.estimateTokenCountInMessages(currentMessages);
+        assertThat(currentTokens)
+                .isEqualTo(EXTRA_TOKENS_PER_REQUEST + systemMessageTokens + userMessageTokens + aiMessageTokens)
+                .isEqualTo(83);
+
+        // when
+        ToolExecutionResultMessage toolExecutionResultMessage1 =
+                ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
+        int toolExecutionResultMessage1Tokens = TOKENIZER.estimateTokenCountInMessage(toolExecutionResultMessage1);
+        ToolExecutionResultMessage toolExecutionResultMessage2 =
+                ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
+        int toolExecutionResultMessage2Tokens = TOKENIZER.estimateTokenCountInMessage(toolExecutionResultMessage2);
+        chatMemory.addAll(List.of(toolExecutionResultMessage1, toolExecutionResultMessage2));
+
+        // then
+        currentMessages = chatMemory.messages();
+        assertThat(currentMessages)
+                .containsExactly(systemMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
+        currentTokens = TOKENIZER.estimateTokenCountInMessages(currentMessages);
+        assertThat(currentTokens)
+                .isEqualTo(EXTRA_TOKENS_PER_REQUEST
+                        + systemMessageTokens
+                        + aiMessageTokens
+                        + toolExecutionResultMessage1Tokens
+                        + toolExecutionResultMessage2Tokens)
+                .isEqualTo(76);
+
+        // when
+        AiMessage aiMessage2 = AiMessage.from("2 + 2 = 4, 3 + 3 = 6");
+        int aiMessage2Tokens = TOKENIZER.estimateTokenCountInMessage(aiMessage2);
+        chatMemory.add(aiMessage2);
+
+        // then
+        currentMessages = chatMemory.messages();
+        assertThat(currentMessages).containsExactly(systemMessage, aiMessage2);
+        currentTokens = TOKENIZER.estimateTokenCountInMessages(currentMessages);
+        assertThat(currentTokens)
                 .isEqualTo(EXTRA_TOKENS_PER_REQUEST + systemMessageTokens + aiMessage2Tokens)
                 .isEqualTo(32);
     }
