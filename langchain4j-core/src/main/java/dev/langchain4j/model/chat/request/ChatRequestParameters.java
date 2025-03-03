@@ -2,7 +2,8 @@ package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
-
+import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import java.util.List;
 
 /**
@@ -35,6 +36,10 @@ public interface ChatRequestParameters {
     ToolChoice toolChoice();
 
     ResponseFormat responseFormat();
+
+    InputGuardrailsConfig inputGuardrailsConfig();
+
+    OutputGuardrailsConfig outputGuardrailsConfig();
 
     static DefaultChatRequestParameters.Builder<?> builder() { // TODO
         return new DefaultChatRequestParameters.Builder<>();
