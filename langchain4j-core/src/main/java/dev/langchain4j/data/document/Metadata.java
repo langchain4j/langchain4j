@@ -1,13 +1,5 @@
 package dev.langchain4j.data.document;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -15,6 +7,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Represents metadata of a {@link Document} or a {@link TextSegment}.
@@ -72,10 +71,10 @@ public class Metadata {
         ensureNotNull(metadata, "metadata").forEach((key, value) -> {
             validate(key, value);
             if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
-                throw illegalArgument("The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. " +
-                                "Currently, the supported types are: %s",
-                        key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
-                );
+                throw illegalArgument(
+                        "The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. "
+                                + "Currently, the supported types are: %s",
+                        key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES);
             }
         });
         this.metadata = new HashMap<>(metadata);
@@ -121,8 +120,10 @@ public class Metadata {
             return string;
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a String.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a String.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -145,8 +146,10 @@ public class Metadata {
             return UUID.fromString(string);
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a UUID.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a UUID.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -177,8 +180,10 @@ public class Metadata {
             return number.intValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as an Integer.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as an Integer.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -209,8 +214,10 @@ public class Metadata {
             return number.longValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a Long.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a Long.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -241,8 +248,10 @@ public class Metadata {
             return number.floatValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a Float.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a Float.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -273,8 +282,10 @@ public class Metadata {
             return number.doubleValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a Double.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a Double.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -454,9 +465,7 @@ public class Metadata {
 
     @Override
     public String toString() {
-        return "Metadata {" +
-                " metadata = " + metadata +
-                " }";
+        return "Metadata {" + " metadata = " + metadata + " }";
     }
 
     /**
