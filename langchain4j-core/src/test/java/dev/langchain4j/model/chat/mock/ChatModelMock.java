@@ -48,7 +48,7 @@ public class ChatModelMock implements ChatLanguageModel {
     }
 
     @Override
-    public ChatResponse chat(ChatRequest chatRequest) {
+    public ChatResponse doChat(ChatRequest chatRequest) {
         requests.add(new ArrayList<>(chatRequest.messages()));
 
         if (exception != null) {
@@ -62,17 +62,6 @@ public class ChatModelMock implements ChatLanguageModel {
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder().build())
                 .build();
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        requests.add(new ArrayList<>(messages));
-
-        if (exception != null) {
-            throw exception;
-        }
-
-        return Response.from(AiMessage.from(staticResponse));
     }
 
     public String userMessageText() {

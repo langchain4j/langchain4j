@@ -10,8 +10,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -67,11 +67,11 @@ class StreamingAiServicesIT {
 
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         assistant.chat("What is the capital of Germany?")
-                .onNext(answerBuilder::append)
-                .onComplete(response -> {
+                .onPartialResponse(answerBuilder::append)
+                .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
                 })
@@ -79,10 +79,10 @@ class StreamingAiServicesIT {
                 .start();
 
         String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
 
         assertThat(answer).contains("Berlin");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
@@ -114,11 +114,10 @@ class StreamingAiServicesIT {
                 .retrievalAugmentor(retrievalAugmentor)
                 .build();
 
-        StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<List<Content>> futureContent = new CompletableFuture<>();
 
         assistant.chat("What is the capital of Germany?")
-                .onNext(answerBuilder::append)
+                .onPartialResponse(ignored -> {})
                 .onRetrieved(futureContent::complete)
                 .ignoreErrors()
                 .start();
@@ -143,29 +142,29 @@ class StreamingAiServicesIT {
 
 
         String firstUserMessage = "Hi, my name is Klaus";
-        CompletableFuture<Response<AiMessage>> firstResultFuture = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> firstResponseFuture = new CompletableFuture<>();
 
         assistant.chat(firstUserMessage)
-                .onNext(System.out::println)
-                .onComplete(firstResultFuture::complete)
-                .onError(firstResultFuture::completeExceptionally)
+                .onPartialResponse(System.out::println)
+                .onCompleteResponse(firstResponseFuture::complete)
+                .onError(firstResponseFuture::completeExceptionally)
                 .start();
 
-        Response<AiMessage> firstResponse = firstResultFuture.get(30, SECONDS);
-        assertThat(firstResponse.content().text()).contains("Klaus");
+        ChatResponse firstResponse = firstResponseFuture.get(30, SECONDS);
+        assertThat(firstResponse.aiMessage().text()).contains("Klaus");
 
 
         String secondUserMessage = "What is my name?";
-        CompletableFuture<Response<AiMessage>> secondResultFuture = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> secondResponseFuture = new CompletableFuture<>();
 
         assistant.chat(secondUserMessage)
-                .onNext(System.out::println)
-                .onComplete(secondResultFuture::complete)
-                .onError(secondResultFuture::completeExceptionally)
+                .onPartialResponse(System.out::println)
+                .onCompleteResponse(secondResponseFuture::complete)
+                .onError(secondResponseFuture::completeExceptionally)
                 .start();
 
-        Response<AiMessage> secondResponse = secondResultFuture.get(30, SECONDS);
-        assertThat(secondResponse.content().text()).contains("Klaus");
+        ChatResponse secondResponse = secondResponseFuture.get(30, SECONDS);
+        assertThat(secondResponse.aiMessage().text()).contains("Klaus");
 
 
         List<ChatMessage> messages = chatMemory.messages();
@@ -175,13 +174,13 @@ class StreamingAiServicesIT {
         assertThat(messages.get(0).text()).isEqualTo(firstUserMessage);
 
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(1)).isEqualTo(firstResponse.content());
+        assertThat(messages.get(1)).isEqualTo(firstResponse.aiMessage());
 
         assertThat(messages.get(2)).isInstanceOf(UserMessage.class);
         assertThat(messages.get(2).text()).isEqualTo(secondUserMessage);
 
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(3)).isEqualTo(secondResponse.content());
+        assertThat(messages.get(3)).isEqualTo(secondResponse.aiMessage());
     }
 
     static class Calculator {
@@ -208,13 +207,13 @@ class StreamingAiServicesIT {
 
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
 
         assistant.chat(userMessage)
-                .onNext(answerBuilder::append)
-                .onComplete(response -> {
+                .onPartialResponse(answerBuilder::append)
+                .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
                 })
@@ -222,10 +221,10 @@ class StreamingAiServicesIT {
                 .start();
 
         String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
 
         assertThat(answer).contains("6.97");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
@@ -292,13 +291,13 @@ class StreamingAiServicesIT {
 
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
         assistant.chat(userMessage)
-                .onNext(answerBuilder::append)
-                .onComplete(response -> {
+                .onPartialResponse(answerBuilder::append)
+                .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
                 })
@@ -306,10 +305,10 @@ class StreamingAiServicesIT {
                 .start();
 
         String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
 
         assertThat(answer).contains("6.97", "9.89");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive(); // TODO
@@ -389,13 +388,13 @@ class StreamingAiServicesIT {
 
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
         assistant.chat(userMessage)
-                .onNext(answerBuilder::append)
-                .onComplete(response -> {
+                .onPartialResponse(answerBuilder::append)
+                .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
                 })
@@ -403,10 +402,10 @@ class StreamingAiServicesIT {
                 .start();
 
         String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
 
         assertThat(answer).contains("6.97", "9.89");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive(); // TODO

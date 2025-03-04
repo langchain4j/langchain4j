@@ -75,7 +75,7 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     @Override
     public Collection<Query> transform(Query query) {
         Prompt prompt = createPrompt(query);
-        String response = chatLanguageModel.generate(prompt.text());
+        String response = chatLanguageModel.chat(prompt.text());
         List<String> queries = parse(response);
         return queries.stream()
                 .map(queryText -> query.metadata() == null
