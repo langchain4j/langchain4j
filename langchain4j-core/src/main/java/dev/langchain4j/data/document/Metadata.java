@@ -1,9 +1,7 @@
 package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -14,6 +12,9 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 
 /**
  * Represents metadata of a {@link Document} or a {@link TextSegment}.
@@ -72,8 +73,8 @@ public class Metadata {
             validate(key, value);
             if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
                 throw illegalArgument("The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. " +
-                        "Currently, the supported types are: %s",
-                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
+                                "Currently, the supported types are: %s",
+                        key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
                 );
             }
         });
@@ -121,7 +122,7 @@ public class Metadata {
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a String.", key, value, value.getClass().getName());
+                "It cannot be returned as a String.", key, value, value.getClass().getName());
     }
 
     /**
@@ -145,7 +146,7 @@ public class Metadata {
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a UUID.", key, value, value.getClass().getName());
+                "It cannot be returned as a UUID.", key, value, value.getClass().getName());
     }
 
     /**
@@ -177,7 +178,7 @@ public class Metadata {
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as an Integer.", key, value, value.getClass().getName());
+                "It cannot be returned as an Integer.", key, value, value.getClass().getName());
     }
 
     /**
@@ -209,7 +210,7 @@ public class Metadata {
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a Long.", key, value, value.getClass().getName());
+                "It cannot be returned as a Long.", key, value, value.getClass().getName());
     }
 
     /**
@@ -241,7 +242,7 @@ public class Metadata {
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a Float.", key, value, value.getClass().getName());
+                "It cannot be returned as a Float.", key, value, value.getClass().getName());
     }
 
     /**
@@ -273,7 +274,7 @@ public class Metadata {
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a Double.", key, value, value.getClass().getName());
+                "It cannot be returned as a Double.", key, value, value.getClass().getName());
     }
 
     /**
@@ -454,8 +455,8 @@ public class Metadata {
     @Override
     public String toString() {
         return "Metadata {" +
-            " metadata = " + metadata +
-            " }";
+                " metadata = " + metadata +
+                " }";
     }
 
     /**
@@ -510,5 +511,26 @@ public class Metadata {
     @Deprecated(forRemoval = true)
     public static Metadata metadata(String key, Object value) {
         return from(key, value);
+    }
+
+    /**
+     * Merges the current Metadata object with another Metadata object.
+     * The two Metadata objects must not have any common keys.
+     *
+     * @param another The Metadata object to be merged with the current Metadata object.
+     * @return A new Metadata object that contains all key-value pairs from both Metadata objects.
+     * @throws IllegalArgumentException if there are common keys between the two Metadata objects.
+     */
+    public Metadata merge(Metadata another) {
+        final var thisMap = this.toMap();
+        final var anotherMap = another.toMap();
+        final var commonKeys = new HashSet<>(thisMap.keySet());
+        commonKeys.retainAll(anotherMap.keySet());
+        if (!commonKeys.isEmpty()) {
+            throw new IllegalArgumentException("Metadata keys are not unique. Common keys: " + commonKeys);
+        }
+        final var mergedMap = new HashMap<>(thisMap);
+        mergedMap.putAll(anotherMap);
+        return Metadata.from(mergedMap);
     }
 }
