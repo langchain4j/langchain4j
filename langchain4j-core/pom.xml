@@ -72,12 +72,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.mockito.kotlin</groupId>
             <artifactId>mockito-kotlin</artifactId>
             <scope>test</scope>
@@ -97,7 +91,7 @@
 
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
-            <artifactId>kotlinx-coroutines-test</artifactId>
+            <artifactId>kotlinx-coroutines-test-jvm</artifactId>
             <scope>test</scope>
         </dependency>
 
