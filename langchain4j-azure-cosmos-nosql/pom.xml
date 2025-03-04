@@ -28,7 +28,6 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-cosmos</artifactId>
-            <version>4.60.0</version>
         </dependency>
 
         <dependency>
