@@ -76,36 +76,6 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-        ChatResponse chatResponse = chat(chatRequest);
-        return convertResponse(chatResponse);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .toolSpecifications(toolSpecifications)
-                .build();
-        ChatResponse chatResponse = chat(chatRequest);
-        return convertResponse(chatResponse);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(toolSpecification)
-                        .toolChoice(REQUIRED)
-                        .build())
-                .build();
-        ChatResponse chatResponse = chat(chatRequest);
-        return convertResponse(chatResponse);
-    }
-
-    @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
 
         OpenAiOfficialChatRequestParameters parameters = (OpenAiOfficialChatRequestParameters) chatRequest.parameters();
