@@ -1,5 +1,16 @@
 package dev.langchain4j.model.mistralai.internal.mapper;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType.TEXT;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -8,7 +19,12 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatMessage;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFunction;
@@ -22,25 +38,14 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiToolCall;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiUsage;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.util.stream.Collectors.toList;
 
 public class MistralAiMapper {
 
     public static List<MistralAiChatMessage> toMistralAiMessages(List<ChatMessage> messages) {
-        return messages.stream()
-                .map(MistralAiMapper::toMistralAiMessage)
-                .collect(toList());
+        return messages.stream().map(MistralAiMapper::toMistralAiMessage).collect(toList());
     }
 
     static MistralAiChatMessage toMistralAiMessage(ChatMessage message) {
@@ -116,8 +121,7 @@ public class MistralAiMapper {
         return new TokenUsage(
                 mistralAiUsage.getPromptTokens(),
                 mistralAiUsage.getCompletionTokens(),
-                mistralAiUsage.getTotalTokens()
-        );
+                mistralAiUsage.getTotalTokens());
     }
 
     public static FinishReason finishReasonFrom(String mistralAiFinishReason) {
@@ -164,9 +168,7 @@ public class MistralAiMapper {
     }
 
     public static List<MistralAiTool> toMistralAiTools(List<ToolSpecification> toolSpecifications) {
-        return toolSpecifications.stream()
-                .map(MistralAiMapper::toMistralAiTool)
-                .collect(toList());
+        return toolSpecifications.stream().map(MistralAiMapper::toMistralAiTool).collect(toList());
     }
 
     static MistralAiTool toMistralAiTool(ToolSpecification toolSpecification) {
@@ -208,5 +210,60 @@ public class MistralAiMapper {
             default:
                 throw new IllegalArgumentException("Unknown response format: " + responseFormat);
         }
+    }
+
+    public static ResponseFormat toResponseFormat(String responseFormat) {
+        if (responseFormat == null) {
+            return null;
+        }
+        switch (responseFormat) {
+            case "text":
+                return ResponseFormat.builder().type(ResponseFormatType.TEXT).build();
+            case "json_object":
+                return ResponseFormat.builder().type(ResponseFormatType.JSON).build();
+            default:
+                throw new IllegalArgumentException("Unknown response format: " + responseFormat);
+        }
+    }
+
+    public static MistralAiResponseFormat toMistralAiResponseFormat(ResponseFormat responseFormat) {
+        if (responseFormat == null) {
+            return null;
+        }
+        switch (responseFormat.type()) {
+            case TEXT:
+                return MistralAiResponseFormat.fromType(MistralAiResponseFormatType.TEXT);
+            case JSON:
+                return MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
+            default:
+                throw new IllegalArgumentException("Unknown response format: " + responseFormat.type());
+        }
+    }
+
+    public static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
+        return Response.from(
+                chatResponse.aiMessage(),
+                chatResponse.metadata().tokenUsage(),
+                chatResponse.metadata().finishReason());
+    }
+
+    public static StreamingChatResponseHandler convertHandler(StreamingResponseHandler<AiMessage> handler) {
+        return new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                handler.onNext(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                handler.onComplete(convertResponse(completeResponse));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
     }
 }
