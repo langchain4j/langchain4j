@@ -14,7 +14,6 @@ import io.milvus.param.dml.SearchParam;
 
 import java.util.List;
 
-import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore.*;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -62,7 +61,7 @@ class CollectionRequestBuilder {
                                           ConsistencyLevelEnum consistencyLevel) {
         SearchParam.Builder builder = SearchParam.newBuilder()
                 .withCollectionName(collectionName)
-                .withVectors(singletonList(vector))
+                .withFloatVectors(singletonList(vector))
                 .withVectorFieldName(fieldDefinition.getVectorFieldName())
                 .withTopK(maxResults)
                 .withMetricType(metricType)
