@@ -20,6 +20,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -63,6 +64,11 @@ public abstract class AiServicesWithNewToolsIT {
     interface Assistant {
 
         Response<AiMessage> chat(String userMessage);
+    }
+
+    interface AssistantWithChatRequestParams {
+
+        Response<AiMessage> chat(@UserMessage String userMessage, ChatRequestParameters params);
     }
 
     static class ToolWithPrimitiveParameters {
@@ -802,6 +808,41 @@ public abstract class AiServicesWithNewToolsIT {
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithUUIDParameter.EXPECTED_SPECIFICATION);
             }
+        }
+    }
+
+    @Test
+    void should_use_custom_chat_request_parameters_passed_in_method() {
+
+        for (ChatLanguageModel model : models()) {
+            // given
+            model = spy(model);
+
+            // Build an AI service for AssistantWithChatRequestParams
+            AssistantWithChatRequestParams assistant = AiServices.builder(AssistantWithChatRequestParams.class)
+                    .chatLanguageModel(model)
+                    .build();
+
+            // Create some custom ChatRequestParameters
+            ChatRequestParameters customParams = ChatRequestParameters.builder()
+                    .temperature(0.76)
+                    .stopSequences("DONE")
+                    .build();
+
+            // when
+            Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", customParams);
+
+            // then
+            // First, verify the model was called
+            verify(model).chat(chatRequestCaptor.capture());
+            ChatRequest actualRequest = chatRequestCaptor.getValue();
+
+            // Check that the custom parameters are now present in the request
+            assertThat(actualRequest.parameters().temperature()).isEqualTo(0.76);
+            assertThat(actualRequest.parameters().stopSequences()).containsExactly("DONE");
+
+            // Optionally check that the AIMessage response is not null, or has some text:
+            assertThat(response.content()).isNotNull();
         }
     }
 }
