@@ -1,14 +1,20 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
-import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.io.IOException;
+import java.util.List;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import okhttp3.sse.EventSource;
@@ -18,13 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
-
-import java.io.IOException;
-import java.util.List;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 
 public class DefaultMistralAiClient extends MistralAiClient {
 
@@ -78,8 +77,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
     @Override
     public MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request) {
         try {
-            retrofit2.Response<MistralAiChatCompletionResponse> retrofitResponse
-                    = mistralAiApi.chatCompletion(request).execute();
+            retrofit2.Response<MistralAiChatCompletionResponse> retrofitResponse =
+                    mistralAiApi.chatCompletion(request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -91,7 +90,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
     }
 
     @Override
-    public void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
+    public void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler) {
         EventSourceListener eventSourceListener = new EventSourceListener() {
             final StringBuffer contentBuilder = new StringBuffer();
             List<ToolExecutionRequest> toolExecutionRequests;
@@ -112,27 +111,27 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 }
                 if ("[DONE]".equals(data)) {
                     AiMessage aiMessage;
-                    if (!isNullOrEmpty(toolExecutionRequests)){
+                    if (!isNullOrEmpty(toolExecutionRequests)) {
                         aiMessage = AiMessage.from(toolExecutionRequests);
                     } else {
                         aiMessage = AiMessage.from(contentBuilder.toString());
                     }
-
-                    Response<AiMessage> response = Response.from(
-                            aiMessage,
-                            tokenUsage,
-                            finishReason
-                    );
-                    handler.onComplete(response);
+                    ChatResponse completeResponse = ChatResponse.builder()
+                            .aiMessage(aiMessage)
+                            .tokenUsage(tokenUsage)
+                            .build();
+                    handler.onCompleteResponse(completeResponse);
                 } else {
                     try {
-                        MistralAiChatCompletionResponse chatCompletionResponse = OBJECT_MAPPER.readValue(data, MistralAiChatCompletionResponse.class);
-                        MistralAiChatCompletionChoice choice = chatCompletionResponse.getChoices().get(0);
+                        MistralAiChatCompletionResponse chatCompletionResponse =
+                                OBJECT_MAPPER.readValue(data, MistralAiChatCompletionResponse.class);
+                        MistralAiChatCompletionChoice choice =
+                                chatCompletionResponse.getChoices().get(0);
 
                         String chunk = choice.getDelta().getContent();
                         if (isNotNullOrEmpty(chunk)) {
                             contentBuilder.append(chunk);
-                            handler.onNext(chunk);
+                            handler.onPartialResponse(chunk);
                         }
 
                         List<MistralAiToolCall> toolCalls = choice.getDelta().getToolCalls();
@@ -165,7 +164,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 if (t != null) {
                     handler.onError(t);
                 } else {
-                    handler.onError(new RuntimeException(String.format("status code: %s; body: %s", response.code(), response.body())));
+                    handler.onError(new RuntimeException(
+                            String.format("status code: %s; body: %s", response.code(), response.body())));
                 }
             }
 
@@ -178,16 +178,14 @@ public class DefaultMistralAiClient extends MistralAiClient {
         };
 
         EventSources.createFactory(this.okHttpClient)
-                .newEventSource(
-                        mistralAiApi.streamingChatCompletion(request).request(),
-                        eventSourceListener);
+                .newEventSource(mistralAiApi.streamingChatCompletion(request).request(), eventSourceListener);
     }
 
     @Override
     public MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request) {
         try {
-            retrofit2.Response<MistralAiEmbeddingResponse> retrofitResponse
-                    = mistralAiApi.embedding(request).execute();
+            retrofit2.Response<MistralAiEmbeddingResponse> retrofitResponse =
+                    mistralAiApi.embedding(request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -201,8 +199,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
     @Override
     public MistralAiModerationResponse moderation(MistralAiModerationRequest request) {
         try {
-            retrofit2.Response<MistralAiModerationResponse> retrofitResponse
-                = mistralAiApi.moderations(request).execute();
+            retrofit2.Response<MistralAiModerationResponse> retrofitResponse =
+                    mistralAiApi.moderations(request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -216,8 +214,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
     @Override
     public MistralAiModelResponse listModels() {
         try {
-            retrofit2.Response<MistralAiModelResponse> retrofitResponse
-                    = mistralAiApi.models().execute();
+            retrofit2.Response<MistralAiModelResponse> retrofitResponse =
+                    mistralAiApi.models().execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
