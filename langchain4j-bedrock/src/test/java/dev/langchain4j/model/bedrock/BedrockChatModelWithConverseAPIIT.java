@@ -10,6 +10,7 @@ import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AWS_NOVA
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.CLAUDE_3_HAIKU;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.COHERE_COMMAND_R_PLUS;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.MISTRAL_LARGE;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,8 +24,9 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.common.ChatModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -43,7 +45,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class BedrockChatModelWithConverseAPIIT extends AbstractChatModelIT {
 
     @Override
-    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
         return List.of(
                 AWS_NOVA_LITE,
                 AWS_NOVA_PRO,
@@ -65,37 +67,28 @@ class BedrockChatModelWithConverseAPIIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
-        return BedrockChatModel.builder()
-                .defaultRequestParameters(parameters)
-                // force a working model with stopSequence parameter for @Tests
-                .modelId("cohere.command-r-v1:0")
+    protected AbstractChatModelAndCapabilities<ChatLanguageModel> createModelAndCapabilitiesWith(
+            ChatRequestParameters parameters) {
+        return ChatModelAndCapabilities.builder()
+                .model(BedrockChatModel.builder()
+                        .defaultRequestParameters(parameters)
+                        // force a working model with stopSequence parameter for @Tests
+                        .modelId("cohere.command-r-v1:0")
+                        .build())
+                // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
+                // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
+                .supportsToolChoiceRequired(NOT_SUPPORTED)
+                // output format not supported
+                .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
+                .assertExceptionType(false)
                 .build();
-    }
-
-    // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
-    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false;
-    }
-
-    // output format not supported
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
-    }
-
-    @Override
-    protected boolean assertExceptionType() {
-        return false;
     }
 
     // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
     @ParameterizedTest
     @MethodSource("models")
     protected void should_respect_stopSequences_in_chat_request(
-            ChatModelCapabilities<ChatLanguageModel> modelCapabilities) {
+            AbstractChatModelAndCapabilities<ChatLanguageModel> modelCapabilities) {
         if (List.of(AWS_NOVA_MICRO, AWS_NOVA_LITE, AWS_NOVA_PRO).contains(modelCapabilities)) {
             // given
             List<String> stopSequences = List.of("Hello", " Hello");

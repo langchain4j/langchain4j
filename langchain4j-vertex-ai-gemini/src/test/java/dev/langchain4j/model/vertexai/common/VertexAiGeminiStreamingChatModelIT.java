@@ -1,14 +1,15 @@
 package dev.langchain4j.model.vertexai.common;
 
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
-
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import dev.langchain4j.model.chat.common.ChatModelCapabilities;
-import dev.langchain4j.model.chat.common.StreamingChatLanguageModelCapabilities;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
 import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+
+import java.util.List;
+
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 
 class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -20,9 +21,9 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                     .build();
 
     @Override
-    protected List<ChatModelCapabilities<StreamingChatLanguageModel>> models() {
+    protected List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models() {
         return List.of(
-                StreamingChatLanguageModelCapabilities.builder()
+                StreamingChatModelAndCapabilities.builder()
                         .model(VERTEX_AI_GEMINI_STREAMING_CHAT_MODEL)
                         .mnemonicName("vertex ai gemini chat model")
                         .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
@@ -44,38 +45,8 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertThreads() {
-        return false; // TODO what to do with it?
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 
     @AfterEach

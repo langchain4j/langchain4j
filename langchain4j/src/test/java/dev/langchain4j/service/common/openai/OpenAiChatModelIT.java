@@ -8,9 +8,9 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
-import dev.langchain4j.model.chat.common.ChatModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -40,17 +40,17 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
         return List.of(
-                ChatLanguageModelCapabilities.builder()
+                ChatModelAndCapabilities.builder()
                         .model(defaultModelBuilder().build())
                         .mnemonicName("default openAi chat model")
                         .build(),
-                ChatLanguageModelCapabilities.builder()
+                ChatModelAndCapabilities.builder()
                         .model(defaultModelBuilder().strictTools(true).build())
                         .mnemonicName("openAi chat model with strict tools")
                         .build(),
-                ChatLanguageModelCapabilities.builder()
+                ChatModelAndCapabilities.builder()
                         .model(defaultModelBuilder()
                                 .responseFormat("json_schema")
                                 .strictJsonSchema(true)
@@ -62,7 +62,8 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected AbstractChatModelAndCapabilities<ChatLanguageModel> createModelAndCapabilitiesWith(
+            ChatRequestParameters parameters) {
         OpenAiChatModel.OpenAiChatModelBuilder openAiChatModelBuilder = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -73,7 +74,10 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         if (parameters.modelName() == null) {
             openAiChatModelBuilder.modelName(GPT_4_O_MINI);
         }
-        return openAiChatModelBuilder.build();
+
+        return ChatModelAndCapabilities.builder()
+                .model(openAiChatModelBuilder.build())
+                .build();
     }
 
     @Override
@@ -231,9 +235,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
-        }
+        assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
     }
 
     @Test

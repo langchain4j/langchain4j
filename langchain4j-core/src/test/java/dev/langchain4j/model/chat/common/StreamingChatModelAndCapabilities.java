@@ -2,12 +2,16 @@ package dev.langchain4j.model.chat.common;
 
 import static java.util.Objects.nonNull;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
-public class ChatLanguageModelCapabilities extends ChatModelCapabilities<ChatLanguageModel> {
+public class StreamingChatModelAndCapabilities extends AbstractChatModelAndCapabilities<StreamingChatLanguageModel> {
 
-    private ChatLanguageModelCapabilities(Builder builder) {
+    private StreamingChatModelAndCapabilities(Builder builder) {
         super(builder);
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     @Override
@@ -22,11 +26,7 @@ public class ChatLanguageModelCapabilities extends ChatModelCapabilities<ChatLan
         return super.model().getClass().getSimpleName() + modelName;
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder extends AbstractBuilder<Builder, ChatLanguageModel> {
+    public static class Builder extends AbstractBuilder<Builder, StreamingChatLanguageModel> {
 
         @Override
         protected Builder self() {
@@ -34,11 +34,11 @@ public class ChatLanguageModelCapabilities extends ChatModelCapabilities<ChatLan
         }
 
         @Override
-        public ChatLanguageModelCapabilities build() {
+        public StreamingChatModelAndCapabilities build() {
             if (super.model == null) {
-                throw new IllegalStateException("Le modèle ne doit pas être null");
+                throw new IllegalStateException("Model can't be null");
             }
-            return new ChatLanguageModelCapabilities(this);
+            return new StreamingChatModelAndCapabilities(this);
         }
     }
 }

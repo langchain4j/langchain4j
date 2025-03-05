@@ -1,10 +1,10 @@
 package dev.langchain4j.model.chat.common;
 
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.DISABLED;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.SUPPORTED;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.DISABLED;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.SUPPORTED;
 
-public abstract class ChatModelCapabilities<M> {
+public abstract class AbstractChatModelAndCapabilities<M> {
 
     private final M model;
     private final String mnemonicName;
@@ -32,7 +32,7 @@ public abstract class ChatModelCapabilities<M> {
     private final boolean assertExceptionType;
     private final boolean assertTimesOnPartialResponseWasCalled;
 
-    protected ChatModelCapabilities(AbstractBuilder<?, M> builder) {
+    protected AbstractChatModelAndCapabilities(AbstractBuilder<?, M> builder) {
         this.model = builder.model;
         this.supportsModelNameParameter = builder.supportsModelNameParameter;
         this.mnemonicName = builder.mnemonicName;
@@ -163,8 +163,8 @@ public abstract class ChatModelCapabilities<M> {
     }
 
     /**
-     * Builder générique et abstrait permettant de construire une instance de ChatModelCapabilities.
-     * La méthode {@code self()} permet de retourner le type concret du builder afin de faciliter le chainage.
+     * Generic and abstract builder for constructing an instance of ChatModelCapabilities.
+     * The {@code self()} method returns the concrete type of the builder to facilitate chaining.
      */
     public abstract static class AbstractBuilder<T extends AbstractBuilder<T, M>, M> {
         protected M model;
@@ -418,12 +418,17 @@ public abstract class ChatModelCapabilities<M> {
 
         protected abstract T self();
 
-        public abstract ChatModelCapabilities<M> build();
+        public abstract AbstractChatModelAndCapabilities<M> build();
     }
 
     public enum SupportStatus {
         SUPPORTED,
         NOT_SUPPORTED,
+        /**
+         * Tests relative to this functionnality will be disabled.
+         * This value should only be used in cases that are too complex to resolve or during the development phase.
+         * Its presence must be justified during code reviews.
+         */
         DISABLED
     }
 }

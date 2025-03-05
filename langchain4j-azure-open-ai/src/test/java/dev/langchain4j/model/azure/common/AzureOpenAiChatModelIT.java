@@ -1,13 +1,14 @@
 package dev.langchain4j.model.azure.common;
 
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
-
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
-import dev.langchain4j.model.chat.common.ChatModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
+
 import java.util.List;
+
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 
 class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
@@ -29,9 +30,9 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
         return List.of(
-                ChatLanguageModelCapabilities.builder()
+                ChatModelAndCapabilities.builder()
                         .model(AZURE_OPEN_AI_CHAT_MODEL)
                         .mnemonicName("azure open ai chat model")
                         .supportsSingleImageInputAsBase64EncodedString(
@@ -46,7 +47,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
                         .assertResponseModel(false)
                         .assertFinishReason(false)
                         .build(),
-                ChatLanguageModelCapabilities.builder()
+                ChatModelAndCapabilities.builder()
                         .model(AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA)
                         .mnemonicName("azure open ai chat model with strict schema")
                         .supportsSingleImageInputAsBase64EncodedString(
@@ -64,31 +65,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 }

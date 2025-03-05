@@ -1,8 +1,18 @@
 package dev.langchain4j.model.ollama.common;
 
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
+import dev.langchain4j.model.ollama.LC4jOllamaContainer;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+
+import java.util.List;
+
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.DISABLED;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.DISABLED;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
@@ -10,15 +20,6 @@ import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2_VISION;
 import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
-
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import dev.langchain4j.model.chat.common.ChatModelCapabilities;
-import dev.langchain4j.model.chat.common.StreamingChatLanguageModelCapabilities;
-import dev.langchain4j.model.ollama.LC4jOllamaContainer;
-import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import java.util.List;
 
 class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -44,8 +45,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
         }
     }
 
-    static final StreamingChatLanguageModelCapabilities OLLAMA_CHAT_MODEL_WITH_TOOLS =
-            StreamingChatLanguageModelCapabilities.builder()
+    static final StreamingChatModelAndCapabilities OLLAMA_CHAT_MODEL_WITH_TOOLS =
+            StreamingChatModelAndCapabilities.builder()
                     .model(OllamaStreamingChatModel.builder()
                             .baseUrl(ollamaBaseUrl(ollamaWithTools))
                             .modelName(MODEL_WITH_TOOLS)
@@ -70,8 +71,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
                     .assertTimesOnPartialResponseWasCalled(false) // TODO
                     .build();
 
-    static final StreamingChatLanguageModelCapabilities OLLAMA_CHAT_MODEL_WITH_VISION =
-            StreamingChatLanguageModelCapabilities.builder()
+    static final StreamingChatModelAndCapabilities OLLAMA_CHAT_MODEL_WITH_VISION =
+            StreamingChatModelAndCapabilities.builder()
                     .model(OllamaStreamingChatModel.builder()
                             .baseUrl(ollamaBaseUrl(ollamaWithVision))
                             .modelName(MODEL_WITH_VISION)
@@ -93,8 +94,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
                     .assertResponseModel(false)
                     .build();
 
-    static final StreamingChatLanguageModelCapabilities OPEN_AI_CHAT_MODEL_WITH_TOOLS =
-            StreamingChatLanguageModelCapabilities.builder()
+    static final StreamingChatModelAndCapabilities OPEN_AI_CHAT_MODEL_WITH_TOOLS =
+            StreamingChatModelAndCapabilities.builder()
                     .model(OpenAiStreamingChatModel.builder()
                             .apiKey("does not matter")
                             .baseUrl(ollamaBaseUrl(ollamaWithTools) + "/v1")
@@ -115,8 +116,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
                     .assertTimesOnPartialResponseWasCalled(false) // TODO
                     .build();
 
-    static final StreamingChatLanguageModelCapabilities OPEN_AI_CHAT_MODEL_WITH_VISION =
-            StreamingChatLanguageModelCapabilities.builder()
+    static final StreamingChatModelAndCapabilities OPEN_AI_CHAT_MODEL_WITH_VISION =
+            StreamingChatModelAndCapabilities.builder()
                     .model(OpenAiStreamingChatModel.builder()
                             .apiKey("does not matter")
                             .baseUrl(ollamaBaseUrl(ollamaWithVision) + "/v1")
@@ -136,7 +137,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
                     .build();
 
     @Override
-    protected List<ChatModelCapabilities<StreamingChatLanguageModel>> models() {
+    protected List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models() {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_TOOLS,
                 OLLAMA_CHAT_MODEL_WITH_VISION,
@@ -147,17 +148,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 }

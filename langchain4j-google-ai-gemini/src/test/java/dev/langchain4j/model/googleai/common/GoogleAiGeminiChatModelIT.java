@@ -1,12 +1,12 @@
 package dev.langchain4j.model.googleai.common;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
-import dev.langchain4j.model.chat.common.ChatModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import java.util.List;
@@ -23,8 +23,8 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
-        return List.of(ChatLanguageModelCapabilities.builder()
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
+        return List.of(ChatModelAndCapabilities.builder()
                 .model(GOOGLE_AI_GEMINI_CHAT_MODEL)
                 .mnemonicName("google ai gemini chat model")
                 .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO check if supported
@@ -44,18 +44,26 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
-        return GoogleAiGeminiChatModel.builder()
-                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    protected AbstractChatModelAndCapabilities<ChatLanguageModel> createModelAndCapabilitiesWith(
+            ChatRequestParameters parameters) {
+        return ChatModelAndCapabilities.builder()
+                .model(GoogleAiGeminiChatModel.builder()
+                        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
 
-                // TODO re-implement, support .defaultRequestParameters(ChatRequestParameters)
-                .modelName(getOrDefault(parameters.modelName(), "gemini-1.5-flash-8b"))
-                .temperature(parameters.temperature())
-                .topP(parameters.topP())
-                .topK(parameters.topK())
-                .maxOutputTokens(parameters.maxOutputTokens())
-                .stopSequences(parameters.stopSequences())
-                .responseFormat(parameters.responseFormat())
+                        // TODO re-implement, support .defaultRequestParameters(ChatRequestParameters)
+                        .modelName(getOrDefault(parameters.modelName(), "gemini-1.5-flash-8b"))
+                        .temperature(parameters.temperature())
+                        .topP(parameters.topP())
+                        .topK(parameters.topK())
+                        .maxOutputTokens(parameters.maxOutputTokens())
+                        .stopSequences(parameters.stopSequences())
+                        .responseFormat(parameters.responseFormat())
+                        .build())
+                .supportsToolChoiceRequired(NOT_SUPPORTED)
+                .assertResponseId(false)
+                .assertResponseModel(false)
+                .assertFinishReason(false)
+                .assertExceptionType(false)
                 .build();
     }
 
@@ -64,29 +72,5 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return ChatRequestParameters.builder() // TODO return Gemini-specific params
                 .maxOutputTokens(maxOutputTokens)
                 .build();
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertExceptionType() {
-        return false; // TODO fix
     }
 }

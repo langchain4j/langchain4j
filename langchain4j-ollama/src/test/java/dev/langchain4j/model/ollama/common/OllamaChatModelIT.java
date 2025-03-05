@@ -1,8 +1,18 @@
 package dev.langchain4j.model.ollama.common;
 
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
+import dev.langchain4j.model.ollama.LC4jOllamaContainer;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+
+import java.util.List;
+
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.DISABLED;
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.DISABLED;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
@@ -10,15 +20,6 @@ import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2_VISION;
 import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
-
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
-import dev.langchain4j.model.chat.common.ChatModelCapabilities;
-import dev.langchain4j.model.ollama.LC4jOllamaContainer;
-import dev.langchain4j.model.ollama.OllamaChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import java.util.List;
 
 class OllamaChatModelIT extends AbstractChatModelIT {
 
@@ -46,7 +47,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
         }
     }
 
-    static final ChatLanguageModelCapabilities OLLAMA_CHAT_MODEL_WITH_TOOLS = ChatLanguageModelCapabilities.builder()
+    static final ChatModelAndCapabilities OLLAMA_CHAT_MODEL_WITH_TOOLS = ChatModelAndCapabilities.builder()
             .model(OllamaChatModel.builder()
                     .baseUrl(ollamaBaseUrl(ollamaWithTools))
                     .modelName(MODEL_WITH_TOOLS)
@@ -68,7 +69,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
             .assertResponseModel(false)
             .build();
 
-    static final ChatLanguageModelCapabilities OLLAMA_CHAT_MODEL_WITH_VISION = ChatLanguageModelCapabilities.builder()
+    static final ChatModelAndCapabilities OLLAMA_CHAT_MODEL_WITH_VISION = ChatModelAndCapabilities.builder()
             .model(OllamaChatModel.builder()
                     .baseUrl(ollamaBaseUrl(ollamaWithVision))
                     .modelName(MODEL_WITH_VISION)
@@ -88,7 +89,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
             .assertResponseModel(false)
             .build();
 
-    static final ChatLanguageModelCapabilities OPEN_AI_CHAT_MODEL_WITH_TOOLS = ChatLanguageModelCapabilities.builder()
+    static final ChatModelAndCapabilities OPEN_AI_CHAT_MODEL_WITH_TOOLS = ChatModelAndCapabilities.builder()
             .model(OpenAiChatModel.builder()
                     .apiKey("does not matter")
                     .baseUrl(ollamaBaseUrl(ollamaWithTools) + "/v1")
@@ -108,7 +109,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
             .assertResponseModel(false)
             .build();
 
-    static final ChatLanguageModelCapabilities OPEN_AI_CHAT_MODEL_WITH_VISION = ChatLanguageModelCapabilities.builder()
+    static final ChatModelAndCapabilities OPEN_AI_CHAT_MODEL_WITH_VISION = ChatModelAndCapabilities.builder()
             .model(OpenAiChatModel.builder()
                     .apiKey("does not matter")
                     .baseUrl(ollamaBaseUrl(ollamaWithVision) + "/v1")
@@ -128,7 +129,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_TOOLS,
                 OPEN_AI_CHAT_MODEL_WITH_TOOLS,
@@ -139,17 +140,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 }

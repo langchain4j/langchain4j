@@ -3,9 +3,9 @@ package dev.langchain4j.service.common.openai;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import dev.langchain4j.model.chat.common.ChatModelCapabilities;
-import dev.langchain4j.model.chat.common.StreamingChatLanguageModelCapabilities;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
@@ -23,17 +23,17 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<ChatModelCapabilities<StreamingChatLanguageModel>> models() {
+    protected List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models() {
         return List.of(
-                StreamingChatLanguageModelCapabilities.builder()
+                StreamingChatModelAndCapabilities.builder()
                         .model(defaultStreamingModelBuilder().build())
                         .mnemonicName("default openAi chat model")
                         .build(),
-                StreamingChatLanguageModelCapabilities.builder()
+                StreamingChatModelAndCapabilities.builder()
                         .model(defaultStreamingModelBuilder().strictTools(true).build())
                         .mnemonicName("openAi chat model with strict tools")
                         .build(),
-                StreamingChatLanguageModelCapabilities.builder()
+                StreamingChatModelAndCapabilities.builder()
                         .model(defaultStreamingModelBuilder()
                                 .responseFormat("json_schema")
                                 .strictJsonSchema(true)
@@ -45,7 +45,8 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected AbstractChatModelAndCapabilities<StreamingChatLanguageModel> createModelAndCapabilitiesWith(
+            ChatRequestParameters parameters) {
         OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder openAiStreamingChatModelBuilder =
                 OpenAiStreamingChatModel.builder()
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -57,7 +58,10 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         if (parameters.modelName() == null) {
             openAiStreamingChatModelBuilder.modelName(GPT_4_O_MINI);
         }
-        return openAiStreamingChatModelBuilder.build();
+
+        return StreamingChatModelAndCapabilities.builder()
+                .model(openAiStreamingChatModelBuilder.build())
+                .build();
     }
 
     @Override

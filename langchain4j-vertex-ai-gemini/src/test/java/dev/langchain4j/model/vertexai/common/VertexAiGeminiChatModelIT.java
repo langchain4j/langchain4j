@@ -1,22 +1,23 @@
 package dev.langchain4j.model.vertexai.common;
 
-import static dev.langchain4j.model.chat.common.ChatModelCapabilities.SupportStatus.NOT_SUPPORTED;
-
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.common.ChatLanguageModelCapabilities;
-import dev.langchain4j.model.chat.common.ChatModelCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+
+import java.util.List;
+
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 
 class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
-    static final ChatModelCapabilities<ChatLanguageModel> VERTEX_AI_GEMINI_CHAT_MODEL =
-            ChatLanguageModelCapabilities.builder()
+    static final AbstractChatModelAndCapabilities<ChatLanguageModel> VERTEX_AI_GEMINI_CHAT_MODEL =
+            ChatModelAndCapabilities.builder()
                     .model(VertexAiGeminiChatModel.builder()
                             .project(System.getenv("GCP_PROJECT_ID"))
                             .location(System.getenv("GCP_LOCATION"))
@@ -38,7 +39,7 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
                     .build();
 
     @Override
-    protected List<ChatModelCapabilities<ChatLanguageModel>> models() {
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
         return List.of(
                 VERTEX_AI_GEMINI_CHAT_MODEL
                 // TODO add more model configs, see OpenAiChatModelIT
@@ -46,32 +47,8 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 
     @AfterEach
