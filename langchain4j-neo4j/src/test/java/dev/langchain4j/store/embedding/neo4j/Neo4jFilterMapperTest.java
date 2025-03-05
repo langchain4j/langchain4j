@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
-public class Neo4jFilterMapperTest {
+class Neo4jFilterMapperTest {
 
     @Test
     void should_map_equal() {
