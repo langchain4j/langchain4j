@@ -542,7 +542,7 @@ public class Metadata {
         final var commonKeys = new HashSet<>(thisMap.keySet());
         commonKeys.retainAll(anotherMap.keySet());
         if (!commonKeys.isEmpty()) {
-            throw new IllegalArgumentException("Metadata keys are not unique. Common keys: " + commonKeys);
+            throw illegalArgument("Metadata keys are not unique. Common keys: %s", commonKeys);
         }
         final var mergedMap = new HashMap<>(thisMap);
         mergedMap.putAll(anotherMap);
