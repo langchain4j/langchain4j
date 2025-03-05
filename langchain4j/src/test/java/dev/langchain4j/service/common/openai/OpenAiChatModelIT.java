@@ -1,5 +1,6 @@
 package dev.langchain4j.service.common.openai;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,6 +50,13 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 ChatModelAndCapabilities.builder()
                         .model(defaultModelBuilder().strictTools(true).build())
                         .mnemonicName("openAi chat model with strict tools")
+                        .build(),
+                ChatModelAndCapabilities.builder()
+                        .model(defaultModelBuilder()
+                            .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+                            .strictJsonSchema(true)
+                            .build())
+                        .mnemonicName("openAi chat model with RESPONSE_FORMAT_JSON_SCHEMA capability")
                         .build(),
                 ChatModelAndCapabilities.builder()
                         .model(defaultModelBuilder()
