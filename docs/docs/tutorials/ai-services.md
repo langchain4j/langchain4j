@@ -174,6 +174,47 @@ This annotation is necessary only when the `-parameters` option is *not* enabled
 `@UserMessage` can also load a prompt template from resources:
 `@UserMessage(fromResource = "my-prompt-template.txt")`
 
+## ChatRequestParameters
+
+In some cases, you may want to configure parameters (e.g., temperature, toolsChoice, maximum tokens, etc.) on a per-call basis. For example, you might want some requests to be more “creative” (higher temperature) and others to be more deterministic (lower temperature).
+
+To achieve this, you can create a second parameter in your AI Service method that accepts ChatRequestParams—marked with a custom annotation (@ChatRequestParams). This tells LangChain4j to accept and merge these parameters during each invocation.
+
+:::note
+Note that ChatRequestParameters toolsSpecification and responseFormat will override parameters set on AiContext. If not set by ChatRequestParameters, AiContext definition will be used.
+:::
+
+Define your interface with a second parameter:
+
+```java
+interface AssistantWithChatParams {
+
+    String chat(@UserMessage String userMessage, ChatRequestParameters params);
+}
+```
+
+Build the AI Service:
+
+java
+```java
+AssistantWithChatParams assistant = AiServices.builder(AssistantWithChatParams.class)
+.chatLanguageModel(openAiChatModel)  // or whichever model
+.build();
+```
+
+Call it with any per-call parameters:
+
+```java
+ChatRequestParameters customParams = ChatRequestParameters.builder()
+.temperature(0.85)
+.build();
+
+String answer = assistant.chat("Hi there!", customParams);
+```
+
+
+
+
 ## Examples of valid AI Service methods
 
 Below are some examples of valid AI service methods.
@@ -185,6 +226,8 @@ Below are some examples of valid AI service methods.
 String chat(String userMessage);
 
 String chat(@UserMessage String userMessage);
+
+String chat(@UserMessage String userMessage, ChatRequestParameters parameters);
 
 String chat(@UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
 
