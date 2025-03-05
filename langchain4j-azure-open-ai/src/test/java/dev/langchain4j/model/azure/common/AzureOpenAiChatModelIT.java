@@ -2,12 +2,13 @@ package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
 
 import java.util.List;
+
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 
 class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
@@ -29,70 +30,42 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
         return List.of(
-                AZURE_OPEN_AI_CHAT_MODEL,
-                AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
-        );
+                ChatModelAndCapabilities.builder()
+                        .model(AZURE_OPEN_AI_CHAT_MODEL)
+                        .mnemonicName("azure open ai chat model")
+                        .supportsSingleImageInputAsBase64EncodedString(
+                                NOT_SUPPORTED) // Azure OpenAI does not support base64-encoded images
+                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED)
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
+                        .supportsModelNameParameter(NOT_SUPPORTED)
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+                        .supportsStopSequencesParameter(NOT_SUPPORTED)
+                        .assertExceptionType(false)
+                        .assertResponseId(false)
+                        .assertResponseModel(false)
+                        .assertFinishReason(false)
+                        .build(),
+                ChatModelAndCapabilities.builder()
+                        .model(AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA)
+                        .mnemonicName("azure open ai chat model with strict schema")
+                        .supportsSingleImageInputAsBase64EncodedString(
+                                NOT_SUPPORTED) // Azure OpenAI does not support base64-encoded images
+                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED)
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
+                        .supportsModelNameParameter(NOT_SUPPORTED)
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
+                        .supportsStopSequencesParameter(NOT_SUPPORTED)
+                        .assertExceptionType(false)
+                        .assertResponseId(false)
+                        .assertResponseModel(false)
+                        .assertFinishReason(false)
+                        .build());
     }
 
     @Override
-    @Disabled
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_single_image_as_public_URL(ChatLanguageModel model) {
-        // TODO fix
-    }
-
-    @Override
-    @Disabled
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_public_URLs(ChatLanguageModel model) {
-        // TODO fix
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // Azure OpenAI does not support base64-encoded images
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 }

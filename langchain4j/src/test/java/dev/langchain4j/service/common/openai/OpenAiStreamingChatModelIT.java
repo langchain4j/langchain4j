@@ -1,14 +1,15 @@
 package dev.langchain4j.service.common.openai;
 
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-
 import java.util.List;
-
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
 class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -22,34 +23,44 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models() {
         return List.of(
-                defaultStreamingModelBuilder()
+                StreamingChatModelAndCapabilities.builder()
+                        .model(defaultStreamingModelBuilder().build())
+                        .mnemonicName("default openAi chat model")
                         .build(),
-                defaultStreamingModelBuilder()
-                        .strictTools(true)
+                StreamingChatModelAndCapabilities.builder()
+                        .model(defaultStreamingModelBuilder().strictTools(true).build())
+                        .mnemonicName("openAi chat model with strict tools")
                         .build(),
-                defaultStreamingModelBuilder()
-                        .responseFormat("json_schema")
-                        .strictJsonSchema(true)
+                StreamingChatModelAndCapabilities.builder()
+                        .model(defaultStreamingModelBuilder()
+                                .responseFormat("json_schema")
+                                .strictJsonSchema(true)
+                                .build())
+                        .mnemonicName("openAi chat model with json schema response format")
                         .build()
                 // TODO json_object?
-        );
+                );
     }
 
     @Override
-    protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
-        OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder openAiStreamingChatModelBuilder = OpenAiStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .defaultRequestParameters(parameters)
-                .logRequests(true)
-                .logResponses(true);
+    protected AbstractChatModelAndCapabilities<StreamingChatLanguageModel> createModelAndCapabilitiesWith(
+            ChatRequestParameters parameters) {
+        OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder openAiStreamingChatModelBuilder =
+                OpenAiStreamingChatModel.builder()
+                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                        .apiKey(System.getenv("OPENAI_API_KEY"))
+                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .defaultRequestParameters(parameters)
+                        .logRequests(true)
+                        .logResponses(true);
         if (parameters.modelName() == null) {
             openAiStreamingChatModelBuilder.modelName(GPT_4_O_MINI);
         }
-        return openAiStreamingChatModelBuilder
+
+        return StreamingChatModelAndCapabilities.builder()
+                .model(openAiStreamingChatModelBuilder.build())
                 .build();
     }
 
