@@ -74,6 +74,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -92,7 +93,7 @@ class InternalAzureOpenAiHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(InternalAzureOpenAiHelper.class);
 
-    public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
+    public static final String DEFAULT_APP_ID = "langchain4j-azure-openai";
 
     public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
         OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
@@ -104,7 +105,7 @@ class InternalAzureOpenAiHelper {
         return openAIClientBuilder.buildAsyncClient();
     }
 
-    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+    static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -113,16 +114,22 @@ class InternalAzureOpenAiHelper {
         clientOptions.setWriteTimeout(timeout);
         clientOptions.setProxyOptions(proxyOptions);
 
-        String userAgent = DEFAULT_USER_AGENT;
+        // The application id is prefixed to the user agent string created by Azure SDK client.
+        // This user agent string is in the following format:
+        // [<application_id> ]{azsdk-<sdk_language>-<package_name>/<package_version> }+<platform_info>
+        String applicationId = DEFAULT_APP_ID;
         if (userAgentSuffix != null && !userAgentSuffix.isEmpty()) {
-            userAgent = DEFAULT_USER_AGENT + "-" + userAgentSuffix;
+            applicationId = DEFAULT_APP_ID + "-" + userAgentSuffix;
         }
-        List<Header> headers = new ArrayList<>();
-        headers.add(new Header("User-Agent", userAgent));
+        clientOptions.setApplicationId(applicationId);
+
         if (customHeaders != null) {
-            customHeaders.forEach((name, value) -> headers.add(new Header(name, value)));
+            List<Header> headers = customHeaders.entrySet().stream()
+                .map(entry -> new Header(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toUnmodifiableList());
+            clientOptions.setHeaders(headers);
         }
-        clientOptions.setHeaders(headers);
+
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
