@@ -2,6 +2,7 @@ package dev.langchain4j.data.document
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNotSameInstanceAs
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -26,6 +27,42 @@ class MergeMetadataTest {
                 "key2" to "value2",
                 "key3" to "value3",
                 "key4" to "value4"
+            )
+        )
+    }
+
+    @Test
+    fun `merge should combine with null object`() {
+        val metadata =
+            Metadata.from(
+                mapOf("key1" to "value1", "key2" to "value2")
+            )
+
+        val result = metadata.merge(null)
+
+        assertThat(result).isNotSameInstanceAs(metadata)
+        assertThat(result.toMap()).isEqualTo(
+            mapOf(
+                "key1" to "value1",
+                "key2" to "value2"
+            )
+        )
+    }
+
+    @Test
+    fun `merge should combine with empty metadata`() {
+        val metadata =
+            Metadata.from(
+                mapOf("key1" to "value1", "key2" to "value2")
+            )
+
+        val result = metadata.merge(Metadata())
+
+        assertThat(result).isNotSameInstanceAs(metadata)
+        assertThat(result.toMap()).isEqualTo(
+            mapOf(
+                "key1" to "value1",
+                "key2" to "value2"
             )
         )
     }

@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents metadata of a {@link Document} or a {@link TextSegment}.
@@ -527,10 +529,14 @@ public class Metadata {
      * The two Metadata objects must not have any common keys.
      *
      * @param another The Metadata object to be merged with the current Metadata object.
-     * @return A new Metadata object that contains all key-value pairs from both Metadata objects.
+     * @return A new Metadata object that contains all key-value pairs from both Metadata objects, or null.
      * @throws IllegalArgumentException if there are common keys between the two Metadata objects.
      */
-    public Metadata merge(Metadata another) {
+    @NonNull
+    public Metadata merge(@Nullable Metadata another) {
+        if (another == null || another.metadata.isEmpty()) {
+            return this.copy();
+        }
         final var thisMap = this.toMap();
         final var anotherMap = another.toMap();
         final var commonKeys = new HashSet<>(thisMap.keySet());
