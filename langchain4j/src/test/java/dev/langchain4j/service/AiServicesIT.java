@@ -22,6 +22,9 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -35,6 +38,7 @@ import dev.langchain4j.model.output.structured.Description;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -105,6 +109,18 @@ class AiServicesIT {
 
         @UserMessage("Count the number of eggs mentioned in this sentence:\n|||{{it}}|||")
         int count(String sentence);
+    }
+
+    static ChatRequest chatRequest(String userMessage, List<ImageContent> imageContents) {
+
+        List<Content> contents = new ArrayList<>();
+
+        contents.add(TextContent.from(userMessage));
+        contents.addAll(imageContents);
+
+        return ChatRequest.builder()
+                .messages(dev.langchain4j.data.message.UserMessage.from(contents))
+                .build();
     }
 
     @Test
