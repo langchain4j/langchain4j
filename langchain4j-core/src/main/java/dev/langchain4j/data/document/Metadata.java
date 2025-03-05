@@ -529,7 +529,7 @@ public class Metadata {
      * The two Metadata objects must not have any common keys.
      *
      * @param another The Metadata object to be merged with the current Metadata object.
-     * @return A new Metadata object that contains all key-value pairs from both Metadata objects, or null.
+     * @return A new Metadata object that contains all key-value pairs from both Metadata objects.
      * @throws IllegalArgumentException if there are common keys between the two Metadata objects.
      */
     @NonNull
