@@ -26,7 +26,6 @@ import static java.util.stream.Collectors.toList;
 public class JinaScoringModel implements ScoringModel {
 
     private static final String DEFAULT_BASE_URL = "https://api.jina.ai/v1/";
-    private static final String DEFAULT_MODEL = "jina-reranker-v1-base-en";
 
     private final JinaClient client;
     private final String modelName;
@@ -47,18 +46,8 @@ public class JinaScoringModel implements ScoringModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, DEFAULT_MODEL);
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 3);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static JinaScoringModel withApiKey(String apiKey) {
-        return JinaScoringModel.builder().apiKey(apiKey).build();
     }
 
     @Override

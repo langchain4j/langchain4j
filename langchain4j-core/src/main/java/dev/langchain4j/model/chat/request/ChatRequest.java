@@ -55,18 +55,12 @@ public class ChatRequest {
         return parameters;
     }
 
-    /**
-     * @deprecated please use {@link #parameters()} and then {@link ChatRequestParameters#toolSpecifications()} instead
-     */
-    @Deprecated(forRemoval = true)
+    @Experimental
     public List<ToolSpecification> toolSpecifications() {
         return parameters.toolSpecifications();
     }
 
-    /**
-     * @deprecated please use {@link #parameters()} and then {@link ChatRequestParameters#responseFormat()} instead
-     */
-    @Deprecated(forRemoval = true)
+    @Experimental
     public ResponseFormat responseFormat() {
         return parameters.responseFormat();
     }
@@ -119,27 +113,18 @@ public class ChatRequest {
             return this;
         }
 
-        /**
-         * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#toolSpecifications()} instead
-         */
-        @Deprecated(forRemoval = true)
+        @Experimental
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return this;
         }
 
-        /**
-         * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#toolSpecifications()} instead
-         */
-        @Deprecated(forRemoval = true)
+        @Experimental
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
 
-        /**
-         * @deprecated please use {@link #parameters()} and {@link ChatRequestParameters#responseFormat()} instead
-         */
-        @Deprecated(forRemoval = true)
+        @Experimental
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;

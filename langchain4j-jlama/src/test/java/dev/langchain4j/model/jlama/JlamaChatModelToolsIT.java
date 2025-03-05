@@ -4,7 +4,8 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +16,6 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JlamaChatModelToolsIT {
@@ -49,13 +49,17 @@ class JlamaChatModelToolsIT {
         // given
         SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant with tool calling capabilities. When you receive a tool call response, use the output to format an answer to the original question.");
         UserMessage userMessage = userMessage("What is the temp in Paris right now?");
-        List<ToolSpecification> toolSpecifications = singletonList(weatherToolSpecification);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(systemMessage, userMessage)
+                .toolSpecifications(weatherToolSpecification)
+                .build();
 
         // when
-        Response<AiMessage> response = model.generate(asList(systemMessage, userMessage), toolSpecifications);
+        ChatResponse response = model.chat(request);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
@@ -68,10 +72,10 @@ class JlamaChatModelToolsIT {
         List<ChatMessage> messages = asList(systemMessage, userMessage, aiMessage, toolExecutionResultMessage);
 
         // when
-        Response<AiMessage> secondResponse = model.generate(messages);
+        ChatResponse secondResponse = model.chat(messages);
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("32");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
     }

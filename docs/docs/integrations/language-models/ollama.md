@@ -104,7 +104,7 @@ public class OllamaChatExample {
             .build();
 
     // Example usage
-    String answer = model.generate("Provide 3 short bullet points explaining why Java is awesome");
+    String answer = model.chat("Provide 3 short bullet points explaining why Java is awesome");
     System.out.println(answer);
 
     // Stop the Ollama container
@@ -126,7 +126,7 @@ class OllamaChatLocalModelTest {
               .baseUrl(BASE_URL)
               .modelName(MODEL_NAME)
               .build();
-      String answer = model.generate("List top 10 cites in China");
+      String answer = model.chat("List top 10 cites in China");
       System.out.println(answer);
 
       model = OllamaChatModel.builder()
@@ -135,7 +135,7 @@ class OllamaChatLocalModelTest {
               .responseFormat(JSON)
               .build();
 
-      String json = model.generate("List top 10 cites in US");
+      String json = model.chat("List top 10 cites in US");
       System.out.println(json);
     }
 }
@@ -147,7 +147,7 @@ Try out a simple streaming chat example code when Ollama runs in testcontainers:
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.model.Image;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.output.Response;
@@ -200,17 +200,17 @@ public class OllamaStreamingChatExample {
 
     String userMessage = "Write a 100-word poem about Java and AI";
 
-    CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
-    model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
+    CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+    model.chat(userMessage, new StreamingChatResponseHandler() {
 
         @Override
-        public void onNext(String token) {
-            System.out.print(token);
+        public void onPartialResponse(String partialResponse) {
+            System.out.print(partialResponse);
         }
 
         @Override
-        public void onComplete(Response<AiMessage> response) {
-            futureResponse.complete(response);
+        public void onCompleteResponse(ChatResponse completeResponse) {
+            futureResponse.complete(completeResponse);
         }
 
         @Override
@@ -239,17 +239,17 @@ class OllamaStreamingChatLocalModelTest {
               .build();
       String userMessage = "Write a 100-word poem about Java and AI";
 
-      CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
-      model.generate(userMessage, new StreamingResponseHandler<>() {
+      CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+      model.chat(userMessage, new StreamingChatResponseHandler() {
 
           @Override
-          public void onNext(String token) {
-              System.out.print(token);
+          public void onPartialResponse(String partialResponse) {
+              System.out.print(partialResponse);
           }
 
           @Override
-          public void onComplete(Response<AiMessage> response) {
-              futureResponse.complete(response);
+          public void onCompleteResponse(ChatResponse completeResponse) {
+              futureResponse.complete(completeResponse);
           }
 
           @Override

@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -18,7 +16,6 @@ import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -31,18 +28,18 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertResponse;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
@@ -55,6 +52,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
     private final String responseFormat;
+    private final Set<Capability> supportedCapabilities;
     private final Boolean strictJsonSchema;
     private final Boolean strictTools;
 
@@ -125,6 +123,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
         this.responseFormat = builder.responseFormat;
+        this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
 
@@ -148,43 +147,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        Set<Capability> capabilities = new HashSet<>();
-        if ("json_schema".equals(responseFormat)) { // TODO
+        Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
+        if ("json_schema".equals(responseFormat)) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .build();
-        ChatResponse chatResponse = chat(chatRequest);
-        return convertResponse(chatResponse);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .toolSpecifications(toolSpecifications)
-                .build();
-        ChatResponse chatResponse = chat(chatRequest);
-        return convertResponse(chatResponse);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(toolSpecification)
-                        .toolChoice(REQUIRED)
-                        .build())
-                .build();
-        ChatResponse chatResponse = chat(chatRequest);
-        return convertResponse(chatResponse);
     }
 
     @Override
@@ -268,6 +235,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private Double presencePenalty;
         private Double frequencyPenalty;
         private Map<String, Integer> logitBias;
+        private Set<Capability> supportedCapabilities;
         private String responseFormat;
         private Boolean strictJsonSchema;
         private Integer seed;
@@ -378,6 +346,15 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         public OpenAiChatModelBuilder responseFormat(String responseFormat) {
             this.responseFormat = responseFormat;
             return this;
+        }
+
+        public OpenAiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
         public OpenAiChatModelBuilder strictJsonSchema(Boolean strictJsonSchema) {

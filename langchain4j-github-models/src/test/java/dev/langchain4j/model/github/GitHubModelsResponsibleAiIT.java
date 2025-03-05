@@ -4,13 +4,13 @@ import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.concurrent.CompletableFuture;
+
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -43,7 +43,7 @@ class GitHubModelsResponsibleAiIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        Response<AiMessage> response = model.generate(new UserMessage(PROMPT_VIOLENCE));
+        ChatResponse response = model.chat(new UserMessage(PROMPT_VIOLENCE));
 
         assertThat(response.finishReason()).isEqualTo(CONTENT_FILTER);
     }
@@ -57,7 +57,7 @@ class GitHubModelsResponsibleAiIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        Response<AiMessage> response = model.generate(new UserMessage(PROMPT_SELF_HARM));
+        ChatResponse response = model.chat(new UserMessage(PROMPT_SELF_HARM));
 
         assertThat(response.finishReason()).isEqualTo(CONTENT_FILTER);
     }
@@ -66,7 +66,7 @@ class GitHubModelsResponsibleAiIT {
     void streaming_chat_message_should_trigger_content_filter_for_violence() throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
@@ -74,19 +74,19 @@ class GitHubModelsResponsibleAiIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        model.generate(PROMPT_VIOLENCE, new StreamingResponseHandler<AiMessage>() {
+        model.chat(PROMPT_VIOLENCE, new StreamingChatResponseHandler() {
 
             private final StringBuilder answerBuilder = new StringBuilder();
 
             @Override
-            public void onNext(String token) {
-                answerBuilder.append(token);
+            public void onPartialResponse(String partialResponse) {
+                answerBuilder.append(partialResponse);
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
+            public void onCompleteResponse(ChatResponse completeResponse) {
                 futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(response);
+                futureResponse.complete(completeResponse);
             }
 
             @Override
@@ -97,7 +97,7 @@ class GitHubModelsResponsibleAiIT {
         });
 
         String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
 
         assertThat(response.finishReason()).isEqualTo(CONTENT_FILTER);
     }
@@ -106,7 +106,7 @@ class GitHubModelsResponsibleAiIT {
     void streaming_chat_message_should_trigger_content_filter_for_self_harm() throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
@@ -114,19 +114,19 @@ class GitHubModelsResponsibleAiIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        model.generate(PROMPT_SELF_HARM, new StreamingResponseHandler<AiMessage>() {
+        model.chat(PROMPT_SELF_HARM, new StreamingChatResponseHandler() {
 
             private final StringBuilder answerBuilder = new StringBuilder();
 
             @Override
-            public void onNext(String token) {
-                answerBuilder.append(token);
+            public void onPartialResponse(String partialResponse) {
+                answerBuilder.append(partialResponse);
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
+            public void onCompleteResponse(ChatResponse completeResponse) {
                 futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(response);
+                futureResponse.complete(completeResponse);
             }
 
             @Override
@@ -137,7 +137,7 @@ class GitHubModelsResponsibleAiIT {
         });
 
         String ignored = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
 
         assertThat(response.finishReason()).isEqualTo(CONTENT_FILTER);
     }
