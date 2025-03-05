@@ -9,7 +9,8 @@ import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.github.GitHubModelsChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,9 +48,9 @@ class GitHubModelsChatModelIT {
                 .build();
 
         UserMessage userMessage = userMessage("What is the capital of France?");
-        Response<AiMessage> response = model.generate(userMessage);
-        logger.info("Response: {}", response.content().text());
-        assertThat(response.content().text()).contains("Paris");
+        ChatResponse response = model.chat(userMessage);
+        logger.info("Response: {}", response.aiMessage().text());
+        assertThat(response.aiMessage().text()).contains("Paris");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
@@ -66,9 +68,9 @@ class GitHubModelsChatModelIT {
 
         UserMessage userMessage = userMessage("hello, how are you?");
 
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
@@ -93,9 +95,9 @@ class GitHubModelsChatModelIT {
 
         UserMessage userMessage = userMessage("hello, how are you?");
 
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
@@ -128,11 +130,15 @@ class GitHubModelsChatModelIT {
                 .parameters(getToolParameters())
                 .build();
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecification);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
 
-        AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNull();
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -157,10 +163,10 @@ class GitHubModelsChatModelIT {
         chatMessages.add(aiMessage);
         chatMessages.add(toolExecutionResultMessage);
 
-        Response<AiMessage> response2 = model.generate(chatMessages);
+        ChatResponse response2 = model.chat(chatMessages);
 
-        assertThat(response2.content().text()).isNotBlank();
-        assertThat(response2.content().text()).contains("t-shirt");
+        assertThat(response2.aiMessage().text()).isNotBlank();
+        assertThat(response2.aiMessage().text()).contains("t-shirt");
         assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
@@ -185,9 +191,14 @@ class GitHubModelsChatModelIT {
                 .description("Get the current date and time")
                 .build();
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), noArgToolSpec);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(noArgToolSpec)
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
@@ -229,9 +240,14 @@ class GitHubModelsChatModelIT {
                         .build()
         );
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecifications);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(userMessage);
@@ -255,8 +271,8 @@ class GitHubModelsChatModelIT {
             messages.add(toolExecutionResultMessage);
         }
 
-        Response<AiMessage> response2 = model.generate(messages);
-        AiMessage aiMessage2 = response2.content();
+        ChatResponse response2 = model.chat(messages);
+        AiMessage aiMessage2 = response2.aiMessage();
 
         // then
         assertThat(aiMessage2.text()).contains("4", "16", "512");
@@ -286,9 +302,9 @@ class GitHubModelsChatModelIT {
         SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
         UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
 
-        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+        ChatResponse response = model.chat(systemMessage, userMessage);
 
-        assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
+        assertThat(response.aiMessage().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
@@ -310,10 +326,10 @@ class GitHubModelsChatModelIT {
         UserMessage userMessage = userMessage("Hi");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage).isNotNull();

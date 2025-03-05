@@ -1,10 +1,10 @@
 package dev.langchain4j.model.chat.mock;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,9 +25,13 @@ public class StreamingChatModelMock implements StreamingChatLanguageModel {
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        tokens.forEach(handler::onNext);
-        handler.onComplete(Response.from(AiMessage.from(String.join("", tokens))));
+    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        tokens.forEach(handler::onPartialResponse);
+        AiMessage aiMessage = AiMessage.from(String.join("", tokens));
+        ChatResponse chatResponse = ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .build();
+        handler.onCompleteResponse(chatResponse);
     }
 
     public static StreamingChatModelMock thatAlwaysStreams(String... tokens) {

@@ -50,20 +50,10 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, "nomic-embed-text-v1");
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.taskType = taskType;
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 500);
         this.maxRetries = getOrDefault(maxRetries, 3);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static NomicEmbeddingModel withApiKey(String apiKey) {
-        return NomicEmbeddingModel.builder().apiKey(apiKey).build();
     }
 
     @Override

@@ -1,8 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -26,16 +24,6 @@ public interface TokenStream {
      * @return token stream instance used to configure or start stream processing
      */
     TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
-
-    /**
-     * The provided consumer will be invoked every time a new token from a language model is available.
-     *
-     * @param tokenHandler lambda that consumes tokens of the response
-     * @return token stream instance used to configure or start stream processing
-     * @deprecated please use {@link #onPartialResponse(Consumer)} instead
-     */
-    @Deprecated(forRemoval = true)
-    TokenStream onNext(Consumer<String> tokenHandler);
 
     /**
      * The provided consumer will be invoked if any {@link Content}s are retrieved using {@link RetrievalAugmentor}.
@@ -64,16 +52,6 @@ public interface TokenStream {
      * @return token stream instance used to configure or start stream processing
      */
     TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler);
-
-    /**
-     * The provided consumer will be invoked when a language model finishes streaming a response.
-     *
-     * @param completionHandler lambda that will be invoked when language model finishes streaming
-     * @return token stream instance used to configure or start stream processing
-     * @deprecated please use {@link #onCompleteResponse(Consumer)} instead
-     */
-    @Deprecated(forRemoval = true)
-    TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler);
 
     /**
      * The provided consumer will be invoked when an error occurs during streaming.
