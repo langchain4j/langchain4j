@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -96,6 +95,7 @@ public class Metadata {
      * {@link #getFloat(String)}, {@link #getDouble(String)} instead.
      */
     @Deprecated(forRemoval = true)
+    @Nullable
     public String get(String key) {
         Object value = metadata.get(key);
         if (value != null) {
@@ -112,6 +112,7 @@ public class Metadata {
      * @return the {@code String} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not of type String
      */
+    @Nullable
     public String getString(String key) {
         if (!containsKey(key)) {
             return null;
@@ -135,6 +136,7 @@ public class Metadata {
      * @return the {@code UUID} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not of type String
      */
+    @Nullable
     public UUID getUUID(String key) {
         if (!containsKey(key)) {
             return null;
@@ -170,6 +172,7 @@ public class Metadata {
      * @return the {@link Integer} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
+    @Nullable
     public Integer getInteger(String key) {
         if (!containsKey(key)) {
             return null;
@@ -204,6 +207,7 @@ public class Metadata {
      * @return the {@code Long} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
+    @Nullable
     public Long getLong(String key) {
         if (!containsKey(key)) {
             return null;
@@ -238,14 +242,15 @@ public class Metadata {
      * @return the {@code Float} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
+    @Nullable
     public Float getFloat(String key) {
         if (!containsKey(key)) {
             return null;
         }
 
-        Object value = metadata.get(key);
-        if (value instanceof String) {
-            return Float.parseFloat(value.toString());
+        final var value = metadata.get(key);
+        if (value instanceof String str) {
+            return Float.parseFloat(str);
         } else if (value instanceof Number number) {
             return number.floatValue();
         }
@@ -272,6 +277,7 @@ public class Metadata {
      * @return the {@code Double} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
+    @Nullable
     public Double getDouble(String key) {
         if (!containsKey(key)) {
             return null;
@@ -532,7 +538,6 @@ public class Metadata {
      * @return A new Metadata object that contains all key-value pairs from both Metadata objects.
      * @throws IllegalArgumentException if there are common keys between the two Metadata objects.
      */
-    @NonNull
     public Metadata merge(@Nullable Metadata another) {
         if (another == null || another.metadata.isEmpty()) {
             return this.copy();
