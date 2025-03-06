@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openaiofficial;
+package dev.langchain4j.model.openaiofficial.azureopenai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,14 +16,14 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 @Disabled("Run manually before release. Expensive to run very often.")
-class OpenAiOfficialImageModelIT {
+class AzureOpenAiOfficialImageModelIT {
 
     protected List<ImageModel> modelsUrl() {
-        return InternalOpenAiOfficialTestHelper.imageModelsUrl();
+        return InternalAzureOpenAiOfficialTestHelper.imageModelsUrl();
     }
 
     protected List<ImageModel> modelsBase64() {
-        return InternalOpenAiOfficialTestHelper.imageModelsBase64();
+        return InternalAzureOpenAiOfficialTestHelper.imageModelsBase64();
     }
 
     @Test

@@ -33,11 +33,11 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         init(
                 builder.baseUrl,
                 builder.apiKey,
-                builder.azureApiKey,
                 builder.credential,
                 builder.azureDeploymentName,
                 builder.azureOpenAIServiceVersion,
                 builder.organizationId,
+                builder.isAzure,
                 builder.isGitHubModels,
                 builder.openAIClient,
                 null,
@@ -75,13 +75,6 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         OpenAiOfficialChatRequestParameters parameters = (OpenAiOfficialChatRequestParameters) chatRequest.parameters();
         InternalOpenAiOfficialHelper.validate(parameters);
 
-        if (this.useAzure) {
-            if (!parameters.modelName().equals(this.azureModelName)) {
-                throw new UnsupportedFeatureException(
-                        "On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
-            }
-        }
-
         ChatCompletionCreateParams chatCompletionCreateParams = toOpenAiChatCompletionCreateParams(
                         chatRequest, parameters, strictTools, strictJsonSchema)
                 .build();
@@ -90,10 +83,15 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         // retry logic included
         ChatCompletion chatCompletion = client.chat().completions().create(chatCompletionCreateParams);
 
+        String modelName = chatCompletion.model();
+        if (parameters.modelName() != null) {
+            modelName = parameters.modelName();
+        }
+
         OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder =
                 OpenAiOfficialChatResponseMetadata.builder()
                         .id(chatCompletion.id())
-                        .modelName(chatCompletion.model())
+                        .modelName(modelName)
                         .created(chatCompletion.created());
 
         if (!chatCompletion.choices().isEmpty()) {
@@ -133,11 +131,11 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
         private String baseUrl;
         private String apiKey;
-        private String azureApiKey;
         private Credential credential;
         private String azureDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
+        private boolean isAzure;
         private boolean isGitHubModels;
         private OpenAIClient openAIClient;
 
@@ -203,11 +201,6 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
             return this;
         }
 
-        public Builder azureApiKey(String azureApiKey) {
-            this.azureApiKey = azureApiKey;
-            return this;
-        }
-
         public Builder credential(Credential credential) {
             this.credential = credential;
             return this;
@@ -230,6 +223,11 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
         public Builder isGitHubModels(boolean isGitHubModels) {
             this.isGitHubModels = isGitHubModels;
+            return this;
+        }
+
+        public Builder isAzure(boolean isAzure) {
+            this.isAzure = isAzure;
             return this;
         }
 
@@ -354,15 +352,6 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         }
 
         public OpenAiOfficialChatModel build() {
-            if (azureApiKey != null || credential != null) {
-                // Using Azure OpenAI
-                if (this.defaultRequestParameters != null && this.defaultRequestParameters.modelName() != null) {
-                    if (!this.defaultRequestParameters.modelName().equals(this.modelName)) {
-                        throw new UnsupportedFeatureException(
-                                "On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
-                    }
-                }
-            }
             return new OpenAiOfficialChatModel(this);
         }
     }

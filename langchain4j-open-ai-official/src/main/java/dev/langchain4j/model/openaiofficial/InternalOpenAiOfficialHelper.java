@@ -81,16 +81,45 @@ class InternalOpenAiOfficialHelper {
     static final String GITHUB_TOKEN = "GITHUB_TOKEN";
     static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
 
+    enum MODEL_HOST {
+        OPENAI,
+        AZURE_OPENAI,
+        GITHUB_MODELS
+    }
+
+    static MODEL_HOST detectModelHost(
+            boolean isAzure,
+            boolean isGitHubModels,
+            String baseUrl,
+            String azureDeploymentName,
+            AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+        if (isAzure) {
+            return MODEL_HOST.AZURE_OPENAI; // Forced by the user
+        }
+        if (isGitHubModels) {
+            return MODEL_HOST.GITHUB_MODELS; // Forced by the user
+        }
+        if (baseUrl != null) {
+            if (baseUrl.endsWith("openai.azure.com") || baseUrl.endsWith("openai.azure.com/")) {
+                return MODEL_HOST.AZURE_OPENAI;
+            } else if (baseUrl.startsWith(GITHUB_MODELS_URL)) {
+                return MODEL_HOST.GITHUB_MODELS;
+            }
+        }
+        if (azureDeploymentName != null || azureOpenAIServiceVersion != null) {
+            return MODEL_HOST.AZURE_OPENAI;
+        }
+        return MODEL_HOST.OPENAI;
+    }
+
     static OpenAIClient setupSyncClient(
             String baseUrl,
-            boolean useAzure,
             String apiKey,
-            String azureApiKey,
             Credential credential,
             String azureDeploymentName,
             AzureOpenAIServiceVersion azureOpenAiServiceVersion,
             String organizationId,
-            boolean isGitHubModels,
+            MODEL_HOST modelHost,
             OpenAIClient openAIClient,
             String modelName,
             Duration timeout,
@@ -102,17 +131,16 @@ class InternalOpenAiOfficialHelper {
             return openAIClient;
         }
 
-        if (isGitHubModels) {
+        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
+
+        if (modelHost == MODEL_HOST.OPENAI) {
+            baseUrl = getOrDefault(baseUrl, OPENAI_URL);
+        } else if (modelHost == MODEL_HOST.GITHUB_MODELS) {
             baseUrl = GITHUB_MODELS_URL;
             if (System.getenv(GITHUB_TOKEN) != null) {
                 apiKey = System.getenv(GITHUB_TOKEN);
             }
-        }
-
-        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
-
-        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        if (useAzure) {
+        } else if (modelHost == MODEL_HOST.AZURE_OPENAI) {
             // Using Azure OpenAI
             if (azureDeploymentName == null) {
                 // If the Azure deployment name is not configured, we use the model name instead, as it's the default
@@ -124,17 +152,19 @@ class InternalOpenAiOfficialHelper {
             if (azureOpenAiServiceVersion == null) {
                 azureOpenAiServiceVersion = AzureOpenAIServiceVersion.latestStableVersion();
             }
-            builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
-                    + azureOpenAiServiceVersion.value());
+            baseUrl = baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
+                    + azureOpenAiServiceVersion.value();
         } else {
-            // Using OpenAI
-            builder.baseUrl(baseUrl);
+            throw new IllegalArgumentException("Unknown model host: " + modelHost);
         }
+        builder.baseUrl(baseUrl);
 
         if (apiKey != null) {
-            builder.apiKey(apiKey);
-        } else if (azureApiKey != null) {
-            builder.credential(AzureApiKeyCredential.create(azureApiKey));
+            if (modelHost == MODEL_HOST.AZURE_OPENAI) {
+                builder.credential(AzureApiKeyCredential.create(apiKey));
+            } else {
+                builder.apiKey(apiKey);
+            }
         } else if (credential != null) {
             builder.credential(credential);
         } else {
@@ -168,13 +198,11 @@ class InternalOpenAiOfficialHelper {
 
     static OpenAIClientAsync setupASyncClient(
             String baseUrl,
-            boolean useAzure,
             String apiKey,
-            String azureApiKey,
             Credential credential,
             String azureDeploymentName,
             AzureOpenAIServiceVersion azureOpenAiServiceVersion,
-            boolean isGitHubModels,
+            MODEL_HOST modelHost,
             OpenAIClientAsync openAIClientAsync,
             String organizationId,
             String modelName,
@@ -187,17 +215,16 @@ class InternalOpenAiOfficialHelper {
             return openAIClientAsync;
         }
 
-        if (isGitHubModels) {
+        OpenAIOkHttpClientAsync.Builder builder = OpenAIOkHttpClientAsync.builder();
+
+        if (modelHost == MODEL_HOST.OPENAI) {
+            baseUrl = getOrDefault(baseUrl, OPENAI_URL);
+        } else if (modelHost == MODEL_HOST.GITHUB_MODELS) {
             baseUrl = GITHUB_MODELS_URL;
             if (System.getenv(GITHUB_TOKEN) != null) {
                 apiKey = System.getenv(GITHUB_TOKEN);
             }
-        }
-
-        OpenAIOkHttpClientAsync.Builder builder = OpenAIOkHttpClientAsync.builder();
-
-        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        if (useAzure) {
+        } else if (modelHost == MODEL_HOST.AZURE_OPENAI) {
             // Using Azure OpenAI
             if (azureDeploymentName == null) {
                 // If the Azure deployment name is not configured, we use the model name instead, as it's the default
@@ -209,17 +236,19 @@ class InternalOpenAiOfficialHelper {
             if (azureOpenAiServiceVersion == null) {
                 azureOpenAiServiceVersion = AzureOpenAIServiceVersion.latestStableVersion();
             }
-            builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
-                    + azureOpenAiServiceVersion.value());
+            baseUrl = baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version="
+                    + azureOpenAiServiceVersion.value();
         } else {
-            // Using OpenAI
-            builder.baseUrl(baseUrl);
+            throw new IllegalArgumentException("Unknown model host: " + modelHost);
         }
+        builder.baseUrl(baseUrl);
 
         if (apiKey != null) {
-            builder.apiKey(apiKey);
-        } else if (azureApiKey != null) {
-            builder.credential(AzureApiKeyCredential.create(azureApiKey));
+            if (modelHost == MODEL_HOST.AZURE_OPENAI) {
+                builder.credential(AzureApiKeyCredential.create(apiKey));
+            } else {
+                builder.apiKey(apiKey);
+            }
         } else if (credential != null) {
             builder.credential(credential);
         } else {

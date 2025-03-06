@@ -2,7 +2,7 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.detectModelHost;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupASyncClient;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
@@ -29,27 +29,23 @@ abstract class OpenAiOfficialBaseChatModel {
 
     protected OpenAIClient client;
     protected OpenAIClientAsync asyncClient;
-    protected boolean useAzure;
-    protected String azureModelName;
-
+    protected InternalOpenAiOfficialHelper.MODEL_HOST modelHost;
     protected OpenAiOfficialChatRequestParameters defaultRequestParameters;
     protected String responseFormat;
     protected Boolean strictJsonSchema;
     protected Boolean strictTools;
-
     protected Tokenizer tokenizer;
-
     protected List<ChatModelListener> listeners;
     protected Set<Capability> supportedCapabilities;
 
     public void init(
             String baseUrl,
             String apiKey,
-            String azureApiKey,
             Credential credential,
             String azureDeploymentName,
             AzureOpenAIServiceVersion azureOpenAIServiceVersion,
             String organizationId,
+            boolean isAzure,
             boolean isGitHubModels,
             OpenAIClient openAIClient,
             OpenAIClientAsync openAIClientAsync,
@@ -80,27 +76,17 @@ abstract class OpenAiOfficialBaseChatModel {
             Set<Capability> capabilities,
             boolean isAsync) {
 
-        if (azureApiKey != null || credential != null) {
-            // Using Azure OpenAI
-            this.useAzure = true;
-            ensureNotBlank(modelName, "modelName");
-            this.azureModelName = modelName;
-        } else {
-            // Using OpenAI
-            this.useAzure = false;
-            this.azureModelName = null;
-        }
+        this.modelHost =
+                detectModelHost(isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
 
         if (isAsync) {
             this.asyncClient = setupASyncClient(
                     baseUrl,
-                    useAzure,
                     apiKey,
-                    azureApiKey,
                     credential,
                     azureDeploymentName,
                     azureOpenAIServiceVersion,
-                    isGitHubModels,
+                    modelHost,
                     openAIClientAsync,
                     organizationId,
                     modelName,
@@ -111,14 +97,12 @@ abstract class OpenAiOfficialBaseChatModel {
         } else {
             this.client = setupSyncClient(
                     baseUrl,
-                    useAzure,
                     apiKey,
-                    azureApiKey,
                     credential,
                     azureDeploymentName,
                     azureOpenAIServiceVersion,
                     organizationId,
-                    isGitHubModels,
+                    modelHost,
                     openAIClient,
                     modelName,
                     timeout,

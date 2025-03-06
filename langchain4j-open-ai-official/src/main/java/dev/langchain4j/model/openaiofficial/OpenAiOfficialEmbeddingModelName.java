@@ -4,7 +4,7 @@ import com.openai.models.EmbeddingModel;
 import java.util.HashMap;
 import java.util.Map;
 
-public enum OpenAiOfficialEmbeddingModelName {
+enum OpenAiOfficialEmbeddingModelName {
     TEXT_EMBEDDING_3_SMALL(EmbeddingModel.TEXT_EMBEDDING_3_SMALL.value().toString(), 1536),
     TEXT_EMBEDDING_3_LARGE(EmbeddingModel.TEXT_EMBEDDING_3_LARGE.value().toString(), 3072),
     TEXT_EMBEDDING_ADA_002(EmbeddingModel.TEXT_EMBEDDING_ADA_002.value().toString(), 1536);

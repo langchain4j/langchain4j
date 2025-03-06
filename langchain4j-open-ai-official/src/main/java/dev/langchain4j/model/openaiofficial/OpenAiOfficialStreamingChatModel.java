@@ -8,6 +8,7 @@ import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClientAsync;
 import com.openai.core.http.AsyncStreamResponse;
 import com.openai.credential.Credential;
+import com.openai.models.ChatCompletion;
 import com.openai.models.ChatCompletionChunk;
 import com.openai.models.ChatCompletionCreateParams;
 import com.openai.models.ChatCompletionStreamOptions;
@@ -40,11 +41,11 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         init(
                 builder.baseUrl,
                 builder.apiKey,
-                builder.azureApiKey,
                 builder.credential,
                 builder.azureDeploymentName,
                 builder.azureOpenAIServiceVersion,
                 builder.organizationId,
+                builder.isAzure,
                 builder.isGitHubModels,
                 null,
                 builder.openAIClientAsync,
@@ -82,13 +83,6 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         OpenAiOfficialChatRequestParameters parameters = (OpenAiOfficialChatRequestParameters) chatRequest.parameters();
         InternalOpenAiOfficialHelper.validate(parameters);
 
-        if (this.useAzure) {
-            if (!parameters.modelName().equals(this.azureModelName)) {
-                throw new UnsupportedFeatureException(
-                        "On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
-            }
-        }
-
         ChatCompletionCreateParams chatCompletionCreateParams = toOpenAiChatCompletionCreateParams(
                         chatRequest, parameters, strictTools, strictJsonSchema)
                 .streamOptions(
@@ -98,12 +92,12 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         try {
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder =
                     OpenAiOfficialChatResponseMetadata.builder();
+
             StringBuffer text = new StringBuffer();
             List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
-
             CompletableFuture<Void> completableFuture = new CompletableFuture<>();
 
-            AsyncStreamResponse<ChatCompletionChunk> response = asyncClient
+            asyncClient
                     .chat()
                     .completions()
                     .createStreaming(chatCompletionCreateParams)
@@ -112,7 +106,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         @Override
                         public void onNext(ChatCompletionChunk completion) {
                             manageChatCompletionChunks(
-                                    completion, handler, responseMetadataBuilder, text, toolExecutionRequests);
+                                    completion, parameters, handler, responseMetadataBuilder, text, toolExecutionRequests);
                         }
 
                         @Override
@@ -155,13 +149,20 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
     private void manageChatCompletionChunks(
             ChatCompletionChunk chatCompletionChunk,
+            OpenAiOfficialChatRequestParameters parameters,
             StreamingChatResponseHandler handler,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,
             List<ToolExecutionRequest> toolExecutionRequests) {
 
         responseMetadataBuilder.id(chatCompletionChunk.id());
-        responseMetadataBuilder.modelName(chatCompletionChunk.model());
+
+        String modelName = chatCompletionChunk.model();
+        if (parameters.modelName() != null) {
+            modelName = parameters.modelName();
+        }
+        responseMetadataBuilder.modelName(modelName);
+
         if (chatCompletionChunk.usage().isPresent()) {
             responseMetadataBuilder.tokenUsage(
                     tokenUsageFrom(chatCompletionChunk.usage().get()));
@@ -241,11 +242,11 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
         private String baseUrl;
         private String apiKey;
-        private String azureApiKey;
         private Credential credential;
         private String azureDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
+        private boolean isAzure;
         private boolean isGitHubModels;
         private OpenAIClientAsync openAIClientAsync;
 
@@ -311,11 +312,6 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             return this;
         }
 
-        public Builder azureApiKey(String azureApiKey) {
-            this.azureApiKey = azureApiKey;
-            return this;
-        }
-
         public Builder credential(Credential credential) {
             this.credential = credential;
             return this;
@@ -333,6 +329,11 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public Builder isAzure(boolean isAzure) {
+            this.isAzure = isAzure;
             return this;
         }
 
@@ -462,15 +463,6 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         }
 
         public OpenAiOfficialStreamingChatModel build() {
-            if (azureApiKey != null || credential != null) {
-                // Using Azure OpenAI
-                if (this.defaultRequestParameters != null && this.defaultRequestParameters.modelName() != null) {
-                    if (!this.defaultRequestParameters.modelName().equals(this.modelName)) {
-                        throw new UnsupportedFeatureException(
-                                "On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
-                    }
-                }
-            }
             return new OpenAiOfficialStreamingChatModel(this);
         }
     }

@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.detectModelHost;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
@@ -20,8 +20,8 @@ import java.util.Map;
 public class OpenAiOfficialImageModel implements ImageModel {
 
     private final OpenAIClient client;
-    private final boolean useAzure;
     private final String modelName;
+    private InternalOpenAiOfficialHelper.MODEL_HOST modelHost;
     private final ImageGenerateParams.Size size;
     private final ImageGenerateParams.Quality quality;
     private final ImageGenerateParams.Style style;
@@ -31,25 +31,21 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
     public OpenAiOfficialImageModel(Builder builder) {
 
-        if (builder.azureApiKey != null || builder.credential != null) {
-            // Using Azure OpenAI
-            this.useAzure = true;
-            ensureNotBlank(builder.modelName, "modelName");
-        } else {
-            // Using OpenAI
-            this.useAzure = false;
-        }
+        this.modelHost = detectModelHost(
+                builder.isAzure,
+                builder.isGitHubModels,
+                builder.baseUrl,
+                builder.azureDeploymentName,
+                builder.azureOpenAIServiceVersion);
 
         this.client = setupSyncClient(
                 builder.baseUrl,
-                useAzure,
                 builder.apiKey,
-                builder.azureApiKey,
                 builder.credential,
                 builder.azureDeploymentName,
                 builder.azureOpenAIServiceVersion,
                 builder.organizationId,
-                builder.isGitHubModels,
+                this.modelHost,
                 builder.openAIClient,
                 builder.modelName,
                 builder.timeout,
@@ -150,11 +146,11 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
         private String baseUrl;
         private String apiKey;
-        private String azureApiKey;
         private Credential credential;
         private String azureDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
+        private boolean isAzure;
         private boolean isGitHubModels;
         private OpenAIClient openAIClient;
         private String modelName;
@@ -178,11 +174,6 @@ public class OpenAiOfficialImageModel implements ImageModel {
             return this;
         }
 
-        public Builder azureApiKey(String azureApiKey) {
-            this.azureApiKey = azureApiKey;
-            return this;
-        }
-
         public Builder credential(Credential credential) {
             this.credential = credential;
             return this;
@@ -200,6 +191,11 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public Builder isAzure(boolean isAzure) {
+            this.isAzure = isAzure;
             return this;
         }
 

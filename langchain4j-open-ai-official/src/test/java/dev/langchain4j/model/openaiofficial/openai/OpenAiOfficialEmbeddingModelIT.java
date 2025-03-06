@@ -1,12 +1,13 @@
-package dev.langchain4j.model.openaiofficial;
+package dev.langchain4j.model.openaiofficial.openai;
 
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialTestHelper.EMBEDDING_MODEL_NAME;
+import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.EMBEDDING_MODEL_NAME;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
@@ -14,10 +15,10 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialEmbeddingModelIT {
 
-    protected List<dev.langchain4j.model.embedding.EmbeddingModel> models() {
+    protected List<EmbeddingModel> models() {
         return InternalOpenAiOfficialTestHelper.embeddingModels();
     }
 
@@ -72,8 +73,7 @@ class OpenAiOfficialEmbeddingModelIT {
         int totalSegmentsToEmbed = 50;
 
         EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
-                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(EMBEDDING_MODEL_NAME)
                 .maxSegmentsPerBatch(maxSegmentsPerBatch)
                 .build();
@@ -107,8 +107,7 @@ class OpenAiOfficialEmbeddingModelIT {
         int dimension = 42;
 
         EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
-                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(EMBEDDING_MODEL_NAME)
                 .dimensions(dimension)
                 .build();
