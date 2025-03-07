@@ -55,7 +55,7 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <openai-java.version>0.32.0</openai-java.version>
+        <openai-java.version>0.33.0</openai-java.version>
         <azure-ai-openai.version>1.0.0-beta.14</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
         <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
