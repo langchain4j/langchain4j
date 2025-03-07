@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
@@ -100,7 +101,7 @@ public class AnthropicMapper {
                     } else if (content instanceof ImageContent) {
                         Image image = ((ImageContent) content).image();
                         if (image.url() != null) {
-                            throw illegalArgument("Anthropic does not support images as URLs, " +
+                            throw new UnsupportedFeatureException("Anthropic does not support images as URLs, " +
                                     "only as Base64-encoded strings");
                         }
                         return new AnthropicImageContent(

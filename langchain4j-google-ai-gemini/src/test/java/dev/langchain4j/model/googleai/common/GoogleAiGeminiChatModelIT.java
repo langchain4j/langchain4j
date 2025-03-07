@@ -10,7 +10,6 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
-// TODO add streaming counterpart
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220

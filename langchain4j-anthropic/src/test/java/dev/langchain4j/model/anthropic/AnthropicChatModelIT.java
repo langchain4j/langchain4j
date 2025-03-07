@@ -1,5 +1,28 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+
+import java.time.Duration;
+import java.util.Base64;
+import java.util.List;
+import java.util.Random;
+
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.OBJECT;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
@@ -12,34 +35,10 @@ import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
-import static java.util.Arrays.stream;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import java.time.Duration;
-import java.util.Base64;
-import java.util.List;
-import java.util.Random;
-import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.EnumSource;
 
 class AnthropicChatModelIT {
 
@@ -48,6 +47,7 @@ class AnthropicChatModelIT {
 
     ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
             .logRequests(true)
             .logResponses(true)
@@ -55,6 +55,7 @@ class AnthropicChatModelIT {
 
     ChatLanguageModel visionModel = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
             .logRequests(false) // base64-encoded images are huge
             .logResponses(true)
@@ -79,13 +80,20 @@ class AnthropicChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         UserMessage userMessage = userMessage("What is the capital of Germany?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).contains("Berlin");
+        assertThat(response.aiMessage().text()).contains("Berlin");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
@@ -105,10 +113,10 @@ class AnthropicChatModelIT {
         UserMessage userMessage = UserMessage.from(imageContent);
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        ChatResponse response = visionModel.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -120,8 +128,8 @@ class AnthropicChatModelIT {
         UserMessage userMessage = UserMessage.from(imageAsURL);
 
         // when-then
-        assertThatThrownBy(() -> visionModel.generate(userMessage))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> visionModel.chat(userMessage))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("Anthropic does not support images as URLs, only as Base64-encoded strings");
     }
 
@@ -135,10 +143,10 @@ class AnthropicChatModelIT {
                 TextContent.from("What do you see? Reply in one word."), ImageContent.from(base64Data, "image/png"));
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        ChatResponse response = visionModel.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
     }
 
     @Test
@@ -149,16 +157,17 @@ class AnthropicChatModelIT {
 
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .maxTokens(maxTokens)
                 .build();
 
         UserMessage userMessage = userMessage("What is the capital of Germany?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxTokens);
@@ -174,10 +183,10 @@ class AnthropicChatModelIT {
         UserMessage userMessage = UserMessage.from("Translate: I love you");
 
         // when
-        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+        ChatResponse response = model.chat(systemMessage, userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("liebe");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("liebe");
     }
 
     @Test
@@ -188,6 +197,7 @@ class AnthropicChatModelIT {
 
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .stopSequences(stopSequences)
                 .logRequests(true)
                 .logResponses(true)
@@ -196,11 +206,11 @@ class AnthropicChatModelIT {
         UserMessage userMessage = userMessage("Say 'Hello World'");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("hello");
-        assertThat(response.content().text()).doesNotContainIgnoringCase("world");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("hello");
+        assertThat(response.aiMessage().text()).doesNotContainIgnoringCase("world");
 
         assertThat(response.finishReason()).isEqualTo(OTHER);
     }
@@ -224,7 +234,7 @@ class AnthropicChatModelIT {
                 new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
-        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+        ChatResponse response = model.chat(systemMessage, userMessage);
 
         // then
         AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
@@ -232,7 +242,7 @@ class AnthropicChatModelIT {
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        Response<AiMessage> response2 = model.generate(systemMessage, userMessage);
+        ChatResponse response2 = model.chat(systemMessage, userMessage);
 
         // then
         AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
@@ -261,7 +271,7 @@ class AnthropicChatModelIT {
                 new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
-        Response<AiMessage> response = model.generate(systemMessage, systemMessage2, userMessage);
+        ChatResponse response = model.chat(systemMessage, systemMessage2, userMessage);
 
         // then
         AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
@@ -269,7 +279,7 @@ class AnthropicChatModelIT {
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        Response<AiMessage> response2 = model.generate(systemMessage, systemMessage2, userMessage);
+        ChatResponse response2 = model.chat(systemMessage, systemMessage2, userMessage);
 
         // then
         AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
@@ -297,8 +307,8 @@ class AnthropicChatModelIT {
         SystemMessage systemMessageFive = SystemMessage.from("banana");
 
         // then
-        assertThatThrownBy(() -> model.generate(
-                        systemMessageOne, systemMessageTwo, systemMessageThree, systemMessageFour, systemMessageFive))
+        assertThatThrownBy(() -> model.chat(
+                systemMessageOne, systemMessageTwo, systemMessageThree, systemMessageFour, systemMessageFive))
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessage(
                         "dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException: "
@@ -328,10 +338,10 @@ class AnthropicChatModelIT {
         UserMessage userMessage = userMessage("Hi");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
     }
 
     @ParameterizedTest
@@ -350,10 +360,10 @@ class AnthropicChatModelIT {
         UserMessage userMessage = userMessage("Hi");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
     }
 
     @ParameterizedTest
@@ -374,16 +384,16 @@ class AnthropicChatModelIT {
         UserMessage userMessage = userMessage("Hi");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
     }
 
     @Test
     void should_fail_to_create_without_api_key() {
 
-        assertThatThrownBy(() -> AnthropicChatModel.withApiKey(null))
+        assertThatThrownBy(() -> AnthropicChatModel.builder().apiKey(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Anthropic API key must be defined. "
                         + "It can be generated here: https://console.anthropic.com/settings/keys");
@@ -405,11 +415,16 @@ class AnthropicChatModelIT {
 
         UserMessage userMessage = userMessage("2+2=?");
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
         // when
-        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
+        ChatResponse response = model.chat(request);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest =
@@ -428,13 +443,17 @@ class AnthropicChatModelIT {
 
         // given
         ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        ChatRequest secondRequest = ChatRequest.builder()
+                .messages(userMessage, aiMessage, toolExecutionResultMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
         // when
-        Response<AiMessage> secondResponse = model.generate(messages, toolSpecifications);
+        ChatResponse secondResponse = model.chat(secondRequest);
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
@@ -474,8 +493,13 @@ class AnthropicChatModelIT {
                         .build())
                 .build();
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(systemMessage, userMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
+
         // when
-        Response<AiMessage> response = model.generate(List.of(systemMessage, userMessage), List.of(toolSpecification));
+        ChatResponse response = model.chat(request);
 
         // then
         AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
@@ -483,7 +507,7 @@ class AnthropicChatModelIT {
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        Response<AiMessage> response2 = model.generate(List.of(systemMessage, userMessage), List.of(toolSpecification));
+        ChatResponse response2 = model.chat(request);
 
         // then
         AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
@@ -515,8 +539,13 @@ class AnthropicChatModelIT {
                         .build())
                 .build();
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
+
         // when
-        Response<AiMessage> response = model.generate(singletonList(userMessage), List.of(toolSpecification));
+        ChatResponse response = model.chat(request);
 
         // then
         AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
@@ -524,7 +553,7 @@ class AnthropicChatModelIT {
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        Response<AiMessage> response2 = model.generate(singletonList(userMessage), List.of(toolSpecification));
+        ChatResponse response2 = model.chat(request);
 
         // then
         AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
@@ -544,15 +573,18 @@ class AnthropicChatModelIT {
                 .logResponses(true)
                 .build();
 
-        List<ToolSpecification> toolSpecifications = singletonList(calculator);
-
         UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(calculator)
+                .build();
+
         // when
-        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
+        ChatResponse response = model.chat(request);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
         ToolExecutionRequest toolExecutionRequest1 =
@@ -577,14 +609,16 @@ class AnthropicChatModelIT {
         ToolExecutionResultMessage toolExecutionResultMessage1 = from(toolExecutionRequest1, "4");
         ToolExecutionResultMessage toolExecutionResultMessage2 = from(toolExecutionRequest2, "6");
 
-        List<ChatMessage> messages =
-                asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
+        ChatRequest secondRequest = ChatRequest.builder()
+                .messages(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2)
+                .toolSpecifications(calculator)
+                .build();
 
         // when
-        Response<AiMessage> secondResponse = model.generate(messages, toolSpecifications);
+        ChatResponse secondResponse = model.chat(secondRequest);
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4", "6");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
@@ -609,15 +643,18 @@ class AnthropicChatModelIT {
                 .logResponses(true)
                 .build();
 
-        List<ToolSpecification> toolSpecifications = singletonList(weather);
-
         UserMessage userMessage = userMessage("What is the weather in Munich?");
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(weather)
+                .build();
+
         // when
-        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
+        ChatResponse response = model.chat(request);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest =
@@ -637,13 +674,17 @@ class AnthropicChatModelIT {
 
         // given
         ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "Super hot, 42 Celsius");
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        ChatRequest secondRequest = ChatRequest.builder()
+                .messages(userMessage, aiMessage, toolExecutionResultMessage)
+                .toolSpecifications(calculator)
+                .build();
 
         // when
-        Response<AiMessage> secondResponse = model.generate(messages, toolSpecifications);
+        ChatResponse secondResponse = model.chat(secondRequest);
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("42");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
@@ -654,13 +695,6 @@ class AnthropicChatModelIT {
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    static Stream<Arguments> models_supporting_tools() {
-        // claude 2 does not support tools
-        return stream(AnthropicChatModelName.values())
-                .filter(modelName -> !modelName.toString().startsWith("claude-2"))
-                .map(Arguments::of);
     }
 
     static String randomString(int length) {

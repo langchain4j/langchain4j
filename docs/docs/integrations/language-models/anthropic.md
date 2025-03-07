@@ -24,7 +24,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .apiKey(System.getenv("ANTHROPIC_API_KEY"))
     .modelName(CLAUDE_3_5_SONNET_20240620)
     .build();
-String answer = model.generate("Say 'Hello World'");
+String answer = model.chat("Say 'Hello World'");
 System.out.println(answer);
 ```
 
@@ -58,15 +58,15 @@ AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
     .modelName(CLAUDE_3_5_SONNET_20240620)
     .build();
 
-model.generate("Say 'Hello World'", new StreamingResponseHandler<AiMessage>() {
+model.chat("Say 'Hello World'", new StreamingChatResponseHandler() {
 
     @Override
-    public void onNext(String token) {
-        // this method is called when a new token is available
+    public void onPartialResponse(String partialResponse) {
+        // this method is called when a new partial response is available. It can consist of one or more tokens.
     }
 
     @Override
-    public void onComplete(Response<AiMessage> response) {
+    public void onCompleteResponse(ChatResponse completeResponse) {
         // this method is called when the model has completed responding
     }
 

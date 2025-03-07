@@ -87,9 +87,4 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
     protected boolean assertFinishReason() {
         return false; // TODO implement
     }
-
-    @Override
-    protected boolean assertExceptionType() {
-        return false; // TODO fix
-    }
 }

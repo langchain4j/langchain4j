@@ -104,7 +104,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
     public Collection<ContentRetriever> route(Query query) {
         Prompt prompt = createPrompt(query);
         try {
-            String response = chatLanguageModel.generate(prompt.text());
+            String response = chatLanguageModel.chat(prompt.text());
             return parse(response);
         } catch (Exception e) {
             log.warn("Failed to route query '{}'", query.text(), e);

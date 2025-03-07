@@ -57,7 +57,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    protected Response<AiMessage> generate(List<ChatMessage> messages) {
         String prompt = buildPrompt(messages);
 
         final Map<String, Object> requestParameters = getRequestParameters(prompt);
