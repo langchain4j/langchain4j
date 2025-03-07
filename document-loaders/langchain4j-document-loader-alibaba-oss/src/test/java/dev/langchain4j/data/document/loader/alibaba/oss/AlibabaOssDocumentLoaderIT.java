@@ -1,4 +1,4 @@
-package dev.langchain4j.data.document.oss.loader.alibaba.oss;
+package dev.langchain4j.data.document.loader.alibaba.oss;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,8 +8,6 @@ import com.aliyun.oss.model.ListObjectsV2Result;
 import com.aliyun.oss.model.PutObjectRequest;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
-import dev.langchain4j.data.document.loader.alibaba.oss.AlibabaOssCredentials;
-import dev.langchain4j.data.document.loader.alibaba.oss.AlibabaOssDocumentLoader;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
