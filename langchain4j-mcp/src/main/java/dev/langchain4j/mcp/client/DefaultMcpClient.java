@@ -17,7 +17,10 @@ import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.InitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.client.protocol.McpListResourceTemplatesRequest;
+import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
@@ -29,6 +32,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +54,8 @@ public class DefaultMcpClient implements McpClient {
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
     private final McpOperationHandler messageHandler;
     private final McpLogMessageHandler logHandler;
+    private final AtomicReference<List<ResourceRef>> resourceRefs = new AtomicReference<>();
+    private final AtomicReference<List<ResourceTemplateRef>> resourceTemplateRefs = new AtomicReference<>();
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -147,6 +153,78 @@ public class DefaultMcpClient implements McpClient {
             pendingOperations.remove(operationId);
         }
         return ToolExecutionHelper.extractResult(result);
+    }
+
+    @Override
+    public List<ResourceRef> listResources() {
+        if (resourceRefs.get() == null) {
+            obtainResourceList();
+        }
+        return resourceRefs.get();
+    }
+
+    @Override
+    public ResourceResponse readResource(String uri) {
+        final long operationId = idGenerator.getAndIncrement();
+        McpReadResourceRequest operation = new McpReadResourceRequest(operationId, uri);
+        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
+        JsonNode result = null;
+        CompletableFuture<JsonNode> resultFuture = null;
+        try {
+            resultFuture = transport.executeOperationWithResponse(operation);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            return ResourcesHelper.parseResourceContents(result);
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
+    public List<ResourceTemplateRef> listResourceTemplates() {
+        if (resourceTemplateRefs.get() == null) {
+            obtainResourceTemplateList();
+        }
+        return resourceTemplateRefs.get();
+    }
+
+    private synchronized void obtainResourceList() {
+        if (resourceRefs.get() != null) {
+            return;
+        }
+        McpListResourcesRequest operation = new McpListResourcesRequest(idGenerator.getAndIncrement());
+        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
+        JsonNode result = null;
+        CompletableFuture<JsonNode> resultFuture = null;
+        try {
+            resultFuture = transport.executeOperationWithResponse(operation);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            resourceRefs.set(ResourcesHelper.parseResourceRefs(result));
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operation.getId());
+        }
+    }
+
+    private synchronized void obtainResourceTemplateList() {
+        if (resourceTemplateRefs.get() != null) {
+            return;
+        }
+        McpListResourceTemplatesRequest operation = new McpListResourceTemplatesRequest(idGenerator.getAndIncrement());
+        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
+        JsonNode result = null;
+        CompletableFuture<JsonNode> resultFuture = null;
+        try {
+            resultFuture = transport.executeOperationWithResponse(operation);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            resourceTemplateRefs.set(ResourcesHelper.parseResourceTemplateRefs(result));
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operation.getId());
+        }
     }
 
     @Override

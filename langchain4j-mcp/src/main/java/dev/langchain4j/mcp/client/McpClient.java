@@ -20,4 +20,20 @@ public interface McpClient extends AutoCloseable {
      * Currently, this expects a tool execution to only contain text-based results.
      */
     String executeTool(ToolExecutionRequest executionRequest);
+
+    /**
+     * Obtains the current list of resources available on the MCP server.
+     */
+    List<ResourceRef> listResources();
+
+    /**
+     * Obtains the current list of resource templates (dynamic resources) available on the MCP server.
+     */
+    List<ResourceTemplateRef> listResourceTemplates();
+
+    /**
+     * Retrieves the contents of the resource with the specified URI. This also
+     * works for dynamic resources (templates).
+     */
+    ResourceResponse readResource(String uri);
 }
