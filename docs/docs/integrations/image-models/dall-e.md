@@ -4,6 +4,17 @@ sidebar_position: 2
 
 # OpenAI Dall·E
 
+:::note
+
+This is the documentation for the `OpenAI` integration, that uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus as it uses the Quarkus REST client..
+
+LangChain4j provides 3 different integrations with OpenAI for generating images, and this is #1 :
+
+- [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus as it uses the Quarkus REST client.
+- [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
+- [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+
+:::
 
 ## Maven Dependency
 
