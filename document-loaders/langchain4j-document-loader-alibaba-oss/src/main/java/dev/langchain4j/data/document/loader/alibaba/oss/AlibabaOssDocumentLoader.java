@@ -48,7 +48,8 @@ public class AlibabaOssDocumentLoader {
     }
 
     /**
-     * Loading documents
+     * Loads all documents from an OSS bucket.
+     * Skips any documents that fail to load.
      *
      * @param bucket The alibaba cloud OSS bucket name
      * @param parser DocumentParser
@@ -59,7 +60,8 @@ public class AlibabaOssDocumentLoader {
     }
 
     /**
-     * Loading documents
+     * Loads all documents from an OSS bucket with prefix.
+     * Skips any documents that fail to load.
      *
      * @param bucket The alibaba cloud OSS bucket name
      * @param prefix The alibaba cloud OSS file prefix
