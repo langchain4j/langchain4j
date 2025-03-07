@@ -1,5 +1,7 @@
 package dev.langchain4j.data.document.loader.alibaba.oss;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.GetObjectRequest;
@@ -26,7 +28,7 @@ public class AlibabaOssDocumentLoader {
     private final OSS ossClient;
 
     public AlibabaOssDocumentLoader(final OSS ossClient) {
-        this.ossClient = ossClient;
+        this.ossClient = ensureNotNull(ossClient, "ossClient");
     }
 
     /**

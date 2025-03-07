@@ -1,5 +1,7 @@
 package dev.langchain4j.data.document.source.alibaba.oss;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.lang.String.format;
 
 import dev.langchain4j.data.document.DocumentSource;
@@ -15,9 +17,9 @@ public class AlibabaOssSource implements DocumentSource {
     private final String key;
 
     public AlibabaOssSource(InputStream inputStream, String bucket, String key) {
-        this.inputStream = inputStream;
-        this.bucket = bucket;
-        this.key = key;
+        this.inputStream = ensureNotNull(inputStream, "inputStream");
+        this.bucket = ensureNotBlank(bucket, "bucket");
+        this.key = ensureNotBlank(key, "key");
     }
 
     @Override

@@ -76,8 +76,8 @@ class AlibabaOssDocumentLoaderIT {
     @Test
     void should_load_single_document() {
 
-        URL url = getClass().getClassLoader().getResource("test.txt");
         // given
+        URL url = getClass().getClassLoader().getResource("test.txt");
         ossClient.putObject(new PutObjectRequest(TEST_BUCKET, TEST_KEY, new File(url.getFile())));
 
         // when
