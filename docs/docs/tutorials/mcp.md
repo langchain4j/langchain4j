@@ -1,4 +1,4 @@
-# Model Context Protocol
+# Model Context Protocol (MCP)
 
 LangChain4j supports the Model Context Protocol (MCP) to communicate with
 MCP compliant servers that can provide and execute tools. General
@@ -17,9 +17,9 @@ you need to create an instance of an MCP tool provider.
 
 ## Creating an MCP tool provider
 
-### Transport
+### MCP Transport
 
-First, you need an instance of a Transport.
+First, you need an instance of an MCP Transport.
 
 For stdio - this example shows how to start a server from a NPM package as a subprocess:
 
@@ -41,7 +41,7 @@ McpTransport transport = new HttpMcpTransport.Builder()
     .build();
 ```
 
-### Client
+### MCP Client
 
 To create an MCP client from the transport:
 
@@ -51,7 +51,7 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
     .build();
 ```
 
-### Tool provider
+### MCP Tool Provider
 
 Finally, you create an MCP tool provider from the client:
 
@@ -78,6 +78,8 @@ Bot bot = AiServices.builder(Bot.class)
     .toolProvider(toolProvider)
     .build();
 ```
+
+More information on tool support in LangChain4j can be found [here](/tutorials/tools).
 
 ## Logging
 
