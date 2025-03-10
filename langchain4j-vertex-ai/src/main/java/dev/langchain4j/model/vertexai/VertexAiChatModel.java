@@ -23,7 +23,7 @@ import java.util.List;
 
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.data.message.ChatMessageType.*;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.vertexai.Json.toJson;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -120,7 +120,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
             JsonFormat.parser().merge(toJson(vertexAiParameters), parametersBuilder);
             Value parameters = parametersBuilder.build();
 
-            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
+            PredictResponse response = withRetryMappingExceptions(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
             return Response.from(
                     AiMessage.from(extractContent(response)),

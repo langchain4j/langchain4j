@@ -1,8 +1,14 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.InternalServerException;
+import dev.langchain4j.exception.InvalidRequestException;
+import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.exception.UnrecoverableException;
+import dev.langchain4j.exception.UnresolvedModelServerException;
 
 import java.nio.channels.UnresolvedAddressException;
 import java.util.concurrent.Callable;
@@ -33,18 +39,26 @@ public interface ExceptionMapper {
             Throwable rootCause = findRoot(e);
 
             if (rootCause instanceof HttpException httpException) {
-                return switch (httpException.statusCode()) {
-                    case 401, 404 -> new UnrecoverableException(rootCause);
-                    case 429 -> new RateLimitException(rootCause);
-                    default -> httpException;
-                };
+                return mapHttpStatusCode(httpException, httpException.statusCode());
             }
 
             if (rootCause instanceof UnresolvedAddressException) {
-                return new UnrecoverableException(rootCause);
+                return new UnresolvedModelServerException(rootCause);
             }
 
             return e instanceof RuntimeException re ? re : new RuntimeException(e);
+        }
+
+        protected RuntimeException mapHttpStatusCode(Exception rootException, int httpStatusCode) {
+            return switch (httpStatusCode) {
+                case 400 -> new InvalidRequestException(rootException);
+                case 401, 403 -> new AuthenticationException(rootException);
+                case 404 -> new ModelNotFoundException(rootException);
+                case 408 -> new TimeoutException(rootException);
+                case 429 -> new RateLimitException(rootException);
+                case 500 -> new InternalServerException(rootException);
+                default -> rootException instanceof RuntimeException re ? re : new RuntimeException(rootException);
+            };
         }
 
         private static Throwable findRoot(Throwable e) {

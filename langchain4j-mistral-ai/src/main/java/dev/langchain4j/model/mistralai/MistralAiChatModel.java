@@ -1,6 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -179,7 +179,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
 
         MistralAiChatCompletionRequest request = requestBuilder.build();
 
-        MistralAiChatCompletionResponse response = withRetry(() -> client.chatCompletion(request), maxRetries);
+        MistralAiChatCompletionResponse response = withRetryMappingExceptions(() -> client.chatCompletion(request), maxRetries);
 
         return Response.from(
                 aiMessageFrom(response),

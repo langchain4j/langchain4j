@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
@@ -122,7 +122,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(this.includeCodeExecutionOutput);
 
         try {
-            Stream<GeminiGenerateContentResponse> contentStream = withRetry(
+            Stream<GeminiGenerateContentResponse> contentStream = withRetryMappingExceptions(
                 () -> this.geminiService.generateContentStream(this.modelName, this.apiKey, request),
                 maxRetries);
 

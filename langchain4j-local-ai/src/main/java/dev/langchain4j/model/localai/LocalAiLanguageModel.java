@@ -10,7 +10,7 @@ import lombok.Builder;
 
 import java.time.Duration;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -68,7 +68,7 @@ public class LocalAiLanguageModel implements LanguageModel {
                 .maxTokens(maxTokens)
                 .build();
 
-        CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
+        CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request).execute(), maxRetries);
 
         return Response.from(
                 response.text(),

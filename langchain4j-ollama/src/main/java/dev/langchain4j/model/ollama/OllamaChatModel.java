@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createModelListenerRequest;
@@ -155,7 +155,7 @@ public class OllamaChatModel implements ChatLanguageModel {
         onListenRequest(listeners, modelListenerRequest, attributes);
 
         try {
-            ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
+            ChatResponse chatResponse = withRetryMappingExceptions(() -> client.chat(request), maxRetries);
             Response<AiMessage> response = Response.from(
                     chatResponse.getMessage().getToolCalls() != null ?
                             AiMessage.from(toToolExecutionRequests(chatResponse.getMessage().getToolCalls())) :

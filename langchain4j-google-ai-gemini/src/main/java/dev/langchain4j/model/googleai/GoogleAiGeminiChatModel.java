@@ -32,7 +32,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
@@ -96,7 +96,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         notifyListenersOnRequest(new ChatModelRequestContext(chatModelRequest, listenerAttributes));
 
         try {
-            GeminiGenerateContentResponse geminiResponse = withRetry(
+            GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
                 () -> this.geminiService.generateContent(this.modelName, this.apiKey, request),
                 this.maxRetries
             );

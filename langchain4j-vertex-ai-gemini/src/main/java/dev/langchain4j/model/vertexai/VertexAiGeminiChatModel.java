@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -319,7 +319,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
 
         GenerateContentResponse response = null;
         try {
-            response = withRetry(() ->
+            response = withRetryMappingExceptions(() ->
                 finalModel.generateContent(instructionAndContent.contents), maxRetries);
         } catch (Exception e) {
             listeners.forEach((listener) -> {

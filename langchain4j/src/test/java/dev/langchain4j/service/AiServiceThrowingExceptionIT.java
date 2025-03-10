@@ -1,7 +1,9 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.UnrecoverableException;
 import dev.langchain4j.memory.ChatMemory;
@@ -89,7 +91,7 @@ class AiServiceThrowingExceptionIT {
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("hi"))
-                .isExactlyInstanceOf(UnrecoverableException.class)
+                .isExactlyInstanceOf(ModelNotFoundException.class)
                 .hasMessageContaining("Not Found");
 
         assertThat(invocationCount.get()).isEqualTo(1);
@@ -112,7 +114,7 @@ class AiServiceThrowingExceptionIT {
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("hi"))
-                .isExactlyInstanceOf(UnrecoverableException.class)
+                .isExactlyInstanceOf(ModelNotFoundException.class)
                 .hasMessageContaining("Not Found");
     }
 
@@ -133,7 +135,7 @@ class AiServiceThrowingExceptionIT {
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("hi"))
-                .isExactlyInstanceOf(UnrecoverableException.class)
+                .isExactlyInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("Incorrect API key provided: xyz.");
     }
     @Test
@@ -153,7 +155,7 @@ class AiServiceThrowingExceptionIT {
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("hi"))
-                .isExactlyInstanceOf(UnrecoverableException.class)
+                .isExactlyInstanceOf(ModelNotFoundException.class)
                 .hasMessageContaining("The model `gpt-0` does not exist or you do not have access to it.");
     }
 }
