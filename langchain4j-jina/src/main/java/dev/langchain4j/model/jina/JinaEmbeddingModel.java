@@ -1,6 +1,6 @@
 package dev.langchain4j.model.jina;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
@@ -63,7 +63,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .input(textSegments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
-        JinaEmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
+        JinaEmbeddingResponse response = withRetryMappingExceptions(() -> client.embed(request), maxRetries);
 
         List<Embedding> embeddings = response.data.stream()
                 .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))

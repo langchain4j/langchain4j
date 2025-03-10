@@ -44,7 +44,7 @@ public class JlamaChatModel implements ChatLanguageModel {
                           Float temperature,
                           Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
+        JlamaModel jlamaModel = RetryUtils.withRetryMappingExceptions(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3, JlamaExceptionMapper.INSTANCE);
 
         JlamaModel.Loader loader = jlamaModel.loader();
         if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
@@ -143,7 +143,8 @@ public class JlamaChatModel implements ChatLanguageModel {
         List<Tool> tools = toolSpecifications.stream().map(JlamaModel::toTool).toList();
 
         PromptContext promptContext = tools.isEmpty() ? promptBuilder.build() : promptBuilder.build(tools);
-        Generator.Response r = model.generate(UUID.randomUUID(), promptContext, temperature, maxTokens, (token, time) -> {});
+        Generator.Response r = JlamaExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> model.generate(UUID.randomUUID(), promptContext, temperature, maxTokens, (token, time) -> {}) );
 
         if (r.finishReason == Generator.FinishReason.TOOL_CALL) {
             List<ToolExecutionRequest> toolCalls = r.toolCalls.stream().map(f -> ToolExecutionRequest.builder()

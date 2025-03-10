@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock.internal;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -77,7 +77,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
 
         try {
             InvokeModelResponse invokeModelResponse =
-                    withRetry(() -> invoke(invokeModelRequest, requestContext), maxRetries);
+                    withRetryMappingExceptions(() -> invoke(invokeModelRequest, requestContext), maxRetries);
             final String response = invokeModelResponse.body().asUtf8String();
             final T result = Json.fromJson(response, getResponseClassType());
 

@@ -1,6 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
@@ -76,7 +76,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .encodingFormat(EMBEDDINGS_ENCODING_FORMAT)
                 .build();
 
-        MistralAiEmbeddingResponse response = withRetry(() -> client.embedding(request), maxRetries);
+        MistralAiEmbeddingResponse response = withRetryMappingExceptions(() -> client.embedding(request), maxRetries);
 
         List<Embedding> embeddings = response.getData().stream()
                 .map(mistralAiEmbedding -> Embedding.from(mistralAiEmbedding.getEmbedding()))
