@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -77,7 +77,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
 
-        InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
+        InvokeModelResponse invokeModelResponse = withRetryMappingExceptions(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
         final String response = invokeModelResponse.body().asUtf8String().trim();
         final BedrockMistralAiChatModelResponse result = Json.fromJson(response, getResponseClassType());
 

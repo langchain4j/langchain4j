@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -119,7 +119,7 @@ public class BedrockChatModel implements ChatLanguageModel {
         ConverseRequest convRequest = buildConverseRequest(
                 request.messages(), request.parameters().toolSpecifications(), request.parameters());
 
-        ConverseResponse response = withRetry(() -> client.converse(convRequest), this.maxRetries);
+        ConverseResponse response = withRetryMappingExceptions(() -> client.converse(convRequest), this.maxRetries);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(response))

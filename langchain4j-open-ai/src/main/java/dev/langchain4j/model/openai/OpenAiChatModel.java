@@ -25,7 +25,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.internal.ExceptionMapper.mappingException;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -164,8 +165,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
-        ChatCompletionResponse openAiResponse = withRetry(() ->
-                mappingException(() -> client.chatCompletion(openAiRequest).execute()), maxRetries);
+        ChatCompletionResponse openAiResponse = withRetryMappingExceptions(() ->
+                client.chatCompletion(openAiRequest).execute(), maxRetries);
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())

@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public class RateLimitException extends RuntimeException {
+public class RateLimitException extends RecoverableException {
     public RateLimitException(String message) {
         super(message);
     }

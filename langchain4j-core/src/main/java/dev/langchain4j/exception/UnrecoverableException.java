@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public class UnrecoverableException extends RuntimeException {
+public abstract class UnrecoverableException extends BaseChatModelException {
     public UnrecoverableException(String message) {
         super(message);
     }
