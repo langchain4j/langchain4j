@@ -252,7 +252,7 @@ class InternalOpenAiOfficialHelper {
         } else if (credential != null) {
             builder.credential(credential);
         } else {
-            throw new IllegalArgumentException("Either apiKey, azureApiKey or credential must be set to authenticate");
+            throw new IllegalArgumentException("Either apiKey or credential must be set to authenticate");
         }
 
         builder.organization(organizationId);
