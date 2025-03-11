@@ -8,7 +8,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +48,11 @@ public interface StreamingChatLanguageModel {
             }
 
             @Override
+            public void onReasoningResponse(String reasoningContent) {
+                handler.onReasoningResponse(reasoningContent);
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
@@ -79,18 +83,15 @@ public interface StreamingChatLanguageModel {
 
     default void chat(String userMessage, StreamingChatResponseHandler handler) {
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(userMessage))
-                .build();
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
 
         chat(chatRequest, handler);
     }
 
     default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .build();
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
 
         chat(chatRequest, handler);
     }
