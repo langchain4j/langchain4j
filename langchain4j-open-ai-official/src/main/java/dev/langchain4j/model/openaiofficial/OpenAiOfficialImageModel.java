@@ -21,7 +21,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
     private final OpenAIClient client;
     private final String modelName;
-    private InternalOpenAiOfficialHelper.MODEL_HOST modelHost;
+    private InternalOpenAiOfficialHelper.ModelHost modelHost;
     private final ImageGenerateParams.Size size;
     private final ImageGenerateParams.Quality quality;
     private final ImageGenerateParams.Style style;

@@ -81,35 +81,35 @@ class InternalOpenAiOfficialHelper {
     static final String GITHUB_TOKEN = "GITHUB_TOKEN";
     static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
 
-    enum MODEL_HOST {
+    enum ModelHost {
         OPENAI,
         AZURE_OPENAI,
         GITHUB_MODELS
     }
 
-    static MODEL_HOST detectModelHost(
+    static ModelHost detectModelHost(
             boolean isAzure,
             boolean isGitHubModels,
             String baseUrl,
             String azureDeploymentName,
             AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
         if (isAzure) {
-            return MODEL_HOST.AZURE_OPENAI; // Forced by the user
+            return ModelHost.AZURE_OPENAI; // Forced by the user
         }
         if (isGitHubModels) {
-            return MODEL_HOST.GITHUB_MODELS; // Forced by the user
+            return ModelHost.GITHUB_MODELS; // Forced by the user
         }
         if (baseUrl != null) {
             if (baseUrl.endsWith("openai.azure.com") || baseUrl.endsWith("openai.azure.com/")) {
-                return MODEL_HOST.AZURE_OPENAI;
+                return ModelHost.AZURE_OPENAI;
             } else if (baseUrl.startsWith(GITHUB_MODELS_URL)) {
-                return MODEL_HOST.GITHUB_MODELS;
+                return ModelHost.GITHUB_MODELS;
             }
         }
         if (azureDeploymentName != null || azureOpenAIServiceVersion != null) {
-            return MODEL_HOST.AZURE_OPENAI;
+            return ModelHost.AZURE_OPENAI;
         }
-        return MODEL_HOST.OPENAI;
+        return ModelHost.OPENAI;
     }
 
     static OpenAIClient setupSyncClient(
@@ -119,7 +119,7 @@ class InternalOpenAiOfficialHelper {
             String azureDeploymentName,
             AzureOpenAIServiceVersion azureOpenAiServiceVersion,
             String organizationId,
-            MODEL_HOST modelHost,
+            ModelHost modelHost,
             OpenAIClient openAIClient,
             String modelName,
             Duration timeout,
@@ -133,14 +133,14 @@ class InternalOpenAiOfficialHelper {
 
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
 
-        if (modelHost == MODEL_HOST.OPENAI) {
+        if (modelHost == ModelHost.OPENAI) {
             baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        } else if (modelHost == MODEL_HOST.GITHUB_MODELS) {
+        } else if (modelHost == ModelHost.GITHUB_MODELS) {
             baseUrl = GITHUB_MODELS_URL;
             if (System.getenv(GITHUB_TOKEN) != null) {
                 apiKey = System.getenv(GITHUB_TOKEN);
             }
-        } else if (modelHost == MODEL_HOST.AZURE_OPENAI) {
+        } else if (modelHost == ModelHost.AZURE_OPENAI) {
             // Using Azure OpenAI
             if (azureDeploymentName == null) {
                 // If the Azure deployment name is not configured, we use the model name instead, as it's the default
@@ -160,7 +160,7 @@ class InternalOpenAiOfficialHelper {
         builder.baseUrl(baseUrl);
 
         if (apiKey != null) {
-            if (modelHost == MODEL_HOST.AZURE_OPENAI) {
+            if (modelHost == ModelHost.AZURE_OPENAI) {
                 builder.credential(AzureApiKeyCredential.create(apiKey));
             } else {
                 builder.apiKey(apiKey);
@@ -202,7 +202,7 @@ class InternalOpenAiOfficialHelper {
             Credential credential,
             String azureDeploymentName,
             AzureOpenAIServiceVersion azureOpenAiServiceVersion,
-            MODEL_HOST modelHost,
+            ModelHost modelHost,
             OpenAIClientAsync openAIClientAsync,
             String organizationId,
             String modelName,
@@ -217,14 +217,14 @@ class InternalOpenAiOfficialHelper {
 
         OpenAIOkHttpClientAsync.Builder builder = OpenAIOkHttpClientAsync.builder();
 
-        if (modelHost == MODEL_HOST.OPENAI) {
+        if (modelHost == ModelHost.OPENAI) {
             baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        } else if (modelHost == MODEL_HOST.GITHUB_MODELS) {
+        } else if (modelHost == ModelHost.GITHUB_MODELS) {
             baseUrl = GITHUB_MODELS_URL;
             if (System.getenv(GITHUB_TOKEN) != null) {
                 apiKey = System.getenv(GITHUB_TOKEN);
             }
-        } else if (modelHost == MODEL_HOST.AZURE_OPENAI) {
+        } else if (modelHost == ModelHost.AZURE_OPENAI) {
             // Using Azure OpenAI
             if (azureDeploymentName == null) {
                 // If the Azure deployment name is not configured, we use the model name instead, as it's the default
@@ -244,7 +244,7 @@ class InternalOpenAiOfficialHelper {
         builder.baseUrl(baseUrl);
 
         if (apiKey != null) {
-            if (modelHost == MODEL_HOST.AZURE_OPENAI) {
+            if (modelHost == ModelHost.AZURE_OPENAI) {
                 builder.credential(AzureApiKeyCredential.create(apiKey));
             } else {
                 builder.apiKey(apiKey);

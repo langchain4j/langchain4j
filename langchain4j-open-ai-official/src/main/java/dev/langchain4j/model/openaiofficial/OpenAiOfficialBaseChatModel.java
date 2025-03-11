@@ -29,7 +29,7 @@ abstract class OpenAiOfficialBaseChatModel {
 
     protected OpenAIClient client;
     protected OpenAIClientAsync asyncClient;
-    protected InternalOpenAiOfficialHelper.MODEL_HOST modelHost;
+    protected InternalOpenAiOfficialHelper.ModelHost modelHost;
     protected OpenAiOfficialChatRequestParameters defaultRequestParameters;
     protected String responseFormat;
     protected Boolean strictJsonSchema;

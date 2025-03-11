@@ -28,7 +28,7 @@ import java.util.Objects;
 public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAIClient client;
-    private InternalOpenAiOfficialHelper.MODEL_HOST modelHost;
+    private InternalOpenAiOfficialHelper.ModelHost modelHost;
     private final String modelName;
     private final Integer dimensions;
     private final String user;
