@@ -6,7 +6,7 @@ sidebar_position: 15
 
 :::note
 
-This is the documentation for the `OpenAI` integration, that uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus as it uses the Quarkus REST client.
+This is the documentation for the `OpenAI` integration, that uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
 
 LangChain4j provides 4 different integrations with OpenAI for using embedding models, and this is #1 :
 
