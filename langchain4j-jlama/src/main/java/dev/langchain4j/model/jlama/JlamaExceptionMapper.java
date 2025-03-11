@@ -5,7 +5,7 @@ import dev.langchain4j.internal.ExceptionMapper;
 
 import java.io.IOException;
 
-class JlamaExceptionMapper extends ExceptionMapper.DefaultImpl {
+class JlamaExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
 
     static final JlamaExceptionMapper INSTANCE = new JlamaExceptionMapper();
 

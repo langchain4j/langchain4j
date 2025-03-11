@@ -7,7 +7,6 @@ import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
-import dev.langchain4j.exception.UnrecoverableException;
 import dev.langchain4j.exception.UnresolvedModelServerException;
 
 import java.nio.channels.UnresolvedAddressException;
@@ -16,7 +15,7 @@ import java.util.concurrent.Callable;
 @FunctionalInterface
 public interface ExceptionMapper {
 
-    ExceptionMapper DEFAULT = new DefaultImpl();
+    ExceptionMapper DEFAULT = new DefaultExceptionMapper();
 
     static <T> T mappingException(Callable<T> action) {
         return DEFAULT.withExceptionMapper(action);
@@ -50,15 +49,25 @@ public interface ExceptionMapper {
         }
 
         protected RuntimeException mapHttpStatusCode(Exception rootException, int httpStatusCode) {
-            return switch (httpStatusCode) {
-                case 400 -> new InvalidRequestException(rootException);
-                case 401, 403 -> new AuthenticationException(rootException);
-                case 404 -> new ModelNotFoundException(rootException);
-                case 408 -> new TimeoutException(rootException);
-                case 429 -> new RateLimitException(rootException);
-                case 500 -> new InternalServerException(rootException);
-                default -> rootException instanceof RuntimeException re ? re : new RuntimeException(rootException);
-            };
+            if (httpStatusCode >= 500 && httpStatusCode < 600) {
+                return new InternalServerException(rootException);
+            }
+            if (httpStatusCode == 401 || httpStatusCode == 403) {
+                return new AuthenticationException(rootException);
+            }
+            if (httpStatusCode == 404) {
+                return new ModelNotFoundException(rootException);
+            }
+            if (httpStatusCode == 408) {
+                return new TimeoutException(rootException);
+            }
+            if (httpStatusCode == 429) {
+                return new RateLimitException(rootException);
+            }
+            if (httpStatusCode >= 400 && httpStatusCode < 500) {
+                return new InvalidRequestException(rootException);
+            }
+            return rootException instanceof RuntimeException re ? re : new RuntimeException(rootException);
         }
 
         private static Throwable findRoot(Throwable e) {

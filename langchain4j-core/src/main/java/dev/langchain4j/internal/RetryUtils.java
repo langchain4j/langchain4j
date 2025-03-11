@@ -1,6 +1,6 @@
 package dev.langchain4j.internal;
 
-import dev.langchain4j.exception.UnrecoverableException;
+import dev.langchain4j.exception.UnrecoverableChatException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -192,7 +192,7 @@ public final class RetryUtils {
             while (true) {
                 try {
                     return action.call();
-                } catch (UnrecoverableException e) {
+                } catch (UnrecoverableChatException e) {
                     throw e;
                 } catch (Exception e) {
                     if (attempt >= maxAttempts) {

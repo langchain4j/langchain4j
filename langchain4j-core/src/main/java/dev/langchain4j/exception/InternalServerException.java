@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public class InternalServerException extends UnrecoverableException {
+public class InternalServerException extends UnrecoverableChatException {
     public InternalServerException(String message) {
         super(message);
     }

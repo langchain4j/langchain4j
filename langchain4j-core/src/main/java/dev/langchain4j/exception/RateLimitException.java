@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public class RateLimitException extends RecoverableException {
+public class RateLimitException extends RecoverableChatException {
     public RateLimitException(String message) {
         super(message);
     }

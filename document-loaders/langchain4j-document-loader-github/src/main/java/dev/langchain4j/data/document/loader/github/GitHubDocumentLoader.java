@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
 
 public class GitHubDocumentLoader {
 
@@ -96,7 +96,7 @@ public class GitHubDocumentLoader {
         } else {
             Document document = null;
             try {
-                document = withRetryMappingExceptions(() -> fromGitHub(parser, ghContent), 3);
+                document = withRetry(() -> fromGitHub(parser, ghContent), 3);
             } catch (RuntimeException runtimeException) {
                 logger.error("Failed to read document from GitHub: {}", ghContent.getHtmlUrl(), runtimeException);
             }

@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -44,6 +44,6 @@ class OpenAiChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return HttpException.class;
+        return AuthenticationException.class;
     }
 }

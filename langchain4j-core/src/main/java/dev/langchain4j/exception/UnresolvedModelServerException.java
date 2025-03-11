@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public class UnresolvedModelServerException extends UnrecoverableException {
+public class UnresolvedModelServerException extends UnrecoverableChatException {
     public UnresolvedModelServerException(String message) {
         super(message);
     }

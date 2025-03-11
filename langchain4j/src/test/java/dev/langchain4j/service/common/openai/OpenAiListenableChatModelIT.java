@@ -3,8 +3,6 @@ package dev.langchain4j.service.common.openai;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AuthenticationException;
-import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.exception.UnrecoverableException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
