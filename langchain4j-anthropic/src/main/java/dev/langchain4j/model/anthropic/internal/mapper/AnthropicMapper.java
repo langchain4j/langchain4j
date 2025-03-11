@@ -3,7 +3,6 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -221,32 +220,20 @@ public class AnthropicMapper {
     }
 
     public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt) {
-        AnthropicTool. AnthropicToolBuilder toolBuilder;
-        if (toolSpecification.parameters() != null) {
-            JsonObjectSchema parameters = toolSpecification.parameters();
-            toolBuilder = AnthropicTool.builder()
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        AnthropicTool.AnthropicToolBuilder toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
                 .inputSchema(AnthropicToolSchema.builder()
-                    .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
-                    .required(parameters != null ? parameters.required() : emptyList())
-                    .build());
-
-        } else {
-            ToolParameters parameters = toolSpecification.toolParameters();
-            toolBuilder = AnthropicTool.builder()
-                .name(toolSpecification.name())
-                .description(toolSpecification.description())
-                .inputSchema(AnthropicToolSchema.builder()
-                    .properties(parameters != null ? parameters.properties() : emptyMap())
-                    .required(parameters != null ? parameters.required() : emptyList())
-                    .build());
-
-        }
+                        .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
+                        .required(parameters != null ? parameters.required() : emptyList())
+                        .build());
 
         if (cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
             return toolBuilder.cacheControl(cacheToolsPrompt.cacheControl()).build();
         }
+
         return toolBuilder.build();
     }
 }

@@ -48,7 +48,6 @@ import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -281,11 +280,7 @@ class InternalGitHubModelHelper {
     }
 
     private static BinaryData getParameters(ToolSpecification toolSpecification) {
-        if (toolSpecification.parameters() != null) {
-            return toAzureAiParameters(toolSpecification.parameters());
-        } else {
-            return toAzureAiParametersOld(toolSpecification.toolParameters());
-        }
+        return toAzureAiParameters(toolSpecification.parameters());
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -301,16 +296,6 @@ class InternalGitHubModelHelper {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
         }
         parameters.setProperties(toMap(toolParameters.properties()));
-        parameters.setRequired(toolParameters.required());
-        return BinaryData.fromObject(parameters);
-    }
-
-    private static BinaryData toAzureAiParametersOld(ToolParameters toolParameters) {
-        Parameters parameters = new Parameters();
-        if (toolParameters == null) {
-            return BinaryData.fromObject(NO_PARAMETER_DATA);
-        }
-        parameters.setProperties(toolParameters.properties());
         parameters.setRequired(toolParameters.required());
         return BinaryData.fromObject(parameters);
     }
