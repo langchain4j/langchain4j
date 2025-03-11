@@ -17,7 +17,10 @@ import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.InitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.client.protocol.McpListResourceTemplatesRequest;
+import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
@@ -29,6 +32,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,11 +49,14 @@ public class DefaultMcpClient implements McpClient {
     private final String clientVersion;
     private final String protocolVersion;
     private final Duration toolExecutionTimeout;
+    private final Duration resourcesTimeout;
     private final JsonNode RESULT_TIMEOUT;
     private final String toolExecutionTimeoutErrorMessage;
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
     private final McpOperationHandler messageHandler;
     private final McpLogMessageHandler logHandler;
+    private final AtomicReference<List<ResourceRef>> resourceRefs = new AtomicReference<>();
+    private final AtomicReference<List<ResourceTemplateRef>> resourceTemplateRefs = new AtomicReference<>();
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -57,6 +64,7 @@ public class DefaultMcpClient implements McpClient {
         clientVersion = getOrDefault(builder.clientVersion, "1.0");
         protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
         toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
+        resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
         logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
         toolExecutionTimeoutErrorMessage =
                 getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
@@ -150,6 +158,78 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
+    public List<ResourceRef> listResources() {
+        if (resourceRefs.get() == null) {
+            obtainResourceList();
+        }
+        return resourceRefs.get();
+    }
+
+    @Override
+    public ResourceResponse readResource(String uri) {
+        final long operationId = idGenerator.getAndIncrement();
+        McpReadResourceRequest operation = new McpReadResourceRequest(operationId, uri);
+        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        JsonNode result = null;
+        CompletableFuture<JsonNode> resultFuture = null;
+        try {
+            resultFuture = transport.executeOperationWithResponse(operation);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            return ResourcesHelper.parseResourceContents(result);
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
+    public List<ResourceTemplateRef> listResourceTemplates() {
+        if (resourceTemplateRefs.get() == null) {
+            obtainResourceTemplateList();
+        }
+        return resourceTemplateRefs.get();
+    }
+
+    private synchronized void obtainResourceList() {
+        if (resourceRefs.get() != null) {
+            return;
+        }
+        McpListResourcesRequest operation = new McpListResourcesRequest(idGenerator.getAndIncrement());
+        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        JsonNode result = null;
+        CompletableFuture<JsonNode> resultFuture = null;
+        try {
+            resultFuture = transport.executeOperationWithResponse(operation);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            resourceRefs.set(ResourcesHelper.parseResourceRefs(result));
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operation.getId());
+        }
+    }
+
+    private synchronized void obtainResourceTemplateList() {
+        if (resourceTemplateRefs.get() != null) {
+            return;
+        }
+        McpListResourceTemplatesRequest operation = new McpListResourceTemplatesRequest(idGenerator.getAndIncrement());
+        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
+        JsonNode result = null;
+        CompletableFuture<JsonNode> resultFuture = null;
+        try {
+            resultFuture = transport.executeOperationWithResponse(operation);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            resourceTemplateRefs.set(ResourcesHelper.parseResourceTemplateRefs(result));
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operation.getId());
+        }
+    }
+
+    @Override
     public void close() {
         try {
             transport.close();
@@ -166,6 +246,7 @@ public class DefaultMcpClient implements McpClient {
         private String clientVersion;
         private String protocolVersion;
         private Duration toolExecutionTimeout;
+        private Duration resourcesTimeout;
         private McpLogMessageHandler logHandler;
 
         public Builder transport(McpTransport transport) {
@@ -208,9 +289,20 @@ public class DefaultMcpClient implements McpClient {
          * Sets the timeout for tool execution.
          * This value applies to each tool execution individually.
          * The default value is 60 seconds.
+         * A value of zero means no timeout.
          */
         public Builder toolExecutionTimeout(Duration toolExecutionTimeout) {
             this.toolExecutionTimeout = toolExecutionTimeout;
+            return this;
+        }
+
+        /**
+         * Sets the timeout for resource-related operations (listing resources as well as reading the contents of a resource).
+         * The default value is 60 seconds.
+         * A value of zero means no timeout.
+         */
+        public Builder resourcesTimeout(Duration resourcesTimeout) {
+            this.resourcesTimeout = resourcesTimeout;
             return this;
         }
 
