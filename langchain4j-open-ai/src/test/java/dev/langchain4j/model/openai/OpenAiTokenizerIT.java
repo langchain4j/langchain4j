@@ -6,6 +6,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -77,7 +79,7 @@ class OpenAiTokenizerIT {
                 .logResponses(true)
                 .build();
 
-        int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
+        int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
         Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
 
@@ -142,7 +144,7 @@ class OpenAiTokenizerIT {
                 .logResponses(true)
                 .build();
 
-        int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
+        int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
         Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
 
@@ -358,7 +360,7 @@ class OpenAiTokenizerIT {
                 .logResponses(true)
                 .build();
 
-        int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
+        int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
         Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
 
@@ -789,7 +791,7 @@ class OpenAiTokenizerIT {
 
         Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
 
-        int expectedTokenCount = model.generate(dummyMessages, toolSpecifications).tokenUsage().inputTokenCount()
+        int expectedTokenCount = model.chat(toRequest(dummyMessages, toolSpecifications)).tokenUsage().inputTokenCount()
                 - tokenizer.estimateTokenCountInMessages(dummyMessages);
 
         // when
@@ -1064,9 +1066,9 @@ class OpenAiTokenizerIT {
                 .logResponses(true)
                 .build();
 
-        Response<AiMessage> response = model.generate(singletonList(userMessage), singletonList(toolSpecification));
+        ChatResponse response = model.chat(toRequest(List.of(userMessage), List.of(toolSpecification)));
 
-        List<ToolExecutionRequest> toolExecutionRequests = response.content().toolExecutionRequests();
+        List<ToolExecutionRequest> toolExecutionRequests = response.aiMessage().toolExecutionRequests();
         // we need to ensure that model generated expected tool execution request,
         // then we can use output token count as a reference
         assertThat(toolExecutionRequests).hasSize(1);
@@ -1115,7 +1117,7 @@ class OpenAiTokenizerIT {
                 .logResponses(true)
                 .build();
 
-        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecification);
+        ChatResponse response = model.chat(toRequest(List.of(userMessage), List.of(toolSpecification)));
 
         Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
 
@@ -1129,7 +1131,7 @@ class OpenAiTokenizerIT {
         assertThat(tokenCountInSpecification).isEqualTo(expectedTokenCountInSpecification);
 
         // given
-        List<ToolExecutionRequest> toolExecutionRequests = response.content().toolExecutionRequests();
+        List<ToolExecutionRequest> toolExecutionRequests = response.aiMessage().toolExecutionRequests();
         // we need to ensure that model generated expected tool execution request,
         // then we can use output token count as a reference
         assertThat(toolExecutionRequests).hasSize(1);
@@ -1338,9 +1340,9 @@ class OpenAiTokenizerIT {
                 .logResponses(true)
                 .build();
 
-        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
+        ChatResponse response = model.chat(toRequest(List.of(userMessage), toolSpecifications));
 
-        List<ToolExecutionRequest> toolExecutionRequests = response.content().toolExecutionRequests();
+        List<ToolExecutionRequest> toolExecutionRequests = response.aiMessage().toolExecutionRequests();
         // we need to ensure that model generated expected tool execution requests,
         // then we can use output token count as a reference
         assertThat(toolExecutionRequests).hasSize(expectedToolExecutionRequests.size());
@@ -1763,4 +1765,11 @@ class OpenAiTokenizerIT {
                         )
                 ));
     }
+    
+    private static ChatRequest toRequest(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    } 
 }

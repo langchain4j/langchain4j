@@ -8,8 +8,13 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
+import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -19,8 +24,10 @@ import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.chat.request.ChatRequestValidator.validate;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
@@ -91,15 +98,49 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         this.supportedCapabilities = new HashSet<>(getOrDefault(supportedCapabilities, emptySet()));
     }
 
-    public static OllamaStreamingChatModelBuilder builder() {
-        for (OllamaStreamingChatModelBuilderFactory factory : loadFactories(OllamaStreamingChatModelBuilderFactory.class)) {
-            return factory.get();
+    @Override
+    public void doChat(dev.langchain4j.model.chat.request.ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolChoice());
+        validate(parameters.responseFormat());
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                dev.langchain4j.model.chat.response.ChatResponse chatResponse =
+                        dev.langchain4j.model.chat.response.ChatResponse.builder()
+                                .aiMessage(response.content())
+                                .metadata(ChatResponseMetadata.builder()
+                                        .tokenUsage(response.tokenUsage())
+                                        .finishReason(response.finishReason())
+                                        .build())
+                                .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            generate(chatRequest.messages(), legacyHandler);
+        } else {
+            generate(chatRequest.messages(), toolSpecifications, legacyHandler);
         }
-        return new OllamaStreamingChatModelBuilder();
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         ensureNotEmpty(messages, "messages");
 
         ChatRequest request = ChatRequest.builder()
@@ -113,8 +154,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         client.streamingChat(request, handler, listeners, messages);
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         ensureNotEmpty(messages, "messages");
 
         ChatRequest request = ChatRequest.builder()
@@ -131,6 +171,13 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
 
     public Set<Capability> supportedCapabilities() {
         return supportedCapabilities;
+    }
+
+    public static OllamaStreamingChatModelBuilder builder() {
+        for (OllamaStreamingChatModelBuilderFactory factory : loadFactories(OllamaStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaStreamingChatModelBuilder();
     }
 
     public static class OllamaStreamingChatModelBuilder {

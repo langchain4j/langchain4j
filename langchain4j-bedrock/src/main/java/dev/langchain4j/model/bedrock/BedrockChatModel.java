@@ -36,14 +36,12 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -114,29 +112,6 @@ public class BedrockChatModel implements ChatLanguageModel {
                     .modelName(this.modelId)
                     .build();
         }
-    }
-
-    @Override
-    public Response<AiMessage> generate(final List<ChatMessage> messages) {
-        return generate(messages, emptyList());
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, List.of(toolSpecification));
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ConverseRequest request = buildConverseRequest(messages, toolSpecifications, null);
-
-        ConverseResponse response = withRetry(() -> client.converse(request), this.maxRetries);
-
-        return Response.from(
-                aiMessageFrom(response),
-                tokenUsageFrom(response.usage()),
-                finishReasonFrom(response.stopReason()),
-                Map.of("id", response.responseMetadata().requestId()));
     }
 
     @Override
