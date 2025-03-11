@@ -32,7 +32,7 @@ public interface ExceptionMapper {
 
     RuntimeException mapException(Exception e);
 
-    class DefaultImpl implements ExceptionMapper {
+    class DefaultExceptionMapper implements ExceptionMapper {
 
         @Override
         public RuntimeException mapException(Exception e) {
