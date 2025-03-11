@@ -43,7 +43,7 @@ It will also work with models supporting the OpenAI API.
 
 ## Configuring the models
 
-To use OpenAI models, you usually need an endpoint URL and an API key. This depends on where the model is hosted, and this integration tries
+To use OpenAI models, you usually need an endpoint URL, an API key, and a model name. This depends on where the model is hosted, and this integration tries
 to make it easier with some auto-configuration:
 
 ### Generic configuration
