@@ -1,5 +1,17 @@
 package dev.langchain4j.model.github;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
+
 import com.azure.ai.inference.ChatCompletionsClientBuilder;
 import com.azure.ai.inference.EmbeddingsClientBuilder;
 import com.azure.ai.inference.ModelServiceVersion;
@@ -51,27 +63,14 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class InternalGitHubModelHelper {
 
@@ -81,7 +80,16 @@ class InternalGitHubModelHelper {
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-github-models";
 
-    public static ChatCompletionsClientBuilder setupChatCompletionsBuilder(String endpoint, ModelServiceVersion serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+    public static ChatCompletionsClientBuilder setupChatCompletionsBuilder(
+            String endpoint,
+            ModelServiceVersion serviceVersion,
+            String gitHubToken,
+            Duration timeout,
+            Integer maxRetries,
+            ProxyOptions proxyOptions,
+            boolean logRequestsAndResponses,
+            String userAgentSuffix,
+            Map<String, String> customHeaders) {
         HttpClientOptions clientOptions = getClientOptions(timeout, proxyOptions, userAgentSuffix, customHeaders);
         ChatCompletionsClientBuilder chatCompletionsClientBuilder = new ChatCompletionsClientBuilder()
                 .endpoint(getEndpoint(endpoint))
@@ -95,7 +103,16 @@ class InternalGitHubModelHelper {
         return chatCompletionsClientBuilder;
     }
 
-    public static EmbeddingsClientBuilder setupEmbeddingsBuilder(String endpoint, ModelServiceVersion serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+    public static EmbeddingsClientBuilder setupEmbeddingsBuilder(
+            String endpoint,
+            ModelServiceVersion serviceVersion,
+            String gitHubToken,
+            Duration timeout,
+            Integer maxRetries,
+            ProxyOptions proxyOptions,
+            boolean logRequestsAndResponses,
+            String userAgentSuffix,
+            Map<String, String> customHeaders) {
         HttpClientOptions clientOptions = getClientOptions(timeout, proxyOptions, userAgentSuffix, customHeaders);
         EmbeddingsClientBuilder embeddingsClientBuilder = new EmbeddingsClientBuilder()
                 .endpoint(getEndpoint(endpoint))
@@ -121,7 +138,8 @@ class InternalGitHubModelHelper {
         return new NettyAsyncHttpClientProvider().createInstance(clientOptions);
     }
 
-    private static HttpClientOptions getClientOptions(Duration timeout, ProxyOptions proxyOptions, String userAgentSuffix, Map<String, String> customHeaders) {
+    private static HttpClientOptions getClientOptions(
+            Duration timeout, ProxyOptions proxyOptions, String userAgentSuffix, Map<String, String> customHeaders) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -162,7 +180,8 @@ class InternalGitHubModelHelper {
         if (gitHubToken != null) {
             return new AzureKeyCredential(gitHubToken);
         } else {
-            throw new IllegalArgumentException("GitHub token is a mandatory parameter for connecting to GitHub models.");
+            throw new IllegalArgumentException(
+                    "GitHub token is a mandatory parameter for connecting to GitHub models.");
         }
     }
 
@@ -176,12 +195,15 @@ class InternalGitHubModelHelper {
     public static ChatRequestMessage toAzureAiMessage(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
-            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
+            ChatRequestAssistantMessage chatRequestAssistantMessage =
+                    new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
             chatRequestAssistantMessage.setToolCalls(toolExecutionRequestsFrom(message));
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
-            return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
+            ChatRequestToolMessage chatRequestToolMessage = new ChatRequestToolMessage(toolExecutionResultMessage.id());
+            chatRequestToolMessage.setContent(toolExecutionResultMessage.text());
+            return chatRequestToolMessage;
         } else if (message instanceof SystemMessage) {
             SystemMessage systemMessage = (SystemMessage) message;
             return new ChatRequestSystemMessage(systemMessage.text());
@@ -199,10 +221,13 @@ class InternalGitHubModelHelper {
                             } else if (content instanceof ImageContent) {
                                 ImageContent imageContent = (ImageContent) content;
                                 if (imageContent.image().url() == null) {
-                                    throw new IllegalArgumentException("Image URL is not present. Base64 encoded images are not supported at the moment.");
+                                    throw new IllegalArgumentException(
+                                            "Image URL is not present. Base64 encoded images are not supported at the moment.");
                                 }
-                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageContent.image().url().toString());
-                                imageUrl.setDetail(ChatMessageImageDetailLevel.fromString(imageContent.detailLevel().name()));
+                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(
+                                        imageContent.image().url().toString());
+                                imageUrl.setDetail(ChatMessageImageDetailLevel.fromString(
+                                        imageContent.detailLevel().name()));
                                 return new ChatMessageImageContentItem(imageUrl);
                             } else {
                                 throw new IllegalArgumentException("Unsupported content type: " + content.type());
@@ -221,15 +246,17 @@ class InternalGitHubModelHelper {
             AiMessage aiMessage = (AiMessage) message;
             if (aiMessage.hasToolExecutionRequests()) {
                 return aiMessage.toolExecutionRequests().stream()
-                        .map(toolExecutionRequest -> new ChatCompletionsFunctionToolCall(toolExecutionRequest.id(), new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments())))
+                        .map(toolExecutionRequest -> new ChatCompletionsFunctionToolCall(
+                                toolExecutionRequest.id(),
+                                new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments())))
                         .collect(toList());
-
             }
         }
         return null;
     }
 
-    public static List<ChatCompletionsToolDefinition> toToolDefinitions(Collection<ToolSpecification> toolSpecifications) {
+    public static List<ChatCompletionsToolDefinition> toToolDefinitions(
+            Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
                 .map(InternalGitHubModelHelper::toToolDefinition)
                 .collect(toList());
@@ -243,8 +270,11 @@ class InternalGitHubModelHelper {
     }
 
     public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted).toString());
-        ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
+        FunctionCall functionCall = new FunctionCall(
+                toolThatMustBeExecuted.name(),
+                getParameters(toolThatMustBeExecuted).toString());
+        ChatCompletionsToolCall toolToCall =
+                new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
         // TODO Revisit, does not seem right and differs from Azure OpenAI implementation.
         // TODO It should probably contain only the name of the tool that must be called (without parameters).
         return BinaryData.fromObject(toolToCall);
@@ -320,19 +350,17 @@ class InternalGitHubModelHelper {
         if (isNullOrEmpty(chatResponseMessage.getToolCalls())) {
             return aiMessage(text);
         } else {
-            List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
-                    .stream()
-                    .map(chatCompletionsFunctionToolCall ->
-                            ToolExecutionRequest.builder()
-                                    .id(chatCompletionsFunctionToolCall.getId())
-                                    .name(chatCompletionsFunctionToolCall.getFunction().getName())
-                                    .arguments(chatCompletionsFunctionToolCall.getFunction().getArguments())
-                                    .build())
+            List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls().stream()
+                    .map(chatCompletionsFunctionToolCall -> ToolExecutionRequest.builder()
+                            .id(chatCompletionsFunctionToolCall.getId())
+                            .name(chatCompletionsFunctionToolCall.getFunction().getName())
+                            .arguments(chatCompletionsFunctionToolCall
+                                    .getFunction()
+                                    .getArguments())
+                            .build())
                     .collect(toList());
 
-            return isNullOrBlank(text) ?
-                    aiMessage(toolExecutionRequests) :
-                    aiMessage(text, toolExecutionRequests);
+            return isNullOrBlank(text) ? aiMessage(toolExecutionRequests) : aiMessage(text, toolExecutionRequests);
         }
     }
 
@@ -341,10 +369,7 @@ class InternalGitHubModelHelper {
             return null;
         }
         return new TokenUsage(
-                azureAiUsage.getPromptTokens(),
-                azureAiUsage.getCompletionTokens(),
-                azureAiUsage.getTotalTokens()
-        );
+                azureAiUsage.getPromptTokens(), azureAiUsage.getCompletionTokens(), azureAiUsage.getTotalTokens());
     }
 
     public static FinishReason finishReasonFrom(CompletionsFinishReason azureAiFinishReason) {
@@ -366,7 +391,8 @@ class InternalGitHubModelHelper {
     /**
      * Support for Responsible AI (content filtered by Azure OpenAI for violence, self harm, or hate).
      */
-    public static FinishReason contentFilterManagement(HttpResponseException httpResponseException, String contentFilterCode) {
+    public static FinishReason contentFilterManagement(
+            HttpResponseException httpResponseException, String contentFilterCode) {
         FinishReason exceptionFinishReason = FinishReason.OTHER;
         if (httpResponseException.getValue() instanceof Map) {
             try {
@@ -378,7 +404,8 @@ class InternalGitHubModelHelper {
                     if (errorCode instanceof String) {
                         String code = (String) errorCode;
                         if (contentFilterCode.equals(code)) {
-                            // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
+                            // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or
+                            // hate).
                             exceptionFinishReason = FinishReason.CONTENT_FILTER;
                         }
                     }
@@ -390,9 +417,8 @@ class InternalGitHubModelHelper {
         return exceptionFinishReason;
     }
 
-    static ChatModelRequest createModelListenerRequest(ChatCompletionsOptions options,
-                                                       List<ChatMessage> messages,
-                                                       List<ToolSpecification> toolSpecifications) {
+    static ChatModelRequest createModelListenerRequest(
+            ChatCompletionsOptions options, List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         return ChatModelRequest.builder()
                 .model(options.getModel())
                 .temperature(options.getTemperature())
@@ -403,9 +429,8 @@ class InternalGitHubModelHelper {
                 .build();
     }
 
-    static ChatModelResponse createModelListenerResponse(String responseId,
-                                                         String responseModel,
-                                                         Response<AiMessage> response) {
+    static ChatModelResponse createModelListenerResponse(
+            String responseId, String responseModel, Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
