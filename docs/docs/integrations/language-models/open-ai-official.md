@@ -50,7 +50,7 @@ This configuration, as well as the next section about its usage, is for non-stre
 Streaming mode is detailed 2 sections below: it allows for real-time chat with the model, but is more complex to use.
 :::
 
-To use OpenAI models, you usually need an endpoint URL and an API key. This depends on where the model is hosted, and this integration tries
+To use OpenAI models, you usually need an endpoint URL, an API key, and a model name. This depends on where the model is hosted, and this integration tries
 to make it easier with some auto-configuration:
 
 ### Generic configuration
