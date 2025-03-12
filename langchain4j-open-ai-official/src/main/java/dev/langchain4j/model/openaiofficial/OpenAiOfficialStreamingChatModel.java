@@ -14,6 +14,7 @@ import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -29,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
         implements StreamingChatLanguageModel {
@@ -87,13 +87,20 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         ChatCompletionStreamOptions.builder().includeUsage(true).build())
                 .build();
 
+        if (modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.AZURE_OPENAI)
+                || modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.GITHUB_MODELS)) {
+            if (!parameters.modelName().equals(this.modelName)) {
+                // The model name can't be changed in Azure OpenAI, where it's part of the URL.
+                throw new UnsupportedFeatureException("Modifying the modelName is not supported");
+            }
+        }
+
         try {
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder =
                     OpenAiOfficialChatResponseMetadata.builder();
 
             StringBuffer text = new StringBuffer();
             List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
-            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
 
             asyncClient
                     .chat()
@@ -140,11 +147,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
                                 handler.onCompleteResponse(chatResponse);
                             }
-                            completableFuture.complete(null);
                         }
                     });
-
-            completableFuture.join();
         } catch (Exception e) {
             handler.onError(e);
         }
@@ -159,13 +163,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             List<ToolExecutionRequest> toolExecutionRequests) {
 
         responseMetadataBuilder.id(chatCompletionChunk.id());
-
-        String modelName = chatCompletionChunk.model();
-        if (parameters.modelName() != null) {
-            modelName = parameters.modelName();
-        }
-        responseMetadataBuilder.modelName(modelName);
-
+        responseMetadataBuilder.modelName(chatCompletionChunk.model());
         if (chatCompletionChunk.usage().isPresent()) {
             responseMetadataBuilder.tokenUsage(
                     tokenUsageFrom(chatCompletionChunk.usage().get()));

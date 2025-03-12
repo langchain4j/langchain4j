@@ -20,6 +20,7 @@ public class InternalGitHubOpenAiOfficialTestHelper {
     private static final Logger log = LoggerFactory.getLogger(InternalGitHubOpenAiOfficialTestHelper.class);
 
     public static final ChatModel CHAT_MODEL_NAME = ChatModel.GPT_4O_MINI;
+    public static final ChatModel CHAT_MODEL_NAME_ALTERNATE = ChatModel.GPT_4O;
 
     // Chat models
     static final OpenAiOfficialChatModel GITHUB_MODELS_CHAT_MODEL;

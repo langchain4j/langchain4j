@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openaiofficial.github;
 
-import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
+import static dev.langchain4j.model.openaiofficial.github.InternalGitHubOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -24,9 +24,6 @@ class GitHubOpenAiOfficialChatModelIT extends AbstractChatModelIT {
         OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
                 .apiKey(System.getenv("GITHUB_TOKEN"))
                 .isGitHubModels(true)
-                .azureDeploymentName(ChatModel.GPT_4O.toString())
-                .modelName(parameters.modelName())
-                .maxCompletionTokens(parameters.maxOutputTokens())
                 .defaultRequestParameters(parameters);
 
         if (parameters.modelName() == null) {
@@ -37,7 +34,12 @@ class GitHubOpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return ChatModel.GPT_4O.toString();
+        return ChatModel.GPT_4O_2024_11_20.toString();
+    }
+
+    @Override
+    protected boolean supportsModelNameParameter() {
+        return false;
     }
 
     @Override

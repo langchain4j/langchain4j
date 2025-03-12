@@ -25,8 +25,6 @@ class AzureOpenAiOfficialChatModelIT extends AbstractChatModelIT {
                 .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .azureDeploymentName(ChatModel.GPT_4O.toString())
-                .modelName(parameters.modelName())
-                .maxCompletionTokens(parameters.maxOutputTokens())
                 .defaultRequestParameters(parameters);
 
         if (parameters.modelName() == null) {
@@ -38,6 +36,11 @@ class AzureOpenAiOfficialChatModelIT extends AbstractChatModelIT {
     @Override
     protected String customModelName() {
         return ChatModel.GPT_4O_2024_11_20.toString();
+    }
+
+    @Override
+    protected boolean supportsModelNameParameter() {
+        return false;
     }
 
     @Override

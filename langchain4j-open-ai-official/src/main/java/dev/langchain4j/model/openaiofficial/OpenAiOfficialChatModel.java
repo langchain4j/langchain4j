@@ -11,6 +11,7 @@ import com.openai.credential.Credential;
 import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -78,19 +79,22 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                         chatRequest, parameters, strictTools, strictJsonSchema)
                 .build();
 
+        if (modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.AZURE_OPENAI)
+                || modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.GITHUB_MODELS)) {
+            if (!parameters.modelName().equals(this.modelName)) {
+                // The model name can't be changed in Azure OpenAI, where it's part of the URL.
+                throw new UnsupportedFeatureException("Modifying the modelName is not supported");
+            }
+        }
+
         // Unlike other LangChain4j modules, this doesn't use the `withRetry` method because the OpenAI SDK already has
         // retry logic included
         ChatCompletion chatCompletion = client.chat().completions().create(chatCompletionCreateParams);
 
-        String modelName = chatCompletion.model();
-        if (parameters.modelName() != null) {
-            modelName = parameters.modelName();
-        }
-
         OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder =
                 OpenAiOfficialChatResponseMetadata.builder()
                         .id(chatCompletion.id())
-                        .modelName(modelName)
+                        .modelName(chatCompletion.model())
                         .created(chatCompletion.created());
 
         if (!chatCompletion.choices().isEmpty()) {

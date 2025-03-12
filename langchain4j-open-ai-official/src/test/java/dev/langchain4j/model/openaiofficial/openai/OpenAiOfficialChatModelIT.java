@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
-import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
+import static dev.langchain4j.model.openaiofficial.openai.InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -23,8 +23,6 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
     protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(parameters.modelName())
-                .maxCompletionTokens(parameters.maxOutputTokens())
                 .defaultRequestParameters(parameters);
 
         if (parameters.modelName() == null) {

@@ -6,9 +6,6 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -50,13 +47,13 @@ class AzureOpenAiOfficialImageModelIT {
             assertThat(image.url()).isNull();
             assertThat(image.base64Data()).isNotNull();
 
-            if (false) {
-                byte[] decodedBytes =
-                        Base64.getDecoder().decode(response.content().base64Data());
-                Path temp = Files.createTempFile("langchain4j", ".png");
-                Files.write(temp, decodedBytes);
-                System.out.println("The image is here: " + temp.toAbsolutePath());
-            }
+            /*
+            // Uncomment this block to save the image to a file, so you can see it.
+            byte[] decodedBytes = Base64.getDecoder().decode(response.content().base64Data());
+            Path temp = Files.createTempFile("langchain4j", ".png");
+            Files.write(temp, decodedBytes);
+            System.out.println("The image is here: " + temp.toAbsolutePath());
+            */
 
             assertThat(image.revisedPrompt()).isNotNull();
         }

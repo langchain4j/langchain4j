@@ -23,8 +23,6 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialStreamingChatModel.Builder openAiChatModelBuilder = OpenAiOfficialStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(parameters.modelName())
-                .maxCompletionTokens(parameters.maxOutputTokens())
                 .defaultRequestParameters(parameters);
 
         if (parameters.modelName() == null) {
