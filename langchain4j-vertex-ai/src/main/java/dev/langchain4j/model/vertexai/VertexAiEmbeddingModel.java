@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -158,7 +158,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 Value.Builder parameterBuilder = Value.newBuilder();
                 JsonFormat.parser().merge(toJson(parameters), parameterBuilder);
 
-                PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameterBuilder.build()), maxRetries);
+                PredictResponse response = withRetryMappingExceptions(() -> client.predict(endpointName, instances, parameterBuilder.build()), maxRetries);
 
                 embeddings.addAll(response.getPredictionsList().stream()
                         .map(VertexAiEmbeddingModel::toEmbedding)

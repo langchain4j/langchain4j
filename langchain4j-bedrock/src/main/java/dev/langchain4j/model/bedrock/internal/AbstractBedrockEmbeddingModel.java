@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock.internal;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -45,7 +45,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
         final List<Map<String, Object>> requestParameters = getRequestParameters(textSegments);
         final List<T> responses = requestParameters.stream()
                 .map(Json::toJson)
-                .map(body -> withRetry(() -> invoke(body), maxRetries))
+                .map(body -> withRetryMappingExceptions(() -> invoke(body), maxRetries))
                 .map(invokeModelResponse -> invokeModelResponse.body().asUtf8String())
                 .map(response -> Json.fromJson(response, getResponseClassType()))
                 .collect(Collectors.toList());

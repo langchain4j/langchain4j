@@ -6,10 +6,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -17,9 +19,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -36,8 +35,11 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     ToolSpecification weatherToolSpecification = ToolSpecification.builder()
             .name("get_current_weather")
             .description("Get the current weather for a location")
-            .addParameter("format", STRING, enums("celsius", "fahrenheit"), description("The format to return the weather in, e.g. 'celsius' or 'fahrenheit'"))
-            .addParameter("location", STRING, description("The location to get the weather for, e.g. San Francisco, CA"))
+            .parameters(JsonObjectSchema.builder()
+                    .addEnumProperty("format", List.of("celsius", "fahrenheit"), "The format to return the weather in, e.g. 'celsius' or 'fahrenheit'")
+                    .addStringProperty("location", "The location to get the weather for, e.g. San Francisco, CA")
+                    .required("format", "location")
+                    .build())
             .build();
 
     ToolSpecification toolWithoutParameter = ToolSpecification.builder()
@@ -71,13 +73,17 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
 
         // given
         UserMessage userMessage = userMessage("What is the weather today in Paris?");
-        List<ToolSpecification> toolSpecifications = singletonList(weatherToolSpecification);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(weatherToolSpecification)
+                .build();
 
         // when
-        Response<AiMessage> response = ollamaChatModel.generate(singletonList(userMessage), toolSpecifications);
+        ChatResponse response = ollamaChatModel.chat(chatRequest);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
@@ -90,10 +96,10 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         // when
-        Response<AiMessage> secondResponse = ollamaChatModel.generate(messages);
+        ChatResponse secondResponse = ollamaChatModel.chat(messages);
 
         // then
-        AiMessage secondAiMessage = secondResponse.content();
+        AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("32");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
     }
@@ -103,17 +109,16 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     void should_not_execute_a_tool_and_tell_a_joke() {
 
         // given
-        List<ToolSpecification> toolSpecifications = singletonList(weatherToolSpecification);
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(systemMessage("Use tools only if needed"), userMessage("Tell a joke"))
+                .toolSpecifications(toolWithoutParameter)
+                .build();
 
         // when
-        List<ChatMessage> chatMessages = asList(
-                systemMessage("Use tools only if needed"),
-                userMessage("Tell a joke")
-        );
-        Response<AiMessage> response = ollamaChatModel.generate(chatMessages, toolSpecifications);
+        ChatResponse response = ollamaChatModel.chat(chatRequest);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNotNull();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
     }
@@ -122,33 +127,31 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     void should_handle_tool_without_parameter() {
 
         // given
-        List<ToolSpecification> toolSpecifications = singletonList(toolWithoutParameter);
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the current time?"))
+                .toolSpecifications(toolWithoutParameter)
+                .build();
 
-        // when
-        List<ChatMessage> chatMessages = singletonList(
-                userMessage("What is the current time?")
-        );
-
-        // then
-        assertDoesNotThrow(() -> {
-            ollamaChatModel.generate(chatMessages, toolSpecifications);
-        });
-
+        // when-then
+        assertDoesNotThrow(() -> ollamaChatModel.chat(chatRequest));
     }
 
     @Test
     void should_handle_tools_call_in_streaming_scenario() throws Exception {
         // given
         UserMessage userMessage = userMessage("What is the weather today in Paris?");
-        List<ToolSpecification> toolSpecifications = singletonList(weatherToolSpecification);
 
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(weatherToolSpecification)
+                .build();
 
         // when
-        ollamaStreamingChatModel.generate(singletonList(userMessage), toolSpecifications, handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        ollamaStreamingChatModel.chat(request, handler);
 
-        Response<AiMessage> aiMessageResponse = handler.get();
-        AiMessage aiMessage = aiMessageResponse.content();
+        ChatResponse response = handler.get();
+        AiMessage aiMessage = response.aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -161,19 +164,19 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "{\"format\": \"celsius\", \"location\": \"Paris\", \"temperature\": \"32\"}");
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
-        CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
 
-        AtomicInteger onNextCounter = new AtomicInteger(0);
-        ollamaStreamingChatModel.generate(messages, new StreamingResponseHandler<>() {
+        AtomicInteger onPartialResponseCounter = new AtomicInteger(0);
+        ollamaStreamingChatModel.chat(messages, new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {
-                onNextCounter.incrementAndGet();
+            public void onPartialResponse(String partialResponse) {
+                onPartialResponseCounter.incrementAndGet();
             }
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                secondFutureResponse.complete(response);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                secondFutureResponse.complete(completeResponse);
             }
 
             @Override
@@ -182,13 +185,13 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             }
         });
 
-        Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.content();
+        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
+        AiMessage secondAiMessage = secondResponse.aiMessage();
 
         // then
         assertThat(secondAiMessage.text()).contains("32");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
-        assertThat(onNextCounter.get()).isPositive();
+        assertThat(onPartialResponseCounter.get()).isPositive();
     }
 
     @Test

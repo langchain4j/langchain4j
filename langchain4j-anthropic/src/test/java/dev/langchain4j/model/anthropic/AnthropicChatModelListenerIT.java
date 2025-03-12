@@ -1,13 +1,15 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-import static java.util.Collections.singletonList;
-
+@EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
@@ -33,6 +35,7 @@ class AnthropicChatModelListenerIT extends ChatModelListenerIT {
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return AnthropicChatModel.builder()
                 .apiKey("banana")
+                .modelName(modelName())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))

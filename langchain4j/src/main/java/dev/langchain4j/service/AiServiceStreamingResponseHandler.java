@@ -9,7 +9,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -38,7 +37,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final Consumer<String> partialResponseHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
-    private final Consumer<Response<AiMessage>> completionHandler;
 
     private final Consumer<Throwable> errorHandler;
 
@@ -53,7 +51,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                       Consumer<String> partialResponseHandler,
                                       Consumer<ToolExecution> toolExecutionHandler,
                                       Consumer<ChatResponse> completeResponseHandler,
-                                      Consumer<Response<AiMessage>> completionHandler,
                                       Consumer<Throwable> errorHandler,
                                       List<ChatMessage> temporaryMemory,
                                       TokenUsage tokenUsage,
@@ -64,7 +61,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.partialResponseHandler = ensureNotNull(partialResponseHandler, "partialResponseHandler");
         this.completeResponseHandler = completeResponseHandler;
-        this.completionHandler = completionHandler;
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
 
@@ -117,7 +113,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     partialResponseHandler,
                     toolExecutionHandler,
                     completeResponseHandler,
-                    completionHandler,
                     errorHandler,
                     temporaryMemory,
                     TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage()),
@@ -140,13 +135,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .build();
                 // TODO should completeResponseHandler accept all ChatResponses that happened?
                 completeResponseHandler.accept(finalChatResponse);
-            } else if (completionHandler != null) {
-                Response<AiMessage> finalResponse = Response.from(
-                        aiMessage,
-                        TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage()),
-                        completeResponse.metadata().finishReason()
-                );
-                completionHandler.accept(finalResponse);
             }
         }
     }

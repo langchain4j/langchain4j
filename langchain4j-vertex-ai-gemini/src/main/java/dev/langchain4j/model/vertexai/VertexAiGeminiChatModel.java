@@ -9,8 +9,12 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
 import lombok.Builder;
@@ -18,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,8 +30,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -231,12 +235,34 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.responseFormat());
+
+        Response<AiMessage> response;
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            response = generate(chatRequest.messages());
+        } else {
+            response = generate(chatRequest.messages(), toolSpecifications);
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
+    }
+
+    private Response<AiMessage> generate(List<ChatMessage> messages) {
         return generate(messages, new ArrayList<>());
     }
 
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    private Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         String modelName = generativeModel.getModelName();
 
         List<Tool> tools = new ArrayList<>();
@@ -293,7 +319,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
 
         GenerateContentResponse response = null;
         try {
-            response = withRetry(() ->
+            response = withRetryMappingExceptions(() ->
                 finalModel.generateContent(instructionAndContent.contents), maxRetries);
         } catch (Exception e) {
             listeners.forEach((listener) -> {
@@ -361,16 +387,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        if (toolSpecification == null) {
-            return generate(messages);
-        } else {
-            return generate(messages, Collections.singletonList(toolSpecification));
-        }
-    }
-
-    @Override
-    public void close() throws IOException {
+    public void close() {
         if (this.vertexAI != null) {
             vertexAI.close();
         }

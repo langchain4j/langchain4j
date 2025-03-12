@@ -1,7 +1,6 @@
 package dev.langchain4j.model.googleai;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -13,6 +12,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -25,7 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +32,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
@@ -73,47 +72,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ChatRequest request = ChatRequest.builder()
-            .messages(messages)
-            .build();
-
-        ChatResponse response = chat(request);
-
-        return Response.from(
-                response.aiMessage(),
-                response.metadata().tokenUsage(),
-                response.metadata().finishReason()
-        );
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, Collections.singletonList(toolSpecification));
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ChatRequest request = ChatRequest.builder()
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
-
-        ChatResponse response = chat(request);
-
-        return Response.from(
-                response.aiMessage(),
-                response.metadata().tokenUsage(),
-                response.metadata().finishReason()
-        );
-    }
-
-    @Override
     public ChatResponse chat(ChatRequest chatRequest) {
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
-        ChatLanguageModel.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.toolChoice());
 
         GeminiGenerateContentRequest request = createGenerateContentRequest(
                 chatRequest.messages(),
@@ -133,7 +96,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         notifyListenersOnRequest(new ChatModelRequestContext(chatModelRequest, listenerAttributes));
 
         try {
-            GeminiGenerateContentResponse geminiResponse = withRetry(
+            GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
                 () -> this.geminiService.generateContent(this.modelName, this.apiKey, request),
                 this.maxRetries
             );

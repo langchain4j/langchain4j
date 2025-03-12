@@ -91,3 +91,15 @@ runBlocking { // must run in a coroutine context
 
 Check out [this test](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/test/kotlin/dev/langchain4j/model/chat/StreamingChatLanguageModelExtensionsKtTest.kt) as example.
 
+## Compiler Compatibility
+
+When defining tools in Kotlin, ensure that Kotlin compilation is configured to preserve metadata for Java reflection on method parameters by setting [`javaParameters`](https://kotlinlang.org/docs/gradle-compiler-options.html#attributes-specific-to-jvm) to `true`. This setting is required to maintain correct argument names in the tool specification.
+
+When using Gradle, this can be achieved with the following configuration:
+```kotlin
+kotlin {
+    compilerOptions {
+        javaParameters = true
+    }
+}
+```
