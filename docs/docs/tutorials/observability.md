@@ -67,6 +67,8 @@ ChatModelListener listener = new ChatModelListener() {
             System.out.println(openAiParameters.reasoningEffort());
         }
 
+        System.out.println(requestContext.modelProvider());
+
         Map<Object, Object> attributes = requestContext.attributes();
         attributes.put("my-attribute", "my-value");
     }
@@ -101,6 +103,8 @@ ChatModelListener listener = new ChatModelListener() {
         ChatRequest chatRequest = responseContext.chatRequest();
         System.out.println(chatRequest);
 
+        System.out.println(responseContext.modelProvider());
+
         Map<Object, Object> attributes = responseContext.attributes();
         System.out.println(attributes.get("my-attribute"));
     }
@@ -112,6 +116,8 @@ ChatModelListener listener = new ChatModelListener() {
 
         ChatRequest chatRequest = errorContext.chatRequest();
         System.out.println(chatRequest);
+
+        System.out.println(errorContext.modelProvider());
 
         Map<Object, Object> attributes = errorContext.attributes();
         System.out.println(attributes.get("my-attribute"));
