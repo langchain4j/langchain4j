@@ -6,7 +6,7 @@ public enum ModelProvider {
     AMAZON_BEDROCK,
     AZURE_AI_INFERENCE,
     AZURE_OPEN_AI,
-    GOOGLE_GEMINI, // TODO
+    GOOGLE_GEMINI,
     MISTRAL_AI,
     OLLAMA,
     OPEN_AI,
