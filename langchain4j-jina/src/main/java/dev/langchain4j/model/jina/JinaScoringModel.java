@@ -12,7 +12,7 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
@@ -62,7 +62,7 @@ public class JinaScoringModel implements ScoringModel {
                 .returnDocuments(false)  // decreasing response size, do not include text in response
                 .build();
 
-        JinaRerankingResponse response = withRetry(() -> client.rerank(request), maxRetries);
+        JinaRerankingResponse response = withRetryMappingExceptions(() -> client.rerank(request), maxRetries);
 
         List<Double> scores = response.results.stream()
                 .sorted(comparingInt(result -> result.index))

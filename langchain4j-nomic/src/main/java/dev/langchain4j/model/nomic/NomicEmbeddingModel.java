@@ -11,7 +11,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
@@ -80,7 +80,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
                     .taskType(taskType)
                     .build();
 
-            EmbeddingResponse response = withRetry(() -> this.client.embed(request), maxRetries);
+            EmbeddingResponse response = withRetryMappingExceptions(() -> this.client.embed(request), maxRetries);
 
             embeddings.addAll(getEmbeddings(response));
             inputTokenCount += getTokenUsage(response);

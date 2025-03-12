@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
@@ -210,7 +210,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
         });
 
         try {
-            AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
+            AnthropicCreateMessageResponse response = withRetryMappingExceptions(() -> client.createMessage(request), maxRetries);
             Response<AiMessage> responseMessage = Response.from(
                     toAiMessage(response.content),
                     toTokenUsage(response.usage),
