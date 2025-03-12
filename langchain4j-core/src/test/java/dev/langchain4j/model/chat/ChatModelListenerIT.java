@@ -15,12 +15,18 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.concurrent.atomic.AtomicReference;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Make sure these dependencies are present in the module where this test class is extended:
@@ -79,6 +85,7 @@ public abstract class ChatModelListenerIT {
 
     @Test
     @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
+    @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
     void should_listen_request_and_response() {
 
         // given
@@ -126,8 +133,10 @@ public abstract class ChatModelListenerIT {
         if (supportToolCalls()) {
             toolSpecification = ToolSpecification.builder()
                     .name("add")
-                    .addParameter("a", INTEGER)
-                    .addParameter("b", INTEGER)
+                    .parameters(JsonObjectSchema.builder()
+                            .addIntegerProperty("a")
+                            .addIntegerProperty("b")
+                            .build())
                     .build();
             chatRequestBuilder.toolSpecifications(toolSpecification);
         }

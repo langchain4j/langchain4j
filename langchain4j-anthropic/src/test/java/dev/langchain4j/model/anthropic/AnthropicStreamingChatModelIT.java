@@ -54,16 +54,23 @@ class AnthropicStreamingChatModelIT {
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
             .description("returns a sum of two numbers")
-            .addParameter("first", INTEGER)
-            .addParameter("second", INTEGER)
+            .parameters(JsonObjectSchema.builder()
+                    .addIntegerProperty("first")
+                    .addIntegerProperty("second")
+                    .required("first", "second")
+                    .build())
             .build();
 
     ToolSpecification weather = ToolSpecification.builder()
             .name("weather")
             .description("returns a weather forecast for a given location")
-            // TODO simplify defining nested properties
-            .addParameter(
-                    "location", OBJECT, property("properties", singletonMap("city", singletonMap("type", "string"))))
+            .parameters(JsonObjectSchema.builder()
+                    .addProperty("location", JsonObjectSchema.builder()
+                            .addStringProperty("city")
+                            .required("city")
+                            .build())
+                    .required("location")
+                    .build())
             .build();
 
     @Test
@@ -225,6 +232,7 @@ class AnthropicStreamingChatModelIT {
                 .parameters(JsonObjectSchema.builder()
                         .addIntegerProperty("first")
                         .addIntegerProperty("second")
+                        .required("first", "second")
                         .build())
                 .build();
 
