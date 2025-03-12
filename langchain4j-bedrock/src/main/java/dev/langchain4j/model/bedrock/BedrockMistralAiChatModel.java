@@ -75,7 +75,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
 
         InvokeModelResponse invokeModelResponse = withRetryMappingExceptions(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
         final String response = invokeModelResponse.body().asUtf8String().trim();
@@ -92,6 +92,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
                     modelListenerResponse,
                     modelListenerRequest,
+                    provider(),
                     attributes
             );
 
@@ -108,6 +109,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
             listenerErrorResponse(
                     e,
                     modelListenerRequest,
+                    provider(),
                     attributes
             );
             throw e;
