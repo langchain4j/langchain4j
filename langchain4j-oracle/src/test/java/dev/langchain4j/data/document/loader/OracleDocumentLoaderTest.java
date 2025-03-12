@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.oracle.OracleDocumentLoader;
-import io.github.cdimascio.dotenv.Dotenv;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -20,18 +19,15 @@ public class OracleDocumentLoaderTest {
 
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(OracleDocumentLoaderTest.class);
 
-    Dotenv dotenv;
     OracleDocumentLoader loader;
 
     @BeforeEach
     void setUp() throws SQLException {
-        dotenv = Dotenv.configure().load();
-
         PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
         pds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
-        pds.setURL(dotenv.get("ORACLE_JDBC_URL"));
-        pds.setUser(dotenv.get("ORACLE_JDBC_USER"));
-        pds.setPassword(dotenv.get("ORACLE_JDBC_PASSWORD"));
+        pds.setURL(System.getenv("ORACLE_JDBC_URL"));
+        pds.setUser(System.getenv("ORACLE_JDBC_USER"));
+        pds.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
         Connection conn = pds.getConnection();
 
         loader = new OracleDocumentLoader(conn);
@@ -41,7 +37,7 @@ public class OracleDocumentLoaderTest {
     @DisplayName("load from file")
     void testFile() {
         try {
-            String pref = "{\"file\": \"" + dotenv.get("DEMO_DS_PDF_FILE") + "\"}";
+            String pref = "{\"file\": \"" + System.getenv("DEMO_DS_PDF_FILE") + "\"}";
             List<Document> docs = loader.loadDocuments(pref);
             assertThat(docs.size()).isEqualTo(1);
             for (Document doc : docs) {
@@ -57,7 +53,7 @@ public class OracleDocumentLoaderTest {
     @DisplayName("load from dir")
     void testDir() {
         try {
-            String pref = "{\"dir\": \"" + dotenv.get("DEMO_DS_DIR") + "\"}";
+            String pref = "{\"dir\": \"" + System.getenv("DEMO_DS_DIR") + "\"}";
             List<Document> docs = loader.loadDocuments(pref);
             assertThat(docs.size()).isGreaterThan(1);
             for (Document doc : docs) {
@@ -73,8 +69,8 @@ public class OracleDocumentLoaderTest {
     @DisplayName("load from table")
     void testTable() {
         try {
-            String pref = "{\"owner\": \"" + dotenv.get("DEMO_DS_OWNER") + "\", \"tablename\": \""
-                    + dotenv.get("DEMO_DS_TABLE") + "\", \"colname\": \"" + dotenv.get("DEMO_DS_COLUMN") + "\"}";
+            String pref = "{\"owner\": \"" + System.getenv("DEMO_DS_OWNER") + "\", \"tablename\": \""
+                    + System.getenv("DEMO_DS_TABLE") + "\", \"colname\": \"" + System.getenv("DEMO_DS_COLUMN") + "\"}";
             List<Document> docs = loader.loadDocuments(pref);
             assertThat(docs.size()).isGreaterThan(1);
             for (Document doc : docs) {

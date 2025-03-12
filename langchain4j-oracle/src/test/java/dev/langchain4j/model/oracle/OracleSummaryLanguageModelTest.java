@@ -3,7 +3,6 @@ package dev.langchain4j.model.oracle;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.output.Response;
-import io.github.cdimascio.dotenv.Dotenv;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -22,18 +21,15 @@ public class OracleSummaryLanguageModelTest {
 
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(OracleSummaryLanguageModelTest.class);
 
-    Dotenv dotenv;
     Connection conn;
 
     @BeforeEach
     void setUp() throws SQLException {
-        dotenv = Dotenv.configure().load();
-
         PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
         pds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
-        pds.setURL(dotenv.get("ORACLE_JDBC_URL"));
-        pds.setUser(dotenv.get("ORACLE_JDBC_USER"));
-        pds.setPassword(dotenv.get("ORACLE_JDBC_PASSWORD"));
+        pds.setURL(System.getenv("ORACLE_JDBC_URL"));
+        pds.setUser(System.getenv("ORACLE_JDBC_USER"));
+        pds.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
         conn = pds.getConnection();
     }
 
@@ -45,7 +41,7 @@ public class OracleSummaryLanguageModelTest {
 
             OracleSummaryLanguageModel model = new OracleSummaryLanguageModel(conn, pref);
 
-            String filename = dotenv.get("DEMO_DS_TEXT_FILE");
+            String filename = System.getenv("DEMO_DS_TEXT_FILE");
             String content = readFile(filename, Charset.forName("UTF-8"));
             Response<String> resp = model.generate(content);
             assertThat(resp.content().length()).isGreaterThan(0);
@@ -65,11 +61,11 @@ public class OracleSummaryLanguageModelTest {
                     + "  \"url\": \"https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/chat\",\n"
                     + "  \"model\": \"cohere.command-r-08-2024\",\n"
                     + "}";
-            String proxy = dotenv.get("DEMO_PROXY");
+            String proxy = System.getenv("DEMO_PROXY");
 
             OracleSummaryLanguageModel model = new OracleSummaryLanguageModel(conn, pref, proxy);
 
-            String filename = dotenv.get("DEMO_DS_TEXT_FILE");
+            String filename = System.getenv("DEMO_DS_TEXT_FILE");
             String content = readFile(filename, Charset.forName("UTF-8"));
             Response<String> resp = model.generate(content);
             assertThat(resp.content().length()).isGreaterThan(0);

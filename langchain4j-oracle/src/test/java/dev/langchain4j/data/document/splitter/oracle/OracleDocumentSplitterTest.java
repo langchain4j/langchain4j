@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
-import io.github.cdimascio.dotenv.Dotenv;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -25,18 +24,15 @@ public class OracleDocumentSplitterTest {
 
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(OracleDocumentSplitterTest.class);
 
-    Dotenv dotenv;
     Connection conn;
 
     @BeforeEach
     void setUp() throws SQLException {
-        dotenv = Dotenv.configure().load();
-
         PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
         pds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
-        pds.setURL(dotenv.get("ORACLE_JDBC_URL"));
-        pds.setUser(dotenv.get("ORACLE_JDBC_USER"));
-        pds.setPassword(dotenv.get("ORACLE_JDBC_PASSWORD"));
+        pds.setURL(System.getenv("ORACLE_JDBC_URL"));
+        pds.setUser(System.getenv("ORACLE_JDBC_USER"));
+        pds.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
         conn = pds.getConnection();
     }
 
@@ -44,7 +40,7 @@ public class OracleDocumentSplitterTest {
     @DisplayName("split string input by chars")
     void testByChars() {
         String pref = "{\"by\": \"chars\", \"max\": 50}";
-        String filename = dotenv.get("DEMO_DS_TEXT_FILE");
+        String filename = System.getenv("DEMO_DS_TEXT_FILE");
 
         try {
             OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, pref);
@@ -62,7 +58,7 @@ public class OracleDocumentSplitterTest {
     @DisplayName("split string input by words")
     void testByWords() {
         String pref = "{\"by\": \"words\", \"max\": 50}";
-        String filename = dotenv.get("DEMO_DS_TEXT_FILE");
+        String filename = System.getenv("DEMO_DS_TEXT_FILE");
         ;
 
         try {
@@ -81,7 +77,7 @@ public class OracleDocumentSplitterTest {
     @DisplayName("split Doc input by chars")
     void testDocByChars() {
         String pref = "{\"by\": \"chars\", \"max\": 50}";
-        String filename = dotenv.get("DEMO_DS_TEXT_FILE");
+        String filename = System.getenv("DEMO_DS_TEXT_FILE");
 
         try {
             OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, pref);

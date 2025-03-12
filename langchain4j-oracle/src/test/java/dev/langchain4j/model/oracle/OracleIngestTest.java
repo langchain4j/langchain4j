@@ -9,7 +9,6 @@ import dev.langchain4j.data.document.splitter.oracle.OracleDocumentSplitter;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.oracle.EmbeddingTable;
 import dev.langchain4j.store.embedding.oracle.OracleEmbeddingStore;
-import io.github.cdimascio.dotenv.Dotenv;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -28,18 +27,15 @@ public class OracleIngestTest {
 
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(OracleEmbeddingModelTest.class);
 
-    Dotenv dotenv;
     Connection conn;
 
     @BeforeEach
     void setUp() throws SQLException {
-        dotenv = Dotenv.configure().load();
-
         PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
         pds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
-        pds.setURL(dotenv.get("ORACLE_JDBC_URL"));
-        pds.setUser(dotenv.get("ORACLE_JDBC_USER"));
-        pds.setPassword(dotenv.get("ORACLE_JDBC_PASSWORD"));
+        pds.setURL(System.getenv("ORACLE_JDBC_URL"));
+        pds.setUser(System.getenv("ORACLE_JDBC_USER"));
+        pds.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
         conn = pds.getConnection();
     }
 
@@ -47,7 +43,8 @@ public class OracleIngestTest {
     @DisplayName("ingest")
     void testIngest() {
         try {
-            String embedderPref = "{\"provider\": \"database\", \"model\": \"" + dotenv.get("DEMO_ONNX_MODEL") + "\"}";
+            String embedderPref =
+                    "{\"provider\": \"database\", \"model\": \"" + System.getenv("DEMO_ONNX_MODEL") + "\"}";
             String splitterPref = "{\"by\": \"chars\", \"max\": 50}";
 
             OracleDocumentLoader loader = new OracleDocumentLoader(conn);
@@ -55,9 +52,9 @@ public class OracleIngestTest {
             OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, splitterPref);
 
             oracle.jdbc.datasource.OracleDataSource ods = new oracle.jdbc.datasource.impl.OracleDataSource();
-            ods.setURL(dotenv.get("ORACLE_JDBC_URL"));
-            ods.setUser(dotenv.get("ORACLE_JDBC_USER"));
-            ods.setPassword(dotenv.get("ORACLE_JDBC_PASSWORD"));
+            ods.setURL(System.getenv("ORACLE_JDBC_URL"));
+            ods.setUser(System.getenv("ORACLE_JDBC_USER"));
+            ods.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
 
             // output table
             String tableName = "TEST";
@@ -80,9 +77,12 @@ public class OracleIngestTest {
                     .build();
 
             boolean result = OracleEmbeddingModel.loadOnnxModel(
-                    conn, dotenv.get("DEMO_ONNX_DIR"), dotenv.get("DEMO_ONNX_FILE"), dotenv.get("DEMO_ONNX_MODEL"));
+                    conn,
+                    System.getenv("DEMO_ONNX_DIR"),
+                    System.getenv("DEMO_ONNX_FILE"),
+                    System.getenv("DEMO_ONNX_MODEL"));
 
-            String loaderPref = "{\"file\": \"" + dotenv.get("DEMO_DS_PDF_FILE") + "\"}";
+            String loaderPref = "{\"file\": \"" + System.getenv("DEMO_DS_PDF_FILE") + "\"}";
             List<Document> docs = loader.loadDocuments(loaderPref);
 
             EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
