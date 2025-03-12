@@ -1,8 +1,5 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.OBJECT;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -13,7 +10,6 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -76,10 +72,12 @@ class AnthropicChatModelIT {
             .name("weather")
             .description("returns a weather forecast for a given location")
             .parameters(JsonObjectSchema.builder()
-                    .addProperty("location", JsonObjectSchema.builder()
-                            .addStringProperty("city")
-                            .required("city")
-                            .build())
+                    .addProperty(
+                            "location",
+                            JsonObjectSchema.builder()
+                                    .addStringProperty("city")
+                                    .required("city")
+                                    .build())
                     .required("location")
                     .build())
             .build();

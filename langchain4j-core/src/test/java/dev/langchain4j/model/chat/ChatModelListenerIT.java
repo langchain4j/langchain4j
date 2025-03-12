@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
@@ -22,11 +21,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Make sure these dependencies are present in the module where this test class is extended:
