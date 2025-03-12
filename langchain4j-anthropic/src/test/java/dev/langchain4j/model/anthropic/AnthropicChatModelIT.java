@@ -337,10 +337,9 @@ class AnthropicChatModelIT {
         // then
         assertThatThrownBy(() -> model.chat(
                         systemMessageOne, systemMessageTwo, systemMessageThree, systemMessageFour, systemMessageFive))
-                .isExactlyInstanceOf(RuntimeException.class)
+                .isExactlyInstanceOf(dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException.class)
                 .hasMessage(
-                        "dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException: "
-                                + "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages: at least one message is required\"}}");
+                        "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages: at least one message is required\"}}");
     }
 
     @Test

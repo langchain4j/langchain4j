@@ -78,15 +78,13 @@ class AnthropicChatModelErrorsTest {
                 });
 
         // when-then
-        assertThatExceptionOfType(RuntimeException.class)
+        assertThatExceptionOfType(AnthropicHttpException.class)
                 // when
                 .isThrownBy(() -> model.chat(
                         ChatRequest.builder().messages(userMessage(question)).build()))
-                .withCauseInstanceOf(AnthropicHttpException.class)
                 .satisfies(ex -> {
-                    AnthropicHttpException cause = (AnthropicHttpException) ex.getCause();
-                    assertThat(cause.statusCode()).as("statusCode").isEqualTo(httpStatusCode);
-                    assertThat(cause.getMessage())
+                    assertThat(ex.statusCode()).as("statusCode").isEqualTo(httpStatusCode);
+                    assertThat(ex.getMessage())
                             .as("message")
                             .isEqualTo(responseBody); // not sure, if returning full body is right
                 });
