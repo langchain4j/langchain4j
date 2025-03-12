@@ -1,7 +1,5 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -27,8 +25,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -112,8 +110,11 @@ class BedrockChatModelWithInvokeAPIIT {
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .required("first", "second")
+                        .build())
                 .build();
 
         UserMessage userMessage = UserMessage.from("2+2=?");
@@ -181,14 +182,20 @@ class BedrockChatModelWithInvokeAPIIT {
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .required("first", "second")
+                        .build())
                 .build();
 
         ToolSpecification currentTemperature = ToolSpecification.builder()
                 .name("currentTemperature")
                 .description("returns the temperature of a city in degrees Celsius")
-                .addParameter("city", STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("city")
+                        .required("city")
+                        .build())
                 .build();
 
         List<ToolSpecification> toolSpecifications = asList(calculator, currentTemperature);
@@ -312,8 +319,11 @@ class BedrockChatModelWithInvokeAPIIT {
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .required("first", "second")
+                        .build())
                 .build();
 
         List<ToolSpecification> toolSpecifications = singletonList(calculator);
@@ -461,8 +471,11 @@ class BedrockChatModelWithInvokeAPIIT {
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .required("first", "second")
+                        .build())
                 .build();
 
         UserMessage userMessage = UserMessage.from("2+2=?");
@@ -542,8 +555,11 @@ class BedrockChatModelWithInvokeAPIIT {
         ToolSpecification calculator = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .required("first", "second")
+                        .build())
                 .build();
 
         UserMessage userMessage = UserMessage.from("2+2=?");

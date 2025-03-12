@@ -27,6 +27,10 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
+/**
+ * @deprecated please use {@link BedrockChatModel} instead
+ */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Slf4j
 @Getter
 @SuperBuilder

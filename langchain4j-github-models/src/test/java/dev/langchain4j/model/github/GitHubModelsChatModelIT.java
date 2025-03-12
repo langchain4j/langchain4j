@@ -1,6 +1,5 @@
 package dev.langchain4j.model.github;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.github.GitHubModelsChatModelName.GPT_4_O_MINI;
@@ -15,11 +14,11 @@ import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.*;
@@ -120,7 +119,11 @@ class GitHubModelsChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
                 .description("Get the current weather")
-                .parameters(getToolParameters())
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location", "The city and state, e.g. San Francisco, CA")
+                        .addEnumProperty("unit", List.of("celsius", "fahrenheit"))
+                        .required("location", "unit")
+                        .build())
                 .build();
 
         ChatRequest request = ChatRequest.builder()
@@ -221,18 +224,27 @@ class GitHubModelsChatModelIT {
                 ToolSpecification.builder()
                         .name("sum")
                         .description("returns a sum of two numbers")
-                        .addParameter("first", INTEGER)
-                        .addParameter("second", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("first")
+                                .addIntegerProperty("second")
+                                .required("first", "second")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("square")
                         .description("returns the square of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("cube")
                         .description("returns the cube of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build());
 
         ChatRequest request = ChatRequest.builder()
@@ -335,27 +347,6 @@ class GitHubModelsChatModelIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(LENGTH);
-    }
-
-    private static ToolParameters getToolParameters() {
-        Map<String, Map<String, Object>> properties = new HashMap<>();
-
-        Map<String, Object> location = new HashMap<>();
-        location.put("type", "string");
-        location.put("description", "The city and state, e.g. San Francisco, CA");
-        properties.put("location", location);
-
-        Map<String, Object> unit = new HashMap<>();
-        unit.put("type", "string");
-        unit.put("enum", Arrays.asList("celsius", "fahrenheit"));
-        properties.put("unit", unit);
-
-        List<String> required = Arrays.asList("location", "unit");
-
-        return ToolParameters.builder()
-                .properties(properties)
-                .required(required)
-                .build();
     }
 
     // This is the method we offer to the LLM to be used as a function_call.

@@ -4,9 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
-import com.knuddels.jtokkit.api.IntArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -16,24 +14,20 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.chat.request.json.*;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_0301;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_1106_PREVIEW;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0125_PREVIEW;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_1106_PREVIEW;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_TURBO;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_PREVIEW;
-import static java.util.Collections.singletonList;
 
 /**
  * This class can be used to estimate the cost (in tokens) before calling OpenAI or when using streaming.
@@ -210,200 +204,8 @@ public class AzureOpenAiTokenizer implements Tokenizer {
         return tokenCount;
     }
 
-    @Override
-    public int estimateTokenCountInToolSpecifications(Iterable<ToolSpecification> toolSpecifications) {
-        int tokenCount = 16;
-        for (ToolSpecification toolSpecification : toolSpecifications) {
-            tokenCount += 6;
-            tokenCount += estimateTokenCountInText(toolSpecification.name());
-            if (toolSpecification.description() != null) {
-                tokenCount += 2;
-                tokenCount += estimateTokenCountInText(toolSpecification.description());
-            }
-            tokenCount += estimateTokenCountInToolParameters(toolSpecification.parameters());
-        }
-        return tokenCount;
-    }
-
-    private int estimateTokenCountInToolParameters(JsonObjectSchema parameters) {
-        if (parameters == null) {
-            return 0;
-        }
-
-        int tokenCount = 3;
-        Map<String, JsonSchemaElement> properties = parameters.properties();
-        if (isOneOfLatestModels()) {
-            tokenCount += properties.size() - 1;
-        }
-        for (String property : properties.keySet()) {
-            if (isOneOfLatestModels()) {
-                tokenCount += 2;
-            } else {
-                tokenCount += 3;
-            }
-            tokenCount += estimateTokenCountInText(property);
-
-            JsonSchemaElement element = properties.get(property);
-            if (element instanceof JsonArraySchema && isOneOfLatestModels()) {
-                tokenCount += 1;
-            } else if (element instanceof JsonBooleanSchema || element instanceof JsonIntegerSchema || element instanceof JsonNumberSchema || element instanceof JsonStringSchema) {
-                tokenCount += 2;
-                String value;
-                if (element instanceof JsonBooleanSchema) {
-                    value = ((JsonBooleanSchema) element).description();
-                } else if (element instanceof JsonIntegerSchema) {
-                    value = ((JsonIntegerSchema) element).description();
-                } else if(element instanceof JsonNumberSchema) {
-                    value = ((JsonNumberSchema) element).description();
-                } else {
-                    value = ((JsonStringSchema) element).description();
-                }
-                tokenCount += estimateTokenCountInText(value);
-                if (isOneOfLatestModels() && parameters.required().contains(property)) {
-                    tokenCount += 1;
-                }
-            } else if (element instanceof JsonEnumSchema) {
-                if (isOneOfLatestModels()) {
-                    tokenCount -= 2;
-                } else {
-                    tokenCount -= 3;
-                }
-                for (String value : ((JsonEnumSchema) element).enumValues()) {
-                    tokenCount += 3;
-                    tokenCount += estimateTokenCountInText(value);
-                }
-            }
-        }
-        return tokenCount;
-    }
-
-    @Override
-    public int estimateTokenCountInForcefulToolSpecification(ToolSpecification toolSpecification) {
-        int tokenCount = estimateTokenCountInToolSpecifications(singletonList(toolSpecification));
-        tokenCount += 4;
-        tokenCount += estimateTokenCountInText(toolSpecification.name());
-        if (isOneOfLatestModels()) {
-            tokenCount += 3;
-        }
-        return tokenCount;
-    }
-
-    public List<Integer> encode(String text) {
-        return encoding.orElseThrow(unknownModelException())
-                .encodeOrdinary(text).boxed();
-    }
-
-    public List<Integer> encode(String text, int maxTokensToEncode) {
-        return encoding.orElseThrow(unknownModelException())
-                .encodeOrdinary(text, maxTokensToEncode).getTokens().boxed();
-    }
-
-    public String decode(List<Integer> tokens) {
-
-        IntArrayList intArrayList = new IntArrayList();
-        for (Integer token : tokens) {
-            intArrayList.add(token);
-        }
-
-        return encoding.orElseThrow(unknownModelException())
-                .decode(intArrayList);
-    }
-
     private Supplier<IllegalArgumentException> unknownModelException() {
         return () -> illegalArgument("Model '%s' is unknown to jtokkit", modelName);
-    }
-
-    @Override
-    public int estimateTokenCountInToolExecutionRequests(Iterable<ToolExecutionRequest> toolExecutionRequests) {
-
-        int tokenCount = 0;
-
-        int toolsCount = 0;
-        int toolsWithArgumentsCount = 0;
-        int toolsWithoutArgumentsCount = 0;
-
-        int totalArgumentsCount = 0;
-
-        for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-            tokenCount += 4;
-            tokenCount += estimateTokenCountInText(toolExecutionRequest.name());
-            tokenCount += estimateTokenCountInText(toolExecutionRequest.arguments());
-
-            int argumentCount = countArguments(toolExecutionRequest.arguments());
-            if (argumentCount == 0) {
-                toolsWithoutArgumentsCount++;
-            } else {
-                toolsWithArgumentsCount++;
-            }
-            totalArgumentsCount += argumentCount;
-
-            toolsCount++;
-        }
-
-        if (modelName.equals(GPT_3_5_TURBO_1106.toString()) || isOneOfLatestGpt4Models()) {
-            tokenCount += 16;
-            tokenCount += 3 * toolsWithoutArgumentsCount;
-            tokenCount += toolsCount;
-            if (totalArgumentsCount > 0) {
-                tokenCount -= 1;
-                tokenCount -= 2 * totalArgumentsCount;
-                tokenCount += 2 * toolsWithArgumentsCount;
-                tokenCount += toolsCount;
-            }
-        }
-
-        if (modelName.equals(GPT_4_1106_PREVIEW.toString())) {
-            tokenCount += 3;
-            if (toolsCount > 1) {
-                tokenCount += 18;
-                tokenCount += 15 * toolsCount;
-                tokenCount += totalArgumentsCount;
-                tokenCount -= 3 * toolsWithoutArgumentsCount;
-            }
-        }
-
-        return tokenCount;
-    }
-
-    @Override
-    public int estimateTokenCountInForcefulToolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
-
-        if (isOneOfLatestGpt4Models()) {
-            int argumentsCount = countArguments(toolExecutionRequest.arguments());
-            if (argumentsCount == 0) {
-                return 1;
-            } else {
-                return estimateTokenCountInText(toolExecutionRequest.arguments());
-            }
-        }
-
-        int tokenCount = estimateTokenCountInToolExecutionRequests(singletonList(toolExecutionRequest));
-        tokenCount -= 4;
-        tokenCount -= estimateTokenCountInText(toolExecutionRequest.name());
-
-        if (modelName.equals(GPT_3_5_TURBO_1106.toString())) {
-            int argumentsCount = countArguments(toolExecutionRequest.arguments());
-            if (argumentsCount == 0) {
-                return 1;
-            }
-            tokenCount -= 19;
-            tokenCount += 2 * argumentsCount;
-        }
-
-        return tokenCount;
-    }
-
-    static int countArguments(String arguments) {
-        if (isNullOrBlank(arguments)) {
-            return 0;
-        }
-        Map<?, ?> argumentsMap;
-        try {
-            argumentsMap = OBJECT_MAPPER.readValue(arguments, Map.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        return argumentsMap.size();
     }
 
     private boolean isOneOfLatestModels() {
