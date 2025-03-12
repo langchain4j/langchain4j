@@ -7,8 +7,8 @@ import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.core.RequestOptions;
 import com.openai.credential.Credential;
-import com.openai.models.ImageGenerateParams;
-import com.openai.models.ImagesResponse;
+import com.openai.models.images.ImageGenerateParams;
+import com.openai.models.images.ImagesResponse;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
@@ -121,7 +121,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
         return builder.build();
     }
 
-    private static Image fromOpenAiImage(com.openai.models.Image openAiImage) {
+    private static Image fromOpenAiImage(com.openai.models.images.Image openAiImage) {
         Image.Builder imageBuilder = Image.builder();
 
         if (openAiImage.url().isPresent()) {
@@ -214,7 +214,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
             return this;
         }
 
-        public Builder modelName(com.openai.models.ImageModel modelName) {
+        public Builder modelName(com.openai.models.images.ImageModel modelName) {
             this.modelName = modelName.toString();
             return this;
         }

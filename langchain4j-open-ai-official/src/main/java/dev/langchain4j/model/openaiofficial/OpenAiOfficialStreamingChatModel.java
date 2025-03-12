@@ -8,14 +8,12 @@ import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClientAsync;
 import com.openai.core.http.AsyncStreamResponse;
 import com.openai.credential.Credential;
-import com.openai.models.ChatCompletion;
-import com.openai.models.ChatCompletionChunk;
-import com.openai.models.ChatCompletionCreateParams;
-import com.openai.models.ChatCompletionStreamOptions;
 import com.openai.models.ChatModel;
+import com.openai.models.chat.completions.ChatCompletionChunk;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -106,7 +104,12 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         @Override
                         public void onNext(ChatCompletionChunk completion) {
                             manageChatCompletionChunks(
-                                    completion, parameters, handler, responseMetadataBuilder, text, toolExecutionRequests);
+                                    completion,
+                                    parameters,
+                                    handler,
+                                    responseMetadataBuilder,
+                                    text,
+                                    toolExecutionRequests);
                         }
 
                         @Override

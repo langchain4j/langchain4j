@@ -29,9 +29,10 @@ public class InternalOpenAiOfficialTestHelper {
 
     public static final ChatModel CHAT_MODEL_NAME = ChatModel.GPT_4O_MINI;
     public static final ChatModel CHAT_MODEL_NAME_ALTERNATE = ChatModel.GPT_4O;
-    public static final com.openai.models.EmbeddingModel EMBEDDING_MODEL_NAME =
-            com.openai.models.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
-    public static final com.openai.models.ImageModel IMAGE_MODEL_NAME = com.openai.models.ImageModel.DALL_E_3;
+    public static final com.openai.models.embeddings.EmbeddingModel EMBEDDING_MODEL_NAME =
+            com.openai.models.embeddings.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
+    public static final com.openai.models.images.ImageModel IMAGE_MODEL_NAME =
+            com.openai.models.images.ImageModel.DALL_E_3;
 
     // Chat models
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL;

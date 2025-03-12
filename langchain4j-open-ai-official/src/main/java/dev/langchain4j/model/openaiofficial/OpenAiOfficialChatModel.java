@@ -8,10 +8,9 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
-import com.openai.models.ChatCompletion;
-import com.openai.models.ChatCompletionCreateParams;
 import com.openai.models.ChatModel;
-import dev.langchain4j.exception.UnsupportedFeatureException;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
