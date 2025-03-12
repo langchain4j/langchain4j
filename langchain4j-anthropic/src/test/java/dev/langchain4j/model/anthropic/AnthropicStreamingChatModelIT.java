@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.randomString;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_7_SONNET_20250219;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.lang.System.getenv;
@@ -489,6 +490,31 @@ class AnthropicStreamingChatModelIT {
 
         assertTokenUsage(secondResponse.tokenUsage());
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_answer_with_thinking() {
+
+        // given
+        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_7_SONNET_20250219)
+                .thinkingType("enabled")
+                .thinkingBudgetTokens(1024)
+                .maxTokens(1024 + 100)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse chatResponse = handler.get();
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
     }
 
     private static void assertTokenUsage(@NotNull TokenUsage tokenUsage) {
