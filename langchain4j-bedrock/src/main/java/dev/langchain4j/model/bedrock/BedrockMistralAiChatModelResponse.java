@@ -8,8 +8,9 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Bedrock Mistral AI Invoke response
+ * @deprecated please use {@link BedrockChatModel}
  */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @Setter
 class BedrockMistralAiChatModelResponse implements BedrockChatModelResponse {

@@ -30,4 +30,6 @@ public class BedrockAnthropicStreamingChatModel extends AbstractBedrockStreaming
             this.value = modelID;
         }
     }
+
+    // TODO deprecate and remove after https://github.com/langchain4j/langchain4j/pull/2620 is completed
 }

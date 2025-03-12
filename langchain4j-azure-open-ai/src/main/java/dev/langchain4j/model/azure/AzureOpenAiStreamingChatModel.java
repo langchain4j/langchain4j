@@ -524,11 +524,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         if (toolThatMustBeExecuted != null) {
             options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
             options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
-            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
         }
         if (!isNullOrEmpty(toolSpecifications)) {
             options.setTools(toToolDefinitions(toolSpecifications));
-            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
         }
 
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
@@ -584,7 +582,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     handler.onError(throwable);
                 },
                 () -> {
-                    Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
+                    Response<AiMessage> response = responseBuilder.build(tokenizer);
                     ChatModelResponse modelListenerResponse =
                             createModelListenerResponse(responseId.get(), options.getModel(), response);
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
@@ -617,7 +615,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     responseId.set(chatCompletions.getId());
                 }
             });
-            Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
+            Response<AiMessage> response = responseBuilder.build(tokenizer);
             ChatModelResponse modelListenerResponse =
                     createModelListenerResponse(responseId.get(), options.getModel(), response);
             ChatModelResponseContext responseContext = new ChatModelResponseContext(

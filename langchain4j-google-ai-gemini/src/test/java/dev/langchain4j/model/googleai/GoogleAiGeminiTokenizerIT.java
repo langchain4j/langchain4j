@@ -2,12 +2,13 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import java.util.Arrays;
+
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import org.junit.jupiter.api.Test;
 
 class GoogleAiGeminiTokenizerIT {
@@ -100,20 +101,22 @@ class GoogleAiGeminiTokenizerIT {
                 ToolSpecification.builder()
                         .name("weatherForecast")
                         .description("Get the weather forecast for a given location on a give date")
-                        .addParameter(
-                                "location", JsonSchemaProperty.STRING, JsonSchemaProperty.description("the location"))
-                        .addParameter("date", JsonSchemaProperty.STRING, JsonSchemaProperty.description("the date"))
+                        .parameters(JsonObjectSchema.builder()
+                                .addStringProperty("location", "the location")
+                                .addStringProperty("date", "the date")
+                                .required("location", "date")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("convertFahrenheitToCelsius")
                         .description("Convert a temperature in Fahrenheit to Celsius")
-                        .addParameter(
-                                "fahrenheit",
-                                JsonSchemaProperty.NUMBER,
-                                JsonSchemaProperty.description("the temperature in Fahrenheit"))
+                        .parameters(JsonObjectSchema.builder()
+                                .addNumberProperty("fahrenheit", "the temperature in Fahrenheit")
+                                .required("fahrenheit")
+                                .build())
                         .build()));
 
         // then
-        assertThat(count).isEqualTo(114);
+        assertThat(count).isEqualTo(102);
     }
 }
