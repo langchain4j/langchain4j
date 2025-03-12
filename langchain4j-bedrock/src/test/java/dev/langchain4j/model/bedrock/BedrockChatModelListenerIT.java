@@ -30,11 +30,12 @@ class BedrockChatModelListenerIT extends ChatModelListenerIT {
         return BedrockAnthropicMessageChatModel.builder()
                 .model("banana")
                 .listeners(singletonList(listener))
+                .maxRetries(1)
                 .build();
     }
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return software.amazon.awssdk.services.bedrockruntime.model.ValidationException.class;
     }
 }
