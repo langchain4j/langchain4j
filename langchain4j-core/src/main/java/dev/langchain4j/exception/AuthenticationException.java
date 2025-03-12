@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public class AuthenticationException extends UnrecoverableChatException {
+public class AuthenticationException extends NonRetriableException {
     public AuthenticationException(String message) {
         super(message);
     }

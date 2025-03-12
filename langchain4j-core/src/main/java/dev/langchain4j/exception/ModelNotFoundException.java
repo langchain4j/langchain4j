@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public class ModelNotFoundException extends UnrecoverableChatException {
+public class ModelNotFoundException extends NonRetriableException {
     public ModelNotFoundException(String message) {
         super(message);
     }

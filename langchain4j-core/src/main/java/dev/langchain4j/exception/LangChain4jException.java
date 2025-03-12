@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public abstract class LangChain4jException extends RuntimeException {
+public class LangChain4jException extends RuntimeException {
     public LangChain4jException(String message) {
         super(message);
     }

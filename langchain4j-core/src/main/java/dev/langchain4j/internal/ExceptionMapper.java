@@ -4,6 +4,7 @@ import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.InvalidRequestException;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
@@ -45,7 +46,7 @@ public interface ExceptionMapper {
                 return new UnresolvedModelServerException(rootCause);
             }
 
-            return e instanceof RuntimeException re ? re : new RuntimeException(e);
+            return e instanceof RuntimeException re ? re : new LangChain4jException(e);
         }
 
         protected RuntimeException mapHttpStatusCode(Exception rootException, int httpStatusCode) {
@@ -67,7 +68,7 @@ public interface ExceptionMapper {
             if (httpStatusCode >= 400 && httpStatusCode < 500) {
                 return new InvalidRequestException(rootException);
             }
-            return rootException instanceof RuntimeException re ? re : new RuntimeException(rootException);
+            return rootException instanceof RuntimeException re ? re : new LangChain4jException(rootException);
         }
 
         private static Throwable findRoot(Throwable e) {

@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public class TimeoutException extends RecoverableChatException {
+public class TimeoutException extends RetriableException {
     public TimeoutException(String message) {
         super(message);
     }

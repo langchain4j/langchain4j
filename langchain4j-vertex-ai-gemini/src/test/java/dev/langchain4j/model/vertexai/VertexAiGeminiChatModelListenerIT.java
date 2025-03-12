@@ -37,10 +37,8 @@ class VertexAiGeminiChatModelListenerIT extends ChatModelListenerIT {
     @Override
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return VertexAiGeminiChatModel.builder()
-                .project("GCP_PROJECT_ID")
-                .location("GCP_LOCATION")
-//                .project(System.getenv("GCP_PROJECT_ID"))
-//                .location(System.getenv("GCP_LOCATION"))
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
                 .modelName("banana")
                 .listeners(singletonList(listener))
                 .logRequests(true)

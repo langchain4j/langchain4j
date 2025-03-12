@@ -1,6 +1,6 @@
 package dev.langchain4j.exception;
 
-public class InvalidRequestException extends UnrecoverableChatException {
+public class InvalidRequestException extends NonRetriableException {
     public InvalidRequestException(String message) {
         super(message);
     }
