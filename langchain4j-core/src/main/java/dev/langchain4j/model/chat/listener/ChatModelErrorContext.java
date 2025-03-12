@@ -61,7 +61,7 @@ public class ChatModelErrorContext {
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
         this.partialResponse = partialResponse;
-        this.modelProvider = null;
+        this.modelProvider = OTHER;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 

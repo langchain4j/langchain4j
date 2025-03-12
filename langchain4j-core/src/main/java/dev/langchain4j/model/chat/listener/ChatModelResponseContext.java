@@ -61,7 +61,7 @@ public class ChatModelResponseContext {
         this.response = ensureNotNull(response, "response");
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
-        this.modelProvider = null;
+        this.modelProvider = OTHER;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 

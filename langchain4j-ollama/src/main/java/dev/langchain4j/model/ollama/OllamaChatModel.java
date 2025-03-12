@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ModelProvider.OLLAMA;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createModelListenerRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;

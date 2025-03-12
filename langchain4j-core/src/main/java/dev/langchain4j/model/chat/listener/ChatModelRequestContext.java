@@ -49,7 +49,7 @@ public class ChatModelRequestContext {
     public ChatModelRequestContext(ChatModelRequest request, Map<Object, Object> attributes) {
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
-        this.modelProvider = null;
+        this.modelProvider = OTHER;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
