@@ -1,10 +1,10 @@
 package dev.langchain4j.rag.query.router;
 
+import com.google.gson.JsonSyntaxException;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -40,7 +40,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("[2]");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -49,16 +49,6 @@ class LanguageModelQueryRouterTest {
 
         // then
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
-
-        assertThat(model.userMessageText()).isEqualTo(
-                """
-                Based on the user query, determine the most suitable data source(s) \
-                to retrieve relevant information from the following options:
-                1: articles about cats
-                2: articles about dogs
-                It is very important that your answer consists of either a single number \
-                or multiple numbers separated by commas and nothing else!
-                User query: Do Labradors shed?""");
     }
 
     @Test
@@ -72,7 +62,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("[2]");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatLanguageModel(model)
@@ -84,16 +74,6 @@ class LanguageModelQueryRouterTest {
 
         // then
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
-
-        assertThat(model.userMessageText()).isEqualTo(
-                """
-                Based on the user query, determine the most suitable data source(s) \
-                to retrieve relevant information from the following options:
-                1: articles about cats
-                2: articles about dogs
-                It is very important that your answer consists of either a single number \
-                or multiple numbers separated by commas and nothing else!
-                User query: Do Labradors shed?""");
     }
 
     @Test
@@ -106,7 +86,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("1, 2");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("[1,2]");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -133,7 +113,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("1, 2");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("[1,2]");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription, promptTemplate, FAIL);
 
@@ -200,7 +180,6 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
         ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
-        FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -209,7 +188,7 @@ class LanguageModelQueryRouterTest {
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatLanguageModel(model)
                 .retrieverToDescription(retrieverToDescription)
-                .fallbackStrategy(fallbackStrategy)
+                .fallbackStrategy(ROUTE_TO_ALL)
                 .build();
 
         // when
@@ -225,7 +204,6 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
         ChatModelMock model = ChatModelMock.thatAlwaysThrowsException();
-        FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -235,7 +213,7 @@ class LanguageModelQueryRouterTest {
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatLanguageModel(model)
                 .retrieverToDescription(retrieverToDescription)
-                .fallbackStrategy(fallbackStrategy)
+                .fallbackStrategy(ROUTE_TO_ALL)
                 .build();
 
         // when
@@ -251,7 +229,6 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
         ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
-        FallbackStrategy fallbackStrategy = FAIL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -260,12 +237,12 @@ class LanguageModelQueryRouterTest {
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatLanguageModel(model)
                 .retrieverToDescription(retrieverToDescription)
-                .fallbackStrategy(fallbackStrategy)
+                .fallbackStrategy(FAIL)
                 .build();
 
         // when-then
         assertThatThrownBy(() -> router.route(query))
-                .hasRootCauseExactlyInstanceOf(NumberFormatException.class);
+                .hasRootCauseExactlyInstanceOf(JsonSyntaxException.class);
     }
 
     @Test
@@ -274,7 +251,6 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
         ChatModelMock model = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Something went wrong");
-        FallbackStrategy fallbackStrategy = FAIL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -283,12 +259,35 @@ class LanguageModelQueryRouterTest {
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatLanguageModel(model)
                 .retrieverToDescription(retrieverToDescription)
-                .fallbackStrategy(fallbackStrategy)
+                .fallbackStrategy(FAIL)
                 .build();
 
         // when-then
         assertThatThrownBy(() -> router.route(query))
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Something went wrong");
+    }
+
+    @Test
+    void should_parse_answer_when_thinking_format_is_present() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("<think>Ok I think he's asking me about the sky</think>[1,2]");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatLanguageModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(FAIL)
+                .build();
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        //then
+        assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
     }
 }

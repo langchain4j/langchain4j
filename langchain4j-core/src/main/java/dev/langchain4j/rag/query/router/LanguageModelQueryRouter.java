@@ -1,5 +1,8 @@
 package dev.langchain4j.rag.query.router;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
@@ -13,15 +16,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.DO_NOT_ROUTE;
-import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * A {@link QueryRouter} that utilizes a {@link ChatLanguageModel} to make a routing decision.
@@ -47,19 +50,28 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             """
-                    Based on the user query, determine the most suitable data source(s) \
+                    Based on the user query, determine the most suitable data source(s)
                     to retrieve relevant information from the following options:
                     {{options}}
-                    It is very important that your answer consists of either a single number \
-                    or multiple numbers separated by commas and nothing else!
-                    User query: {{query}}"""
+                    User query: {{query}}
+                    
+                    It is very important that your answer is in json format with the list of selected options as integer values.
+                    For example:
+                    [1]
+                    [1,2]
+                    [1,2,3,4]
+                    
+                    Do not include any additional information, such as your thought process or extra details.
+                    """
     );
 
+    public static final Pattern THINKING_REGEX = Pattern.compile("<think>(.*?)</think>(.*)");
     protected final ChatLanguageModel chatLanguageModel;
     protected final PromptTemplate promptTemplate;
     protected final String options;
     protected final Map<Integer, ContentRetriever> idToRetriever;
     protected final FallbackStrategy fallbackStrategy;
+    protected final Gson gson;
 
     public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
                                     Map<ContentRetriever, String> retrieverToDescription) {
@@ -92,6 +104,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
         this.idToRetriever = idToRetriever;
         this.options = optionsBuilder.toString();
         this.fallbackStrategy = getOrDefault(fallbackStrategy, DO_NOT_ROUTE);
+        this.gson = new Gson();
     }
 
     public static LanguageModelQueryRouterBuilder builder() {
@@ -132,11 +145,33 @@ public class LanguageModelQueryRouter implements QueryRouter {
     }
 
     protected Collection<ContentRetriever> parse(String choices) {
-        return stream(choices.split(","))
-                .map(String::trim)
-                .map(Integer::parseInt)
+        String choicesNoThinking = removeThinkingProcess(choices);
+
+        return gson.fromJson(choicesNoThinking, JsonArray.class).asList().stream()
+                .map(JsonElement::getAsInt)
                 .map(idToRetriever::get)
-                .collect(toList());
+                .toList();
+
+    }
+
+    /**
+     * Reasoning models such as deepseek-r1 and gemini will answer back with their thinking process
+     * this looks like <think>thinking process</think> followed by their answer.
+     * <p>
+     * This method removes the thinking process and keeps only the json from the answer.
+     *
+     * @param choices the response from the reasoning model
+     * @return the response without the thinking process.
+     */
+    private String removeThinkingProcess(String choices) {
+        Matcher matcher = THINKING_REGEX.matcher(choices);
+
+        //matcher.group(1) is thinking process
+        if (matcher.find()) {
+            return matcher.group(2);
+        } else {
+            return choices;
+        }
     }
 
     /**
