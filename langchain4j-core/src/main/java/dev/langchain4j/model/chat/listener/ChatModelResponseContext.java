@@ -8,10 +8,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
  * The chat response context.
- * It contains {@link ChatResponse}, corresponding {@link ChatRequest} and attributes.
+ * It contains {@link ChatResponse}, corresponding {@link ChatRequest}, {@link ModelProvider} and attributes.
  * The attributes can be used to pass data between methods of a {@link ChatModelListener}
  * or between multiple {@link ChatModelListener}s.
  */
@@ -37,6 +38,16 @@ public class ChatModelResponseContext {
         this.request = ChatModelRequest.fromChatRequest(chatRequest);
         this.modelProvider = modelProvider;
         this.attributes = ensureNotNull(attributes, "attributes");
+    }
+
+    /**
+     * @deprecated please use {@link #ChatModelResponseContext(ChatResponse, ChatRequest, ModelProvider, Map)} instead
+     */
+    @Deprecated(forRemoval = true)
+    public ChatModelResponseContext(ChatResponse chatResponse,
+                                    ChatRequest chatRequest,
+                                    Map<Object, Object> attributes) {
+        this(chatResponse, chatRequest, OTHER, attributes);
     }
 
     /**

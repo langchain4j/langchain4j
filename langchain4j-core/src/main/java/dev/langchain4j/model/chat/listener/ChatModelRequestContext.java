@@ -7,10 +7,11 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
  * The chat model request context.
- * It contains the {@link ChatRequest} and attributes.
+ * It contains the {@link ChatRequest}, {@link ModelProvider} and attributes.
  * The attributes can be used to pass data between methods of a {@link ChatModelListener}
  * or between multiple {@link ChatModelListener}s.
  */
@@ -30,6 +31,15 @@ public class ChatModelRequestContext {
         this.request = ChatModelRequest.fromChatRequest(chatRequest);
         this.modelProvider = modelProvider;
         this.attributes = ensureNotNull(attributes, "attributes");
+    }
+
+    /**
+     * @deprecated please use {@link #ChatModelRequestContext(ChatRequest, ModelProvider, Map)} instead
+     */
+    @Deprecated(forRemoval = true)
+    public ChatModelRequestContext(ChatRequest chatRequest,
+                                   Map<Object, Object> attributes) {
+        this(chatRequest, OTHER, attributes);
     }
 
     /**

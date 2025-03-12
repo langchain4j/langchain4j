@@ -7,10 +7,11 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
  * The chat model error context.
- * It contains the error, corresponding {@link ChatRequest} and attributes.
+ * It contains the error, corresponding {@link ChatRequest}, {@link ModelProvider} and attributes.
  * The attributes can be used to pass data between methods of a {@link ChatModelListener}
  * or between multiple {@link ChatModelListener}s.
  */
@@ -36,6 +37,16 @@ public class ChatModelErrorContext {
         this.partialResponse = null;
         this.modelProvider = modelProvider;
         this.attributes = ensureNotNull(attributes, "attributes");
+    }
+
+    /**
+     * @deprecated please use {@link #ChatModelErrorContext(Throwable, ChatRequest, ModelProvider, Map)} instead
+     */
+    @Deprecated(forRemoval = true)
+    public ChatModelErrorContext(Throwable error,
+                                 ChatRequest chatRequest,
+                                 Map<Object, Object> attributes) {
+        this(error, chatRequest, OTHER, attributes);
     }
 
     /**
