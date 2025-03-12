@@ -1,14 +1,5 @@
 package dev.langchain4j.service.common;
 
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -17,12 +8,21 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 /**
  * This test makes sure that all {@link StreamingChatLanguageModel} implementations behave consistently
@@ -40,7 +40,6 @@ public abstract class AbstractStreamingAiServiceIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
     void should_answer_simple_question(StreamingChatLanguageModel model) throws Exception {
 
         // given
@@ -56,8 +55,7 @@ public abstract class AbstractStreamingAiServiceIT {
 
         String userMessage = "What is the capital of Germany?";
 
-        assistant
-                .chat(userMessage)
+        assistant.chat(userMessage)
                 .onPartialResponse(answerBuilder::append)
                 .onCompleteResponse(chatResponse -> {
                     futureAnswer.complete(answerBuilder.toString());
@@ -84,12 +82,10 @@ public abstract class AbstractStreamingAiServiceIT {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
 
-        verify(model)
-                .chat(
-                        eq(ChatRequest.builder()
-                                .messages(UserMessage.from(userMessage))
-                                .build()),
-                        any(StreamingChatResponseHandler.class));
+        verify(model).chat(
+                eq(ChatRequest.builder().messages(UserMessage.from(userMessage)).build()),
+                any(StreamingChatResponseHandler.class)
+        );
     }
 
     // TODO test threads
