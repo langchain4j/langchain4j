@@ -509,6 +509,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     }
 
     @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
     public ModelProvider provider() {
         return AZURE_OPEN_AI;
     }

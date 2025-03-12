@@ -662,6 +662,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
     public ModelProvider provider() {
         return AZURE_OPEN_AI;
     }

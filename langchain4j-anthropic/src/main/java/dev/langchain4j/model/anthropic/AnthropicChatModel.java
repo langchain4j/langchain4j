@@ -38,7 +38,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
@@ -283,8 +282,6 @@ public class AnthropicChatModel implements ChatLanguageModel {
         }
         return null;
     }
-
-    // TODO forcing tool use?
 
     @Override
     public List<ChatModelListener> listeners() {
