@@ -1,5 +1,10 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -12,16 +17,11 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.assertj.core.data.Percentage;
-import org.junit.jupiter.api.Test;
-
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import org.assertj.core.data.Percentage;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 /**
  * Make sure these dependencies are present in the module where this test class is extended:
@@ -78,6 +78,7 @@ public abstract class StreamingChatModelListenerIT {
     protected abstract Class<? extends Exception> expectedExceptionClass();
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
     void should_listen_request_and_response() {
 
         // given
@@ -101,7 +102,8 @@ public abstract class StreamingChatModelListenerIT {
 
             @Override
             public void onError(ChatModelErrorContext errorContext) {
-                fail("onError() must not be called. Exception: " + errorContext.error().getMessage());
+                fail("onError() must not be called. Exception: "
+                        + errorContext.error().getMessage());
             }
         };
 
@@ -109,8 +111,7 @@ public abstract class StreamingChatModelListenerIT {
 
         UserMessage userMessage = UserMessage.from("hello");
 
-        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
-                .messages(userMessage);
+        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder().messages(userMessage);
 
         ToolSpecification toolSpecification = null;
         if (supportsTools()) {
@@ -202,7 +203,8 @@ public abstract class StreamingChatModelListenerIT {
             public void onError(ChatModelErrorContext errorContext) {
                 errorReference.set(errorContext.error());
                 assertThat(errorContext.request()).isEqualTo(requestReference.get());
-                assertThat(errorContext.partialResponse()).isNull(); // can be non-null if it fails in the middle of streaming
+                assertThat(errorContext.partialResponse())
+                        .isNull(); // can be non-null if it fails in the middle of streaming
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };

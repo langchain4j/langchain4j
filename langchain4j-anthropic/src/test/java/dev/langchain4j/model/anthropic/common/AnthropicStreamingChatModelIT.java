@@ -1,14 +1,15 @@
 package dev.langchain4j.model.anthropic.common;
 
-import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-
-import java.util.List;
-
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static java.lang.System.getenv;
 
+import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+@EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final StreamingChatLanguageModel ANTHROPIC_STREAMING_CHAT_MODEL = AnthropicStreamingChatModel.builder()
@@ -21,9 +22,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatLanguageModel> models() {
-        return List.of(
-                ANTHROPIC_STREAMING_CHAT_MODEL
-        );
+        return List.of(ANTHROPIC_STREAMING_CHAT_MODEL);
     }
 
     @Override

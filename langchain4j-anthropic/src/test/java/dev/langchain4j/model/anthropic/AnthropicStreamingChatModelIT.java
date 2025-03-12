@@ -1,28 +1,5 @@
 package dev.langchain4j.model.anthropic;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.TokenUsage;
-import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-
-import java.time.Duration;
-import java.util.Base64;
-import java.util.List;
-
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.OBJECT;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
@@ -40,6 +17,30 @@ import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
+import java.time.Duration;
+import java.util.Base64;
+import java.util.List;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+
+@EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicStreamingChatModelIT {
 
     StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
@@ -246,7 +247,8 @@ class AnthropicStreamingChatModelIT {
     @Test
     void should_fail_to_create_without_api_key() {
 
-        assertThatThrownBy(() -> AnthropicStreamingChatModel.builder().apiKey(null).build())
+        assertThatThrownBy(
+                        () -> AnthropicStreamingChatModel.builder().apiKey(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Anthropic API key must be defined. "
                         + "It can be generated here: https://console.anthropic.com/settings/keys");
@@ -403,7 +405,8 @@ class AnthropicStreamingChatModelIT {
                 ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
 
         ChatRequest secondRequest = ChatRequest.builder()
-                .messages(systemMessage, userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2)
+                .messages(
+                        systemMessage, userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2)
                 .toolSpecifications(calculator)
                 .build();
 
