@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
-
 import java.util.Objects;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
@@ -21,7 +21,7 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
         this.source = new AnthropicPdfContentSource("base64", mediaType, base64Data);
     }
 
-    public AnthropicPdfContent(String base64Data){
+    public AnthropicPdfContent(String base64Data) {
         this("application/pdf", base64Data);
     }
 

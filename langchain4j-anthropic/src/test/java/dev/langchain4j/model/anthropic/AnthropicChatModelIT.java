@@ -45,7 +45,6 @@ class AnthropicChatModelIT {
 
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String PDF_FILE_PATH = "src/test/resources/anthropic-doc-snapshot.pdf";
 
     ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
@@ -146,18 +145,19 @@ class AnthropicChatModelIT {
 
     @Test
     void should_accept_base64_pdf() {
-        final URI pdfUri = Paths.get(PDF_FILE_PATH).toUri();
-        final String pdfBase64Code = new String(Base64.getEncoder().encode(readBytes(pdfUri.toString())));
+
         // given
+        URI pdfUri = Paths.get("src/test/resources/test-file.pdf").toUri();
+        String base64Data = new String(Base64.getEncoder().encode(readBytes(pdfUri.toString())));
         UserMessage userMessage = UserMessage.from(
-                PdfFileContent.from(pdfBase64Code,"application/pdf"),
-                TextContent.from("Provide a summary of the document"));
+                PdfFileContent.from(base64Data, "application/pdf"),
+                TextContent.from("What is written in the document?"));
 
         // when
         ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("document");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("test content");
     }
 
     @Test
