@@ -274,8 +274,10 @@ ChatLanguageModel model = VertexAiGeminiChatModel.builder()
 ToolSpecification weatherToolSpec = ToolSpecification.builder()
         .name("getWeatherForecast")
         .description("Get the weather forecast for a location")
-        .addParameter("location", JsonSchemaProperty.STRING,
-                JsonSchemaProperty.description("the location to get the weather forecast for"))
+        .parameters(JsonObjectSchema.builder()
+                .addStringProperty("location", "the location to get the weather forecast for")
+                .required("location")
+                .build())
         .build();
 
 ChatRequest request = ChatRequest.builder()

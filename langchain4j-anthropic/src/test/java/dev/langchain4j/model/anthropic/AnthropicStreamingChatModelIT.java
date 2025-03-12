@@ -23,9 +23,6 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.OBJECT;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -36,7 +33,6 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -53,16 +49,23 @@ class AnthropicStreamingChatModelIT {
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
             .description("returns a sum of two numbers")
-            .addParameter("first", INTEGER)
-            .addParameter("second", INTEGER)
+            .parameters(JsonObjectSchema.builder()
+                    .addIntegerProperty("first")
+                    .addIntegerProperty("second")
+                    .required("first", "second")
+                    .build())
             .build();
 
     ToolSpecification weather = ToolSpecification.builder()
             .name("weather")
             .description("returns a weather forecast for a given location")
-            // TODO simplify defining nested properties
-            .addParameter(
-                    "location", OBJECT, property("properties", singletonMap("city", singletonMap("type", "string"))))
+            .parameters(JsonObjectSchema.builder()
+                    .addProperty("location", JsonObjectSchema.builder()
+                            .addStringProperty("city")
+                            .required("city")
+                            .build())
+                    .required("location")
+                    .build())
             .build();
 
     @Test
@@ -224,6 +227,7 @@ class AnthropicStreamingChatModelIT {
                 .parameters(JsonObjectSchema.builder()
                         .addIntegerProperty("first")
                         .addIntegerProperty("second")
+                        .required("first", "second")
                         .build())
                 .build();
 

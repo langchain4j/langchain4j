@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import org.assertj.core.data.Percentage;
@@ -18,7 +19,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
@@ -125,8 +125,10 @@ public abstract class ChatModelListenerIT {
         if (supportToolCalls()) {
             toolSpecification = ToolSpecification.builder()
                     .name("add")
-                    .addParameter("a", INTEGER)
-                    .addParameter("b", INTEGER)
+                    .parameters(JsonObjectSchema.builder()
+                            .addIntegerProperty("a")
+                            .addIntegerProperty("b")
+                            .build())
                     .build();
             chatRequestBuilder.toolSpecifications(toolSpecification);
         }

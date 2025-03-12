@@ -14,7 +14,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.google.gson.Gson;
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -302,7 +301,10 @@ class GoogleAiGeminiChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWeatherForecast")
                 .description("Get the weather forecast for a given city")
-                .addParameter("city", JsonSchemaProperty.STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("city")
+                        .required("city")
+                        .build())
                 .build();
 
         ChatRequest request = ChatRequest.builder()
@@ -347,7 +349,10 @@ class GoogleAiGeminiChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getFirstNFibonacciNumbers")
                 .description("Get the first n fibonacci numbers")
-                .addParameter("n", JsonSchemaProperty.INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("n")
+                        .required("n")
+                        .build())
                 .build();
 
         ChatRequest request = ChatRequest.builder()
@@ -396,10 +401,10 @@ class GoogleAiGeminiChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("getWarehouseStock")
                 .description("Retrieve the amount of stock available in a warehouse designated by its name")
-                .addParameter(
-                        "name",
-                        JsonSchemaProperty.STRING,
-                        JsonSchemaProperty.description("The name of the warehouse"))
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("name", "The name of the warehouse")
+                        .required("name")
+                        .build())
                 .build();
 
         ChatRequest request = ChatRequest.builder()

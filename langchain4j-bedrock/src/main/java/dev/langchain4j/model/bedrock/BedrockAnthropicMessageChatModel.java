@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -289,24 +288,6 @@ public class BedrockAnthropicMessageChatModel
 
         if (toolSpecification.parameters() != null) {
             return JsonSchemaElementHelper.toMap(toolSpecification.parameters());
-        } else if (toolSpecification.toolParameters() != null) {
-            ToolParameters toolParameters = toolSpecification.toolParameters();
-            ObjectNode propertiesNode = new ObjectMapper().createObjectNode();
-            if (toolParameters.properties() != null) {
-                propertiesNode.setAll(toAnthropicParameterProperties(toolParameters.properties()));
-            }
-
-            ArrayNode requiredNode = new ObjectMapper().createArrayNode();
-            if (toolParameters.required() != null) {
-                toolParameters.required().forEach(requiredNode::add);
-            }
-
-            ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
-            inputSchemaNode.put("type", "object");
-            inputSchemaNode.set("properties", propertiesNode);
-            inputSchemaNode.set("required", requiredNode);
-
-            return inputSchemaNode;
         } else {
             ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
             inputSchemaNode.put("type", "object");
