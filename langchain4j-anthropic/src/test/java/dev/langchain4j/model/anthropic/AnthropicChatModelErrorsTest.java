@@ -86,7 +86,9 @@ class AnthropicChatModelErrorsTest {
                 .satisfies(ex -> {
                     AnthropicHttpException cause = (AnthropicHttpException) ex.getCause();
                     assertThat(cause.statusCode()).as("statusCode").isEqualTo(httpStatusCode);
-                    assertThat(cause.getMessage()).as("message").isEqualTo(responseBody); // not sure, if returning full body is right
+                    assertThat(cause.getMessage())
+                            .as("message")
+                            .isEqualTo(responseBody); // not sure, if returning full body is right
                 });
     }
 }
