@@ -137,11 +137,12 @@ class OllamaClient {
         });
     }
 
-    public void streamingChat(ChatRequest request,
-                              StreamingResponseHandler<AiMessage> handler,
-                              List<ChatModelListener> listeners,
-                              ModelProvider modelProvider,
-                              List<ChatMessage> messages) {
+    public void streamingChat(
+            ChatRequest request,
+            StreamingResponseHandler<AiMessage> handler,
+            List<ChatModelListener> listeners,
+            ModelProvider modelProvider,
+            List<ChatMessage> messages) {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, new ArrayList<>());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();

@@ -27,10 +27,11 @@ class OllamaChatModelListenerUtils {
      * @param modelListenerRequest The {@link ChatModelRequest} containing the request details.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
-    static void onListenRequest(List<ChatModelListener> listeners,
-                                ChatModelRequest modelListenerRequest,
-                                ModelProvider modelProvider,
-                                Map<Object, Object> attributes) {
+    static void onListenRequest(
+            List<ChatModelListener> listeners,
+            ChatModelRequest modelListenerRequest,
+            ModelProvider modelProvider,
+            Map<Object, Object> attributes) {
         ChatModelRequestContext context = new ChatModelRequestContext(modelListenerRequest, modelProvider, attributes);
         listeners.forEach(listener -> {
             try {

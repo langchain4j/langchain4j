@@ -76,7 +76,8 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
         ChatModelRequest modelListenerRequest =
                 createModelListenerRequest(invokeModelRequest, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
 
         try {
             InvokeModelResponse invokeModelResponse =

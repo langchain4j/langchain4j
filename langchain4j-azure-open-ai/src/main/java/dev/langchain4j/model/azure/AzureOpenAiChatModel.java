@@ -480,8 +480,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
             ChatModelResponse modelListenerResponse =
                     createModelListenerResponse(chatCompletions.getId(), options.getModel(), response);
-            ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse, modelListenerRequest, provider(), attributes);
+            ChatModelResponseContext responseContext =
+                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, provider(), attributes);
             listeners.forEach(listener -> {
                 try {
                     listener.onResponse(responseContext);
@@ -493,8 +493,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return response;
         } catch (Exception exception) {
 
-            ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    exception, modelListenerRequest, null, provider(), attributes);
+            ChatModelErrorContext errorContext =
+                    new ChatModelErrorContext(exception, modelListenerRequest, null, provider(), attributes);
 
             listeners.forEach(listener -> {
                 try {

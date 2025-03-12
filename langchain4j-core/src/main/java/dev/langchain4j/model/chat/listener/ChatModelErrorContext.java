@@ -58,11 +58,12 @@ public class ChatModelErrorContext {
      * @deprecated please use {@link #ChatModelErrorContext(Throwable, ChatRequest, ModelProvider, Map)} instead
      */
     @Deprecated(forRemoval = true)
-    public ChatModelErrorContext(Throwable error,
-                                 ChatModelRequest request,
-                                 ChatModelResponse partialResponse,
-                                 ModelProvider modelProvider,
-                                 Map<Object, Object> attributes) {
+    public ChatModelErrorContext(
+            Throwable error,
+            ChatModelRequest request,
+            ChatModelResponse partialResponse,
+            ModelProvider modelProvider,
+            Map<Object, Object> attributes) {
         this.error = ensureNotNull(error, "error");
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");

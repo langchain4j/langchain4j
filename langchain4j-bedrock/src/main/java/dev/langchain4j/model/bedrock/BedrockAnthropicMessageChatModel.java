@@ -187,7 +187,8 @@ public class BedrockAnthropicMessageChatModel
         ChatModelRequest modelListenerRequest =
                 createModelListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
 
         try {
             InvokeModelResponse invokeModelResponse =

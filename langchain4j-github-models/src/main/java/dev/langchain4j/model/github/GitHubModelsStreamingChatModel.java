@@ -238,7 +238,8 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
 
         listeners.forEach(listener -> {
             try {

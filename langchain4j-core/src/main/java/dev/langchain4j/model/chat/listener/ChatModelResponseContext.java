@@ -58,10 +58,11 @@ public class ChatModelResponseContext {
      * @deprecated please use {@link #ChatModelResponseContext(ChatResponse, ChatRequest, ModelProvider, Map)} instead
      */
     @Deprecated(forRemoval = true)
-    public ChatModelResponseContext(ChatModelResponse response,
-                                    ChatModelRequest request,
-                                    ModelProvider modelProvider,
-                                    Map<Object, Object> attributes) {
+    public ChatModelResponseContext(
+            ChatModelResponse response,
+            ChatModelRequest request,
+            ModelProvider modelProvider,
+            Map<Object, Object> attributes) {
         this.chatResponse = ChatModelResponse.toChatResponse(response);
         this.response = ensureNotNull(response, "response");
         this.chatRequest = ChatModelRequest.toChatRequest(request);

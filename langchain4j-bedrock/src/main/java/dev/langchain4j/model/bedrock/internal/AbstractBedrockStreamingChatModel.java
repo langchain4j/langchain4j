@@ -94,7 +94,8 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
