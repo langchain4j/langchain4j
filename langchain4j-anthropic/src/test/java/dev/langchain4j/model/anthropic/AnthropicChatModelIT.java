@@ -180,7 +180,8 @@ class AnthropicChatModelIT {
     void should_respect_system_message() {
 
         // given
-        SystemMessage systemMessage = SystemMessage.from("You are a professional translator into German language");
+        SystemMessage systemMessage = SystemMessage.from("You are a professional translator into German language."
+                + "You should return only translated text, and I mean it");
         UserMessage userMessage = UserMessage.from("Translate: I love you");
 
         // when
