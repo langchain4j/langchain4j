@@ -1,21 +1,14 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.Response;
 
 import java.util.Collections;
 import java.util.List;
@@ -23,10 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static java.util.Collections.singletonList;
+import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
@@ -87,7 +77,7 @@ public interface StreamingChatLanguageModel {
     }
 
     default ModelProvider provider() {
-        return null; // TODO Other?
+        return OTHER;
     }
 
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
