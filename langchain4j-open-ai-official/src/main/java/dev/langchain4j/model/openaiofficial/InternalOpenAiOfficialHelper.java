@@ -17,29 +17,29 @@ import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
 import com.openai.core.JsonValue;
 import com.openai.credential.Credential;
-import com.openai.models.ChatCompletion;
-import com.openai.models.ChatCompletionAssistantMessageParam;
-import com.openai.models.ChatCompletionChunk;
-import com.openai.models.ChatCompletionContentPart;
-import com.openai.models.ChatCompletionContentPartImage;
-import com.openai.models.ChatCompletionContentPartInputAudio;
-import com.openai.models.ChatCompletionContentPartText;
-import com.openai.models.ChatCompletionCreateParams;
-import com.openai.models.ChatCompletionMessage;
-import com.openai.models.ChatCompletionMessageParam;
-import com.openai.models.ChatCompletionMessageToolCall;
-import com.openai.models.ChatCompletionReasoningEffort;
-import com.openai.models.ChatCompletionSystemMessageParam;
-import com.openai.models.ChatCompletionTool;
-import com.openai.models.ChatCompletionToolChoiceOption;
-import com.openai.models.ChatCompletionToolMessageParam;
-import com.openai.models.ChatCompletionUserMessageParam;
-import com.openai.models.CompletionUsage;
-import com.openai.models.CreateEmbeddingResponse;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
 import com.openai.models.Metadata;
+import com.openai.models.ReasoningEffort;
 import com.openai.models.ResponseFormatJsonObject;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionAssistantMessageParam;
+import com.openai.models.chat.completions.ChatCompletionChunk;
+import com.openai.models.chat.completions.ChatCompletionContentPart;
+import com.openai.models.chat.completions.ChatCompletionContentPartImage;
+import com.openai.models.chat.completions.ChatCompletionContentPartInputAudio;
+import com.openai.models.chat.completions.ChatCompletionContentPartText;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionMessage;
+import com.openai.models.chat.completions.ChatCompletionMessageParam;
+import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
+import com.openai.models.chat.completions.ChatCompletionSystemMessageParam;
+import com.openai.models.chat.completions.ChatCompletionTool;
+import com.openai.models.chat.completions.ChatCompletionToolChoiceOption;
+import com.openai.models.chat.completions.ChatCompletionToolMessageParam;
+import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
+import com.openai.models.completions.CompletionUsage;
+import com.openai.models.embeddings.CreateEmbeddingResponse;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -132,7 +132,8 @@ class InternalOpenAiOfficialHelper {
         }
 
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
-        builder.baseUrl(calculateBaseUrl(baseUrl, modelHost, modelName, azureDeploymentName, azureOpenAiServiceVersion));
+        builder.baseUrl(
+                calculateBaseUrl(baseUrl, modelHost, modelName, azureDeploymentName, azureOpenAiServiceVersion));
 
         if (apiKey != null) {
             if (modelHost == ModelHost.AZURE_OPENAI) {
@@ -193,7 +194,8 @@ class InternalOpenAiOfficialHelper {
         }
 
         OpenAIOkHttpClientAsync.Builder builder = OpenAIOkHttpClientAsync.builder();
-        builder.baseUrl(calculateBaseUrl(baseUrl, modelHost, modelName, azureDeploymentName, azureOpenAiServiceVersion));
+        builder.baseUrl(
+                calculateBaseUrl(baseUrl, modelHost, modelName, azureDeploymentName, azureOpenAiServiceVersion));
 
         if (apiKey != null) {
             if (modelHost == ModelHost.AZURE_OPENAI) {
@@ -234,7 +236,12 @@ class InternalOpenAiOfficialHelper {
         return builder.build();
     }
 
-    private static String calculateBaseUrl(final String baseUrl, ModelHost modelHost, String modelName, String azureDeploymentName, AzureOpenAIServiceVersion azureOpenAiServiceVersion) {
+    private static String calculateBaseUrl(
+            final String baseUrl,
+            ModelHost modelHost,
+            String modelName,
+            String azureDeploymentName,
+            AzureOpenAIServiceVersion azureOpenAiServiceVersion) {
         if (modelHost == ModelHost.OPENAI) {
             return getOrDefault(baseUrl, OPENAI_URL);
         } else if (modelHost == ModelHost.GITHUB_MODELS) {
@@ -660,7 +667,7 @@ class InternalOpenAiOfficialHelper {
         }
 
         if (parameters.reasoningEffort() != null) {
-            builder.reasoningEffort(ChatCompletionReasoningEffort.of(parameters.reasoningEffort()));
+            builder.reasoningEffort(ReasoningEffort.of(parameters.reasoningEffort()));
         }
 
         // Request parameters

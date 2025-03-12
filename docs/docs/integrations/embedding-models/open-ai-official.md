@@ -51,7 +51,7 @@ to make it easier with some auto-configuration:
 ### Generic configuration
 
 ```java
-import com.openai.models.EmbeddingModel;
+import com.openai.models.embeddings.EmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
 

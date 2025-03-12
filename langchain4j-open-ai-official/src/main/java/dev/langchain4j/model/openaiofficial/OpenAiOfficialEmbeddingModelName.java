@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
-import com.openai.models.EmbeddingModel;
+import com.openai.models.embeddings.EmbeddingModel;
 import java.util.HashMap;
 import java.util.Map;
 

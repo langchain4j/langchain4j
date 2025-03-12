@@ -49,7 +49,7 @@ to make it easier with some auto-configuration:
 ### Generic configuration
 
 ```java
-import com.openai.models.ImageModel;
+import com.openai.models.images.ImageModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialImageModel;
 
