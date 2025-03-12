@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -15,12 +16,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
@@ -29,6 +30,7 @@ import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -47,8 +49,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
     private final Boolean safePrompt;
     private final Integer randomSeed;
     private final String responseFormat;
-
     private final Integer maxRetries;
+    private final List<ChatModelListener> listeners;
 
     /**
      * Constructs a MistralAiChatModel with the specified parameters.
@@ -84,7 +86,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
             Duration timeout,
             Boolean logRequests,
             Boolean logResponses,
-            Integer maxRetries) {
+            Integer maxRetries,
+            List<ChatModelListener> listeners) {
 
         this.client = MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
@@ -101,38 +104,65 @@ public class MistralAiChatModel implements ChatLanguageModel {
         this.randomSeed = randomSeed;
         this.responseFormat = responseFormat;
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     @Override
-    public ChatResponse chat(ChatRequest chatRequest) {
+    public List<ChatModelListener> listeners() {
+        return this.listeners;
+    }
+
+    @Override
+    public ChatResponse doChat(ChatRequest chatRequest) {
         ChatRequestValidator.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatRequestValidator.validateParameters(parameters);
         ChatRequestValidator.validate(parameters.responseFormat());
 
-        Response<AiMessage> response;
+        MistralAiChatCompletionRequest.MistralAiChatCompletionRequestBuilder requestBuilder =
+                MistralAiChatCompletionRequest.builder()
+                        .model(parameters.modelName())
+                        .messages(toMistralAiMessages(chatRequest.messages()))
+                        .temperature(parameters.temperature())
+                        .maxTokens(parameters.maxOutputTokens())
+                        .topP(parameters.topP())
+                        .responseFormat(toMistralAiResponseFormat(parameters.responseFormat()));
+        if (parameters instanceof MistralAiChatRequestParameters) {
+            MistralAiChatRequestParameters mistralParameters = (MistralAiChatRequestParameters) parameters;
+            requestBuilder.randomSeed(mistralParameters.randomSeed()).safePrompt(mistralParameters.safePrompt()).stream(
+                    mistralParameters.stream());
+        }
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-        if (isNullOrEmpty(toolSpecifications)) {
-            response = generate(chatRequest.messages());
-        } else {
+        if (!isNullOrEmpty(toolSpecifications)) {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                    throw new UnsupportedFeatureException(String.format(
+                            "%s.%s is currently supported only when there is a single tool",
+                            ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
-                response = generate(chatRequest.messages(), toolSpecifications.get(0));
+                requestBuilder.tools(toMistralAiTools(parameters.toolSpecifications()));
+                // MistralAi does not support toolChoice as Function object. ANY force to the model to call a function
+                requestBuilder.toolChoice(MistralAiToolChoiceName.ANY);
             } else {
-                response = generate(chatRequest.messages(), toolSpecifications);
+                requestBuilder.tools(toMistralAiTools(parameters.toolSpecifications()));
+                requestBuilder.toolChoice(MistralAiToolChoiceName.AUTO);
             }
         }
+        MistralAiChatCompletionRequest request = requestBuilder.build();
 
+        MistralAiChatCompletionResponse response = withRetry(() -> client.chatCompletion(request), maxRetries);
+        MistralAiChatResponseMetadata responseMetadata = MistralAiChatResponseMetadata.builder()
+                .choices(response.getChoices())
+                .created(response.getCreated())
+                .object(response.getObject())
+                .id(response.getId())
+                .modelName(response.getModel())
+                .tokenUsage(tokenUsageFrom(response.getUsage()))
+                .finishReason(finishReasonFrom(response.getChoices().get(0).getFinishReason()))
+                .build();
         return ChatResponse.builder()
-                .aiMessage(response.content())
-                .metadata(ChatResponseMetadata.builder()
-                        .tokenUsage(response.tokenUsage())
-                        .finishReason(response.finishReason())
-                        .build())
+                .aiMessage(aiMessageFrom(response))
+                .metadata(responseMetadata)
                 .build();
     }
 
@@ -154,37 +184,29 @@ public class MistralAiChatModel implements ChatLanguageModel {
             ToolSpecification toolThatMustBeExecuted) {
         ensureNotEmpty(messages, "messages");
 
-        MistralAiChatCompletionRequest.MistralAiChatCompletionRequestBuilder requestBuilder =
-                MistralAiChatCompletionRequest.builder()
-                        .model(this.modelName)
-                        .messages(toMistralAiMessages(messages))
-                        .temperature(this.temperature)
-                        .maxTokens(this.maxTokens)
-                        .topP(this.topP)
-                        .randomSeed(this.randomSeed)
-                        .safePrompt(this.safePrompt)
-                        .responseFormat(toMistralAiResponseFormat(this.responseFormat))
-                        .stream(false);
-
+        MistralAiChatRequestParameters.Builder parametersBuilder = MistralAiChatRequestParameters.builder()
+                .modelName(modelName)
+                .maxOutputTokens(maxTokens)
+                .temperature(temperature)
+                .topP(topP)
+                .randomSeed(this.randomSeed)
+                .responseFormat(toResponseFormat(responseFormat))
+                .safePrompt(this.safePrompt)
+                .stream(false);
         if (!isNullOrEmpty(toolSpecifications)) {
-            requestBuilder.tools(toMistralAiTools(toolSpecifications));
-            requestBuilder.toolChoice(MistralAiToolChoiceName.AUTO);
+            parametersBuilder.toolSpecifications(toolSpecifications);
+            parametersBuilder.toolChoice(ToolChoice.AUTO);
         } else if (toolThatMustBeExecuted != null) {
-            requestBuilder.tools(toMistralAiTools(singletonList(toolThatMustBeExecuted)));
-            requestBuilder.toolChoice(
-                    MistralAiToolChoiceName
-                            .ANY); // MistralAi does not support toolChoice as Function object. ANY force to the model
-            // to call a function
+            parametersBuilder.toolSpecifications(singletonList(toolThatMustBeExecuted));
+            parametersBuilder.toolChoice(ToolChoice.REQUIRED);
+            // MistralAi does not support toolChoice as Function object. ANY force to the model to call a function
         }
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(messages)
+                .parameters(parametersBuilder.build())
+                .build();
 
-        MistralAiChatCompletionRequest request = requestBuilder.build();
-
-        MistralAiChatCompletionResponse response = withRetry(() -> client.chatCompletion(request), maxRetries);
-
-        return Response.from(
-                aiMessageFrom(response),
-                tokenUsageFrom(response.getUsage()),
-                finishReasonFrom(response.getChoices().get(0).getFinishReason()));
+        return convertResponse(chat(chatRequest));
     }
 
     public static MistralAiChatModelBuilder builder() {
@@ -221,6 +243,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
         private Boolean logResponses;
 
         private Integer maxRetries;
+
+        private List<ChatModelListener> listeners;
 
         public MistralAiChatModelBuilder() {}
 
@@ -345,6 +369,16 @@ public class MistralAiChatModel implements ChatLanguageModel {
             return this;
         }
 
+        /**
+         * @param listeners the list of ChatModelListener listening on the
+         * StreamingChatModelL usage.
+         * @return {@code this}.
+         */
+        public MistralAiChatModelBuilder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
         public MistralAiChatModel build() {
             return new MistralAiChatModel(
                     this.baseUrl,
@@ -359,7 +393,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
                     this.timeout,
                     this.logRequests,
                     this.logResponses,
-                    this.maxRetries);
+                    this.maxRetries,
+                    this.listeners);
         }
 
         @Override
@@ -378,6 +413,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
                             + ", logRequests=" + this.logRequests
                             + ", logResponses=" + this.logResponses
                             + ", maxRetries=" + this.maxRetries
+                            + ", listeners=" + this.listeners
                             + ")";
         }
     }
