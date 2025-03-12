@@ -1,8 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AI_JAMBA_INSTRUCT;
+import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AI_JAMBA_1_5_MINI;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AWS_NOVA_MICRO;
-import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AWS_TITAN_TEXT_EXPRESS;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.COHERE_COMMAND_R_PLUS;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.MISTRAL_LARGE;
 
@@ -17,16 +16,16 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
+class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, AI_JAMBA_INSTRUCT, MISTRAL_LARGE, AWS_TITAN_TEXT_EXPRESS);
+        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, AI_JAMBA_1_5_MINI, MISTRAL_LARGE);
     }
 
     @Override
     protected List<ChatLanguageModel> modelsSupportingTools() {
-        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE);
+        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE, AI_JAMBA_1_5_MINI);
     }
 
     @Override
@@ -86,17 +85,6 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     // OVERRIDED TESTS
 
-    // TITAN_EXPRESS doesn't support system prompt
-    // https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
-    @Override
-    @ParameterizedTest
-    @MethodSource("models")
-    protected void should_respect_system_message(ChatLanguageModel model) {
-        if (!model.equals(AWS_TITAN_TEXT_EXPRESS)) {
-            super.should_respect_system_message(model);
-        }
-    }
-
     // Nova models include support StopSequence but have an incoherrent behavior, it includes the stopSequence in the
     // response
     // TODO Titan express error : "Malformed input request: 3 schema violations found"
@@ -105,7 +93,7 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     @MethodSource("models")
     @EnabledIf("supportsStopSequencesParameter")
     protected void should_respect_stopSequences_in_chat_request(ChatLanguageModel model) {
-        if (!model.equals(AWS_TITAN_TEXT_EXPRESS) && !model.equals(AWS_NOVA_MICRO)) {
+        if (!model.equals(AWS_NOVA_MICRO)) {
             super.should_respect_system_message(model);
         }
     }

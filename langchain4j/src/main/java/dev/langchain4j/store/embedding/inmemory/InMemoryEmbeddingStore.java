@@ -95,7 +95,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
-        if (ids.size()!= embeddings.size() || embeddings.size() != embedded.size()) {
+        if (ids.size() != embeddings.size() || embeddings.size() != embedded.size()) {
             throw new IllegalArgumentException("The list of ids and embeddings and embedded must have the same size");
         }
 
@@ -233,7 +233,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return merge(asList(first, second));
     }
 
-    private static class Entry<Embedded> {
+    static class Entry<Embedded> {
 
         String id;
         Embedding embedding;
@@ -269,6 +269,6 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         for (InMemoryEmbeddingStoreJsonCodecFactory factory : loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
             return factory.create();
         }
-        return new GsonInMemoryEmbeddingStoreJsonCodec();
+        return new JacksonInMemoryEmbeddingStoreJsonCodec();
     }
 }

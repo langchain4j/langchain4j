@@ -11,6 +11,7 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -19,6 +20,11 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +35,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerResponse;
@@ -82,6 +89,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final List<String> stopSequences;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
+    private final String thinkingType;
+    private final Integer thinkingBudgetTokens;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
 
@@ -92,7 +101,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
      * @param apiKey              The API key for authentication with the Anthropic API.
      * @param version             The value of the "anthropic-version" HTTP header. Default: "2023-06-01"
      * @param beta                The value of the "anthropic-beta" HTTP header.
-     * @param modelName           The name of the Anthropic model to use. Default: "claude-3-haiku-20240307"
+     * @param modelName           The name of the Anthropic model to use.
      * @param temperature         The temperature
      * @param topP                The top-P
      * @param topK                The top-K
@@ -119,6 +128,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
                                List<String> stopSequences,
                                Boolean cacheSystemMessages,
                                Boolean cacheTools,
+                               String thinkingType,
+                               Integer thinkingBudgetTokens,
                                Duration timeout,
                                Integer maxRetries,
                                Boolean logRequests,
@@ -133,7 +144,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, CLAUDE_3_HAIKU_20240307.toString());
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
         this.topP = topP;
         this.topK = topK;
@@ -141,6 +152,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
         this.stopSequences = stopSequences;
         this.cacheSystemMessages = getOrDefault(cacheSystemMessages, false);
         this.cacheTools = getOrDefault(cacheTools, false);
+        this.thinkingType = thinkingType;
+        this.thinkingBudgetTokens = thinkingBudgetTokens;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
@@ -158,23 +171,25 @@ public class AnthropicChatModel implements ChatLanguageModel {
         }
     }
 
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static AnthropicChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
+    @Override
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.responseFormat());
+
+        Response<AiMessage> response = generate(chatRequest.messages(), parameters.toolSpecifications());
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
     }
 
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, (List<ToolSpecification>) null);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    private Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
 
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages, cacheSystemMessages ? EPHEMERAL : NO_CACHE);
@@ -190,6 +205,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .topP(topP)
                 .topK(topK)
                 .tools(toAnthropicTools(toolSpecifications, cacheTools ? EPHEMERAL : NO_CACHE))
+                .thinking(toThinking(thinkingType, thinkingBudgetTokens))
                 .build();
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
@@ -205,7 +221,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
         });
 
         try {
-            AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
+            AnthropicCreateMessageResponse response = withRetryMappingExceptions(() -> client.createMessage(request), maxRetries);
             Response<AiMessage> responseMessage = Response.from(
                     toAiMessage(response.content),
                     toTokenUsage(response.usage),
@@ -256,6 +272,17 @@ public class AnthropicChatModel implements ChatLanguageModel {
             throw e;
         }
     }
+
+    static AnthropicThinking toThinking(String thinkingType, Integer thinkingBudgetTokens) {
+        if (thinkingType != null || thinkingBudgetTokens != null) {
+            return AnthropicThinking.builder()
+                    .type(thinkingType)
+                    .budgetTokens(thinkingBudgetTokens)
+                    .build();
+        }
+        return null;
+    }
+
     // TODO forcing tool use?
 
     @Override

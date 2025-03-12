@@ -3,22 +3,22 @@ package dev.langchain4j.model.chat;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -109,23 +109,27 @@ public abstract class StreamingChatModelListenerIT {
 
         UserMessage userMessage = UserMessage.from("hello");
 
+        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
+                .messages(userMessage);
+
         ToolSpecification toolSpecification = null;
         if (supportsTools()) {
             toolSpecification = ToolSpecification.builder()
                     .name("add")
-                    .addParameter("a", INTEGER)
-                    .addParameter("b", INTEGER)
+                    .parameters(JsonObjectSchema.builder()
+                            .addIntegerProperty("a")
+                            .addIntegerProperty("b")
+                            .build())
                     .build();
+            chatRequestBuilder.toolSpecifications(toolSpecification);
         }
 
+        ChatRequest chatRequest = chatRequestBuilder.build();
+
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        if (supportsTools()) {
-            model.generate(singletonList(userMessage), singletonList(toolSpecification), handler);
-        } else {
-            model.generate(singletonList(userMessage), handler);
-        }
-        AiMessage aiMessage = handler.get().content();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+        AiMessage aiMessage = handler.get().aiMessage();
 
         // then
         ChatModelRequest request = requestReference.get();
@@ -210,26 +214,26 @@ public abstract class StreamingChatModelListenerIT {
         String userMessage = "this message will fail";
 
         CompletableFuture<Throwable> future = new CompletableFuture<>();
-        StreamingResponseHandler<AiMessage> handler = new StreamingResponseHandler<AiMessage>() {
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {
-                fail("onNext() must not be called");
+            public void onPartialResponse(String partialResponse) {
+                fail("onPartialResponse() must not be called");
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                fail("onCompleteResponse() must not be called");
             }
 
             @Override
             public void onError(Throwable error) {
                 future.complete(error);
             }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                fail("onComplete() must not be called");
-            }
         };
 
         // when
-        model.generate(userMessage, handler);
+        model.chat(userMessage, handler);
         Throwable throwable = future.get(5, SECONDS);
 
         // then

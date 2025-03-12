@@ -1,25 +1,26 @@
 package dev.langchain4j.store.embedding.filter.logical;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verifyNoInteractions;
+
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class OrTest {
 
     @Mock
     Filter mockFilterTrue;
+
     @Mock
     Filter mockFilterFalse;
 
     @Test
-    void testShouldReturnTrueWhenLeftIsTrue() {
+    void shouldReturnTrueWhenLeftIsTrue() {
         Mockito.when(mockFilterTrue.test(Mockito.any())).thenReturn(true);
 
         Or or = new Or(mockFilterTrue, mockFilterFalse);
@@ -29,7 +30,7 @@ class OrTest {
     }
 
     @Test
-    void testShouldReturnTrueWhenRightIsTrue() {
+    void shouldReturnTrueWhenRightIsTrue() {
         Mockito.when(mockFilterTrue.test(Mockito.any())).thenReturn(true);
         Mockito.when(mockFilterFalse.test(Mockito.any())).thenReturn(false);
 
@@ -39,7 +40,7 @@ class OrTest {
     }
 
     @Test
-    void testShouldReturnFalseWhenBothAreFalse() {
+    void shouldReturnFalseWhenBothAreFalse() {
         Mockito.when(mockFilterFalse.test(Mockito.any())).thenReturn(false);
 
         Or or = new Or(mockFilterFalse, mockFilterFalse);
@@ -48,7 +49,7 @@ class OrTest {
     }
 
     @Test
-    void testEqualsMethodShouldReturnTrueForNonDistinctObjects() {
+    void equalsMethodShouldReturnTrueForNonDistinctObjects() {
         Or or1 = new Or(mockFilterTrue, mockFilterFalse);
         Or or2 = new Or(mockFilterTrue, mockFilterFalse);
 
@@ -56,17 +57,15 @@ class OrTest {
     }
 
     @Test
-    void testEqualsAndHashCode() {
+    void equalsAndHashCode() {
         Or orFilter = new Or(mockFilterTrue, mockFilterFalse);
         Or sameOrFilter = new Or(mockFilterTrue, mockFilterFalse);
 
-        assertThat(orFilter)
-            .isEqualTo(sameOrFilter)
-            .hasSameHashCodeAs(sameOrFilter);
+        assertThat(orFilter).isEqualTo(sameOrFilter).hasSameHashCodeAs(sameOrFilter);
     }
 
     @Test
-    void testToStringMethodShouldReturnExpectedValue() {
+    void toStringMethodShouldReturnExpectedValue() {
         Or or = new Or(mockFilterTrue, mockFilterFalse);
 
         assertThat(or).hasToString("Or(left=" + mockFilterTrue + ", right=" + mockFilterFalse + ")");

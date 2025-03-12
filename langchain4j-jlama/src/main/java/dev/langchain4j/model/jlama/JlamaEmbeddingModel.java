@@ -33,7 +33,7 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                                Path workingDirectory) {
 
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
+        JlamaModel jlamaModel = RetryUtils.withRetryMappingExceptions(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
 
         if (jlamaModel.getModelType() != ModelSupport.ModelType.BERT) {
             throw new IllegalArgumentException("Model type must be BERT");

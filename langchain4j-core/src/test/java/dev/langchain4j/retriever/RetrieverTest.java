@@ -1,15 +1,14 @@
 package dev.langchain4j.retriever;
 
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static java.util.Collections.singletonList;
 
 class RetrieverTest implements WithAssertions {
     public static class TestRetriever implements Retriever<String> {
@@ -20,10 +19,9 @@ class RetrieverTest implements WithAssertions {
     }
 
     @Test
-    public void testFindRelevant() {
+    void findRelevant() {
         Retriever<String> retriever = new TestRetriever();
-        assertThat(retriever.findRelevant("test"))
-                .containsOnly("abc");
+        assertThat(retriever.findRelevant("test")).containsOnly("abc");
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> retriever.findRelevant("test", "test"))
@@ -31,7 +29,7 @@ class RetrieverTest implements WithAssertions {
     }
 
     @Test
-    public void should_convert_to_content_retriever() {
+    void should_convert_to_content_retriever() {
 
         // given
         Retriever<TextSegment> retriever = (text) -> singletonList(TextSegment.from(text));

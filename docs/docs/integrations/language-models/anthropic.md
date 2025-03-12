@@ -24,7 +24,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .apiKey(System.getenv("ANTHROPIC_API_KEY"))
     .modelName(CLAUDE_3_5_SONNET_20240620)
     .build();
-String answer = model.generate("Say 'Hello World'");
+String answer = model.chat("Say 'Hello World'");
 System.out.println(answer);
 ```
 
@@ -43,6 +43,8 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .stopSequences(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
+    .thinkingType(...)
+    .thinkingBudgetTokens(...)
     .timeout(...)
     .maxRetries(...)
     .logRequests(...)
@@ -58,15 +60,15 @@ AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
     .modelName(CLAUDE_3_5_SONNET_20240620)
     .build();
 
-model.generate("Say 'Hello World'", new StreamingResponseHandler<AiMessage>() {
+model.chat("Say 'Hello World'", new StreamingChatResponseHandler() {
 
     @Override
-    public void onNext(String token) {
-        // this method is called when a new token is available
+    public void onPartialResponse(String partialResponse) {
+        // this method is called when a new partial response is available. It can consist of one or more tokens.
     }
 
     @Override
-    public void onComplete(Response<AiMessage> response) {
+    public void onCompleteResponse(ChatResponse completeResponse) {
         // this method is called when the model has completed responding
     }
 
@@ -101,6 +103,30 @@ To use caching, please set `beta("prompt-caching-2024-07-31")`.
 contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
 
 More info on caching can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
+
+## Thinking
+
+`AnthropicChatModel` and `AnthropicStreamingChatModel` have a **_limited_** support
+for [thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
+It can be enabled by setting the `thinkingType` and `thinkingBudgetTokens` parameters:
+```java
+ChatLanguageModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName(CLAUDE_3_7_SONNET_20250219)
+        .thinkingType("enabled")
+        .thinkingBudgetTokens(1024)
+        .maxTokens(1024 + 100)
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+```
+
+What is currently not supported:
+- It not possible to get the thinking content from the LC4j API. It is only visible in logs.
+- Thinking content is not [preserved](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#preserving-thinking-blocks) in the multi-turn conversations (with [memory](/tutorials/chat-memory))
+- etc
+
+More info on thinking can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
 
 ## Quarkus
 

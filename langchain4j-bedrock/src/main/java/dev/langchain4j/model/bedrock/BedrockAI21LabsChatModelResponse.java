@@ -9,8 +9,9 @@ import lombok.Setter;
 import java.util.List;
 
 /**
- * Bedrock AI21 Labs model invoke response
+ * @deprecated please use {@link BedrockChatModel}
  */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @Setter
 public class BedrockAI21LabsChatModelResponse implements BedrockChatModelResponse {

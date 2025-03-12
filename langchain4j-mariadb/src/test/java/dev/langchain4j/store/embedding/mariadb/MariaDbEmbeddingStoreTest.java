@@ -17,7 +17,7 @@ class MariaDbEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
     EmbeddingStore<TextSegment> embeddingStore;
 
     @BeforeAll
-    public static void beforeAll() {
+    static void beforeAll() {
         mariadbContainer.start();
     }
 

@@ -4,7 +4,6 @@ import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.dropTa
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.getDataSource;
 import static dev.langchain4j.store.embedding.oracle.CreateOption.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.langchain4j.data.embedding.Embedding;
@@ -25,14 +24,14 @@ import org.junit.jupiter.api.Test;
 /**
  * Verifies {@link OracleEmbeddingStore.Builder} methods which configure the names of columns.
  */
-public class EmbeddingTableIT {
+class EmbeddingTableIT {
 
     /**
      *  Verifies that {@link dev.langchain4j.store.embedding.oracle.OracleEmbeddingStore.Builder#build()} creates a
      *  table with non-default names
      */
     @Test
-    public void testAsciiNames() throws SQLException {
+    void asciiNames() throws SQLException {
         String tableName = "TEST";
         String idColumn = "TEST_ID";
         String embeddingColumn = "TEST_EMBEDDING";
@@ -66,7 +65,7 @@ public class EmbeddingTableIT {
      *  table with non-default names that include unicode characters.
      */
     @Test
-    public void testUnicodeNames() throws SQLException {
+    void unicodeNames() throws SQLException {
         assumeTrue(CommonTestOperations.getCharacterSet().isUnicode());
 
         String tableName = "δεδομένα";
@@ -101,7 +100,7 @@ public class EmbeddingTableIT {
      *  table with non-default names that include unicode upper case characters.
      */
     @Test
-    public void testUnicodeNamesUpperCase() throws SQLException {
+    void unicodeNamesUpperCase() throws SQLException {
         assumeTrue(CommonTestOperations.getCharacterSet().isUnicode());
 
         String tableName = "δεδομένα".toUpperCase();
@@ -134,7 +133,7 @@ public class EmbeddingTableIT {
 
     /** Verifies the case where a table already exists, and the embedding store should not create it */
     @Test
-    public void testNoCreation() throws SQLException {
+    void noCreation() throws SQLException {
         String tableName = "TEST_NO_CREATION";
 
         try {
@@ -178,7 +177,7 @@ public class EmbeddingTableIT {
 
     /** Verifies the case where an existing table is reused */
     @Test
-    public void testCreateIfNotExists() throws SQLException {
+    void createIfNotExists() throws SQLException {
         String tableName = "TEST_CREATE_IF_NOT_EXISTS";
         dropTable(tableName); // to be sure
 
@@ -226,7 +225,7 @@ public class EmbeddingTableIT {
 
     /** Verifies the case where an existing table is dropped and replaced */
     @Test
-    public void testCreateOrReplace() throws SQLException {
+    void createOrReplace() throws SQLException {
         String tableName = "TEST_CREATE_OR_REPLACE";
         dropTable(tableName); // to be sure
 
@@ -336,8 +335,10 @@ public class EmbeddingTableIT {
     private static void assertDoesNotExistError(RuntimeException runtimeException) {
         try {
             // Expect "ORA-00942: table or view does not exist"  if the table does not exist
-            SQLException sqlException = assertInstanceOf(SQLException.class, runtimeException.getCause());
-            assertThat(sqlException.getErrorCode()).isEqualTo(942);
+            assertThat(runtimeException.getCause())
+                    .isInstanceOf(SQLException.class)
+                    .extracting(e -> ((SQLException) e).getErrorCode())
+                    .isEqualTo(942);
         } catch (AssertionError assertionError) {
             assertionError.addSuppressed(runtimeException);
             throw assertionError;

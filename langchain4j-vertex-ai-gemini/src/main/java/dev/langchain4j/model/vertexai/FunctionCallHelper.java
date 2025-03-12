@@ -7,7 +7,6 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
 import java.util.ArrayList;
@@ -19,26 +18,6 @@ import java.util.stream.Collectors;
 class FunctionCallHelper {
 
     private static final Gson GSON = new Gson();
-
-    static Type fromType(String type) {
-        //TODO: is it covering all the types correctly?
-        switch (type) {
-            case "string":
-                return Type.STRING;
-            case "integer":
-                return Type.INTEGER;
-            case "boolean":
-                return Type.BOOLEAN;
-            case "number":
-                return Type.NUMBER;
-            case "array":
-                return Type.ARRAY;
-            case "object":
-                return Type.OBJECT;
-            default:
-                return Type.TYPE_UNSPECIFIED;
-        }
-    }
 
     static FunctionCall fromToolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
         FunctionCall.Builder fnCallBuilder = FunctionCall.newBuilder()
@@ -117,27 +96,6 @@ class FunctionCallHelper {
 
             if (toolSpecification.parameters() != null) {
                 fnBuilder.setParameters(SchemaHelper.from(toolSpecification.parameters()));
-            } else if (toolSpecification.toolParameters() != null) {
-                ToolParameters parameters = toolSpecification.toolParameters();
-
-                Schema.Builder schema = Schema.newBuilder()
-                        .setType(Type.OBJECT);
-                for (String paramName : parameters.required()) {
-                    schema.addRequired(paramName);
-                }
-
-                parameters.properties().forEach((paramName, paramProps) -> {
-                    //TODO: is it covering all types & cases of tool parameters? (array & object in particular)
-                    Type type = fromType((String) paramProps.getOrDefault("type", Type.TYPE_UNSPECIFIED));
-
-                    String description = (String) paramProps.getOrDefault("description", "");
-
-                    schema.putProperties(paramName, Schema.newBuilder()
-                            .setDescription(description)
-                            .setType(type)
-                            .build());
-                });
-                fnBuilder.setParameters(schema.build());
             }
 
             tool.addFunctionDeclarations(fnBuilder.build());

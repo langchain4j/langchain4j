@@ -45,6 +45,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -60,7 +61,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
-import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 
 import org.slf4j.Logger;
@@ -440,33 +440,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, null, this.responseFormat, handler);
-    }
-
-    @Override
-    public void generate(
-            List<ChatMessage> messages,
-            List<ToolSpecification> toolSpecifications,
-            StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, toolSpecifications, null, this.responseFormat, handler);
-    }
-
-    @Override
-    public void generate(
-            List<ChatMessage> messages,
-            ToolSpecification toolSpecification,
-            StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, toolSpecification, this.responseFormat, handler);
-    }
-
-    @Override
     public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = request.parameters();
-        validate(parameters);
+        ChatRequestValidator.validateParameters(parameters);
 
         // If the response format is not specified in the request, use the one specified in the model
-        ResponseFormat responseFormat = request.responseFormat();
+        ResponseFormat responseFormat = parameters.responseFormat();
         if (responseFormat == null) {
             responseFormat = this.responseFormat;
         }
@@ -547,11 +526,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         if (toolThatMustBeExecuted != null) {
             options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
             options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
-            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
         }
         if (!isNullOrEmpty(toolSpecifications)) {
             options.setTools(toToolDefinitions(toolSpecifications));
-            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
         }
 
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
@@ -608,7 +585,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     handler.onError(throwable);
                 },
                 () -> {
-                    Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
+                    Response<AiMessage> response = responseBuilder.build(tokenizer);
                     ChatModelResponse modelListenerResponse =
                             createModelListenerResponse(responseId.get(), options.getModel(), response);
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(modelListenerResponse,
@@ -641,7 +618,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     responseId.set(chatCompletions.getId());
                 }
             });
-            Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
+            Response<AiMessage> response = responseBuilder.build(tokenizer);
             ChatModelResponse modelListenerResponse =
                     createModelListenerResponse(responseId.get(), options.getModel(), response);
             ChatModelResponseContext responseContext = new ChatModelResponseContext(

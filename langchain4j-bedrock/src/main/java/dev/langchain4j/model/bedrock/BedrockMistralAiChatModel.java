@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -27,6 +27,10 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
+/**
+ * @deprecated please use {@link BedrockChatModel} instead
+ */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Slf4j
 @Getter
 @SuperBuilder
@@ -57,7 +61,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    protected Response<AiMessage> generate(List<ChatMessage> messages) {
         String prompt = buildPrompt(messages);
 
         final Map<String, Object> requestParameters = getRequestParameters(prompt);
@@ -73,7 +77,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
 
-        InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
+        InvokeModelResponse invokeModelResponse = withRetryMappingExceptions(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
         final String response = invokeModelResponse.body().asUtf8String().trim();
         final BedrockMistralAiChatModelResponse result = Json.fromJson(response, getResponseClassType());
 

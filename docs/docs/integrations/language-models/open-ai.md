@@ -108,6 +108,7 @@ langchain4j.open-ai.chat-model.stop=...
 langchain4j.open-ai.chat-model.store=...
 langchain4j.open-ai.chat-model.strict-schema=...
 langchain4j.open-ai.chat-model.strict-tools=...
+langchain4j.open-ai.chat-model.supported-capabilities=...
 langchain4j.open-ai.chat-model.temperature=...
 langchain4j.open-ai.chat-model.timeout=...
 langchain4j.open-ai.chat-model.top-p=
@@ -131,7 +132,7 @@ class ChatLanguageModelController {
 
     @GetMapping("/model")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.generate(message);
+        return chatLanguageModel.chat(message);
     }
 }
 ```
@@ -155,11 +156,11 @@ and set `additionalProperties=false` for each `object` in json schema. This is d
 
 ### Structured Outputs for Response Format
 To enable the Structured Outputs feature for response formatting when using AI Services,
-set `.responseFormat("json_schema")` and `.strictJsonSchema(true)` when building the model:
+set `.supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)` and `.strictJsonSchema(true)` when building the model:
 ```java
 OpenAiChatModel.builder()
     ...
-    .responseFormat("json_schema")
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
     .strictJsonSchema(true)
     .build();
 ```

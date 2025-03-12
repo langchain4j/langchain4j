@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock.internal;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -12,6 +12,11 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -40,7 +45,26 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
     private volatile BedrockRuntimeClient client;
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolSpecifications());
+        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.responseFormat());
+
+        Response<AiMessage> response = generate(chatRequest.messages());
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
+    }
+
+    protected Response<AiMessage> generate(List<ChatMessage> messages) {
 
         final String body = convertMessagesToAwsBody(messages);
 
@@ -56,7 +80,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
 
         try {
             InvokeModelResponse invokeModelResponse =
-                    withRetry(() -> invoke(invokeModelRequest, requestContext), maxRetries);
+                    withRetryMappingExceptions(() -> invoke(invokeModelRequest, requestContext), maxRetries);
             final String response = invokeModelResponse.body().asUtf8String();
             final T result = Json.fromJson(response, getResponseClassType());
 

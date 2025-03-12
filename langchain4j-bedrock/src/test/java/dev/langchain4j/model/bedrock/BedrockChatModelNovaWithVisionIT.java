@@ -18,7 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
+class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {

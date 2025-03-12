@@ -2,7 +2,6 @@ package dev.langchain4j.model.ollama;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -66,12 +65,6 @@ class OllamaMessagesUtils {
             JsonObjectSchema parameters = toolSpecification.parameters();
             return Parameters.builder()
                     .properties(toMap(parameters.properties()))
-                    .required(parameters.required())
-                    .build();
-        } else if (toolSpecification.toolParameters() != null) {
-            ToolParameters parameters = toolSpecification.toolParameters();
-            return Parameters.builder()
-                    .properties(parameters.properties())
                     .required(parameters.required())
                     .build();
         } else {
