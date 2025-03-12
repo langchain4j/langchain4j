@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ModelProvider.GOOGLE_GEMINI;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
@@ -186,7 +186,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     @Override
     public ModelProvider provider() {
-        return GOOGLE_GEMINI;
+        return GOOGLE_AI_GEMINI;
     }
 
     public static class GoogleAiGeminiChatModelBuilder {

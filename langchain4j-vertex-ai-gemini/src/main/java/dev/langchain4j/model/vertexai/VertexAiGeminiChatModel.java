@@ -36,7 +36,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.ModelProvider.GOOGLE_GEMINI;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_GEMINI;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 
@@ -402,7 +402,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
 
     @Override
     public ModelProvider provider() {
-        return GOOGLE_GEMINI;
+        return GOOGLE_VERTEX_AI_GEMINI;
     }
 
     public static VertexAiGeminiChatModelBuilder builder() {

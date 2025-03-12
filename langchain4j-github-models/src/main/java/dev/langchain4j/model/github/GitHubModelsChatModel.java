@@ -36,7 +36,7 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.ModelProvider.AZURE_AI_INFERENCE;
+import static dev.langchain4j.model.ModelProvider.GITHUB_MODELS;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -276,7 +276,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
 
     @Override
     public ModelProvider provider() {
-        return AZURE_AI_INFERENCE;
+        return GITHUB_MODELS;
     }
 
     public static Builder builder() {

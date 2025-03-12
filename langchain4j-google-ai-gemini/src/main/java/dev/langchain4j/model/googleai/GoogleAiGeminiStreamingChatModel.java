@@ -33,7 +33,7 @@ import java.util.stream.Stream;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.ModelProvider.GOOGLE_GEMINI;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 
 @Experimental
 @Slf4j
@@ -150,7 +150,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
     @Override
     public ModelProvider provider() {
-        return GOOGLE_GEMINI;
+        return GOOGLE_AI_GEMINI;
     }
 
     public static class GoogleAiGeminiStreamingChatModelBuilder {
