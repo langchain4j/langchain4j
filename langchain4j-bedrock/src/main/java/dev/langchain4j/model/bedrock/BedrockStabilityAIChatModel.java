@@ -10,12 +10,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Bedrock stability AI model
- * This is for image generation.
- * Might not make sense to make it a chat model.
- * <p>
- * <a href="https://docs.stability-ai.com/bedrock-runtime-api-reference/invoke-model">...</a>
+ * @deprecated Will be removed in the next release, this functionality will not be supported anymore.
+ * Please reach out (via GitHub issues) if you use it.
  */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @SuperBuilder
 public class BedrockStabilityAIChatModel extends AbstractBedrockChatModel<BedrockStabilityAIChatModelResponse> {
