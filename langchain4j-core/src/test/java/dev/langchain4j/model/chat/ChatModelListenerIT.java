@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static dev.langchain4j.model.ModelProvider.OTHER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
@@ -98,6 +99,8 @@ public abstract class ChatModelListenerIT {
                 requestReference.set(requestContext.request());
                 onRequestInvocations.incrementAndGet();
 
+                assertThat(requestContext.modelProvider()).isNotEqualTo(OTHER);
+
                 requestContext.attributes().put("id", "12345");
             }
 
@@ -109,6 +112,8 @@ public abstract class ChatModelListenerIT {
 
                 assertThat(responseContext.chatRequest()).isEqualTo(chatRequestReference.get());
                 assertThat(responseContext.request()).isEqualTo(requestReference.get());
+
+                assertThat(responseContext.modelProvider()).isNotEqualTo(OTHER);
 
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
@@ -232,6 +237,8 @@ public abstract class ChatModelListenerIT {
                 requestReference.set(requestContext.request());
                 onRequestInvocations.incrementAndGet();
 
+                assertThat(requestContext.modelProvider()).isNotEqualTo(OTHER);
+
                 requestContext.attributes().put("id", "12345");
             }
 
@@ -249,6 +256,8 @@ public abstract class ChatModelListenerIT {
                 assertThat(errorContext.request()).isEqualTo(requestReference.get());
 
                 assertThat(errorContext.partialResponse()).isNull();
+
+                assertThat(errorContext.modelProvider()).isNotEqualTo(OTHER);
 
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }

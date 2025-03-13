@@ -13,6 +13,7 @@ import com.openai.client.OpenAIClient;
 import com.openai.client.OpenAIClientAsync;
 import com.openai.credential.Credential;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -181,5 +182,13 @@ abstract class OpenAiOfficialBaseChatModel {
 
     public List<ChatModelListener> listeners() {
         return listeners;
+    }
+
+    public ModelProvider provider() {
+        return switch (modelHost) {
+            case OPENAI -> ModelProvider.OPEN_AI;
+            case AZURE_OPENAI -> ModelProvider.AZURE_OPEN_AI;
+            case GITHUB_MODELS -> ModelProvider.GITHUB_MODELS;
+        };
     }
 }
