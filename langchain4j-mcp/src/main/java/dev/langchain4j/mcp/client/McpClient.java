@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.client;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a client that can communicate with an MCP server over a given transport protocol,
@@ -24,16 +25,26 @@ public interface McpClient extends AutoCloseable {
     /**
      * Obtains the current list of resources available on the MCP server.
      */
-    List<ResourceRef> listResources();
+    List<McpResource> listResources();
 
     /**
      * Obtains the current list of resource templates (dynamic resources) available on the MCP server.
      */
-    List<ResourceTemplateRef> listResourceTemplates();
+    List<McpResourceTemplate> listResourceTemplates();
 
     /**
      * Retrieves the contents of the resource with the specified URI. This also
      * works for dynamic resources (templates).
      */
-    ResourceResponse readResource(String uri);
+    McpReadResourceResult readResource(String uri);
+
+    /**
+     * Obtain a list of prompts available on the MCP server.
+     */
+    List<McpPrompt> listPrompts();
+
+    /**
+     * Render the contents of a prompt.
+     */
+    MgpGetPromptResult getPrompt(String name, Map<String, Object> arguments);
 }
