@@ -110,6 +110,17 @@ This returns a list of `ResourceContents` objects (there may be more resource co
 example if the URI represents a directory). Each `ResourceContents` object represents either a binary blob or a
 string. For a binary blob, use `resourceContents.asBlob()` to access the actual data, for text, use `resourceContents.asText()`.
 
+## Prompts
+
+To obtain a list of [MCP prompts](https://modelcontextprotocol.io/docs/concepts/prompts)
+from the server, use `client.listPrompts()`. This method returns a List of `PromptRef`. A `PromptRef`
+contains information about the name and arguments of the prompt.
+
+To render the actual contents of a prompt, use `client.getPrompt(name, arguments)`. A rendered prompt can contain one to many
+messages and these are represented as `PromptMessage` objects. Each `PromptMessage` contains the role of the message (`user`, `assistant`,...)
+and the actual content of the message. The supported message content types at the moment
+are: `PromptTextContent`, `PromptImageContent`, `EmbeddedResource`.
+
 ## Using the GitHub MCP server through Docker
 
 Let's now see how to use the Model Context Protocol (MCP) to bridge AI models with external tools in a standardized way.
