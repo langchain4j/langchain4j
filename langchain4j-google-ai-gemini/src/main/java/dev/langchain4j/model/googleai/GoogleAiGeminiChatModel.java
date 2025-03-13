@@ -4,6 +4,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
@@ -93,7 +95,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        notifyListenersOnRequest(new ChatModelRequestContext(chatModelRequest, listenerAttributes));
+        notifyListenersOnRequest(new ChatModelRequestContext(chatModelRequest, provider(), listenerAttributes));
 
         try {
             GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
@@ -103,7 +105,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
             return processResponse(geminiResponse, chatModelRequest, listenerAttributes);
         } catch (RuntimeException e) {
-            notifyListenersOnError(e, chatModelRequest, listenerAttributes);
+            notifyListenersOnError(e, chatModelRequest, provider(), listenerAttributes);
             throw e;
         }
     }
@@ -134,7 +136,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         TokenUsage tokenUsage = createTokenUsage(tokenCounts);
 
         Response<AiMessage> response = Response.from(aiMessage, tokenUsage, finishReason);
-        notifyListenersOnResponse(response, chatModelRequest, listenerAttributes);
+        notifyListenersOnResponse(response, chatModelRequest, provider(), listenerAttributes);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
@@ -175,6 +177,16 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return GOOGLE_AI_GEMINI;
     }
 
     public static class GoogleAiGeminiChatModelBuilder {
