@@ -3,11 +3,13 @@ package dev.langchain4j.mcp.client.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.mcp.client.McpException;
 import dev.langchain4j.mcp.client.ResourceContents;
 import dev.langchain4j.mcp.client.ResourceRef;
 import dev.langchain4j.mcp.client.ResourceResponse;
 import dev.langchain4j.mcp.client.ResourceTemplateRef;
 import java.util.List;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public abstract class McpResourcesTestBase {
@@ -92,6 +94,12 @@ public abstract class McpResourcesTestBase {
         assertThat(contents.type().equals(ResourceContents.Type.BLOB));
         assertThat(contents.asBlob().uri().toString()).isEqualTo("file:///blob-template/hello");
         assertThat(contents.asBlob().blob()).isEqualTo("blob hello");
+    }
+
+    @Test
+    public void readNonExistentResource() {
+        Assertions.assertThatThrownBy(() -> mcpClient.readResource("file:///i-do-not-exist"))
+                .isInstanceOf(McpException.class);
     }
 
     private ResourceRef getResourceRef(String resourceName, List<ResourceRef> resourceRefs) {

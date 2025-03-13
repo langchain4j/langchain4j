@@ -13,6 +13,7 @@ class ResourcesHelper {
     private static final Logger log = LoggerFactory.getLogger(ResourcesHelper.class);
 
     static List<ResourceRef> parseResourceRefs(JsonNode mcpMessage) {
+        McpErrorHelper.checkForErrors(mcpMessage);
         if (mcpMessage.has("result")) {
             JsonNode resultNode = mcpMessage.get("result");
             if (resultNode.has("resources")) {
@@ -31,7 +32,8 @@ class ResourcesHelper {
         }
     }
 
-    public static ResourceResponse parseResourceContents(JsonNode mcpMessage) {
+    static ResourceResponse parseResourceContents(JsonNode mcpMessage) {
+        McpErrorHelper.checkForErrors(mcpMessage);
         if (mcpMessage.has("result")) {
             JsonNode resultNode = mcpMessage.get("result");
             if (resultNode.has("contents")) {
@@ -60,7 +62,8 @@ class ResourcesHelper {
         }
     }
 
-    public static List<ResourceTemplateRef> parseResourceTemplateRefs(JsonNode mcpMessage) {
+    static List<ResourceTemplateRef> parseResourceTemplateRefs(JsonNode mcpMessage) {
+        McpErrorHelper.checkForErrors(mcpMessage);
         if (mcpMessage.has("result")) {
             JsonNode resultNode = mcpMessage.get("result");
             if (resultNode.has("resourceTemplates")) {
