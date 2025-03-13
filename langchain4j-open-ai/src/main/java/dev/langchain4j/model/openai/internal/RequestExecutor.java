@@ -34,18 +34,18 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
     }
 
     @Override
-    public Response execute() {
+    public ResponseAndAttributes<Response> execute() {
         SyncRequestExecutor<Response> executor = new SyncRequestExecutor<>(httpClient, httpRequest, responseClass);
         return executor.execute();
     }
 
     @Override
-    public AsyncResponseHandling onResponse(Consumer<Response> responseHandler) {
+    public AsyncResponseHandling onResponse(Consumer<ResponseAndAttributes<Response>> responseHandler) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public StreamingResponseHandling onPartialResponse(Consumer<Response> partialResponseHandler) {
+    public StreamingResponseHandling onPartialResponse(Consumer<ResponseAndAttributes<Response>> partialResponseHandler) {
         StreamingRequestExecutor<Response> executor =
                 new StreamingRequestExecutor<>(httpClient, streamingHttpRequest, responseClass);
         return executor.onPartialResponse(partialResponseHandler);

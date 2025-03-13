@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.model.openai.internal.ResponseAndAttributes;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
@@ -17,12 +19,14 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.openai.internal.ResponseAndAttributes.RAW_EVENT_ATTRIBUTE;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -47,8 +51,13 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<String> systemFingerprint = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+    private final List<ServerSentEvent> rawEvents = new CopyOnWriteArrayList<>();
 
-    public void append(ChatCompletionResponse partialResponse) {
+    public void append(ResponseAndAttributes<ChatCompletionResponse> responseAndAttributes) {
+
+        rawEvents.add((ServerSentEvent) responseAndAttributes.attributes().get(RAW_EVENT_ATTRIBUTE));
+
+        ChatCompletionResponse partialResponse = responseAndAttributes.response();
         if (partialResponse == null) {
             return;
         }
@@ -174,6 +183,7 @@ public class OpenAiStreamingResponseBuilder {
                 .created(created.get())
                 .serviceTier(serviceTier.get())
                 .systemFingerprint(systemFingerprint.get())
+                .rawEvents(rawEvents)
                 .build();
 
         String text = contentBuilder.toString();

@@ -9,6 +9,7 @@ import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
+import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -75,7 +76,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.completion(request)
-                .onPartialResponse(partialResponse -> {
+                .onPartialResponse(responseAndAttributes -> {
+                    CompletionResponse partialResponse = responseAndAttributes.response();
                     responseBuilder.append(partialResponse);
                     for (CompletionChoice choice : partialResponse.choices()) {
                         String token = choice.text();
