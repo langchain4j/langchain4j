@@ -8,13 +8,14 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import dev.langchain4j.store.memory.chat.SingleSlotChatMemoryStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -35,9 +36,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * to avoid problems with some LLM providers (such as OpenAI)
  * that prohibit sending orphan {@code ToolExecutionResultMessage}(s) in the request.
  * <p>
- * The state of chat memory is stored in {@link ChatMemoryStore} ({@link InMemoryChatMemoryStore} is used by default).
+ * The state of chat memory is stored in {@link ChatMemoryStore} ({@link SingleSlotChatMemoryStore} is used by default).
  */
-public class TokenWindowChatMemory implements ChatMemory {
+public class TokenWindowChatMemory implements ChatMemory, RemovableChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(TokenWindowChatMemory.class);
 
@@ -46,11 +47,13 @@ public class TokenWindowChatMemory implements ChatMemory {
     private final Tokenizer tokenizer;
     private final ChatMemoryStore store;
 
+    private Consumer<Object> memoryCleaner;
+
     private TokenWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.maxTokens = ensureGreaterThanZero(builder.maxTokens, "maxTokens");
         this.tokenizer = ensureNotNull(builder.tokenizer, "tokenizer");
-        this.store = ensureNotNull(builder.store, "store");
+        this.store = ensureNotNull(builder.store(), "store");
     }
 
     @Override
@@ -126,6 +129,14 @@ public class TokenWindowChatMemory implements ChatMemory {
     @Override
     public void clear() {
         store.deleteMessages(id);
+        if (memoryCleaner != null) {
+            memoryCleaner.accept(id);
+        }
+    }
+
+    @Override
+    public void onChatMemoryRemove(final Consumer<Object> remover) {
+        this.memoryCleaner = remover;
     }
 
     public static Builder builder() {
@@ -134,10 +145,10 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     public static class Builder {
 
-        private Object id = "default";
+        private Object id = ChatMemories.DEFAULT;
         private Integer maxTokens;
         private Tokenizer tokenizer;
-        private ChatMemoryStore store = new InMemoryChatMemoryStore();
+        private ChatMemoryStore store;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -164,12 +175,16 @@ public class TokenWindowChatMemory implements ChatMemory {
 
         /**
          * @param store The chat memory store responsible for storing the chat memory state.
-         *              If not provided, an {@link InMemoryChatMemoryStore} will be used.
+         *              If not provided, an {@link SingleSlotChatMemoryStore} will be used.
          * @return builder
          */
         public Builder chatMemoryStore(ChatMemoryStore store) {
             this.store = store;
             return this;
+        }
+
+        public ChatMemoryStore store() {
+            return store != null ? store : new SingleSlotChatMemoryStore(id);
         }
 
         public TokenWindowChatMemory build() {

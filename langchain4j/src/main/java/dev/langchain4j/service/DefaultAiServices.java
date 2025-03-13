@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.ChatMemories;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -98,7 +99,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }
 
-            if (context.chatMemoryProvider == null) {
+            if (!context.hasChatMemory()) {
                 for (Parameter parameter : method.getParameters()) {
                     if (parameter.isAnnotationPresent(MemoryId.class)) {
                         throw illegalConfiguration(
@@ -126,16 +127,15 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         validateParameters(method);
 
-                        Object memoryId = findMemoryId(method, args).orElse(DEFAULT);
+                        final Object memoryId = findMemoryId(method, args).orElse(ChatMemories.DEFAULT);
+                        final ChatMemory chatMemory = context.hasChatMemory() ? context.chatMemory(memoryId) : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
-                            List<ChatMessage> chatMemory = context.hasChatMemory()
-                                    ? context.chatMemory(memoryId).messages()
-                                    : null;
-                            Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory);
+                            List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
+                            Metadata metadata = Metadata.from(userMessage, memoryId, chatMemoryMessages);
                             AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
                             userMessage = (UserMessage) augmentationResult.chatMessage();
@@ -158,15 +158,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
-                        if (context.hasChatMemory()) {
-                            ChatMemory chatMemory = context.chatMemory(memoryId);
+                        List<ChatMessage> messages;
+                        if (chatMemory != null) {
                             systemMessage.ifPresent(chatMemory::add);
                             chatMemory.add(userMessage);
-                        }
-
-                        List<ChatMessage> messages;
-                        if (context.hasChatMemory()) {
-                            messages = context.chatMemory(memoryId).messages();
+                            messages = chatMemory.messages();
                         } else {
                             messages = new ArrayList<>();
                             systemMessage.ifPresent(messages::add);
@@ -221,7 +217,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 parameters,
                                 messages,
                                 context.chatModel,
-                                context.hasChatMemory() ? context.chatMemory(memoryId) : null,
+                                chatMemory,
                                 memoryId,
                                 toolExecutionContext.toolExecutors());
 
