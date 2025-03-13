@@ -176,11 +176,6 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     @Override
-    public List<ChatModelListener> listeners() {
-        return listeners;
-    }
-
-    @Override
     public ModelProvider provider() {
         return OLLAMA;
     }
