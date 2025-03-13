@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static dev.langchain4j.model.ModelProvider.OTHER;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -94,6 +95,7 @@ public abstract class StreamingChatModelListenerIT {
             public void onRequest(ChatModelRequestContext requestContext) {
                 requestReference.set(requestContext.request());
                 onRequestInvocations.incrementAndGet();
+                assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
                 requestContext.attributes().put("id", "12345");
             }
 
@@ -102,6 +104,7 @@ public abstract class StreamingChatModelListenerIT {
                 responseReference.set(responseContext.response());
                 onResponseInvocations.incrementAndGet();
                 assertThat(responseContext.request()).isEqualTo(requestReference.get());
+                assertThat(responseContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
@@ -204,6 +207,7 @@ public abstract class StreamingChatModelListenerIT {
             public void onRequest(ChatModelRequestContext requestContext) {
                 requestReference.set(requestContext.request());
                 onRequestInvocations.incrementAndGet();
+                assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
                 requestContext.attributes().put("id", "12345");
             }
 
@@ -217,7 +221,8 @@ public abstract class StreamingChatModelListenerIT {
                 errorReference.set(errorContext.error());
                 onErrorInvocations.incrementAndGet();
                 assertThat(errorContext.request()).isEqualTo(requestReference.get());
-                assertThat(errorContext.partialResponse()).isNull(); // can be non-null if it fails in the middle of streaming
+                assertThat(errorContext.partialResponse()).isNull();
+                assertThat(errorContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };

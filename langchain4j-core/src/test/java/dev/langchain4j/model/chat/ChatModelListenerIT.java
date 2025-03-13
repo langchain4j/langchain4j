@@ -99,7 +99,7 @@ public abstract class ChatModelListenerIT {
                 requestReference.set(requestContext.request());
                 onRequestInvocations.incrementAndGet();
 
-                assertThat(requestContext.modelProvider()).isNotEqualTo(OTHER);
+                assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
 
                 requestContext.attributes().put("id", "12345");
             }
@@ -113,7 +113,7 @@ public abstract class ChatModelListenerIT {
                 assertThat(responseContext.chatRequest()).isEqualTo(chatRequestReference.get());
                 assertThat(responseContext.request()).isEqualTo(requestReference.get());
 
-                assertThat(responseContext.modelProvider()).isNotEqualTo(OTHER);
+                assertThat(responseContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
 
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
@@ -237,7 +237,7 @@ public abstract class ChatModelListenerIT {
                 requestReference.set(requestContext.request());
                 onRequestInvocations.incrementAndGet();
 
-                assertThat(requestContext.modelProvider()).isNotEqualTo(OTHER);
+                assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
 
                 requestContext.attributes().put("id", "12345");
             }
@@ -257,7 +257,7 @@ public abstract class ChatModelListenerIT {
 
                 assertThat(errorContext.partialResponse()).isNull();
 
-                assertThat(errorContext.modelProvider()).isNotEqualTo(OTHER);
+                assertThat(errorContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
 
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
