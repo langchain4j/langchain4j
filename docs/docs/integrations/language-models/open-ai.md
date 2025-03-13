@@ -171,6 +171,17 @@ If the return type is something else, (like an `enum` or a `List<String>`),
 the old behaviour is applied (with "You must answer strictly ...").
 Other return types will be supported in the near future.
 
+### JSON mode for Response format
+If your model doesn't support Structured Outputs (JSON schema), you can still use JSON mode to ensure the model's output is valid JSON. This works if your model supports RESPONSE_FORMAT_JSON_MODE, such as older versions of OpenAI models or other models compatible with the OpenAI protocol, including gpt-3.5-turbo, gpt-4-*, gpt-4o-* models, deepseek-v3, etc.
+
+To use JSON mode, configure your model as follows (Note: We recommend always using JSON schema instead of JSON mode when possible):
+```java
+OpenAiChatModel.builder()
+    ...
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_MODE)
+    .build();
+```
+
 ## Creating `OpenAiStreamingChatModel`
 
 ### Plain Java
