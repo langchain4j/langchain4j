@@ -41,7 +41,6 @@ class VertexAiGeminiChatModelListenerIT extends ChatModelListenerIT {
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName("banana")
                 .listeners(singletonList(listener))
-                .maxRetries(1)
                 .build();
     }
 

@@ -189,10 +189,17 @@ public class BedrockAnthropicMessageChatModel
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
                 new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
 
         try {
             InvokeModelResponse invokeModelResponse =
-                    withRetryMappingExceptions(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
+                    withRetryMappingExceptions(() -> getClient().invokeModel(invokeModelRequest), getMaxRetries());
             final String response = invokeModelResponse.body().asUtf8String();
             BedrockAnthropicMessageChatModelResponse result = Json.fromJson(response, getResponseClassType());
 
