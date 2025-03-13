@@ -11,6 +11,7 @@ import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
@@ -37,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_GEMINI;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 
@@ -293,7 +295,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             .toolSpecifications(toolSpecifications)
             .build();
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, listenerAttributes);
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, provider(), listenerAttributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onRequest(chatModelRequestContext);
@@ -323,7 +325,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                 .aiMessage(fullResponse.content())
                 .build();
             ChatModelResponseContext chatModelResponseContext = new ChatModelResponseContext(
-                chatModelResponse, chatModelRequest, listenerAttributes);
+                chatModelResponse, chatModelRequest, provider(), listenerAttributes);
             listeners.forEach((listener) -> {
                 try {
                     listener.onResponse(chatModelResponseContext);
@@ -339,7 +341,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             listeners.forEach((listener) -> {
                 try {
                     ChatModelErrorContext chatModelErrorContext =
-                        new ChatModelErrorContext(exception, chatModelRequest, null, listenerAttributes);
+                        new ChatModelErrorContext(exception, chatModelRequest, null, provider(), listenerAttributes);
                     listener.onError(chatModelErrorContext);
                 } catch (Exception t) {
                     logger.warn("Exception while calling model listener (onError)", t);
@@ -355,6 +357,16 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         if (this.vertexAI != null) {
             this.vertexAI.close();
         }
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return GOOGLE_VERTEX_AI_GEMINI;
     }
 
     public static VertexAiGeminiStreamingChatModelBuilder builder() {

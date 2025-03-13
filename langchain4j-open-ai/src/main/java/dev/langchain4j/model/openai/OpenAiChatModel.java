@@ -1,24 +1,8 @@
 package dev.langchain4j.model.openai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptySet;
-
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -38,6 +22,26 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static dev.langchain4j.internal.ExceptionMapper.mappingException;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
@@ -186,6 +190,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     @Override
     public List<ChatModelListener> listeners() {
         return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return OPEN_AI;
     }
 
     @Override
