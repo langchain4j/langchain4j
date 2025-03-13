@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_MODE;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
@@ -200,6 +201,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .type(JSON)
                                     .jsonSchema(jsonSchema.get())
                                     .build();
+                        } else if (supportsJsonMode()) {
+                            responseFormat = ResponseFormat.builder().type(JSON).build();
                         }
 
                         ChatRequestParameters parameters = ChatRequestParameters.builder()
@@ -265,6 +268,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                     private boolean supportsJsonSchema() {
                         return context.chatModel != null
                                 && context.chatModel.supportedCapabilities().contains(RESPONSE_FORMAT_JSON_SCHEMA);
+                    }
+
+                    private boolean supportsJsonMode() {
+                        return context.chatModel != null
+                                && context.chatModel.supportedCapabilities().contains(RESPONSE_FORMAT_JSON_MODE);
                     }
 
                     private UserMessage appendOutputFormatInstructions(Type returnType, UserMessage userMessage) {

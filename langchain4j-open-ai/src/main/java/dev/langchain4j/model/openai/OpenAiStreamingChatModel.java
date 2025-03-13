@@ -1,9 +1,23 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -19,22 +33,12 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
-
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
-import static java.util.Collections.emptyList;
+import java.util.Set;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
@@ -46,6 +50,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final OpenAiClient client;
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
+    private final Set<Capability> supportedCapabilities;
     private final Boolean strictJsonSchema;
     private final Boolean strictTools;
 
@@ -93,7 +98,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .stopSequences(getOrDefault(builder.stop, () -> copyIfNotNull(commonParameters.stopSequences())))
                 .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(
+                        fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(builder.logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
@@ -105,6 +111,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
+        this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
 
@@ -127,17 +134,20 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
+    }
+
+    @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
         InternalOpenAiHelper.validate(parameters);
 
         ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema)
-                        .stream(true)
-                        .streamOptions(StreamOptions.builder()
-                                .includeUsage(true)
-                                .build())
+                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).stream(true)
+                        .streamOptions(
+                                StreamOptions.builder().includeUsage(true).build())
                         .build();
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
@@ -155,8 +165,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .execute();
     }
 
-    private static void handle(ChatCompletionResponse partialResponse,
-                               StreamingChatResponseHandler handler) {
+    private static void handle(ChatCompletionResponse partialResponse, StreamingChatResponseHandler handler) {
         if (partialResponse == null) {
             return;
         }
@@ -203,7 +212,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     public static OpenAiStreamingChatModelBuilder builder() {
-        for (OpenAiStreamingChatModelBuilderFactory factory : loadFactories(OpenAiStreamingChatModelBuilderFactory.class)) {
+        for (OpenAiStreamingChatModelBuilderFactory factory :
+                loadFactories(OpenAiStreamingChatModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OpenAiStreamingChatModelBuilder();
@@ -242,6 +252,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
+        private Set<Capability> supportedCapabilities;
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -336,6 +347,15 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         public OpenAiStreamingChatModelBuilder responseFormat(String responseFormat) {
             this.responseFormat = responseFormat;
             return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
         public OpenAiStreamingChatModelBuilder strictJsonSchema(Boolean strictJsonSchema) {
