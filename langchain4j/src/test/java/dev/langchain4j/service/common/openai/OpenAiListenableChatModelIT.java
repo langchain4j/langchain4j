@@ -2,7 +2,7 @@ package dev.langchain4j.service.common.openai;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -133,7 +133,7 @@ class OpenAiListenableChatModelIT { // TODO extract to ListenableChatModelIT
 
         // then
         Throwable exceptionReportedToListener = listener.errorContextReference.get().error();
-        assertThat(exceptionReportedToListener).isExactlyInstanceOf(HttpException.class);
+        assertThat(exceptionReportedToListener).isExactlyInstanceOf(AuthenticationException.class);
         assertThat(thrownException).isSameAs(exceptionReportedToListener);
     }
 }

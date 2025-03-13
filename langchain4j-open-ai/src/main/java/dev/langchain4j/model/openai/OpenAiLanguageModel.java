@@ -14,7 +14,7 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.Map;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
@@ -69,7 +69,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .temperature(temperature)
                 .build();
 
-        CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
+        CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request).execute(), maxRetries);
 
         CompletionChoice completionChoice = response.choices().get(0);
         return Response.from(

@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -27,6 +28,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ModelProvider.OLLAMA;
 import static dev.langchain4j.model.chat.request.ChatRequestValidator.validate;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
@@ -151,7 +153,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stream(true)
                 .build();
 
-        client.streamingChat(request, handler, listeners, messages);
+        client.streamingChat(request, handler, listeners, provider(), messages);
     }
 
     private void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
@@ -166,11 +168,21 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stream(true)
                 .build();
 
-        client.streamingChat(request, handler, listeners, messages);
+        client.streamingChat(request, handler, listeners, provider(), messages);
     }
 
     public Set<Capability> supportedCapabilities() {
         return supportedCapabilities;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return OLLAMA;
     }
 
     public static OllamaStreamingChatModelBuilder builder() {
