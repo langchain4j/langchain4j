@@ -4,6 +4,19 @@ sidebar_position: 3
 
 # Azure OpenAI
 
+:::note
+
+This is the documentation for the `Azure OpenAI` integration, that uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+
+LangChain4j provides 4 different integrations with OpenAI for using embedding models, and this is #3 :
+
+- [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
+- [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
+- [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
+
+:::
+
 Azure OpenAI provides a few embedding models (`text-embedding-3-small`, `text-embedding-ada-002`, etc.)
 that can be used to transforms text or images into a dimensional vector space.
 
