@@ -4,9 +4,12 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * This abstract chat memory serves as a foundation for implementing window-based chat memories.
@@ -40,8 +43,23 @@ public abstract sealed class AbstractWindowChatMemory implements ChatMemory
 
     @Override
     public void addAll(final List<ChatMessage> messages) {
+        Objects.requireNonNull(messages, "messages is null");
         List<ChatMessage> currentMessages = messages();
-        boolean updated = messages.stream()
+        final Stream<ChatMessage> messagesStream = messages.stream();
+        addAll(messagesStream, currentMessages);
+    }
+
+    @Override
+    public void addAll(final ChatMessage... massages) {
+        Objects.requireNonNull(massages, "messages is null");
+        List<ChatMessage> currentMessages = messages();
+        final Stream<ChatMessage> messagesStream = Arrays.stream(massages);
+        addAll(messagesStream, currentMessages);
+    }
+
+    private void addAll(Stream<ChatMessage> messagesStream, List<ChatMessage> currentMessages) {
+        boolean updated = messagesStream
+                .filter(Objects::nonNull)
                 .map(message -> addChatMessage(message, currentMessages))
                 .reduce(false, (a, b) -> a || b);
         if (updated) {

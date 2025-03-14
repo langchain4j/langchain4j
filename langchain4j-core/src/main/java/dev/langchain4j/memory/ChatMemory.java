@@ -32,6 +32,14 @@ public interface ChatMemory {
     void addAll(List<ChatMessage> messages);
 
     /**
+     * Adds multiple messages to the chat memory.
+     * This method allows adding a variable number of {@link ChatMessage} objects at once.
+     *
+     * @param massages The {@link ChatMessage} objects to add.
+     */
+    void addAll(ChatMessage... massages);
+
+    /**
      * Retrieves messages from the chat memory.
      * Depending on the implementation, it may not return all previously added messages,
      * but rather a subset, a summary, or a combination thereof.

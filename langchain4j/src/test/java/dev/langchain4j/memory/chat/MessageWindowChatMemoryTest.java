@@ -446,7 +446,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
                 ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
         ToolExecutionResultMessage toolExecutionResultMessage2 =
                 ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
-        chatMemory.addAll(List.of(toolExecutionResultMessage1, toolExecutionResultMessage2));
+        chatMemory.addAll(toolExecutionResultMessage1, toolExecutionResultMessage2);
 
         // then
         assertThat(chatMemory.messages())
