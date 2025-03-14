@@ -78,10 +78,17 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
                 new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
 
         try {
             InvokeModelResponse invokeModelResponse =
-                    withRetryMappingExceptions(() -> invoke(invokeModelRequest, requestContext), maxRetries);
+                    withRetryMappingExceptions(() -> getClient().invokeModel(invokeModelRequest), maxRetries);
             final String response = invokeModelResponse.body().asUtf8String();
             final T result = Json.fromJson(response, getResponseClassType());
 
@@ -123,26 +130,6 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
      * @return response class type
      */
     protected abstract Class<T> getResponseClassType();
-
-    /**
-     * Invoke call to the API
-     *
-     * @param invokeModelRequest invokeModelRequest
-     * @param requestContext requestContext
-     * @return invoke model response
-     */
-    protected InvokeModelResponse invoke(
-            final InvokeModelRequest invokeModelRequest, final ChatModelRequestContext requestContext) {
-        listeners.forEach(listener -> {
-            try {
-                listener.onRequest(requestContext);
-            } catch (Exception e) {
-                log.warn("Exception while calling model listener", e);
-            }
-        });
-
-        return getClient().invokeModel(invokeModelRequest);
-    }
 
     public BedrockRuntimeClient getClient() {
         if (client == null) {

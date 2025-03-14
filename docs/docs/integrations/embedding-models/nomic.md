@@ -1,5 +1,5 @@
 ---
-sidebar_position: 12
+sidebar_position: 13
 ---
 
 # Nomic
@@ -13,7 +13,7 @@ https://home.nomic.ai/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-nomic</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta2</version>
 </dependency>
 ```
 

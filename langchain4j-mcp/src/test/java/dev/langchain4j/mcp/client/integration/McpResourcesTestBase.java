@@ -41,7 +41,7 @@ public abstract class McpResourcesTestBase {
 
         ResourceContents contents = response.contents().get(0);
         assertThat(contents.type().equals(ResourceContents.Type.TEXT));
-        assertThat(contents.asText().uri().toString()).isEqualTo("file:///text");
+        assertThat(contents.asText().uri()).hasToString("file:///text");
         assertThat(contents.asText().text()).isEqualTo("text");
     }
 
@@ -52,7 +52,7 @@ public abstract class McpResourcesTestBase {
 
         ResourceContents contents = response.contents().get(0);
         assertThat(contents.type().equals(ResourceContents.Type.BLOB));
-        assertThat(contents.asBlob().uri().toString()).isEqualTo("file:///blob");
+        assertThat(contents.asBlob().uri()).hasToString("file:///blob");
         assertThat(contents.asBlob().blob()).isEqualTo("blob");
     }
 
@@ -79,7 +79,7 @@ public abstract class McpResourcesTestBase {
 
         ResourceContents contents = response.contents().get(0);
         assertThat(contents.type().equals(ResourceContents.Type.TEXT));
-        assertThat(contents.asText().uri().toString()).isEqualTo("file:///text-template/hello");
+        assertThat(contents.asText().uri()).hasToString("file:///text-template/hello");
         assertThat(contents.asText().text()).isEqualTo("text hello");
     }
 
@@ -90,7 +90,7 @@ public abstract class McpResourcesTestBase {
 
         ResourceContents contents = response.contents().get(0);
         assertThat(contents.type().equals(ResourceContents.Type.BLOB));
-        assertThat(contents.asBlob().uri().toString()).isEqualTo("file:///blob-template/hello");
+        assertThat(contents.asBlob().uri()).hasToString("file:///blob-template/hello");
         assertThat(contents.asBlob().blob()).isEqualTo("blob hello");
     }
 
