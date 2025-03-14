@@ -87,7 +87,7 @@ class OpenAiChatModelErrorsTest {
         });
 
         // when-then
-        assertThatExceptionOfType(RuntimeException.class)
+        assertThatExceptionOfType(RuntimeException.class) // TODO should be dev.langchain4j.exception.TimeoutException
                 // when
                 .isThrownBy(() -> model.chat(
                         ChatRequest.builder().messages(userMessage(question)).build()))
