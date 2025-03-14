@@ -1,11 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.service.AiServicesIT.chatRequest;
-import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
-
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -16,12 +10,19 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.tool.HallucinatedToolNameStrategy;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+
+import static dev.langchain4j.service.AiServicesIT.chatRequest;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesUserMessageConfigTest {
@@ -87,7 +88,6 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat1("What is the capital of Germany?")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -102,7 +102,6 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat2("What is the capital of Germany?")).containsIgnoringCase("Berlin");
 
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -117,7 +116,6 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat3("What is the capital of {{country}}?", "Germany"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -131,7 +129,6 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat4()).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -145,7 +142,6 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat5("Germany")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -159,7 +155,6 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat6("Germany")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -173,7 +168,6 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat7("capital", "Germany")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -187,7 +181,6 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
