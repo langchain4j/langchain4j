@@ -12,16 +12,13 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
-
 import java.util.List;
 import java.util.Map;
 
 class InternalAnthropicHelper {
 
-    static ChatModelErrorContext createErrorContext(Throwable e,
-                                                    ChatRequest listenerRequest,
-                                                    ModelProvider modelProvider,
-                                                    Map<Object, Object> attributes) {
+    static ChatModelErrorContext createErrorContext(
+            Throwable e, ChatRequest listenerRequest, ModelProvider modelProvider, Map<Object, Object> attributes) {
         Throwable error;
         if (e.getCause() instanceof AnthropicHttpException) {
             error = e.getCause();
@@ -29,17 +26,13 @@ class InternalAnthropicHelper {
             error = e;
         }
 
-        return new ChatModelErrorContext(
-                error,
-                listenerRequest,
-                modelProvider,
-                attributes
-        );
+        return new ChatModelErrorContext(error, listenerRequest, modelProvider, attributes);
     }
 
-    static ChatRequest createListenerRequest(AnthropicCreateMessageRequest request,
-                                             List<ChatMessage> messages,
-                                             List<ToolSpecification> toolSpecifications) {
+    static ChatRequest createListenerRequest(
+            AnthropicCreateMessageRequest request,
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecifications) {
         return ChatRequest.builder()
                 .messages(messages)
                 .parameters(ChatRequestParameters.builder()
@@ -52,9 +45,7 @@ class InternalAnthropicHelper {
                 .build();
     }
 
-    static ChatResponse createListenerResponse(String responseId,
-                                               String responseModel,
-                                               Response<AiMessage> response) {
+    static ChatResponse createListenerResponse(String responseId, String responseModel, Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
