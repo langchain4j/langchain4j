@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
@@ -706,35 +705,6 @@ class AiServicesWithToolsIT {
         assertThat(response.content().text()).contains("2027");
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_programmatically_configured_tools_old_API(ChatLanguageModel chatLanguageModel) {
-
-        // given
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("get_booking_details")
-                .description("Returns booking details")
-                .addParameter("bookingNumber", type("string")) // old API
-                .build();
-
-        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
-            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
-            assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
-            return "Booking period: from 1 July 2027 to 10 July 2027";
-        };
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .tools(singletonMap(toolSpecification, toolExecutor))
-                .build();
-
-        // when
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
-
-        // then
-        assertThat(response.content().text()).contains("2027");
-    }
-
     static class BookingToolExecutor implements ToolExecutor {
 
         @Override
@@ -758,40 +728,6 @@ class AiServicesWithToolsIT {
                         .parameters(JsonObjectSchema.builder()
                                 .addStringProperty("bookingNumber")
                                 .build())
-                        .build();
-                return ToolProviderResult.builder()
-                        .add(toolSpecification, toolExecutor)
-                        .build();
-            } else {
-                return null;
-            }
-        };
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(models().findFirst().get())
-                .toolProvider(toolProvider)
-                .build();
-
-        assistant.chat("When does my holiday 123-456 starts?");
-        verifyNoInteractions(toolExecutor); // user message does not contain word "booking"
-
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
-        assertThat(response.content().text()).contains("2027");
-        verify(toolExecutor).execute(any(), any());
-        verifyNoMoreInteractions(toolExecutor);
-    }
-
-    @Test
-    void should_use_tool_provider_old_API() {
-
-        ToolExecutor toolExecutor = spy(new BookingToolExecutor());
-
-        ToolProvider toolProvider = (toolProviderRequest) -> {
-            if (toolProviderRequest.userMessage().singleText().contains("booking")) {
-                ToolSpecification toolSpecification = ToolSpecification.builder()
-                        .name("get_booking_details")
-                        .description("Returns booking details")
-                        .addParameter("bookingNumber", type("string")) // old API
                         .build();
                 return ToolProviderResult.builder()
                         .add(toolSpecification, toolExecutor)
@@ -1035,6 +971,46 @@ class AiServicesWithToolsIT {
         // then
         assertThat(result.content().text())
                 .contains(String.valueOf(now.getYear()), String.valueOf(now.getDayOfMonth()));
+
+        verify(tools).currentDate();
+        verifyNoMoreInteractions(tools);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+    void should_execute_tool_with_custom_name(ChatLanguageModel chatLanguageModel) {
+
+        LocalDate now = LocalDate.of(2025, 2, 24);
+
+        class Tools {
+
+            private static final String CUSTOM_TOOL_NAME = "get_current_date";
+
+            @Tool(name = CUSTOM_TOOL_NAME)
+            LocalDate currentDate() {
+                return now;
+            }
+        }
+
+        Tools tools = spy(new Tools());
+
+        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatLanguageModel(spyChatLanguageModel)
+                .tools(tools)
+                .build();
+
+        String userMessage = "What is the current date?";
+
+        // when
+        Result<AiMessage> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content().text())
+                .contains(String.valueOf(now.getYear()), String.valueOf(now.getDayOfMonth()));
+        assertThat(result.toolExecutions().get(0).request().name()).isEqualTo(Tools.CUSTOM_TOOL_NAME);
 
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);

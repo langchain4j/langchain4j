@@ -13,7 +13,7 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -62,7 +62,7 @@ public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .model(modelName)
                 .build();
 
-        EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);
+        EmbeddingResponse response = withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))

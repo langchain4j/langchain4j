@@ -7,16 +7,16 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -33,12 +33,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerResponse;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createListenerRequest;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createListenerResponse;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
@@ -85,6 +86,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final List<String> stopSequences;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
+    private final String thinkingType;
+    private final Integer thinkingBudgetTokens;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
 
@@ -122,6 +125,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
                                List<String> stopSequences,
                                Boolean cacheSystemMessages,
                                Boolean cacheTools,
+                               String thinkingType,
+                               Integer thinkingBudgetTokens,
                                Duration timeout,
                                Integer maxRetries,
                                Boolean logRequests,
@@ -144,6 +149,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
         this.stopSequences = stopSequences;
         this.cacheSystemMessages = getOrDefault(cacheSystemMessages, false);
         this.cacheTools = getOrDefault(cacheTools, false);
+        this.thinkingType = thinkingType;
+        this.thinkingBudgetTokens = thinkingBudgetTokens;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
@@ -195,12 +202,13 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .topP(topP)
                 .topK(topK)
                 .tools(toAnthropicTools(toolSpecifications, cacheTools ? EPHEMERAL : NO_CACHE))
+                .thinking(toThinking(thinkingType, thinkingBudgetTokens))
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
-
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -210,21 +218,22 @@ public class AnthropicChatModel implements ChatLanguageModel {
         });
 
         try {
-            AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
+            AnthropicCreateMessageResponse response = withRetryMappingExceptions(() -> client.createMessage(request), maxRetries);
             Response<AiMessage> responseMessage = Response.from(
                     toAiMessage(response.content),
                     toTokenUsage(response.usage),
                     toFinishReason(response.stopReason)
             );
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+            ChatResponse listenerResponse = createListenerResponse(
                     response.id,
                     response.model,
                     responseMessage
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
+                    listenerResponse,
+                    listenerRequest,
+                    provider(),
                     attributes
             );
 
@@ -244,7 +253,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
         } catch (RuntimeException e) {
             ChatModelErrorContext errorContext = createErrorContext(
                     e,
-                    modelListenerRequest,
+                    listenerRequest,
+                    provider(),
                     attributes
             );
 
@@ -260,5 +270,23 @@ public class AnthropicChatModel implements ChatLanguageModel {
         }
     }
 
-    // TODO forcing tool use?
+    static AnthropicThinking toThinking(String thinkingType, Integer thinkingBudgetTokens) {
+        if (thinkingType != null || thinkingBudgetTokens != null) {
+            return AnthropicThinking.builder()
+                    .type(thinkingType)
+                    .budgetTokens(thinkingBudgetTokens)
+                    .build();
+        }
+        return null;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return ANTHROPIC;
+    }
 }

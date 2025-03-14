@@ -9,15 +9,14 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_MEDIUM_LATEST;
@@ -35,7 +34,10 @@ class MistralAiStreamingChatModelIT {
     ToolSpecification retrievePaymentStatus = ToolSpecification.builder()
             .name("retrieve-payment-status")
             .description("Retrieve Payment Status")
-            .addParameter("transactionId", STRING)
+            .parameters(JsonObjectSchema.builder()
+                    .addStringProperty("transactionId")
+                    .required("transactionId")
+                    .build())
             .build();
 
     StreamingChatLanguageModel ministral3b = MistralAiStreamingChatModel.builder()
@@ -304,7 +306,10 @@ class MistralAiStreamingChatModelIT {
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
                 .description("Retrieve Payment Date")
-                .addParameter("transactionId", STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("transactionId")
+                        .required("transactionId")
+                        .build())
                 .build();
 
         List<ChatMessage> chatMessages = new ArrayList<>();
@@ -366,7 +371,10 @@ class MistralAiStreamingChatModelIT {
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
                 .description("Retrieve Payment Date")
-                .addParameter("transactionId", STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("transactionId")
+                        .required("transactionId")
+                        .build())
                 .build();
 
         List<ChatMessage> chatMessages = new ArrayList<>();
@@ -431,7 +439,10 @@ class MistralAiStreamingChatModelIT {
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
                 .description("Retrieve Payment Date")
-                .addParameter("transactionId", STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("transactionId")
+                        .required("transactionId")
+                        .build())
                 .build();
 
         List<ChatMessage> chatMessages = new ArrayList<>();

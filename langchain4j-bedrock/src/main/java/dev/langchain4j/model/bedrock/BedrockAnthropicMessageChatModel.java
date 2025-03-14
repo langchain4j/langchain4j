@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -21,9 +20,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.bedrock.internal.Json;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -53,7 +50,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -65,6 +62,10 @@ import static java.util.Collections.singletonList;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.joining;
 
+/**
+ * @deprecated please use {@link BedrockChatModel} instead
+ */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @SuperBuilder
 public class BedrockAnthropicMessageChatModel
@@ -181,24 +182,32 @@ public class BedrockAnthropicMessageChatModel
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatModelRequest modelListenerRequest =
-                createModelListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
+        ChatRequest listenerRequest =
+                createListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
 
         try {
             InvokeModelResponse invokeModelResponse =
-                    withRetry(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
-            final String response = invokeModelResponse.body().asUtf8String();
+                    withRetryMappingExceptions(() -> getClient().invokeModel(invokeModelRequest), getMaxRetries());
+            String response = invokeModelResponse.body().asUtf8String();
             BedrockAnthropicMessageChatModelResponse result = Json.fromJson(response, getResponseClassType());
 
             Response<AiMessage> responseMessage =
                     Response.from(aiMessageFrom(result), result.getTokenUsage(), result.getFinishReason());
 
-            ChatModelResponse modelListenerResponse =
-                    createModelListenerResponse(result.getId(), result.getModel(), responseMessage);
+            ChatResponse listenerResponse =
+                    createListenerResponse(result.getId(), result.getModel(), responseMessage);
             ChatModelResponseContext responseContext =
-                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, attributes);
+                    new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -210,7 +219,7 @@ public class BedrockAnthropicMessageChatModel
 
             return responseMessage;
         } catch (RuntimeException e) {
-            listenerErrorResponse(e, modelListenerRequest, attributes);
+            listenerErrorResponse(e, listenerRequest, provider(), attributes);
             throw e;
         }
     }
@@ -289,24 +298,6 @@ public class BedrockAnthropicMessageChatModel
 
         if (toolSpecification.parameters() != null) {
             return JsonSchemaElementHelper.toMap(toolSpecification.parameters());
-        } else if (toolSpecification.toolParameters() != null) {
-            ToolParameters toolParameters = toolSpecification.toolParameters();
-            ObjectNode propertiesNode = new ObjectMapper().createObjectNode();
-            if (toolParameters.properties() != null) {
-                propertiesNode.setAll(toAnthropicParameterProperties(toolParameters.properties()));
-            }
-
-            ArrayNode requiredNode = new ObjectMapper().createArrayNode();
-            if (toolParameters.required() != null) {
-                toolParameters.required().forEach(requiredNode::add);
-            }
-
-            ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
-            inputSchemaNode.put("type", "object");
-            inputSchemaNode.set("properties", propertiesNode);
-            inputSchemaNode.set("required", requiredNode);
-
-            return inputSchemaNode;
         } else {
             ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
             inputSchemaNode.put("type", "object");

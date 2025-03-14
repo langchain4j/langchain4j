@@ -79,6 +79,7 @@ jobs:
         run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
+            -Dtinylog.writer.level=info \
             ${{ matrix.mvn_opts }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

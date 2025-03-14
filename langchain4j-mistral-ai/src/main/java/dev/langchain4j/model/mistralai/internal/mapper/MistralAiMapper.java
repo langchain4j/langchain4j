@@ -10,7 +10,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -178,12 +177,6 @@ public class MistralAiMapper {
             JsonObjectSchema parameters = toolSpecification.parameters();
             return MistralAiParameters.builder()
                     .properties(toMap(parameters.properties()))
-                    .required(parameters.required())
-                    .build();
-        } else if (toolSpecification.toolParameters() != null) {
-            ToolParameters parameters = toolSpecification.toolParameters();
-            return MistralAiParameters.builder()
-                    .properties(parameters.properties())
                     .required(parameters.required())
                     .build();
         } else {

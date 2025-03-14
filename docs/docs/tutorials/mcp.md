@@ -35,7 +35,6 @@ For HTTP, you need two URLs, one for starting the SSE channel and one for submit
 ```java
 McpTransport transport = new HttpMcpTransport.Builder()
     .sseUrl("http://localhost:3001/sse")
-    .postUrl("http://localhost:3001/message")
     .logRequests(true) // if you want to see the traffic in the log
     .logResponses(true)
     .build();
@@ -97,6 +96,18 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
     .logMessageHandler(new MyLogMessageHandler())
     .build();
 ```
+
+## Resources
+
+To obtain a list of [MCP resources](https://modelcontextprotocol.io/docs/concepts/resources) 
+on the server, use `client.listResources()`, or `client.listResourceTemplates()` in case of resource templates.
+This will return a list of `ResourceRef` objects (or `ResourceTemplateRef` respectively). These
+contain the metadata of the resource, most importantly the URI.
+
+To obtain the actual contents of the resource, use `client.readResource(uri)`, supplying the URI of the resource.
+This returns a list of `ResourceContents` objects (there may be more resource contents on a single URI, for 
+example if the URI represents a directory). Each `ResourceContents` object represents either a binary blob or a
+string. For a binary blob, use `resourceContents.asBlob()` to access the actual data, for text, use `resourceContents.asText()`.
 
 ## Using the GitHub MCP server through Docker
 

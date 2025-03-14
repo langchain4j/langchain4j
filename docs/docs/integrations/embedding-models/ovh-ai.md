@@ -1,5 +1,5 @@
 ---
-sidebar_position: 15
+sidebar_position: 17
 ---
 
 # OVHcloud AI Endpoints
@@ -17,7 +17,7 @@ sidebar_position: 15
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ovh-ai</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta2</version>
 </dependency>
 ```
 
