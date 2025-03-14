@@ -15,7 +15,9 @@ public enum MistralAiResponseFormatType {
     @JsonProperty("text")
     TEXT,
     @JsonProperty("json_object")
-    JSON_OBJECT;
+    JSON_OBJECT,
+    @JsonProperty("json_schema")
+    JSON_SCHEMA;
 
     MistralAiResponseFormatType() {}
 

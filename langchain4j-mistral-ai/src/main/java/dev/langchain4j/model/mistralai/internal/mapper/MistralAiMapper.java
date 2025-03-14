@@ -1,5 +1,14 @@
 package dev.langchain4j.model.mistralai.internal.mapper;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -8,6 +17,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatMessage;
@@ -23,24 +33,12 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiToolType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.util.stream.Collectors.toList;
 
 public class MistralAiMapper {
 
     public static List<MistralAiChatMessage> toMistralAiMessages(List<ChatMessage> messages) {
-        return messages.stream()
-                .map(MistralAiMapper::toMistralAiMessage)
-                .collect(toList());
+        return messages.stream().map(MistralAiMapper::toMistralAiMessage).collect(toList());
     }
 
     static MistralAiChatMessage toMistralAiMessage(ChatMessage message) {
@@ -116,8 +114,7 @@ public class MistralAiMapper {
         return new TokenUsage(
                 mistralAiUsage.getPromptTokens(),
                 mistralAiUsage.getCompletionTokens(),
-                mistralAiUsage.getTotalTokens()
-        );
+                mistralAiUsage.getTotalTokens());
     }
 
     public static FinishReason finishReasonFrom(String mistralAiFinishReason) {
@@ -164,9 +161,7 @@ public class MistralAiMapper {
     }
 
     public static List<MistralAiTool> toMistralAiTools(List<ToolSpecification> toolSpecifications) {
-        return toolSpecifications.stream()
-                .map(MistralAiMapper::toMistralAiTool)
-                .collect(toList());
+        return toolSpecifications.stream().map(MistralAiMapper::toMistralAiTool).collect(toList());
     }
 
     static MistralAiTool toMistralAiTool(ToolSpecification toolSpecification) {
@@ -196,17 +191,26 @@ public class MistralAiMapper {
         }
     }
 
-    public static MistralAiResponseFormat toMistralAiResponseFormat(String responseFormat) {
+    public static MistralAiResponseFormat toMistralAiResponseFormat(
+            ResponseFormat responseFormat, String fallbackFormat) {
         if (responseFormat == null) {
-            return null;
+            if (fallbackFormat == null) {
+                return null;
+            }
+            return switch (fallbackFormat) {
+                case "text" -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.TEXT);
+                case "json_object" -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
+                case "json_schema" -> throw new IllegalArgumentException(
+                        "json_schema response format requires a schema");
+                default -> throw new IllegalArgumentException("Unknown response format: " + fallbackFormat);
+            };
         }
-        switch (responseFormat) {
-            case "text":
-                return MistralAiResponseFormat.fromType(MistralAiResponseFormatType.TEXT);
-            case "json_object":
-                return MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
-            default:
-                throw new IllegalArgumentException("Unknown response format: " + responseFormat);
+        if (responseFormat.jsonSchema() != null) {
+            return MistralAiResponseFormat.fromSchema(responseFormat.jsonSchema());
         }
+        return switch (responseFormat.type()) {
+            case TEXT -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.TEXT);
+            case JSON -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
+        };
     }
 }

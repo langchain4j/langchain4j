@@ -14,10 +14,12 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -29,7 +31,10 @@ import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Represents a Mistral AI Chat Model with a chat completion interface, such as open-mistral-7b and open-mixtral-8x7b
@@ -49,6 +54,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
     private final String responseFormat;
 
     private final Integer maxRetries;
+    private final Set<Capability> supportedCapabilities;
 
     /**
      * Constructs a MistralAiChatModel with the specified parameters.
@@ -84,7 +90,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
             Duration timeout,
             Boolean logRequests,
             Boolean logResponses,
-            Integer maxRetries) {
+            Integer maxRetries,
+            Set<Capability> supportedCapabilities) {
 
         this.client = MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
@@ -101,6 +108,12 @@ public class MistralAiChatModel implements ChatLanguageModel {
         this.randomSeed = randomSeed;
         this.responseFormat = responseFormat;
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.supportedCapabilities = getOrDefault(supportedCapabilities, Set.of());
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 
     @Override
@@ -108,22 +121,22 @@ public class MistralAiChatModel implements ChatLanguageModel {
         ChatRequestValidator.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ResponseFormat responseFormat = parameters.responseFormat();
 
         Response<AiMessage> response;
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
         if (isNullOrEmpty(toolSpecifications)) {
-            response = generate(chatRequest.messages());
+            response = generate(chatRequest.messages(), responseFormat);
         } else {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                    throw new UnsupportedFeatureException(String.format(
+                            "%s.%s is currently supported only when there is a single tool",
+                            ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
-                response = generate(chatRequest.messages(), toolSpecifications.get(0));
+                response = generate(chatRequest.messages(), toolSpecifications.get(0), responseFormat);
             } else {
-                response = generate(chatRequest.messages(), toolSpecifications);
+                response = generate(chatRequest.messages(), toolSpecifications, responseFormat);
             }
         }
 
@@ -136,22 +149,25 @@ public class MistralAiChatModel implements ChatLanguageModel {
                 .build();
     }
 
-    private Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null);
+    private Response<AiMessage> generate(List<ChatMessage> messages, ResponseFormat responseFormat) {
+        return generate(messages, null, null, responseFormat);
     }
 
-    private Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null);
+    private Response<AiMessage> generate(
+            List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, ResponseFormat responseFormat) {
+        return generate(messages, toolSpecifications, null, responseFormat);
     }
 
-    private Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification);
+    private Response<AiMessage> generate(
+            List<ChatMessage> messages, ToolSpecification toolSpecification, ResponseFormat responseFormat) {
+        return generate(messages, singletonList(toolSpecification), toolSpecification, responseFormat);
     }
 
     private Response<AiMessage> generate(
             List<ChatMessage> messages,
             List<ToolSpecification> toolSpecifications,
-            ToolSpecification toolThatMustBeExecuted) {
+            ToolSpecification toolThatMustBeExecuted,
+            ResponseFormat responseFormat) {
         ensureNotEmpty(messages, "messages");
 
         MistralAiChatCompletionRequest.MistralAiChatCompletionRequestBuilder requestBuilder =
@@ -163,7 +179,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
                         .topP(this.topP)
                         .randomSeed(this.randomSeed)
                         .safePrompt(this.safePrompt)
-                        .responseFormat(toMistralAiResponseFormat(this.responseFormat))
+                        .responseFormat(toMistralAiResponseFormat(responseFormat, this.responseFormat))
                         .stream(false);
 
         if (!isNullOrEmpty(toolSpecifications)) {
@@ -222,6 +238,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
 
         private Integer maxRetries;
 
+        private Set<Capability> supportedCapabilities;
+
         public MistralAiChatModelBuilder() {}
 
         public MistralAiChatModelBuilder modelName(String modelName) {
@@ -234,11 +252,13 @@ public class MistralAiChatModel implements ChatLanguageModel {
             return this;
         }
 
+        @Deprecated(forRemoval = true) // TODO move away from this and on to using ResponseFormat type (?)
         public MistralAiChatModelBuilder responseFormat(String responseFormat) {
             this.responseFormat = responseFormat;
             return this;
         }
 
+        @Deprecated(forRemoval = true) // TODO move away from this and on to using ResponseFormat type (?)
         public MistralAiChatModelBuilder responseFormat(MistralAiResponseFormatType responseFormat) {
             this.responseFormat = responseFormat.toString();
             return this;
@@ -345,6 +365,15 @@ public class MistralAiChatModel implements ChatLanguageModel {
             return this;
         }
 
+        /**
+         * @param supportedCapabilities
+         * @return {@code this}.
+         */
+        public MistralAiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
+            this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
+            return this;
+        }
+
         public MistralAiChatModel build() {
             return new MistralAiChatModel(
                     this.baseUrl,
@@ -359,7 +388,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
                     this.timeout,
                     this.logRequests,
                     this.logResponses,
-                    this.maxRetries);
+                    this.maxRetries,
+                    this.supportedCapabilities);
         }
 
         @Override
@@ -378,6 +408,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
                             + ", logRequests=" + this.logRequests
                             + ", logResponses=" + this.logResponses
                             + ", maxRetries=" + this.maxRetries
+                            + ", supportedCapabilities=" + this.supportedCapabilities
                             + ")";
         }
     }
