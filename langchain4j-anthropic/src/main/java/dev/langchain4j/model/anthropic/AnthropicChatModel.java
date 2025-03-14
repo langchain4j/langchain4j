@@ -16,9 +16,7 @@ import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -40,8 +38,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerResponse;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createObservabilityRequest;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createObservabilityResponse;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
@@ -207,11 +205,10 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .thinking(toThinking(thinkingType, thinkingBudgetTokens))
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        ChatRequest observabilityRequest = createObservabilityRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
-
+                new ChatModelRequestContext(observabilityRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -228,14 +225,14 @@ public class AnthropicChatModel implements ChatLanguageModel {
                     toFinishReason(response.stopReason)
             );
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+            ChatResponse observabilityResponse = createObservabilityResponse(
                     response.id,
                     response.model,
                     responseMessage
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
+                    observabilityResponse,
+                    observabilityRequest,
                     provider(),
                     attributes
             );
@@ -256,7 +253,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
         } catch (RuntimeException e) {
             ChatModelErrorContext errorContext = createErrorContext(
                     e,
-                    modelListenerRequest,
+                    observabilityRequest,
                     provider(),
                     attributes
             );

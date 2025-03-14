@@ -7,8 +7,10 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
@@ -17,7 +19,7 @@ import java.util.Map;
 class InternalAnthropicHelper {
 
     static ChatModelErrorContext createErrorContext(Throwable e,
-                                                    ChatModelRequest modelListenerRequest,
+                                                    ChatRequest observabilityRequest,
                                                     ModelProvider modelProvider,
                                                     Map<Object, Object> attributes) {
         Throwable error;
@@ -29,39 +31,42 @@ class InternalAnthropicHelper {
 
         return new ChatModelErrorContext(
                 error,
-                modelListenerRequest,
-                null,
+                observabilityRequest,
                 modelProvider,
                 attributes
         );
     }
 
-    static ChatModelRequest createModelListenerRequest(AnthropicCreateMessageRequest request,
-                                                       List<ChatMessage> messages,
-                                                       List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-                .model(request.getModel())
-                .temperature(request.getTemperature())
-                .topP(request.getTopP())
-                .maxTokens(request.getMaxTokens())
+    static ChatRequest createObservabilityRequest(AnthropicCreateMessageRequest request,
+                                                  List<ChatMessage> messages,
+                                                  List<ToolSpecification> toolSpecifications) {
+        return ChatRequest.builder()
                 .messages(messages)
-                .toolSpecifications(toolSpecifications)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(request.getModel())
+                        .temperature(request.getTemperature())
+                        .topP(request.getTopP())
+                        .maxOutputTokens(request.getMaxTokens())
+                        .toolSpecifications(toolSpecifications)
+                        .build())
                 .build();
     }
 
-    static ChatModelResponse createModelListenerResponse(String responseId,
-                                                         String responseModel,
-                                                         Response<AiMessage> response) {
+    static ChatResponse createObservabilityResponse(String responseId,
+                                                    String responseModel,
+                                                    Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
 
-        return ChatModelResponse.builder()
-                .id(responseId)
-                .model(responseModel)
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
+        return ChatResponse.builder()
                 .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .id(responseId)
+                        .modelName(responseModel)
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
                 .build();
     }
 }
