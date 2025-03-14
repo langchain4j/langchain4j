@@ -114,7 +114,6 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
         ChatRequestValidator.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.responseFormat());
         ResponseFormat responseFormat = parameters.responseFormat();
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {

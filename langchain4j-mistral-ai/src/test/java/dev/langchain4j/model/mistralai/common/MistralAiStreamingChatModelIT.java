@@ -51,16 +51,6 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO implement
-    }
-
-    @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // TODO implement
     }
@@ -77,6 +67,11 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean assertResponseModel() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // TODO implement
     }
 }
