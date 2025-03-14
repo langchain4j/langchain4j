@@ -30,7 +30,6 @@ class BedrockChatModelListenerIT extends ChatModelListenerIT {
         return BedrockAnthropicMessageChatModel.builder()
                 .model("banana")
                 .listeners(singletonList(listener))
-                .maxRetries(1)
                 .build();
     }
 

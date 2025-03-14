@@ -1,5 +1,5 @@
 ---
-sidebar_position: 16
+sidebar_position: 17
 ---
 
 # Qianfan
@@ -308,7 +308,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta2</version>
 </dependency>
 ```
 - Use

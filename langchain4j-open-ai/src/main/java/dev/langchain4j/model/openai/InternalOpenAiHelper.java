@@ -95,7 +95,7 @@ public class InternalOpenAiHelper {
 
             if (userMessage.hasSingleText()) {
                 return dev.langchain4j.model.openai.internal.chat.UserMessage.builder()
-                        .content(userMessage.text())
+                        .content(userMessage.singleText())
                         .name(userMessage.name())
                         .build();
             } else {

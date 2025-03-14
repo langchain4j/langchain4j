@@ -35,7 +35,6 @@ For HTTP, you need two URLs, one for starting the SSE channel and one for submit
 ```java
 McpTransport transport = new HttpMcpTransport.Builder()
     .sseUrl("http://localhost:3001/sse")
-    .postUrl("http://localhost:3001/message")
     .logRequests(true) // if you want to see the traffic in the log
     .logResponses(true)
     .build();

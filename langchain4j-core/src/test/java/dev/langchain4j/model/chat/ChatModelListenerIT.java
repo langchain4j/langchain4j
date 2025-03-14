@@ -17,8 +17,10 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static dev.langchain4j.model.ModelProvider.OTHER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
@@ -83,9 +85,11 @@ public abstract class ChatModelListenerIT {
         // given
         AtomicReference<ChatRequest> chatRequestReference = new AtomicReference<>();
         AtomicReference<ChatResponse> chatResponseReference = new AtomicReference<>();
+        AtomicInteger onRequestInvocations = new AtomicInteger();
 
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
+        AtomicInteger onResponseInvocations = new AtomicInteger();
 
         ChatModelListener listener = new ChatModelListener() {
 
@@ -93,6 +97,9 @@ public abstract class ChatModelListenerIT {
             public void onRequest(ChatModelRequestContext requestContext) {
                 chatRequestReference.set(requestContext.chatRequest());
                 requestReference.set(requestContext.request());
+                onRequestInvocations.incrementAndGet();
+
+                assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
 
                 requestContext.attributes().put("id", "12345");
             }
@@ -101,9 +108,12 @@ public abstract class ChatModelListenerIT {
             public void onResponse(ChatModelResponseContext responseContext) {
                 chatResponseReference.set(responseContext.chatResponse());
                 responseReference.set(responseContext.response());
+                onResponseInvocations.incrementAndGet();
 
                 assertThat(responseContext.chatRequest()).isEqualTo(chatRequestReference.get());
                 assertThat(responseContext.request()).isEqualTo(requestReference.get());
+
+                assertThat(responseContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
 
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
@@ -151,6 +161,8 @@ public abstract class ChatModelListenerIT {
             assertThat(parameters.toolSpecifications()).containsExactly(toolSpecification);
         }
 
+        assertThat(onRequestInvocations).hasValue(1);
+
         // old API
         ChatModelRequest request = requestReference.get();
         assertThat(request.model()).isEqualTo(modelName());
@@ -176,6 +188,8 @@ public abstract class ChatModelListenerIT {
         if (assertFinishReason()) {
             assertThat(metadata.finishReason()).isNotNull();
         }
+
+        assertThat(onResponseInvocations).hasValue(1);
 
         // old API
         ChatModelResponse response = responseReference.get();
@@ -210,7 +224,10 @@ public abstract class ChatModelListenerIT {
         // given
         AtomicReference<ChatRequest> chatRequestReference = new AtomicReference<>();
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicInteger onRequestInvocations = new AtomicInteger();
+
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
+        AtomicInteger onErrorInvocations = new AtomicInteger();
 
         ChatModelListener listener = new ChatModelListener() {
 
@@ -218,6 +235,9 @@ public abstract class ChatModelListenerIT {
             public void onRequest(ChatModelRequestContext requestContext) {
                 chatRequestReference.set(requestContext.chatRequest());
                 requestReference.set(requestContext.request());
+                onRequestInvocations.incrementAndGet();
+
+                assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
 
                 requestContext.attributes().put("id", "12345");
             }
@@ -230,11 +250,14 @@ public abstract class ChatModelListenerIT {
             @Override
             public void onError(ChatModelErrorContext errorContext) {
                 errorReference.set(errorContext.error());
+                onErrorInvocations.incrementAndGet();
 
                 assertThat(errorContext.chatRequest()).isEqualTo(chatRequestReference.get());
                 assertThat(errorContext.request()).isEqualTo(requestReference.get());
 
                 assertThat(errorContext.partialResponse()).isNull();
+
+                assertThat(errorContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
 
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
@@ -257,5 +280,8 @@ public abstract class ChatModelListenerIT {
         assertThat(error).isExactlyInstanceOf(expectedExceptionClass());
 
         assertThat(thrown == error || thrown.getCause() == error).isTrue(); // TODO fix discrepancy, do not wrap
+
+        assertThat(onRequestInvocations).hasValue(1);
+        assertThat(onErrorInvocations).hasValue(1);
     }
 }

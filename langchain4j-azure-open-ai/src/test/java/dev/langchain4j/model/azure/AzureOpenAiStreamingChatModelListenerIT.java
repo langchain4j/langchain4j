@@ -34,7 +34,6 @@ class AzureOpenAiStreamingChatModelListenerIT extends StreamingChatModelListener
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey("banana")
                 .deploymentName(modelName())
-                .maxRetries(1)
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();
