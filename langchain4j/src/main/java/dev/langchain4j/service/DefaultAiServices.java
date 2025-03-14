@@ -13,7 +13,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.guardrail.InputGuardrailParams;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -29,6 +31,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -129,7 +132,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Object memoryId = findMemoryId(method, args).orElse(DEFAULT);
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
-                        UserMessage userMessage = prepareUserMessage(method, args);
+                        var userMessageTemplate = getUserMessageTemplate(method, args);
+                        var variables = findTemplateVariables(userMessageTemplate, method, args);
+                        UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemory = context.hasChatMemory()
@@ -140,6 +145,18 @@ class DefaultAiServices<T> extends AiServices<T> {
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
+
+                        var chatMemory = context.hasChatMemory() ? context.chatMemory(memoryId) : null;
+
+                        // Invoke input guardrails
+                        userMessage = invokeInputGuardrails(
+                                context.guardrailService(),
+                                method,
+                                chatMemory,
+                                userMessage,
+                                augmentationResult,
+                                userMessageTemplate,
+                                variables);
 
                         // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
@@ -158,17 +175,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
+                        List<ChatMessage> messages = new ArrayList<>();
+
                         if (context.hasChatMemory()) {
-                            ChatMemory chatMemory = context.chatMemory(memoryId);
                             systemMessage.ifPresent(chatMemory::add);
                             chatMemory.add(userMessage);
-                        }
-
-                        List<ChatMessage> messages;
-                        if (context.hasChatMemory()) {
-                            messages = context.chatMemory(memoryId).messages();
+                            messages.addAll(chatMemory.messages());
                         } else {
-                            messages = new ArrayList<>();
                             systemMessage.ifPresent(messages::add);
                             messages.add(userMessage);
                         }
@@ -212,7 +225,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .parameters(parameters)
                                 .build();
 
-                        ChatResponse chatResponse = context.chatModel.chat(chatRequest);
+                        ChatExecutor chatExecutor = () -> context.chatModel.chat(chatRequest);
+                        ChatResponse chatResponse = chatExecutor.get();
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -221,7 +235,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 parameters,
                                 messages,
                                 context.chatModel,
-                                context.hasChatMemory() ? context.chatMemory(memoryId) : null,
+                                chatMemory,
                                 memoryId,
                                 toolExecutionContext.toolExecutors());
 
@@ -294,6 +308,22 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) proxyInstance;
     }
 
+    private UserMessage invokeInputGuardrails(
+            GuardrailService guardrailService,
+            Method method,
+            ChatMemory chatMemory,
+            UserMessage userMessage,
+            AugmentationResult augmentationResult,
+            String userMessageTemplate,
+            Map<String, Object> variables) {
+
+        var inputGuardrailParams =
+                new InputGuardrailParams(userMessage, chatMemory, augmentationResult, userMessageTemplate, variables);
+        var inputGuardrailResult = guardrailService.executeGuardrails(method, inputGuardrailParams);
+
+        return inputGuardrailResult.userMessage(inputGuardrailParams);
+    }
+
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
         return findSystemMessageTemplate(memoryId, method)
                 .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
@@ -364,12 +394,9 @@ class DefaultAiServices<T> extends AiServices<T> {
         return annotation != null && "it".equals(annotation.value());
     }
 
-    private static UserMessage prepareUserMessage(Method method, Object[] args) {
-
-        String template = getUserMessageTemplate(method, args);
-        Map<String, Object> variables = findTemplateVariables(template, method, args);
-
-        Prompt prompt = PromptTemplate.from(template).apply(variables);
+    private static UserMessage prepareUserMessage(
+            Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables) {
+        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
         return maybeUserName
