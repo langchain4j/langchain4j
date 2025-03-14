@@ -6,9 +6,7 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -91,10 +89,10 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                 .accept("application/json")
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, Collections.emptyList());
+        ChatRequest listenerRequest = createListenerRequest(request, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -117,14 +115,14 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                 .onEventStream(stream -> stream.subscribe(event -> event.accept(visitor)))
                 .onComplete(() -> {
                     Response<AiMessage> response = Response.from(new AiMessage(finalCompletion.toString()));
-                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    ChatResponse listenerResponse = createListenerResponse(
                             null,
                             null,
                             response
                     );
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                            modelListenerResponse,
-                            modelListenerRequest,
+                            listenerResponse,
+                            listenerRequest,
                             provider(),
                             attributes
                     );
@@ -139,7 +137,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                     handler.onComplete(response);
                 })
                 .onError(throwable -> {
-                    listenerErrorResponse(throwable, modelListenerRequest, provider(), attributes);
+                    listenerErrorResponse(throwable, listenerRequest, provider(), attributes);
                     handler.onError(throwable);
                 })
                 .build();

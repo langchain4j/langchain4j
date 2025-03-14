@@ -197,10 +197,10 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
             options.setTools(toToolDefinitions(toolSpecifications));
         }
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -217,14 +217,14 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                     finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason())
             );
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+            ChatResponse listenerResponse = createListenerResponse(
                     chatCompletions.getId(),
                     options.getModel(),
                     response
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
+                    listenerResponse,
+                    listenerRequest,
                     provider(),
                     attributes
             );
@@ -242,8 +242,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
 
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
                     httpResponseException,
-                    modelListenerRequest,
-                    null,
+                    listenerRequest,
                     provider(),
                     attributes
             );

@@ -286,16 +286,18 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
         }
 
-        ChatModelRequest chatModelRequest = ChatModelRequest.builder()
-            .model(modelName)
-            .temperature((double) generationConfig.getTemperature())
-            .topP((double) generationConfig.getTopP())
-            .maxTokens(generationConfig.getMaxOutputTokens())
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
+        ChatRequest listenerRequest = ChatRequest.builder()
+                .messages(messages)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(modelName)
+                        .temperature((double) generationConfig.getTemperature())
+                        .topP((double) generationConfig.getTopP())
+                        .maxOutputTokens(generationConfig.getMaxOutputTokens())
+                        .toolSpecifications(toolSpecifications)
+                        .build())
+                .build();
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, provider(), listenerAttributes);
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onRequest(chatModelRequestContext);
@@ -318,14 +320,16 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             Response<AiMessage> fullResponse = responseBuilder.build();
             handler.onComplete(fullResponse);
 
-            ChatModelResponse chatModelResponse = ChatModelResponse.builder()
-                .model(modelName)
-                .tokenUsage(fullResponse.tokenUsage())
-                .finishReason(fullResponse.finishReason())
-                .aiMessage(fullResponse.content())
-                .build();
+            ChatResponse listenerResponse = ChatResponse.builder()
+                    .aiMessage(fullResponse.content())
+                    .metadata(ChatResponseMetadata.builder()
+                            .modelName(modelName)
+                            .tokenUsage(fullResponse.tokenUsage())
+                            .finishReason(fullResponse.finishReason())
+                            .build())
+                    .build();
             ChatModelResponseContext chatModelResponseContext = new ChatModelResponseContext(
-                chatModelResponse, chatModelRequest, provider(), listenerAttributes);
+                listenerResponse, listenerRequest, provider(), listenerAttributes);
             listeners.forEach((listener) -> {
                 try {
                     listener.onResponse(chatModelResponseContext);
@@ -341,7 +345,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             listeners.forEach((listener) -> {
                 try {
                     ChatModelErrorContext chatModelErrorContext =
-                        new ChatModelErrorContext(exception, chatModelRequest, null, provider(), listenerAttributes);
+                        new ChatModelErrorContext(exception, listenerRequest, provider(), listenerAttributes);
                     listener.onError(chatModelErrorContext);
                 } catch (Exception t) {
                     logger.warn("Exception while calling model listener (onError)", t);
