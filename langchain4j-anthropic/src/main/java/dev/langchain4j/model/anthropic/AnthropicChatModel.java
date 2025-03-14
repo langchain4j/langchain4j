@@ -38,8 +38,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createObservabilityRequest;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createObservabilityResponse;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createListenerRequest;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createListenerResponse;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
@@ -205,10 +205,10 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .thinking(toThinking(thinkingType, thinkingBudgetTokens))
                 .build();
 
-        ChatRequest observabilityRequest = createObservabilityRequest(request, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(observabilityRequest, provider(), attributes);
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -225,14 +225,14 @@ public class AnthropicChatModel implements ChatLanguageModel {
                     toFinishReason(response.stopReason)
             );
 
-            ChatResponse observabilityResponse = createObservabilityResponse(
+            ChatResponse listenerResponse = createListenerResponse(
                     response.id,
                     response.model,
                     responseMessage
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    observabilityResponse,
-                    observabilityRequest,
+                    listenerResponse,
+                    listenerRequest,
                     provider(),
                     attributes
             );
@@ -253,7 +253,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
         } catch (RuntimeException e) {
             ChatModelErrorContext errorContext = createErrorContext(
                     e,
-                    observabilityRequest,
+                    listenerRequest,
                     provider(),
                     attributes
             );

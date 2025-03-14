@@ -43,7 +43,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModel.toThinking;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createObservabilityRequest;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createListenerRequest;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
@@ -257,10 +257,10 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
 
         AnthropicCreateMessageRequest request = requestBuilder.build();
 
-        ChatRequest observabilityRequest = createObservabilityRequest(request, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(observabilityRequest, provider(), attributes);
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -279,7 +279,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             public void onError(Throwable error) {
                 ChatModelErrorContext errorContext = InternalAnthropicHelper.createErrorContext(
                         error,
-                        observabilityRequest,
+                        listenerRequest,
                         provider(),
                         attributes
                 );
@@ -297,14 +297,14 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                ChatResponse observabilityResponse = InternalAnthropicHelper.createObservabilityResponse(
+                ChatResponse listenerResponse = InternalAnthropicHelper.createListenerResponse(
                         (String) response.metadata().get("id"),
                         (String) response.metadata().get("model"),
                         response
                 );
                 ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                        observabilityResponse,
-                        observabilityRequest,
+                        listenerResponse,
+                        listenerRequest,
                         provider(),
                         attributes
                 );

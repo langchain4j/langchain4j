@@ -19,7 +19,7 @@ import java.util.Map;
 class InternalAnthropicHelper {
 
     static ChatModelErrorContext createErrorContext(Throwable e,
-                                                    ChatRequest observabilityRequest,
+                                                    ChatRequest listenerRequest,
                                                     ModelProvider modelProvider,
                                                     Map<Object, Object> attributes) {
         Throwable error;
@@ -31,15 +31,15 @@ class InternalAnthropicHelper {
 
         return new ChatModelErrorContext(
                 error,
-                observabilityRequest,
+                listenerRequest,
                 modelProvider,
                 attributes
         );
     }
 
-    static ChatRequest createObservabilityRequest(AnthropicCreateMessageRequest request,
-                                                  List<ChatMessage> messages,
-                                                  List<ToolSpecification> toolSpecifications) {
+    static ChatRequest createListenerRequest(AnthropicCreateMessageRequest request,
+                                             List<ChatMessage> messages,
+                                             List<ToolSpecification> toolSpecifications) {
         return ChatRequest.builder()
                 .messages(messages)
                 .parameters(ChatRequestParameters.builder()
@@ -52,9 +52,9 @@ class InternalAnthropicHelper {
                 .build();
     }
 
-    static ChatResponse createObservabilityResponse(String responseId,
-                                                    String responseModel,
-                                                    Response<AiMessage> response) {
+    static ChatResponse createListenerResponse(String responseId,
+                                               String responseModel,
+                                               Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
