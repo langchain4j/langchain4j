@@ -26,15 +26,15 @@ class OllamaChatModelListenerUtils {
      * Processes a listen request by notifying all registered chat model listeners.
      *
      * @param listeners            A list of {@link ChatModelListener} instances to be notified. Should not be null.
-     * @param observabilityRequest The {@link dev.langchain4j.model.chat.request.ChatRequest} containing the request details.
+     * @param listenerRequest The {@link dev.langchain4j.model.chat.request.ChatRequest} containing the request details.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
     static void onListenRequest(
             List<ChatModelListener> listeners,
-            dev.langchain4j.model.chat.request.ChatRequest observabilityRequest,
+            dev.langchain4j.model.chat.request.ChatRequest listenerRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes) {
-        ChatModelRequestContext context = new ChatModelRequestContext(observabilityRequest, modelProvider, attributes);
+        ChatModelRequestContext context = new ChatModelRequestContext(listenerRequest, modelProvider, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(context);
@@ -49,19 +49,19 @@ class OllamaChatModelListenerUtils {
      *
      * @param listeners            A list of {@link ChatModelListener} instances to be notified. Should not be null.
      * @param response             The {@link Response} containing the response details.
-     * @param observabilityRequest The original {@link dev.langchain4j.model.chat.request.ChatRequest} associated with the response.
+     * @param listenerRequest The original {@link dev.langchain4j.model.chat.request.ChatRequest} associated with the response.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
     static void onListenResponse(List<ChatModelListener> listeners,
                                  Response<AiMessage> response,
-                                 dev.langchain4j.model.chat.request.ChatRequest observabilityRequest,
+                                 dev.langchain4j.model.chat.request.ChatRequest listenerRequest,
                                  ModelProvider modelProvider,
                                  Map<Object, Object> attributes) {
-        dev.langchain4j.model.chat.response.ChatResponse observabilityResponse =
-                createObservabilityResponse(observabilityRequest.parameters().modelName(), response);
+        dev.langchain4j.model.chat.response.ChatResponse listenerResponse =
+                createListenerResponse(listenerRequest.parameters().modelName(), response);
         ChatModelResponseContext context = new ChatModelResponseContext(
-                observabilityResponse,
-                observabilityRequest,
+                listenerResponse,
+                listenerRequest,
                 modelProvider,
                 attributes
         );
@@ -79,17 +79,17 @@ class OllamaChatModelListenerUtils {
      *
      * @param listeners            A list of {@link ChatModelListener} instances to be notified. Should not be null.
      * @param error                Error between chat
-     * @param observabilityRequest The original {@link dev.langchain4j.model.chat.request.ChatRequest} associated with the response.
+     * @param listenerRequest The original {@link dev.langchain4j.model.chat.request.ChatRequest} associated with the response.
      * @param attributes           A map of additional attributes to be passed to the context.
      */
     static void onListenError(List<ChatModelListener> listeners,
                               Throwable error,
-                              dev.langchain4j.model.chat.request.ChatRequest observabilityRequest,
+                              dev.langchain4j.model.chat.request.ChatRequest listenerRequest,
                               ModelProvider modelProvider,
                               Map<Object, Object> attributes) {
         ChatModelErrorContext context = new ChatModelErrorContext(
                 error,
-                observabilityRequest,
+                listenerRequest,
                 modelProvider,
                 attributes
         );
@@ -102,7 +102,7 @@ class OllamaChatModelListenerUtils {
         });
     }
 
-    static dev.langchain4j.model.chat.request.ChatRequest createObservabilityRequest(
+    static dev.langchain4j.model.chat.request.ChatRequest createListenerRequest(
             ChatRequest request,
             List<ChatMessage> messages,
             List<ToolSpecification> toolSpecifications) {
@@ -119,8 +119,8 @@ class OllamaChatModelListenerUtils {
                 .build();
     }
 
-    static dev.langchain4j.model.chat.response.ChatResponse createObservabilityResponse(String responseModel,
-                                                                                        Response<AiMessage> response) {
+    static dev.langchain4j.model.chat.response.ChatResponse createListenerResponse(String responseModel,
+                                                                                   Response<AiMessage> response) {
         if (response == null) {
             return null;
         }

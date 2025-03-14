@@ -28,7 +28,7 @@ import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createObservabilityRequest;
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createListenerRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenResponse;
@@ -143,10 +143,10 @@ class OllamaClient {
             ModelProvider modelProvider,
             List<ChatMessage> messages) {
 
-        dev.langchain4j.model.chat.request.ChatRequest observabilityRequest =
-                createObservabilityRequest(request, messages, new ArrayList<>());
+        dev.langchain4j.model.chat.request.ChatRequest listenerRequest =
+                createListenerRequest(request, messages, new ArrayList<>());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        onListenRequest(listeners, observabilityRequest, modelProvider, attributes);
+        onListenRequest(listeners, listenerRequest, modelProvider, attributes);
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -169,14 +169,14 @@ class OllamaClient {
 
                 if (TRUE.equals(chatResponse.getDone())) {
                     Response<AiMessage> response = responseBuilder.build();
-                    onListenResponse(listeners, response, observabilityRequest, modelProvider, attributes);
+                    onListenResponse(listeners, response, listenerRequest, modelProvider, attributes);
                     handler.onComplete(response);
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                onListenError(listeners, throwable, observabilityRequest, modelProvider, attributes);
+                onListenError(listeners, throwable, listenerRequest, modelProvider, attributes);
                 handler.onError(throwable);
             }
         });
