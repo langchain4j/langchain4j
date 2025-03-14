@@ -122,7 +122,7 @@ abstract class BaseGeminiChatModel {
             .build();
     }
 
-    protected ChatRequest createObservabilityRequest(
+    protected ChatRequest createListenerRequest(
         String modelName,
         List<ChatMessage> messages,
         List<ToolSpecification> toolSpecifications,
@@ -166,20 +166,20 @@ abstract class BaseGeminiChatModel {
     }
 
     protected void notifyListenersOnResponse(Response<AiMessage> response,
-                                             ChatRequest observabilityRequest,
+                                             ChatRequest listenerRequest,
                                              ModelProvider modelProvider,
                                              Map<Object, Object> attributes) {
-        ChatResponse observabilityResponse = ChatResponse.builder()
+        ChatResponse LISTENERResponse = ChatResponse.builder()
                 .aiMessage(response.content())
                 .metadata(ChatResponseMetadata.builder()
                         // TODO take actual modelName from response or return null?
-                        .modelName(observabilityRequest.parameters().modelName())
+                        .modelName(listenerRequest.parameters().modelName())
                         .tokenUsage(response.tokenUsage())
                         .finishReason(response.finishReason())
                         .build())
                 .build();
         ChatModelResponseContext context = new ChatModelResponseContext(
-            observabilityResponse, observabilityRequest, modelProvider, attributes);
+            LISTENERResponse, listenerRequest, modelProvider, attributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onResponse(context);
@@ -190,13 +190,13 @@ abstract class BaseGeminiChatModel {
     }
 
     protected void notifyListenersOnError(Exception exception,
-                                          ChatRequest observabilityRequest,
+                                          ChatRequest listenerRequest,
                                           ModelProvider modelProvider,
                                           Map<Object, Object> attributes) {
         listeners.forEach((listener) -> {
             try {
                 ChatModelErrorContext context = new ChatModelErrorContext(
-                    exception, observabilityRequest, modelProvider, attributes);
+                    exception, listenerRequest, modelProvider, attributes);
                 listener.onError(context);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener (onError)", e);

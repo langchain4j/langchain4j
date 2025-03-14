@@ -109,18 +109,18 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                           ) {
         ChatRequestParameters parameters = ChatRequestParameters.builder().build();
         GeminiGenerateContentRequest request = createGenerateContentRequest(messages, toolSpecifications, getOrDefault(responseFormat, this.responseFormat), parameters);
-        ChatRequest observabilityRequest = createObservabilityRequest(null, messages, toolSpecifications, parameters);
+        ChatRequest listenerRequest = createListenerRequest(null, messages, toolSpecifications, parameters);
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(observabilityRequest, provider(), listenerAttributes);
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
         notifyListenersOnRequest(chatModelRequestContext);
 
-        processGenerateContentRequest(request, handler, observabilityRequest, listenerAttributes);
+        processGenerateContentRequest(request, handler, listenerRequest, listenerAttributes);
     }
 
     private void processGenerateContentRequest(GeminiGenerateContentRequest request,
                                                StreamingResponseHandler<AiMessage> handler,
-                                               ChatRequest observabilityRequest,
+                                               ChatRequest listenerRequest,
                                                ConcurrentHashMap<Object, Object> listenerAttributes) {
         GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(this.includeCodeExecutionOutput);
 
@@ -137,9 +137,9 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             Response<AiMessage> fullResponse = responseBuilder.build();
             handler.onComplete(fullResponse);
 
-            notifyListenersOnResponse(fullResponse, observabilityRequest, provider(), listenerAttributes);
+            notifyListenersOnResponse(fullResponse, listenerRequest, provider(), listenerAttributes);
         } catch (RuntimeException exception) {
-            notifyListenersOnError(exception, observabilityRequest, provider(), listenerAttributes);
+            notifyListenersOnError(exception, listenerRequest, provider(), listenerAttributes);
             handler.onError(exception);
         }
     }

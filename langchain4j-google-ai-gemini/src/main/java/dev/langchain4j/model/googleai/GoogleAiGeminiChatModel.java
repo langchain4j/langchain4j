@@ -86,7 +86,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 chatRequest.parameters()
         );
 
-        ChatRequest observabilityRequest = createObservabilityRequest(
+        ChatRequest listenerRequest = createListenerRequest(
                 parameters.modelName(),
                 chatRequest.messages(),
                 parameters.toolSpecifications(),
@@ -94,7 +94,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        notifyListenersOnRequest(new ChatModelRequestContext(observabilityRequest, provider(), listenerAttributes));
+        notifyListenersOnRequest(new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes));
 
         try {
             GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
@@ -102,9 +102,9 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 this.maxRetries
             );
 
-            return processResponse(geminiResponse, observabilityRequest, listenerAttributes);
+            return processResponse(geminiResponse, listenerRequest, listenerAttributes);
         } catch (RuntimeException e) {
-            notifyListenersOnError(e, observabilityRequest, provider(), listenerAttributes);
+            notifyListenersOnError(e, listenerRequest, provider(), listenerAttributes);
             throw e;
         }
     }
@@ -120,7 +120,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     private ChatResponse processResponse(
         GeminiGenerateContentResponse geminiResponse,
-        ChatRequest observabilityRequest,
+        ChatRequest listenerRequest,
         ConcurrentHashMap<Object, Object> listenerAttributes
     ) {
         if (geminiResponse == null) {
@@ -135,13 +135,13 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         TokenUsage tokenUsage = createTokenUsage(tokenCounts);
 
         Response<AiMessage> response = Response.from(aiMessage, tokenUsage, finishReason);
-        notifyListenersOnResponse(response, observabilityRequest, provider(), listenerAttributes);
+        notifyListenersOnResponse(response, listenerRequest, provider(), listenerAttributes);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder()
                         // TODO take actual modelName from response or return null?
-                        .modelName(observabilityRequest.parameters().modelName())
+                        .modelName(listenerRequest.parameters().modelName())
                         .finishReason(finishReason)
                         .tokenUsage(tokenUsage)
                         .build())
