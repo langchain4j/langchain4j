@@ -51,7 +51,7 @@ jobs:
           rm pr_number.txt
 
       # Post suggestions as a comment on the PR
-      - uses: googleapis/code-suggester@v4
+      - uses: googleapis/code-suggester@v5
         with:
           command: review
           pull_number: ${{ env.PR_NUMBER }}
