@@ -8,7 +8,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -110,17 +109,19 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                           ) {
         ChatRequestParameters parameters = ChatRequestParameters.builder().build();
         GeminiGenerateContentRequest request = createGenerateContentRequest(messages, toolSpecifications, getOrDefault(responseFormat, this.responseFormat), parameters);
-        ChatModelRequest chatModelRequest = createChatModelRequest(null, messages, toolSpecifications, parameters);
+        ChatRequest observabilityRequest = createObservabilityRequest(null, messages, toolSpecifications, parameters);
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, provider(), listenerAttributes);
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(observabilityRequest, provider(), listenerAttributes);
         notifyListenersOnRequest(chatModelRequestContext);
 
-        processGenerateContentRequest(request, handler, chatModelRequest, listenerAttributes);
+        processGenerateContentRequest(request, handler, observabilityRequest, listenerAttributes);
     }
 
-    private void processGenerateContentRequest(GeminiGenerateContentRequest request, StreamingResponseHandler<AiMessage> handler,
-                                               ChatModelRequest chatModelRequest, ConcurrentHashMap<Object, Object> listenerAttributes) {
+    private void processGenerateContentRequest(GeminiGenerateContentRequest request,
+                                               StreamingResponseHandler<AiMessage> handler,
+                                               ChatRequest observabilityRequest,
+                                               ConcurrentHashMap<Object, Object> listenerAttributes) {
         GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(this.includeCodeExecutionOutput);
 
         try {
@@ -136,9 +137,9 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             Response<AiMessage> fullResponse = responseBuilder.build();
             handler.onComplete(fullResponse);
 
-            notifyListenersOnResponse(fullResponse, chatModelRequest, provider(), listenerAttributes);
+            notifyListenersOnResponse(fullResponse, observabilityRequest, provider(), listenerAttributes);
         } catch (RuntimeException exception) {
-            notifyListenersOnError(exception, chatModelRequest, provider(), listenerAttributes);
+            notifyListenersOnError(exception, observabilityRequest, provider(), listenerAttributes);
             handler.onError(exception);
         }
     }

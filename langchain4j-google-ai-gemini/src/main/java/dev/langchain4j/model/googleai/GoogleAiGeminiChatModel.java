@@ -9,7 +9,6 @@ import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -87,7 +86,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 chatRequest.parameters()
         );
 
-        ChatModelRequest chatModelRequest = createChatModelRequest(
+        ChatRequest observabilityRequest = createObservabilityRequest(
                 parameters.modelName(),
                 chatRequest.messages(),
                 parameters.toolSpecifications(),
@@ -95,7 +94,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        notifyListenersOnRequest(new ChatModelRequestContext(chatModelRequest, provider(), listenerAttributes));
+        notifyListenersOnRequest(new ChatModelRequestContext(observabilityRequest, provider(), listenerAttributes));
 
         try {
             GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
@@ -103,9 +102,9 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 this.maxRetries
             );
 
-            return processResponse(geminiResponse, chatModelRequest, listenerAttributes);
+            return processResponse(geminiResponse, observabilityRequest, listenerAttributes);
         } catch (RuntimeException e) {
-            notifyListenersOnError(e, chatModelRequest, provider(), listenerAttributes);
+            notifyListenersOnError(e, observabilityRequest, provider(), listenerAttributes);
             throw e;
         }
     }
@@ -121,7 +120,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     private ChatResponse processResponse(
         GeminiGenerateContentResponse geminiResponse,
-        ChatModelRequest chatModelRequest,
+        ChatRequest observabilityRequest,
         ConcurrentHashMap<Object, Object> listenerAttributes
     ) {
         if (geminiResponse == null) {
@@ -136,12 +135,13 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         TokenUsage tokenUsage = createTokenUsage(tokenCounts);
 
         Response<AiMessage> response = Response.from(aiMessage, tokenUsage, finishReason);
-        notifyListenersOnResponse(response, chatModelRequest, provider(), listenerAttributes);
+        notifyListenersOnResponse(response, observabilityRequest, provider(), listenerAttributes);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder()
-                        .modelName(chatModelRequest.model()) // TODO take actual model from response or return null?
+                        // TODO take actual modelName from response or return null?
+                        .modelName(observabilityRequest.parameters().modelName())
                         .finishReason(finishReason)
                         .tokenUsage(tokenUsage)
                         .build())
