@@ -79,6 +79,13 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>me.kpavlov.aimocks</groupId>
+            <artifactId>ai-mocks-openai-jvm</artifactId>
+            <version>${ai-mocks.version}</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
 </project>
