@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.client;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a client that can communicate with an MCP server over a given transport protocol,
@@ -36,4 +37,14 @@ public interface McpClient extends AutoCloseable {
      * works for dynamic resources (templates).
      */
     ResourceResponse readResource(String uri);
+
+    /**
+     * Obtain a list of prompts available on the MCP server.
+     */
+    List<PromptRef> listPrompts();
+
+    /**
+     * Render the contents of a prompt.
+     */
+    PromptResponse getPrompt(String name, Map<String, Object> arguments);
 }
