@@ -97,10 +97,13 @@ public class TokenWindowChatMemory implements ChatMemory {
         }
 
         int currentTokenCount = tokenizer.estimateTokenCountInMessages(messages);
-        while (currentTokenCount > maxTokens) {
+        while (currentTokenCount > maxTokens && !messages.isEmpty()) {
 
             int messageToEvictIndex = 0;
             if (messages.get(0) instanceof SystemMessage) {
+                if (messages.size() == 1){
+                    return;
+                }
                 messageToEvictIndex = 1;
             }
 
