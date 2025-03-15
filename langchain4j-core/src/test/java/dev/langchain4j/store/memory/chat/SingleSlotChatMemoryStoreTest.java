@@ -6,10 +6,10 @@ import java.util.Arrays;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-class InMemoryChatMemoryStoreTest implements WithAssertions {
+class SingleSlotChatMemoryStoreTest implements WithAssertions {
     @Test
     void test() {
-        InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
+        SingleSlotChatMemoryStore store = new SingleSlotChatMemoryStore("foo");
         assertThat(store.getMessages("foo")).isEmpty();
 
         store.updateMessages("foo", Arrays.asList(new UserMessage("abc def"), new AiMessage("ghi jkl")));

@@ -131,8 +131,6 @@ import java.util.function.Function;
  */
 public abstract class AiServices<T> {
 
-    protected static final String DEFAULT = "default";
-
     protected final AiServiceContext context;
 
     private boolean retrieverSet = false;
@@ -252,8 +250,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
-        context.chatMemories = new ConcurrentHashMap<>();
-        context.chatMemories.put(DEFAULT, chatMemory);
+        context.initChatMemories(chatMemory);
         return this;
     }
 
@@ -278,8 +275,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
-        context.chatMemories = new ConcurrentHashMap<>();
-        context.chatMemoryProvider = chatMemoryProvider;
+        context.initChatMemories(chatMemoryProvider);
         return this;
     }
 
