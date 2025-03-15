@@ -11,7 +11,9 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -269,12 +271,24 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private UserMessage appendOutputFormatInstructions(Type returnType, UserMessage userMessage) {
                         String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(returnType);
-                        String text = userMessage.singleText() + outputFormatInstructions;
-                        if (isNotNullOrBlank(userMessage.name())) {
-                            userMessage = UserMessage.from(userMessage.name(), text);
-                        } else {
-                            userMessage = UserMessage.from(text);
+                        String text;
+
+                        List<Content> updatedContents = new ArrayList<>();
+                        for (Content content : userMessage.contents()) {
+                            if (content instanceof TextContent textContent) {
+                                text = textContent.text() + outputFormatInstructions;
+                                updatedContents.add(TextContent.from(text));
+                            } else {
+                                updatedContents.add(content);
+                            }
                         }
+
+                        if (isNotNullOrBlank(userMessage.name())) {
+                            return UserMessage.from(userMessage.name(), updatedContents);
+                        } else {
+                            userMessage = UserMessage.from(updatedContents);
+                        }
+
                         return userMessage;
                     }
 
