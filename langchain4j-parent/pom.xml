@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.0.0-beta2-SNAPSHOT</version>
+    <version>1.0.0-beta3-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -82,9 +82,9 @@
         <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
         <mockito.version>5.14.2</mockito.version>
-        <netty.version>4.1.111.Final</netty.version>
         <netty.version>4.1.119.Final</netty.version>
         <okhttp.version>4.12.0</okhttp.version>
+        <openai-java.version>0.34.1</openai-java.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <reactor-bom.version>2024.0.3</reactor-bom.version>
@@ -285,6 +285,12 @@
                 <groupId>org.apache.httpcomponents.client5</groupId>
                 <artifactId>httpclient5</artifactId>
                 <version>${httpclient5.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.openai</groupId>
+                <artifactId>openai-java</artifactId>
+                <version>${openai-java.version}</version>
             </dependency>
 
             <dependency>

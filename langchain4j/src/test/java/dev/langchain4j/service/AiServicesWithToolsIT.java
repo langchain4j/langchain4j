@@ -975,4 +975,44 @@ class AiServicesWithToolsIT {
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);
     }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+    void should_execute_tool_with_custom_name(ChatLanguageModel chatLanguageModel) {
+
+        LocalDate now = LocalDate.of(2025, 2, 24);
+
+        class Tools {
+
+            private static final String CUSTOM_TOOL_NAME = "get_current_date";
+
+            @Tool(name = CUSTOM_TOOL_NAME)
+            LocalDate currentDate() {
+                return now;
+            }
+        }
+
+        Tools tools = spy(new Tools());
+
+        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatLanguageModel(spyChatLanguageModel)
+                .tools(tools)
+                .build();
+
+        String userMessage = "What is the current date?";
+
+        // when
+        Result<AiMessage> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content().text())
+                .contains(String.valueOf(now.getYear()), String.valueOf(now.getDayOfMonth()));
+        assertThat(result.toolExecutions().get(0).request().name()).isEqualTo(Tools.CUSTOM_TOOL_NAME);
+
+        verify(tools).currentDate();
+        verifyNoMoreInteractions(tools);
+    }
 }
