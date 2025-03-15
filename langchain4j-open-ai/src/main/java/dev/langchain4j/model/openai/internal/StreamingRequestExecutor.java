@@ -4,7 +4,11 @@ import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+
+import java.util.Map;
 import java.util.function.Consumer;
+
+import static dev.langchain4j.model.openai.internal.ResponseAndAttributes.RAW_EVENT_ATTRIBUTE;
 
 class StreamingRequestExecutor<Response> {
 
@@ -18,7 +22,7 @@ class StreamingRequestExecutor<Response> {
         this.responseClass = responseClass;
     }
 
-    StreamingResponseHandling onPartialResponse(Consumer<Response> partialResponseHandler) {
+    StreamingResponseHandling onPartialResponse(Consumer<ResponseAndAttributes<Response>> partialResponseHandler) {
 
         return new StreamingResponseHandling() {
 
@@ -89,7 +93,7 @@ class StreamingRequestExecutor<Response> {
     }
 
     private ResponseHandle stream(
-            Consumer<Response> partialResponseHandler,
+            Consumer<ResponseAndAttributes<Response>> partialResponseHandler,
             Runnable streamingCompletionCallback,
             Consumer<Throwable> errorHandler) {
 
@@ -108,7 +112,10 @@ class StreamingRequestExecutor<Response> {
                     }
                     Response response = Json.fromJson(event.data(), responseClass);
                     if (response != null) {
-                        partialResponseHandler.accept(response); // do not handle exception, fail-fast
+                        Map<String, Object> attributes = Map.of(RAW_EVENT_ATTRIBUTE, event);
+                        ResponseAndAttributes<Response> responseAndAttributes =
+                                new ResponseAndAttributes<>(response, attributes);
+                        partialResponseHandler.accept(responseAndAttributes); // do not handle exception, fail-fast
                     }
                 } catch (Exception e) {
                     errorHandler.accept(e);

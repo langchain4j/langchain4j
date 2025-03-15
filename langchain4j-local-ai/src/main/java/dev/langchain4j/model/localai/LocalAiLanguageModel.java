@@ -68,7 +68,8 @@ public class LocalAiLanguageModel implements LanguageModel {
                 .maxTokens(maxTokens)
                 .build();
 
-        CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request).execute(), maxRetries);
+        CompletionResponse response =
+                withRetryMappingExceptions(() -> client.completion(request).execute().response(), maxRetries);
 
         return Response.from(
                 response.text(),

@@ -1,8 +1,8 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ResponseAndAttributes;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
@@ -25,8 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static dev.langchain4j.internal.ExceptionMapper.mappingException;
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -39,6 +38,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.openai.internal.ResponseAndAttributes.RAW_RESPONSE_ATTRIBUTE;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
@@ -125,6 +125,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .metadata(getOrDefault(builder.metadata, () -> copyIfNotNull(openAiParameters.metadata())))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
+                .customParameters(openAiParameters.customParameters())
                 .build();
         this.responseFormat = builder.responseFormat;
         this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
@@ -167,8 +168,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
-        ChatCompletionResponse openAiResponse = withRetryMappingExceptions(() ->
-                client.chatCompletion(openAiRequest).execute(), maxRetries);
+        ResponseAndAttributes<ChatCompletionResponse> responseAndAttributes =
+                withRetryMappingExceptions(() -> client.chatCompletion(openAiRequest).execute(), maxRetries);
+
+        ChatCompletionResponse openAiResponse = responseAndAttributes.response();
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
@@ -178,6 +181,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .created(openAiResponse.created().longValue())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
+                .rawResponse((SuccessfulHttpResponse) responseAndAttributes.attributes().get(RAW_RESPONSE_ATTRIBUTE))
                 .build();
 
         return ChatResponse.builder()

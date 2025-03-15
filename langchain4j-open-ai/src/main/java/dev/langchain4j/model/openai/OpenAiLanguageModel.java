@@ -69,7 +69,8 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .temperature(temperature)
                 .build();
 
-        CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request).execute(), maxRetries);
+        CompletionResponse response =
+                withRetryMappingExceptions(() -> client.completion(request).execute().response(), maxRetries);
 
         CompletionChoice completionChoice = response.choices().get(0);
         return Response.from(

@@ -138,7 +138,8 @@ public class LocalAiChatModel implements ChatLanguageModel {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        ChatCompletionResponse response = withRetryMappingExceptions(() -> client.chatCompletion(request).execute(), maxRetries);
+        ChatCompletionResponse response =
+                withRetryMappingExceptions(() -> client.chatCompletion(request).execute().response(), maxRetries);
 
         return Response.from(
                 aiMessageFrom(response),
