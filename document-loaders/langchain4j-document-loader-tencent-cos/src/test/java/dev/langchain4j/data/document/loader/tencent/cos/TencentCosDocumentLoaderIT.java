@@ -1,25 +1,30 @@
 package dev.langchain4j.data.document.loader.tencent.cos;
 
+import java.io.File;
+import java.net.URL;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
+import com.qcloud.cos.model.ObjectListing;
 import com.qcloud.cos.model.PutObjectRequest;
 import com.qcloud.cos.region.Region;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
-import java.io.File;
-import java.net.URL;
-import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "TENCENT_SECRET_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "TENCENT_COS_SECRET_KEY", matches = ".+")
 class TencentCosDocumentLoaderIT {
 
+    // Please modify it to your own bucket information
     private static final String TEST_BUCKET = "test-buket";
+
     private static final String TEST_KEY = "test-file.txt";
     private static final String TEST_KEY_2 = "test-directory/test-file-2.txt";
     private static final String TEST_CONTENT = "Hello, World!";
@@ -33,11 +38,20 @@ class TencentCosDocumentLoaderIT {
 
     @BeforeAll
     static void beforeAll() {
-        TencentCredentials tencentCredentials =
-                new TencentCredentials(System.getenv("TENCENT_SECRET_ID"), System.getenv("TENCENT_SECRET_KEY"), null);
-        cosClient =
-                new COSClient(tencentCredentials.toCredentialsProvider(), new ClientConfig(new Region("ap-shanghai")));
+        TencentCredentials tencentCredentials = new TencentCredentials(
+                System.getenv("TENCENT_COS_SECRET_ID"), System.getenv("TENCENT_COS_SECRET_KEY"), null);
+        cosClient = new COSClient(
+                tencentCredentials.toCredentialsProvider(),
+                new ClientConfig(new Region(System.getenv("TENCENT_COS_REGION_NAME"))));
         loader = new TencentCosDocumentLoader(cosClient);
+    }
+
+    @BeforeEach
+    void cleanBucket() {
+        final ObjectListing objects = cosClient.listObjects(TEST_BUCKET);
+        objects.getObjectSummaries()
+                .forEach(cosObjectSummary -> cosClient.deleteObject(TEST_BUCKET, cosObjectSummary.getKey()));
+        System.out.println("cleaning over!");
     }
 
     @Test
@@ -90,7 +104,7 @@ class TencentCosDocumentLoaderIT {
 
         assertThat(documents.get(1).text()).isEqualTo(TEST_CONTENT);
         assertThat(documents.get(1).metadata().toMap()).hasSize(1);
-        assertThat(documents.get(1).metadata("source")).isEqualTo(String.format("cos://%s/%s", TEST_BUCKET, TEST_KEY));
+        assertThat(documents.get(1).metadata().toMap()).containsEntry("source", String.format("cos://%s/%s", TEST_BUCKET, TEST_KEY));
     }
 
     @Test
