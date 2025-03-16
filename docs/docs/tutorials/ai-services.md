@@ -412,7 +412,7 @@ Here is how to enable JSON mode:
     ```java
     OpenAiChatModel.builder()
         ...
-        .supportedCapabilities(RESPONSE_FORMAT_JSON_MODE)
+        .supportedCapabilities(RESPONSE_FORMAT_JSON)
         .build();
     ```
 
