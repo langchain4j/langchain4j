@@ -189,7 +189,7 @@ To use JSON mode, configure your model as follows (Note: We recommend always usi
 ```java
 OpenAiChatModel.builder()
     ...
-    .supportedCapabilities(RESPONSE_FORMAT_JSON_MODE)
+    .supportedCapabilities(RESPONSE_FORMAT_JSON)
     .build();
 ```
 
