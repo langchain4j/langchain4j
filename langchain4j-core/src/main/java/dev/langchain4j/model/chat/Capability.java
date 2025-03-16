@@ -29,5 +29,5 @@ public enum Capability {
      *
      * @see ResponseFormat
      */
-    RESPONSE_FORMAT_JSON_MODE
+    RESPONSE_FORMAT_JSON
 }
