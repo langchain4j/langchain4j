@@ -1,6 +1,5 @@
 package dev.langchain4j.data.segment;
 
-
 import dev.langchain4j.data.document.Metadata;
 
 import java.util.Objects;
@@ -46,20 +45,6 @@ public class TextSegment {
      */
     public Metadata metadata() {
         return metadata;
-    }
-
-    /**
-     * Returns the metadata value for the given key.
-     *
-     * @param key the key.
-     * @return the metadata value, or null if not found.
-     * @deprecated as of 0.31.0, use {@link #metadata()} and then {@link Metadata#getString(String)},
-     * {@link Metadata#getInteger(String)}, {@link Metadata#getLong(String)}, {@link Metadata#getFloat(String)},
-     * {@link Metadata#getDouble(String)} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public String metadata(String key) {
-        return metadata.get(key);
     }
 
     @Override
