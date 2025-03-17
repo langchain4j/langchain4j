@@ -157,17 +157,6 @@ public class Utils {
   }
 
   /**
-   * @deprecated Use {@link #isNullOrEmpty(Collection)} instead.
-   * @param collection The collection to check.
-   * @return {@code true} if the collection is {@code null} or empty, {@code false} otherwise.
-   */
-  @SuppressWarnings("DeprecatedIsStillUsed")
-  @Deprecated(forRemoval = true)
-  public static boolean isCollectionEmpty(Collection<?> collection) {
-    return isNullOrEmpty(collection);
-  }
-
-  /**
    * Returns a string consisting of the given string repeated {@code times} times.
    *
    * @param string The string to repeat.

@@ -134,14 +134,6 @@ class UtilsTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
-    void is_collection_empty() {
-        assertThat(Utils.isCollectionEmpty(null)).isTrue();
-        assertThat(Utils.isCollectionEmpty(emptyList())).isTrue();
-        assertThat(Utils.isCollectionEmpty(Collections.singletonList("abc"))).isFalse();
-    }
-
-    @Test
     void repeat() {
         assertThat(Utils.repeat("foo", 0)).isEmpty();
         assertThat(Utils.repeat("foo", 1)).isEqualTo("foo");
