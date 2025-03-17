@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.0.0-beta2-SNAPSHOT</version>
+        <version>1.0.0-beta3-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -76,6 +76,13 @@
         <dependency>
             <groupId>org.tinylog</groupId>
             <artifactId>slf4j-tinylog</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>me.kpavlov.aimocks</groupId>
+            <artifactId>ai-mocks-openai-jvm</artifactId>
+            <version>${ai-mocks.version}</version>
             <scope>test</scope>
         </dependency>
 

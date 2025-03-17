@@ -37,7 +37,6 @@ class OpenAiChatModelListenerIT extends ChatModelListenerIT {
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OpenAiChatModel.builder()
                 .apiKey("banana")
-                .maxRetries(1)
                 .listeners(singletonList(listener))
                 .build();
     }

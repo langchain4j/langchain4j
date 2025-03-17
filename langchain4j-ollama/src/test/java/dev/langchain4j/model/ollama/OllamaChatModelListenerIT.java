@@ -35,7 +35,6 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
         return OllamaChatModel.builder()
                 .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
                 .modelName("banana")
-                .maxRetries(0)
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))

@@ -20,9 +20,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.bedrock.internal.Json;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -184,25 +182,32 @@ public class BedrockAnthropicMessageChatModel
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatModelRequest modelListenerRequest =
-                createModelListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
+        ChatRequest listenerRequest =
+                createListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
 
         try {
             InvokeModelResponse invokeModelResponse =
-                    withRetryMappingExceptions(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
-            final String response = invokeModelResponse.body().asUtf8String();
+                    withRetryMappingExceptions(() -> getClient().invokeModel(invokeModelRequest), getMaxRetries());
+            String response = invokeModelResponse.body().asUtf8String();
             BedrockAnthropicMessageChatModelResponse result = Json.fromJson(response, getResponseClassType());
 
             Response<AiMessage> responseMessage =
                     Response.from(aiMessageFrom(result), result.getTokenUsage(), result.getFinishReason());
 
-            ChatModelResponse modelListenerResponse =
-                    createModelListenerResponse(result.getId(), result.getModel(), responseMessage);
+            ChatResponse listenerResponse =
+                    createListenerResponse(result.getId(), result.getModel(), responseMessage);
             ChatModelResponseContext responseContext =
-                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, provider(), attributes);
+                    new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -214,7 +219,7 @@ public class BedrockAnthropicMessageChatModel
 
             return responseMessage;
         } catch (RuntimeException e) {
-            listenerErrorResponse(e, modelListenerRequest, provider(), attributes);
+            listenerErrorResponse(e, listenerRequest, provider(), attributes);
             throw e;
         }
     }
