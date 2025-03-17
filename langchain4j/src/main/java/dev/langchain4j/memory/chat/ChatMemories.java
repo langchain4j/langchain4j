@@ -16,7 +16,7 @@ public class ChatMemories {
 
     public ChatMemories(ChatMemoryProvider chatMemoryProvider) {
         this.chatMemories = Collections.synchronizedMap(new WeakHashMap<>());
-        this.chatMemoryProvider = chatMemoryProvider;
+        this.chatMemoryProvider = ensureNotNull(chatMemoryProvider, "chatMemoryProvider");
     }
 
     public ChatMemories(ChatMemory chatMemory) {
