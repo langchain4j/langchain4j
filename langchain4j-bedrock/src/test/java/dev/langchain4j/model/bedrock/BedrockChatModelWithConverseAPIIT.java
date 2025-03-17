@@ -148,6 +148,7 @@ class BedrockChatModelWithConverseAPIIT extends AbstractChatModelIT {
                         .parameters(JsonObjectSchema.builder()
                                 .addIntegerProperty("first")
                                 .addIntegerProperty("second")
+                                .required("first", "second")
                                 .build())
                         .build(),
                 ToolSpecification.builder()
@@ -155,6 +156,7 @@ class BedrockChatModelWithConverseAPIIT extends AbstractChatModelIT {
                         .description("returns the square of one number")
                         .parameters(JsonObjectSchema.builder()
                                 .addIntegerProperty("number")
+                                .required("number")
                                 .build())
                         .build(),
                 ToolSpecification.builder()
@@ -162,6 +164,7 @@ class BedrockChatModelWithConverseAPIIT extends AbstractChatModelIT {
                         .description("returns the cube of one number")
                         .parameters(JsonObjectSchema.builder()
                                 .addIntegerProperty("number")
+                                .required("number")
                                 .build())
                         .build());
 

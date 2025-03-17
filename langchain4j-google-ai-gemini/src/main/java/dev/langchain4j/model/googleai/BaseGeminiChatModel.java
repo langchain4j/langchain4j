@@ -4,23 +4,25 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -120,20 +122,22 @@ abstract class BaseGeminiChatModel {
             .build();
     }
 
-    protected ChatModelRequest createChatModelRequest(
+    protected ChatRequest createListenerRequest(
         String modelName,
         List<ChatMessage> messages,
         List<ToolSpecification> toolSpecifications,
         ChatRequestParameters requestParameters
     ) {
-        return ChatModelRequest.builder()
-            .model(getOrDefault(modelName, this.modelName))
-            .temperature(getOrDefault(requestParameters.temperature(), this.temperature))
-            .topP(getOrDefault(requestParameters.topP(), this.topP))
-            .maxTokens(getOrDefault(requestParameters.maxOutputTokens(), this.maxOutputTokens))
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
+        return ChatRequest.builder()
+                .messages(messages)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(getOrDefault(modelName, this.modelName))
+                        .temperature(getOrDefault(requestParameters.temperature(), this.temperature))
+                        .topP(getOrDefault(requestParameters.topP(), this.topP))
+                        .maxOutputTokens(getOrDefault(requestParameters.maxOutputTokens(), this.maxOutputTokens))
+                        .toolSpecifications(toolSpecifications)
+                        .build())
+                .build();
     }
 
     protected static String computeMimeType(ResponseFormat responseFormat) {
@@ -161,16 +165,21 @@ abstract class BaseGeminiChatModel {
         });
     }
 
-    protected void notifyListenersOnResponse(Response<AiMessage> response, ChatModelRequest request,
-                                             ConcurrentHashMap<Object, Object> attributes) {
-        ChatModelResponse chatModelResponse = ChatModelResponse.builder()
-            .model(request.model()) // TODO take actual model from response or return null?
-            .tokenUsage(response.tokenUsage())
-            .finishReason(response.finishReason())
-            .aiMessage(response.content())
-            .build();
+    protected void notifyListenersOnResponse(Response<AiMessage> response,
+                                             ChatRequest listenerRequest,
+                                             ModelProvider modelProvider,
+                                             Map<Object, Object> attributes) {
+        ChatResponse LISTENERResponse = ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        // TODO take actual modelName from response or return null?
+                        .modelName(listenerRequest.parameters().modelName())
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
         ChatModelResponseContext context = new ChatModelResponseContext(
-            chatModelResponse, request, attributes);
+            LISTENERResponse, listenerRequest, modelProvider, attributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onResponse(context);
@@ -180,12 +189,14 @@ abstract class BaseGeminiChatModel {
         });
     }
 
-    protected void notifyListenersOnError(Exception exception, ChatModelRequest request,
-                                          ConcurrentHashMap<Object, Object> attributes) {
+    protected void notifyListenersOnError(Exception exception,
+                                          ChatRequest listenerRequest,
+                                          ModelProvider modelProvider,
+                                          Map<Object, Object> attributes) {
         listeners.forEach((listener) -> {
             try {
                 ChatModelErrorContext context = new ChatModelErrorContext(
-                    exception, request, null, attributes);
+                    exception, listenerRequest, modelProvider, attributes);
                 listener.onError(context);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener (onError)", e);

@@ -8,6 +8,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
+/**
+ * @deprecated please use {@link BedrockChatModel} instead
+ */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @SuperBuilder
 public class BedrockLlamaChatModel extends AbstractBedrockChatModel<BedrockLlamaChatModelResponse> {

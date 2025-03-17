@@ -9,33 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.azure.AzureOpenAiTokenizer.countArguments;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AzureOpenAiTokenizerTest {
 
     AzureOpenAiTokenizer tokenizer = new AzureOpenAiTokenizer(GPT_3_5_TURBO.modelType());
-
-    @Test
-    void should_encode_and_decode_text() {
-        String originalText = "This is a text which will be encoded and decoded back.";
-
-        List<Integer> tokens = tokenizer.encode(originalText);
-        String decodedText = tokenizer.decode(tokens);
-
-        assertThat(decodedText).isEqualTo(originalText);
-    }
-
-    @Test
-    void should_encode_with_truncation_and_decode_text() {
-        String originalText = "This is a text which will be encoded with truncation and decoded back.";
-
-        List<Integer> tokens = tokenizer.encode(originalText, 10);
-        assertThat(tokens).hasSize(10);
-
-        String decodedText = tokenizer.decode(tokens);
-        assertThat(decodedText).isEqualTo("This is a text which will be encoded with trunc");
-    }
 
     @Test
     void should_count_tokens_in_short_texts() {
@@ -71,27 +49,6 @@ class AzureOpenAiTokenizerTest {
 
         String text3 = String.join(" ", repeat("Hello, how are you doing? What do you want to talk about?", 100));
         assertThat(tokenizer.estimateTokenCountInText(text3)).isEqualTo(100 * 15);
-    }
-
-    @Test
-    void should_count_arguments() {
-        assertThat(countArguments(null)).isEqualTo(0);
-        assertThat(countArguments("")).isEqualTo(0);
-        assertThat(countArguments(" ")).isEqualTo(0);
-        assertThat(countArguments("{}")).isEqualTo(0);
-        assertThat(countArguments("{ }")).isEqualTo(0);
-
-        assertThat(countArguments("{\"one\":1}")).isEqualTo(1);
-        assertThat(countArguments("{\"one\": 1}")).isEqualTo(1);
-        assertThat(countArguments("{\"one\" : 1}")).isEqualTo(1);
-
-        assertThat(countArguments("{\"one\":1,\"two\":2}")).isEqualTo(2);
-        assertThat(countArguments("{\"one\": 1,\"two\": 2}")).isEqualTo(2);
-        assertThat(countArguments("{\"one\" : 1,\"two\" : 2}")).isEqualTo(2);
-
-        assertThat(countArguments("{\"one\":1,\"two\":2,\"three\":3}")).isEqualTo(3);
-        assertThat(countArguments("{\"one\": 1,\"two\": 2,\"three\": 3}")).isEqualTo(3);
-        assertThat(countArguments("{\"one\" : 1,\"two\" : 2,\"three\" : 3}")).isEqualTo(3);
     }
 
     @ParameterizedTest
