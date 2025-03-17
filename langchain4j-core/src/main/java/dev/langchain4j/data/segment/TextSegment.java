@@ -65,7 +65,7 @@ public class TextSegment {
     public String toString() {
         return "TextSegment {" +
                 " text = " + quoted(text) +
-                " metadata = " + metadata.asMap() +
+                " metadata = " + metadata.toMap() +
                 " }";
     }
 

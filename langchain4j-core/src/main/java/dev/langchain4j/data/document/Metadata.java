@@ -69,6 +69,11 @@ public class Metadata {
      *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}
      */
     public Metadata(Map<String, ?> metadata) {
+        validate(metadata);
+        this.metadata = new HashMap<>(metadata);
+    }
+
+    private static void validate(Map<String, ?> metadata) {
         ensureNotNull(metadata, "metadata").forEach((key, value) -> {
             validate(key, value);
             if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
@@ -78,7 +83,6 @@ public class Metadata {
                         key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES);
             }
         });
-        this.metadata = new HashMap<>(metadata);
     }
 
     private static void validate(String key, Object value) {
@@ -293,36 +297,6 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return {@code this}
-     * @deprecated as of 0.31.0, use {@link #put(String, String)}, {@link #put(String, int)}, {@link #put(String, long)},
-     * {@link #put(String, float)}, {@link #put(String, double)} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public Metadata add(String key, Object value) {
-        return put(key, value.toString());
-    }
-
-    /**
-     * Adds a key-value pair to the metadata.
-     *
-     * @param key   the key
-     * @param value the value
-     * @return {@code this}
-     * @deprecated as of 0.31.0, use {@link #put(String, String)}, {@link #put(String, int)}, {@link #put(String, long)},
-     * {@link #put(String, float)}, {@link #put(String, double)} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public Metadata add(String key, String value) {
-        validate(key, value);
-        this.metadata.put(key, value);
-        return this;
-    }
-
-    /**
-     * Adds a key-value pair to the metadata.
-     *
-     * @param key   the key
-     * @param value the value
-     * @return {@code this}
      */
     public Metadata put(String key, String value) {
         validate(key, value);
@@ -395,6 +369,12 @@ public class Metadata {
         return this;
     }
 
+    public Metadata putAll(Map<String, Object> metadata) {
+        validate(metadata);
+        this.metadata.putAll(metadata);
+        return this;
+    }
+
     /**
      * Removes the given key from the metadata.
      *
@@ -413,21 +393,6 @@ public class Metadata {
      */
     public Metadata copy() {
         return new Metadata(metadata);
-    }
-
-    /**
-     * Get a copy of the metadata as a map of key-value pairs.
-     *
-     * @return the metadata as a map of key-value pairs.
-     * @deprecated as of 0.31.0, use {@link #toMap()} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public Map<String, String> asMap() {
-        Map<String, String> map = new HashMap<>();
-        for (Map.Entry<String, Object> entry : metadata.entrySet()) {
-            map.put(entry.getKey(), String.valueOf(entry.getValue()));
-        }
-        return map;
     }
 
     /**
@@ -469,17 +434,6 @@ public class Metadata {
     }
 
     /**
-     * @param key   the key
-     * @param value the value
-     * @return a Metadata object
-     * @deprecated Use {@link #from(String, String)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public static Metadata from(String key, Object value) {
-        return new Metadata().add(key, value);
-    }
-
-    /**
      * Constructs a Metadata object from a map of key-value pairs.
      *
      * @param metadata the map of key-value pairs
@@ -497,17 +451,6 @@ public class Metadata {
      * @return a Metadata object
      */
     public static Metadata metadata(String key, String value) {
-        return from(key, value);
-    }
-
-    /**
-     * @param key   the key
-     * @param value the value
-     * @return a Metadata object
-     * @deprecated Use {@link #metadata(String, String)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public static Metadata metadata(String key, Object value) {
         return from(key, value);
     }
 
