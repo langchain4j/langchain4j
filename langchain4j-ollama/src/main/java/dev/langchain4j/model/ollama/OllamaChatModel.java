@@ -8,7 +8,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -29,7 +28,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.OLLAMA;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createModelListenerRequest;
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createListenerRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenResponse;
@@ -162,9 +161,10 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .tools(toOllamaTools(toolSpecifications))
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        dev.langchain4j.model.chat.request.ChatRequest listenerRequest =
+                createListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        onListenRequest(listeners, modelListenerRequest, provider(), attributes);
+        onListenRequest(listeners, listenerRequest, provider(), attributes);
 
         try {
             ChatResponse chatResponse = withRetryMappingExceptions(() -> client.chat(request), maxRetries);
@@ -174,11 +174,11 @@ public class OllamaChatModel implements ChatLanguageModel {
                             AiMessage.from(chatResponse.getMessage().getContent()),
                     new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
             );
-            onListenResponse(listeners, response, modelListenerRequest, provider(), attributes);
+            onListenResponse(listeners, response, listenerRequest, provider(), attributes);
 
             return response;
         } catch (Exception e) {
-            onListenError(listeners, e, modelListenerRequest, null, provider(), attributes);
+            onListenError(listeners, e, listenerRequest, provider(), attributes);
             throw e;
         }
     }

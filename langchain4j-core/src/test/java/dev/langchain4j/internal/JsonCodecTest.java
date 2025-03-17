@@ -1,27 +1,26 @@
 package dev.langchain4j.internal;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class JsonCodecTest {
 
-    record Person(String name, int age) {
-    }
+    record Person(String name, int age) {}
 
-    private static final String PERSON_JSON = """
+    private static final String PERSON_JSON =
+            """
             {
                 "name": "Klaus",
                 "age": 42
@@ -29,14 +28,12 @@ class JsonCodecTest {
             """;
 
     static List<Json.JsonCodec> codecs() {
-        return List.of(
-                new JacksonJsonCodec()
-        );
+        return List.of(new JacksonJsonCodec());
     }
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record(Json.JsonCodec codec) {
+    void record(Json.JsonCodec codec) {
 
         // when
         Person person = codec.fromJson(PERSON_JSON, Person.class);
@@ -48,7 +45,7 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_missing_fields(Json.JsonCodec codec) {
+    void record_missing_fields(Json.JsonCodec codec) {
 
         // given
         String json = "{}";
@@ -63,10 +60,11 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_different_field_order(Json.JsonCodec codec) {
+    void record_different_field_order(Json.JsonCodec codec) {
 
         // given
-        String json = """
+        String json =
+                """
                 {
                     "age": 42,
                     "name": "Klaus"
@@ -92,7 +90,8 @@ class JsonCodecTest {
     void should_fail_on_unknown_fields_by_default(Json.JsonCodec codec) {
 
         // given
-        String json = """
+        String json =
+                """
                 {
                     "name": "Klaus",
                     "age": 42,
@@ -108,8 +107,7 @@ class JsonCodecTest {
 
         // if required, user can override the default behaviour and ignore unknown properties
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record LenientPersonRecord(String name, int age) {
-        }
+        record LenientPersonRecord(String name, int age) {}
 
         LenientPersonRecord lenientPerson = codec.fromJson(json, LenientPersonRecord.class);
         assertThat(lenientPerson).isEqualTo(new LenientPersonRecord("Klaus", 42));
@@ -117,10 +115,11 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_null_value(Json.JsonCodec codec) {
+    void record_null_value(Json.JsonCodec codec) {
 
         // given
-        String json = """
+        String json =
+                """
                 {
                     "name": "Klaus",
                     "age": null
@@ -137,10 +136,11 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_wrong_type(Json.JsonCodec codec) {
+    void record_wrong_type(Json.JsonCodec codec) {
 
         // given
-        String json = """
+        String json =
+                """
                 {
                     "name": "Klaus",
                     "age": "42"
@@ -157,10 +157,11 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_wrong_type_2(Json.JsonCodec codec) {
+    void record_wrong_type_2(Json.JsonCodec codec) {
 
         // given
-        String json = """
+        String json =
+                """
                 {
                     "name": "Klaus",
                     "age": 42.0
@@ -175,19 +176,17 @@ class JsonCodecTest {
         assertThat(pojo.age()).isEqualTo(42);
     }
 
+    record PersonRecordWithNestedRecord(String name, Address address) {}
 
-    record PersonRecordWithNestedRecord(String name, Address address) {
-    }
-
-    record Address(String city) {
-    }
+    record Address(String city) {}
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_with_nested_record(Json.JsonCodec codec) {
+    void record_with_nested_record(Json.JsonCodec codec) {
 
         // given
-        String json = """
+        String json =
+                """
                 {
                     "name": "Klaus",
                     "address": {
@@ -204,20 +203,17 @@ class JsonCodecTest {
         assertThat(pojo.address().city()).isEqualTo("Langley Falls");
     }
 
-
-    record PersonRecordWithCollections(String name,
-                                       Collection<String> collection,
-                                       List<String> list,
-                                       Set<Object> set,
-                                       String[] array,
-                                       Map<Object, Object> map
-    ) {
-
-    }
+    record PersonRecordWithCollections(
+            String name,
+            Collection<String> collection,
+            List<String> list,
+            Set<Object> set,
+            String[] array,
+            Map<Object, Object> map) {}
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_with_missing_collections(Json.JsonCodec codec) {
+    void record_with_missing_collections(Json.JsonCodec codec) {
 
         // given
         String json = """
@@ -238,13 +234,13 @@ class JsonCodecTest {
         assertThat(pojo.map()).isNull();
     }
 
-
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_with_empty_collections(Json.JsonCodec codec) {
+    void record_with_empty_collections(Json.JsonCodec codec) {
 
         // given
-        String json = """
+        String json =
+                """
                 {
                     "name": "Klaus",
                     "collection": [],
@@ -267,14 +263,12 @@ class JsonCodecTest {
         assertThat(pojo.map()).isEmpty();
     }
 
-
-    record PersonRecordWithOptional(String name, Optional<Integer> age) {
-    }
+    record PersonRecordWithOptional(String name, Optional<Integer> age) {}
 
     @Disabled("optional fields are currently not supported")
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_with_optional_present(Json.JsonCodec codec) {
+    void record_with_optional_present(Json.JsonCodec codec) {
 
         // when
         PersonRecordWithOptional pojo = codec.fromJson(PERSON_JSON, PersonRecordWithOptional.class);
@@ -287,7 +281,7 @@ class JsonCodecTest {
     @Disabled("optional fields are currently not supported")
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_with_optional_absent(Json.JsonCodec codec) {
+    void record_with_optional_absent(Json.JsonCodec codec) {
 
         // given
         String json = """
@@ -307,10 +301,11 @@ class JsonCodecTest {
     @Disabled("optional fields are currently not supported")
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_with_optional_null(Json.JsonCodec codec) {
+    void record_with_optional_null(Json.JsonCodec codec) {
 
         // given
-        String json = """
+        String json =
+                """
                 {
                     "name": "Klaus",
                     "age": null
@@ -327,11 +322,10 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_inner_record(Json.JsonCodec codec) {
+    void inner_record(Json.JsonCodec codec) {
 
         // given
-        record PersonInnerRecord(String name, int age) {
-        }
+        record PersonInnerRecord(String name, int age) {}
 
         // when
         PersonInnerRecord pojo = codec.fromJson(PERSON_JSON, PersonInnerRecord.class);
@@ -340,7 +334,6 @@ class JsonCodecTest {
         assertThat(pojo.name()).isEqualTo("Klaus");
         assertThat(pojo.age()).isEqualTo(42);
     }
-
 
     record PersonRecordWithValidation(String name, int age) {
 
@@ -353,10 +346,11 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_with_validation(Json.JsonCodec codec) {
+    void record_with_validation(Json.JsonCodec codec) {
 
         // given
-        String json = """
+        String json =
+                """
                 {
                     "name": "Klaus",
                     "age": -1
@@ -371,7 +365,6 @@ class JsonCodecTest {
                 .hasRootCauseMessage("age must be positive");
     }
 
-
     record PersonRecordCustomCtor(String name, int age) {
 
         public PersonRecordCustomCtor(String name) {
@@ -381,14 +374,16 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_record_with_custom_ctor(Json.JsonCodec codec) {
+    void record_with_custom_ctor(Json.JsonCodec codec) {
 
         // when
-        PersonRecordCustomCtor pojo = codec.fromJson("""
+        PersonRecordCustomCtor pojo = codec.fromJson(
+                """
                 {
                     "name": "Klaus"
                 }
-                """, PersonRecordCustomCtor.class);
+                """,
+                PersonRecordCustomCtor.class);
 
         // then
         assertThat(pojo.name()).isEqualTo("Klaus");
@@ -405,7 +400,7 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @MethodSource("codecs")
-    void test_static_nested_class(Json.JsonCodec codec) {
+    void static_nested_class(Json.JsonCodec codec) {
 
         // when
         PersonStaticNestedClass pojo = codec.fromJson(PERSON_JSON, PersonStaticNestedClass.class);

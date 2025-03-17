@@ -18,9 +18,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -52,8 +50,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.GITHUB_MODELS;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.contentFilterManagement;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerRequest;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerResponse;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createListenerRequest;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createListenerResponse;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.setupChatCompletionsBuilder;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.toAzureAiMessages;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.toToolChoice;
@@ -236,10 +234,10 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
         GitHubModelsStreamingResponseBuilder responseBuilder = new GitHubModelsStreamingResponseBuilder();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
 
         listeners.forEach(listener -> {
             try {
@@ -290,22 +288,12 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                     }
                 },
                 throwable -> {
-                    Response<AiMessage> response = responseBuilder.build();
-
-                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
-                            responseId.get(),
-                            responseModel.get(),
-                            response
-                    );
-
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(
                             throwable,
-                            requestContext.request(),
-                            modelListenerPartialResponse,
+                            requestContext.chatRequest(),
                             provider(),
                             requestContext.attributes()
                     );
-
                     listeners.forEach(listener -> {
                         try {
                             listener.onError(errorContext);
@@ -317,14 +305,14 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                 },
                 () -> {
                     Response<AiMessage> response = responseBuilder.build();
-                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    ChatResponse listenerResponse = createListenerResponse(
                             responseId.get(),
                             options.getModel(),
                             response
                     );
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                            modelListenerResponse,
-                            requestContext.request(),
+                            listenerResponse,
+                            requestContext.chatRequest(),
                             provider(),
                             requestContext.attributes()
                     );

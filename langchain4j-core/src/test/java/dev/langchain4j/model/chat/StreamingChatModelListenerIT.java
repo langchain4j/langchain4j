@@ -5,13 +5,13 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
@@ -83,17 +83,17 @@ public abstract class StreamingChatModelListenerIT {
     void should_listen_request_and_response() {
 
         // given
-        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatRequest> chatRequestReference = new AtomicReference<>();
         AtomicInteger onRequestInvocations = new AtomicInteger();
 
-        AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
+        AtomicReference<ChatResponse> chatResponseReference = new AtomicReference<>();
         AtomicInteger onResponseInvocations = new AtomicInteger();
 
         ChatModelListener listener = new ChatModelListener() {
 
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.request());
+                chatRequestReference.set(requestContext.chatRequest());
                 onRequestInvocations.incrementAndGet();
                 assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
                 requestContext.attributes().put("id", "12345");
@@ -101,9 +101,9 @@ public abstract class StreamingChatModelListenerIT {
 
             @Override
             public void onResponse(ChatModelResponseContext responseContext) {
-                responseReference.set(responseContext.response());
+                chatResponseReference.set(responseContext.chatResponse());
                 onResponseInvocations.incrementAndGet();
-                assertThat(responseContext.request()).isEqualTo(requestReference.get());
+                assertThat(responseContext.chatRequest()).isEqualTo(chatRequestReference.get());
                 assertThat(responseContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
@@ -141,33 +141,40 @@ public abstract class StreamingChatModelListenerIT {
         AiMessage aiMessage = handler.get().aiMessage();
 
         // then
-        ChatModelRequest request = requestReference.get();
-        assertThat(request.model()).isEqualTo(modelName());
-        assertThat(request.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
-        assertThat(request.topP()).isEqualTo(topP());
-        assertThat(request.maxTokens()).isEqualTo(maxTokens());
-        assertThat(request.messages()).containsExactly(userMessage);
+        ChatRequest observedChatRequest = chatRequestReference.get();
+        assertThat(observedChatRequest.messages()).containsExactly(userMessage);
+
+        ChatRequestParameters parameters = observedChatRequest.parameters();
+        assertThat(parameters.modelName()).isEqualTo(modelName());
+        assertThat(parameters.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
+        assertThat(parameters.topP()).isEqualTo(topP());
+        assertThat(parameters.maxOutputTokens()).isEqualTo(maxTokens());
         if (supportsTools()) {
-            assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+            assertThat(parameters.toolSpecifications()).containsExactly(toolSpecification);
         }
+
         assertThat(onRequestInvocations).hasValue(1);
 
-        ChatModelResponse response = responseReference.get();
+
+        ChatResponse chatResponse = chatResponseReference.get();
+        assertThat(chatResponse.aiMessage()).isEqualTo(aiMessage);
+
+        ChatResponseMetadata metadata = chatResponse.metadata();
         if (assertResponseId()) {
-            assertThat(response.id()).isNotBlank();
+            assertThat(metadata.id()).isNotBlank();
         }
         if (assertResponseModel()) {
-            assertThat(response.model()).isNotBlank();
+            assertThat(metadata.modelName()).isNotBlank();
         }
         if (assertTokenUsage()) {
-            assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
-            assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
-            assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+            assertThat(metadata.tokenUsage().inputTokenCount()).isGreaterThan(0);
+            assertThat(metadata.tokenUsage().outputTokenCount()).isGreaterThan(0);
+            assertThat(metadata.tokenUsage().totalTokenCount()).isGreaterThan(0);
         }
         if (assertFinishReason()) {
-            assertThat(response.finishReason()).isNotNull();
+            assertThat(metadata.finishReason()).isNotNull();
         }
-        assertThat(response.aiMessage()).isEqualTo(aiMessage);
+
         assertThat(onResponseInvocations).hasValue(1);
     }
 
@@ -195,7 +202,7 @@ public abstract class StreamingChatModelListenerIT {
     protected void should_listen_error() throws Exception {
 
         // given
-        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatRequest> chatRequestReference = new AtomicReference<>();
         AtomicInteger onRequestInvocations = new AtomicInteger();
 
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
@@ -205,7 +212,7 @@ public abstract class StreamingChatModelListenerIT {
 
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.request());
+                chatRequestReference.set(requestContext.chatRequest());
                 onRequestInvocations.incrementAndGet();
                 assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
                 requestContext.attributes().put("id", "12345");
@@ -220,8 +227,7 @@ public abstract class StreamingChatModelListenerIT {
             public void onError(ChatModelErrorContext errorContext) {
                 errorReference.set(errorContext.error());
                 onErrorInvocations.incrementAndGet();
-                assertThat(errorContext.request()).isEqualTo(requestReference.get());
-                assertThat(errorContext.partialResponse()).isNull();
+                assertThat(errorContext.chatRequest()).isEqualTo(chatRequestReference.get());
                 assertThat(errorContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
