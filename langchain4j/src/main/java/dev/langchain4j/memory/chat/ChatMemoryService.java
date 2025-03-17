@@ -22,7 +22,7 @@ public class ChatMemoryService {
     }
 
     public ChatMemoryService(ChatMemory chatMemory) {
-        defaultChatMemory = chatMemory;
+        defaultChatMemory = ensureNotNull(chatMemory, "chatMemory");
     }
 
     public ChatMemory chatMemory(Object memoryId) {
