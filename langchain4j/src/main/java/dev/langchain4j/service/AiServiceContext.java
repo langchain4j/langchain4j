@@ -1,7 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.ChatMemories;
+import dev.langchain4j.memory.chat.ChatMemoryService;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -20,7 +20,7 @@ public class AiServiceContext {
     public ChatLanguageModel chatModel;
     public StreamingChatLanguageModel streamingChatModel;
 
-    public ChatMemories chatMemories;
+    public ChatMemoryService chatMemoryService;
 
     public ToolService toolService = new ToolService();
 
@@ -35,18 +35,18 @@ public class AiServiceContext {
     }
 
     public boolean hasChatMemory() {
-        return chatMemories != null;
+        return chatMemoryService != null;
     }
 
     public ChatMemory chatMemory(Object memoryId) {
-        return chatMemories.chatMemory(memoryId);
+        return chatMemoryService.chatMemory(memoryId);
     }
 
     public void initChatMemories(ChatMemory chatMemory) {
-        chatMemories = new ChatMemories(chatMemory);
+        chatMemoryService = new ChatMemoryService(chatMemory);
     }
 
     public void initChatMemories(ChatMemoryProvider chatMemoryProvider) {
-        chatMemories = new ChatMemories(chatMemoryProvider);
+        chatMemoryService = new ChatMemoryService(chatMemoryProvider);
     }
 }

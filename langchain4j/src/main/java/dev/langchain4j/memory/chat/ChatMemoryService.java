@@ -6,7 +6,9 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-public class ChatMemories {
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+public class ChatMemoryService {
 
     public static final String DEFAULT = "default";
 
@@ -14,25 +16,25 @@ public class ChatMemories {
     private Map<Object, ChatMemory> chatMemories;
     private ChatMemoryProvider chatMemoryProvider;
 
-    public ChatMemories(ChatMemoryProvider chatMemoryProvider) {
+    public ChatMemoryService(ChatMemoryProvider chatMemoryProvider) {
         this.chatMemories = Collections.synchronizedMap(new WeakHashMap<>());
         this.chatMemoryProvider = ensureNotNull(chatMemoryProvider, "chatMemoryProvider");
     }
 
-    public ChatMemories(ChatMemory chatMemory) {
-        defaultChatMemories = chatMemory;
+    public ChatMemoryService(ChatMemory chatMemory) {
+        defaultChatMemory = chatMemory;
     }
 
     public ChatMemory chatMemory(Object memoryId) {
         if (memoryId == DEFAULT) {
-            return defaultChatMemories;
+            return defaultChatMemory;
         }
         return chatMemories.computeIfAbsent(memoryId, ignored -> createChatMemory(memoryId));
     }
 
     private ChatMemory createChatMemory(Object memoryId) {
         ChatMemory chatMemory = chatMemoryProvider.get(memoryId);
-        if (chatMemory instanceof RemovableChatMemory rcm) {
+        if (chatMemory instanceof RemovalAwareChatMemory rcm) {
             rcm.onChatMemoryRemove(chatMemories::remove);
         }
         return chatMemory;

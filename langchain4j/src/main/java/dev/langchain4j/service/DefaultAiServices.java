@@ -14,7 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.ChatMemories;
+import dev.langchain4j.memory.chat.ChatMemoryService;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -127,7 +127,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         validateParameters(method);
 
-                        final Object memoryId = findMemoryId(method, args).orElse(ChatMemories.DEFAULT);
+                        final Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
                         final ChatMemory chatMemory = context.hasChatMemory() ? context.chatMemory(memoryId) : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
