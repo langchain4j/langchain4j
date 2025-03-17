@@ -1,7 +1,6 @@
 package dev.langchain4j.model.voyageai;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -16,6 +15,7 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 
 class VoyageAiClient {
@@ -38,12 +38,21 @@ class VoyageAiClient {
                 .build();
 
         if (builder.logRequests != null || builder.logResponses != null) {
-            httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+        } else {
+            this.httpClient = httpClient;
         }
 
-        this.httpClient = new AuthorizationHttpClient(httpClient, builder.apiKey);
         this.baseUrl = ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl"));
-        this.defaultHeaders = copyIfNotNull(builder.customHeaders);
+
+        Map<String, String> defaultHeaders = new HashMap<>();
+        if (builder.apiKey != null) {
+            defaultHeaders.put("Authorization", "Bearer " + builder.apiKey);
+        }
+        if (builder.customHeaders != null) {
+            defaultHeaders.putAll(builder.customHeaders);
+        }
+        this.defaultHeaders = defaultHeaders;
     }
 
     EmbeddingResponse embed(EmbeddingRequest request) {
