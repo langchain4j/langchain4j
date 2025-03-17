@@ -47,7 +47,7 @@ public class TokenWindowChatMemory implements ChatMemory, RemovableChatMemory {
     private final Tokenizer tokenizer;
     private final ChatMemoryStore store;
 
-    private Consumer<Object> memoryCleaner;
+    private Consumer<Object> memoryRemover;
 
     private TokenWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
