@@ -1,6 +1,6 @@
 package dev.langchain4j.model.github;
 
-import com.azure.ai.inference.models.ChatCompletionsResponseFormatJson;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonObject;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -122,7 +122,7 @@ class GitHubModelsStreamingChatModelIT {
         StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
-                .responseFormat(new ChatCompletionsResponseFormatJson())
+                .responseFormat(new ChatCompletionsResponseFormatJsonObject())
                 .logRequestsAndResponses(true)
                 .build();
 

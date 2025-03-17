@@ -1,6 +1,6 @@
 package dev.langchain4j.model.github;
 
-import com.azure.ai.inference.models.ChatCompletionsResponseFormatJson;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonObject;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -279,7 +279,7 @@ class GitHubModelsChatModelIT {
         ChatLanguageModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
-                .responseFormat(new ChatCompletionsResponseFormatJson())
+                .responseFormat(new ChatCompletionsResponseFormatJsonObject())
                 .logRequestsAndResponses(true)
                 .build();
 

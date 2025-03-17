@@ -5,13 +5,17 @@ import com.azure.ai.inference.ModelServiceVersion;
 import com.azure.ai.inference.models.ChatCompletions;
 import com.azure.ai.inference.models.ChatCompletionsOptions;
 import com.azure.ai.inference.models.ChatCompletionsResponseFormat;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonSchema;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.github.spi.GitHubModelsChatModelBuilderFactory;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -19,15 +23,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
@@ -55,58 +57,62 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
     private final Double frequencyPenalty;
     private final Long seed;
     private final ChatCompletionsResponseFormat responseFormat;
+    private final Boolean strictJsonSchema;
     private final List<ChatModelListener> listeners;
 
     private GitHubModelsChatModel(ChatCompletionsClient client,
-                                String modelName,
-                                Integer maxTokens,
-                                Double temperature,
-                                Double topP,
-                                List<String> stop,
-                                Double presencePenalty,
-                                Double frequencyPenalty,
-                                Long seed,
-                                ChatCompletionsResponseFormat responseFormat,
-                                List<ChatModelListener> listeners) {
+                                  String modelName,
+                                  Integer maxTokens,
+                                  Double temperature,
+                                  Double topP,
+                                  List<String> stop,
+                                  Double presencePenalty,
+                                  Double frequencyPenalty,
+                                  Long seed,
+                                  ChatCompletionsResponseFormat responseFormat,
+                                  Boolean strictJsonSchema,
+                                  List<ChatModelListener> listeners) {
 
-        this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, listeners);
+        this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, strictJsonSchema, listeners);
         this.client = client;
     }
 
     private GitHubModelsChatModel(String endpoint,
-                                ModelServiceVersion serviceVersion,
-                                String gitHubToken,
-                                String modelName,
-                                Integer maxTokens,
-                                Double temperature,
-                                Double topP,
-                                List<String> stop,
-                                Double presencePenalty,
-                                Double frequencyPenalty,
-                                Long seed,
-                                ChatCompletionsResponseFormat responseFormat,
-                                Duration timeout,
-                                Integer maxRetries,
-                                ProxyOptions proxyOptions,
-                                boolean logRequestsAndResponses,
-                                List<ChatModelListener> listeners,
-                                String userAgentSuffix,
-                                Map<String, String> customHeaders) {
+                                  ModelServiceVersion serviceVersion,
+                                  String gitHubToken,
+                                  String modelName,
+                                  Integer maxTokens,
+                                  Double temperature,
+                                  Double topP,
+                                  List<String> stop,
+                                  Double presencePenalty,
+                                  Double frequencyPenalty,
+                                  Long seed,
+                                  ChatCompletionsResponseFormat responseFormat,
+                                  Boolean strictJsonSchema,
+                                  Duration timeout,
+                                  Integer maxRetries,
+                                  ProxyOptions proxyOptions,
+                                  boolean logRequestsAndResponses,
+                                  List<ChatModelListener> listeners,
+                                  String userAgentSuffix,
+                                  Map<String, String> customHeaders) {
 
-        this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, listeners);
+        this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, strictJsonSchema, listeners);
         this.client = setupChatCompletionsBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders).buildClient();
     }
 
     private GitHubModelsChatModel(String modelName,
-                                 Integer maxTokens,
-                                 Double temperature,
-                                 Double topP,
-                                 List<String> stop,
-                                 Double presencePenalty,
-                                 Double frequencyPenalty,
-                                 Long seed,
-                                 ChatCompletionsResponseFormat responseFormat,
-                                 List<ChatModelListener> listeners) {
+                                  Integer maxTokens,
+                                  Double temperature,
+                                  Double topP,
+                                  List<String> stop,
+                                  Double presencePenalty,
+                                  Double frequencyPenalty,
+                                  Long seed,
+                                  ChatCompletionsResponseFormat responseFormat,
+                                  Boolean strictJsonSchema,
+                                  List<ChatModelListener> listeners) {
 
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxTokens = maxTokens;
@@ -117,28 +123,61 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
         this.frequencyPenalty = frequencyPenalty;
         this.seed = seed;
         this.responseFormat = responseFormat;
+        this.strictJsonSchema = strictJsonSchema;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     @Override
+    public Set<Capability> supportedCapabilities() {
+        Set<Capability> capabilities = new HashSet<>();
+        if (responseFormat instanceof ChatCompletionsResponseFormatJsonSchema) {
+            capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
+        }
+        return capabilities;
+    }
+
+    @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null);
+        return generate(messages, null, null, this.responseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null);
+        return generate(messages, toolSpecifications, null, this.responseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification);
+        return generate(messages, singletonList(toolSpecification), toolSpecification, this.responseFormat);
+    }
+
+
+    @Override
+    public ChatResponse chat(ChatRequest request) {
+        Response<AiMessage> response = generate(
+                request.messages(),
+                request.toolSpecifications(),
+                null,
+                getOrDefault(toChatCompletionsResponseFormat(request.responseFormat(), strictJsonSchema), this.responseFormat)
+        );
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .build();
     }
 
     private Response<AiMessage> generate(List<ChatMessage> messages,
                                          List<ToolSpecification> toolSpecifications,
-                                         ToolSpecification toolThatMustBeExecuted
+                                         ToolSpecification toolThatMustBeExecuted,
+                                         ChatCompletionsResponseFormat responseFormat
     ) {
+
+        if (responseFormat instanceof ChatCompletionsResponseFormatJsonSchema
+                && ((ChatCompletionsResponseFormatJsonSchema) responseFormat).getJsonSchema() == null) {
+            responseFormat = null;
+        }
+
         ChatCompletionsOptions options = new ChatCompletionsOptions(toAzureAiMessages(messages))
                 .setModel(modelName)
                 .setMaxTokens(maxTokens)
@@ -348,6 +387,11 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
             return this;
         }
 
+        public Builder strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -409,6 +453,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                         frequencyPenalty,
                         seed,
                         responseFormat,
+                        strictJsonSchema,
                         timeout,
                         maxRetries,
                         proxyOptions,
@@ -430,6 +475,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                         frequencyPenalty,
                         seed,
                         responseFormat,
+                        strictJsonSchema,
                         listeners
                 );
             }

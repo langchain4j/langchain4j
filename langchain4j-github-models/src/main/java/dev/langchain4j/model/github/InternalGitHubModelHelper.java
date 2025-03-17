@@ -23,6 +23,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -34,6 +36,7 @@ import java.util.*;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
@@ -146,7 +149,7 @@ class InternalGitHubModelHelper {
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
-            return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
+            return new ChatRequestToolMessage(toolExecutionResultMessage.id()).setContent(toolExecutionResultMessage.text());
         } else if (message instanceof SystemMessage) {
             SystemMessage systemMessage = (SystemMessage) message;
             return new ChatRequestSystemMessage(systemMessage.text());
@@ -362,5 +365,61 @@ class InternalGitHubModelHelper {
             .finishReason(response.finishReason())
             .aiMessage(response.content())
             .build();
+    }
+
+    static ChatCompletionsResponseFormat toChatCompletionsResponseFormat(ResponseFormat responseFormat, Boolean strict) {
+        if (responseFormat == null || responseFormat.type() == TEXT) {
+            return null;
+        }
+
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
+            return new ChatCompletionsResponseFormatJsonObject();
+        } else {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+                throw new IllegalArgumentException("For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: " + jsonSchema.rootElement().getClass());
+            }
+            return new ChatCompletionsResponseFormatJsonSchema(
+                    new ChatCompletionsResponseFormatJsonSchemaDefinition(
+                            jsonSchema.name(),
+                            toJsonSchemaDefinition(jsonSchema.rootElement()))
+            );
+        }
+    }
+
+    static Map<String, BinaryData> toJsonSchemaDefinition(JsonSchemaElement jsonSchemaElement) {
+        Map<String, BinaryData> result = new HashMap<>();
+        if (jsonSchemaElement instanceof JsonStringSchema) {
+            result.put("type", BinaryData.fromString("\"string\""));
+            result.put("description", BinaryData.fromString(((JsonStringSchema) jsonSchemaElement).description()));
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
+            result.put("type", BinaryData.fromString("\"integer\""));
+            result.put("description", BinaryData.fromString(((JsonIntegerSchema) jsonSchemaElement).description()));
+        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
+            result.put("type", BinaryData.fromString("\"number\""));
+            result.put("description", BinaryData.fromString(((JsonNumberSchema) jsonSchemaElement).description()));
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
+            result.put("type", BinaryData.fromString("\"boolean\""));
+            result.put("description", BinaryData.fromString(((JsonBooleanSchema) jsonSchemaElement).description()));
+        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
+            result.put("type", BinaryData.fromString("\"string\""));
+            result.put("enum", BinaryData.fromObject(((JsonEnumSchema) jsonSchemaElement).enumValues()));
+            result.put("description", BinaryData.fromString(((JsonEnumSchema) jsonSchemaElement).description()));
+        } else if (jsonSchemaElement instanceof JsonArraySchema) {
+            result.put("type", BinaryData.fromString("\"array\""));
+            result.put("items", BinaryData.fromObject(toJsonSchemaDefinition(((JsonArraySchema) jsonSchemaElement).items())));
+            result.put("description", BinaryData.fromString(((JsonArraySchema) jsonSchemaElement).description()));
+        } else if (jsonSchemaElement instanceof JsonObjectSchema) {
+            Map<String, JsonSchemaElement> properties = ((JsonObjectSchema) jsonSchemaElement).properties();
+            Map<String, BinaryData> azureProperties = new LinkedHashMap<>();
+            properties.forEach((key, value) -> azureProperties.put(key, BinaryData.fromObject(toJsonSchemaDefinition((value)))));
+            result.put("type", BinaryData.fromString("\"object\""));
+            result.put("properties", BinaryData.fromObject(azureProperties));
+            result.put("required", BinaryData.fromObject(((JsonObjectSchema) jsonSchemaElement).required()));
+            result.put("additionalProperties", BinaryData.fromObject(((JsonObjectSchema) jsonSchemaElement).additionalProperties()));
+        } else {
+            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement);
+        }
+        return result;
     }
 }
