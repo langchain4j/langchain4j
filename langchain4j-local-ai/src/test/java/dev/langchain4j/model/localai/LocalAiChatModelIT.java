@@ -31,7 +31,6 @@ class LocalAiChatModelIT extends AbstractLocalAiInfrastructure {
 
         // when
         String response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response).isNotBlank();
@@ -45,7 +44,6 @@ class LocalAiChatModelIT extends AbstractLocalAiInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(messages);
-        System.out.println(response);
 
         // then
         AiMessage aiMessage = response.content();

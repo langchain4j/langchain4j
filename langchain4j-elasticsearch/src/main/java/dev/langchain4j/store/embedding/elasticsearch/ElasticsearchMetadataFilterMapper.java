@@ -62,30 +62,34 @@ class ElasticsearchMetadataFilterMapper {
 
     private static Query mapGreaterThan(IsGreaterThan isGreaterThan) {
         return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + isGreaterThan.key())
+                r.untyped(nf -> nf
+                        .field("metadata." + isGreaterThan.key())
                         .gt(JsonData.of(isGreaterThan.comparisonValue()))
-        ))).build();
+                )))).build();
     }
 
     private static Query mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
         return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + isGreaterThanOrEqualTo.key())
+                r.untyped(nf -> nf
+                        .field("metadata." + isGreaterThanOrEqualTo.key())
                         .gte(JsonData.of(isGreaterThanOrEqualTo.comparisonValue()))
-        ))).build();
+                )))).build();
     }
 
     private static Query mapLessThan(IsLessThan isLessThan) {
         return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + isLessThan.key())
+                r.untyped(nf -> nf
+                        .field("metadata." + isLessThan.key())
                         .lt(JsonData.of(isLessThan.comparisonValue()))
-        ))).build();
+                )))).build();
     }
 
     private static Query mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
         return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + isLessThanOrEqualTo.key())
+                r.untyped(nf -> nf
+                        .field("metadata." + isLessThanOrEqualTo.key())
                         .lte(JsonData.of(isLessThanOrEqualTo.comparisonValue()))
-        ))).build();
+                )))).build();
     }
 
     public static Query mapIn(IsIn isIn) {

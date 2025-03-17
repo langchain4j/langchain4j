@@ -20,6 +20,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
+import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
 
 import java.net.URI;
 import java.util.Base64;

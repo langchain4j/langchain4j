@@ -1,14 +1,25 @@
 package dev.langchain4j.store.embedding.vearch;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 /**
  * As a constraint type of all Space property only
  *
  * @see CreateSpaceRequest
  */
+@Getter
+@Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public abstract class SpacePropertyParam {
 
     protected SpacePropertyType type;
@@ -19,6 +30,9 @@ public abstract class SpacePropertyParam {
 
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(NON_NULL)
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class StringParam extends SpacePropertyParam {
 
         /**
@@ -44,6 +58,9 @@ public abstract class SpacePropertyParam {
 
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(NON_NULL)
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class IntegerParam extends SpacePropertyParam {
 
         /**
@@ -66,6 +83,9 @@ public abstract class SpacePropertyParam {
 
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(NON_NULL)
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class FloatParam extends SpacePropertyParam {
 
         /**
@@ -88,6 +108,9 @@ public abstract class SpacePropertyParam {
 
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(NON_NULL)
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class VectorParam extends SpacePropertyParam {
 
         private Boolean index;

@@ -6,23 +6,27 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import lombok.SneakyThrows;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariables;
 
 import static java.lang.String.format;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
-@EnabledIfEnvironmentVariable(named = "MONGODB_ATLAS_USERNAME", matches = ".+")
+@EnabledIfEnvironmentVariables({
+        @EnabledIfEnvironmentVariable(named = "MONGODB_ATLAS_USERNAME", matches = ".+"),
+        @EnabledIfEnvironmentVariable(named = "MONGODB_ATLAS_PASSWORD", matches = ".+"),
+        @EnabledIfEnvironmentVariable(named = "MONGODB_ATLAS_HOST", matches = ".+")
+})
 class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
     private static final String DATABASE_NAME = "test_database";
@@ -77,11 +81,5 @@ class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
         Bson filter = Filters.exists("embedding");
         collection.deleteMany(filter);
-    }
-
-    @Override
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        Thread.sleep(3000);
     }
 }

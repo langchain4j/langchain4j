@@ -51,7 +51,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
@@ -268,7 +268,6 @@ class AiServicesWithRagIT {
 
         // when
         String answer = assistant.answer(query);
-        System.out.println(answer);
 
         // then
         assertThat(answer).isNotBlank();
@@ -308,7 +307,6 @@ class AiServicesWithRagIT {
 
         // when
         String answer = assistant.answer(query);
-        System.out.println(answer);
 
         // then
         assertThat(answer).isNotBlank();
@@ -605,7 +603,7 @@ class AiServicesWithRagIT {
     }
 
     private void ingest(String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
-        OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
+        OpenAiTokenizer tokenizer = new OpenAiTokenizer();
         DocumentSplitter splitter = DocumentSplitters.recursive(100, 0, tokenizer);
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(splitter)
@@ -624,6 +622,7 @@ class AiServicesWithRagIT {
                                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                                 .apiKey(System.getenv("OPENAI_API_KEY"))
                                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                                .modelName(GPT_4_O_MINI)
                                 .logRequests(true)
                                 .logResponses(true)
                                 .build()

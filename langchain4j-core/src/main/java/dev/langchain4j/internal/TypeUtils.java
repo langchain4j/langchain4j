@@ -22,4 +22,13 @@ public class TypeUtils {
     public static boolean isJsonBoolean(Class<?> type) {
         return type == boolean.class || type == Boolean.class;
     }
+
+    public static boolean isJsonString(Class<?> type) {
+        return type == String.class || type == char.class || type == Character.class
+            || CharSequence.class.isAssignableFrom(type);
+    }
+
+    public static boolean isJsonArray(Class<?> type) {
+        return type.isArray() || Iterable.class.isAssignableFrom(type);
+    }
 }

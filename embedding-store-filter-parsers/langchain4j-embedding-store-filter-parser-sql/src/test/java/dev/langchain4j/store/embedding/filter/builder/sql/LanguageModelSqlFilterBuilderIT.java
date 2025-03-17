@@ -78,7 +78,10 @@ class LanguageModelSqlFilterBuilderIT {
         Filter filter = sqlFilterBuilder.build(query);
 
         // then
-        assertThat(filter).isEqualTo(metadataKey("year").isGreaterThanOrEqualTo(1990L).and(metadataKey("year").isLessThanOrEqualTo(1999L)));
+        assertThat(filter).isIn(
+                metadataKey("year").isGreaterThanOrEqualTo(1990L).and(metadataKey("year").isLessThanOrEqualTo(1999L)),
+                metadataKey("year").isGreaterThanOrEqualTo(1990L).and(metadataKey("year").isLessThan(2000L))
+        );
     }
 
     @ParameterizedTest

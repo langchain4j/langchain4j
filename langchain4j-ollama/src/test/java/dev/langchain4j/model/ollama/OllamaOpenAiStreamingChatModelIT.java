@@ -37,7 +37,6 @@ class OllamaOpenAiStreamingChatModelIT extends AbstractOllamaLanguageModelInfras
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         model.generate(userMessage, handler);
         Response<AiMessage> response = handler.get();
-        System.out.println(response);
 
         // then
         AiMessage aiMessage = response.content();

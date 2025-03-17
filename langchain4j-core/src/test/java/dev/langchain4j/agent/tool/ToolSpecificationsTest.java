@@ -1,8 +1,6 @@
 package dev.langchain4j.agent.tool;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import dev.langchain4j.model.output.structured.Description;
-import static java.util.Arrays.asList;
 import lombok.Data;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -11,12 +9,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static java.util.Arrays.asList;
 
 class ToolSpecificationsTest implements WithAssertions {
 
@@ -394,13 +390,45 @@ class ToolSpecificationsTest implements WithAssertions {
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[29]))
                 .containsExactly(JsonSchemaProperty.OBJECT, JsonSchemaProperty.from(
-                        "properties", mapOf("name" , mapOf("description", "Name of the person", "type", "string"),
-                "active", mapOf( "type","boolean" ),
-                "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                "currentAddress", mapOf("type", "object", "properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string"))),
-                "parent", mapOf("type", "object"),
-                "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                "previousAddresses", mapOf("type", "array", "items", mapOf("type", "object","properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string")) )))));
+                        "properties", mapOf("name", mapOf("description", "Name of the person", "type", "string"),
+                                "active", mapOf("type", "boolean"),
+                                "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
+                                "currentAddress", mapOf("type", "object", "properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string"))),
+                                "parent", mapOf("type", "object"),
+                                "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
+                                "previousAddresses", mapOf("type", "array", "items", mapOf("type", "object", "properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string")))))));
+    }
 
+    @Data
+    public static class Customer {
+        public String name;
+        public Address billingAddress;
+        public Address shippingAddress;
+    }
+
+    public static class CustomerRegistration {
+        @Tool("register a new customer")
+        boolean registerCustomer(Customer customer) {
+            return true;
+        }
+    }
+
+    @Test
+    void test_object_used_multiple_times() {
+        // when
+        List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(CustomerRegistration.class);
+
+        // then
+        assertThat(toolSpecifications).hasSize(1);
+        assertThat(toolSpecifications.get(0).name()).isEqualTo("registerCustomer");
+        assertThat(toolSpecifications.get(0).description()).isEqualTo("register a new customer");
+        assertThat(toolSpecifications.get(0).parameters().type()).isEqualTo("object");
+
+        Map.Entry<String, Map<String, Object>> orderParameter = toolSpecifications.get(0).parameters().properties().entrySet().iterator().next();
+        Map<String, Object> properties = (Map<String, Object>)orderParameter.getValue().get("properties");
+        assertThat(properties).hasSize(3);
+        assertThat(properties).containsEntry("name", mapOf("type", "string"));
+        assertThat(properties).containsEntry("billingAddress", mapOf("type", "object", "properties", mapOf("street", mapOf("type", "string"), "city", mapOf("type", "string"))));
+        assertThat(properties).containsEntry("shippingAddress", mapOf("type", "object", "properties", mapOf("street", mapOf("type", "string"), "city", mapOf("type", "string"))));
     }
 }

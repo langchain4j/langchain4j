@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
@@ -37,18 +39,22 @@ class SqlDatabaseContentRetrieverIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_O_MINI)
+            .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
             .build();
 
     static ChatLanguageModel mistralAiChatModel = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MISTRAL_LARGE_LATEST)
+            .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
             .build();
 
     @Container
-    PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:12.18"));
+    PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:latest"));
 
     DataSource dataSource;
 
@@ -121,15 +127,19 @@ class SqlDatabaseContentRetrieverIT {
         // given
         ContentRetriever contentRetriever = contentRetrieverProvider.apply(dataSource);
 
+        Query query = Query.from("Which quarter shows the highest sales?" +
+                "Reply in the following format: \"X,Y\" where X is a quarter number (from 1 to 4) " +
+                "and Y is sales for that quarter");
+
         // when
-        List<Content> retrieved = contentRetriever.retrieve(Query.from("Which quarters show the highest sales?"));
+        List<Content> retrieved = contentRetriever.retrieve(query);
 
         // then
         assertThat(retrieved).hasSize(1);
 
         assertThat(retrieved.get(0).textSegment().text())
                 .contains("SELECT")
-                .containsAnyOf("2,283.37", "2.0,283.37");
+                .contains("2,283.37");
     }
 
     @ParameterizedTest

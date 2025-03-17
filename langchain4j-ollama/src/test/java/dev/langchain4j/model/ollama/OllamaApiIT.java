@@ -1,12 +1,11 @@
 package dev.langchain4j.model.ollama;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -14,16 +13,13 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.time.Duration;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class OllamaApiIT {
 
     private static MockWebServer mockWebServer;
 
-    private static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-            .create();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @BeforeAll
     public static void init() throws IOException {
@@ -40,9 +36,16 @@ public class OllamaApiIT {
                         .message(message)
                         .build();
 
+                String jsonBody;
+                try {
+                    jsonBody = OBJECT_MAPPER.writeValueAsString(chatResponse);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+
                 return new MockResponse()
                         .setResponseCode(200)
-                        .setBody(GSON.toJson(chatResponse));
+                        .setBody(jsonBody);
             }
         };
         mockWebServer.setDispatcher(dispatcher);

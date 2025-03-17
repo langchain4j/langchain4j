@@ -86,7 +86,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
+                                                .input(mapOf(entry("first", 2), entry("second", 2)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -114,7 +114,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
+                                                .input(mapOf(entry("first", 2), entry("second", 2)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -146,12 +146,12 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
+                                                .input(mapOf(entry("first", 2), entry("second", 2)))
                                                 .build(),
                                         AnthropicToolUseContent.builder()
                                                 .id("67890")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 3.0), entry("second", 3.0)))
+                                                .input(mapOf(entry("first", 3), entry("second", 3)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, asList(
@@ -186,7 +186,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
+                                                .input(mapOf(entry("first", 2), entry("second", 2)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -196,7 +196,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("67890")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 3.0), entry("second", 3.0)))
+                                                .input(mapOf(entry("first", 3), entry("second", 3)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(

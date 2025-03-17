@@ -39,7 +39,6 @@ class CompressingQueryTransformerIT {
 
         // when
         Collection<Query> queries = transformer.transform(query);
-        System.out.println(queries);
 
         // then
         assertThat(queries).hasSize(1);

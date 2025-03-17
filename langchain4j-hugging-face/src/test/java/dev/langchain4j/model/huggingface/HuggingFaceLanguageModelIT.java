@@ -1,6 +1,7 @@
 package dev.langchain4j.model.huggingface;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 
@@ -9,10 +10,11 @@ import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@EnabledIfEnvironmentVariable(named = "HF_API_KEY", matches = ".+")
 class HuggingFaceLanguageModelIT {
 
     @Test
-    public void should_send_prompt_and_receive_response() {
+    void should_send_prompt_and_receive_response() {
 
         HuggingFaceLanguageModel model = HuggingFaceLanguageModel.builder()
                 .accessToken(System.getenv("HF_API_KEY"))
@@ -26,12 +28,11 @@ class HuggingFaceLanguageModelIT {
         String answer = model.generate("What is the capital of the USA?").content();
 
         assertThat(answer).containsIgnoringCase("Washington");
-        System.out.println(answer);
     }
 
     @ParameterizedTest
     @NullAndEmptySource
-    public void should_fail_when_access_token_is_null_or_empty(String accessToken) {
+    void should_fail_when_access_token_is_null_or_empty(String accessToken) {
 
         assertThatThrownBy(() -> HuggingFaceLanguageModel.withAccessToken(accessToken))
                 .isExactlyInstanceOf(IllegalArgumentException.class)

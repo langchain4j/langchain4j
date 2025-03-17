@@ -56,7 +56,6 @@ class EasyRagIT {
                 .build();
 
         String answer = assistant.chat("How many days before the rental can I cancel my booking?");
-        System.out.println(answer);
 
         assertThat(answer).containsAnyOf("17", "61");
     }

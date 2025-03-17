@@ -62,11 +62,6 @@ public class ContentsMapperTest {
         Content inst = instructionAndContent.systemInstruction;
         List<Content> contents = instructionAndContent.contents;
 
-        int[] i = { 0 };
-        contents.forEach(content -> {
-            System.out.println(i[0]++ + " " + content);
-        });
-
         // then
         assertThat(inst.getPartsCount()).isEqualTo(1);
         assertThat(inst.getParts(0).getText()).isEqualTo("You are a smart calculator");

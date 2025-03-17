@@ -107,13 +107,17 @@ public interface EmbeddingStore<Embedded> {
      * <br>
      * All search criteria are defined inside the {@link EmbeddingSearchRequest}.
      * <br>
-     * {@link EmbeddingSearchRequest#filter()} can be used to filter by user/memory ID.
+     * {@link EmbeddingSearchRequest#filter()} can be used to filter by various metadata entries (e.g., user/memory ID).
      * Please note that not all {@link EmbeddingStore} implementations support {@link Filter}ing.
      *
      * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
      * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
      */
     default EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request) {
+        if (request.filter() != null) {
+            throw new UnsupportedOperationException("EmbeddingSearchRequest.Filter is not supported yet.");
+        }
+
         List<EmbeddingMatch<Embedded>> matches =
                 findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
         return new EmbeddingSearchResult<>(matches);

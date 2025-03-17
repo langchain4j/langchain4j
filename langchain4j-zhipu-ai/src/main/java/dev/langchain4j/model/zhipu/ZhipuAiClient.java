@@ -17,13 +17,14 @@ import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import dev.langchain4j.model.zhipu.image.ImageRequest;
 import dev.langchain4j.model.zhipu.image.ImageResponse;
 import dev.langchain4j.model.zhipu.shared.Usage;
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
 import okhttp3.sse.EventSources;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
 
 import java.io.IOException;
@@ -35,8 +36,8 @@ import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 import static dev.langchain4j.model.zhipu.Json.OBJECT_MAPPER;
 import static retrofit2.converter.jackson.JacksonConverterFactory.create;
 
-@Slf4j
 public class ZhipuAiClient {
+    private static final Logger log = LoggerFactory.getLogger(ZhipuAiClient.class);
 
     private final ZhipuAiApi zhipuAiApi;
     private final OkHttpClient okHttpClient;

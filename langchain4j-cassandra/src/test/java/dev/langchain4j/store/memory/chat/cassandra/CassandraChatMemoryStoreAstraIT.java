@@ -2,7 +2,6 @@ package dev.langchain4j.store.memory.chat.cassandra;
 
 import com.dtsx.astra.sdk.AstraDBAdmin;
 import com.dtsx.astra.sdk.db.domain.CloudProviderType;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.UUID;
@@ -14,7 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Test Cassandra Chat Memory Store with a Saas DB.
  */
-@Disabled("AstraDB is not available in the CI")
 @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
 class CassandraChatMemoryStoreAstraIT extends CassandraChatMemoryStoreTestSupport {
 

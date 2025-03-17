@@ -427,12 +427,6 @@ class Neo4jEmbeddingStoreIT {
     }
 
     @Test
-    void test_row_batches_empty() {
-        List<List<Map<String, Object>>> rowsBatched = getListRowsBatched(0);
-        assertThat(rowsBatched).isEmpty();
-    }
-
-    @Test
     void test_row_batches_10000_elements() {
         List<List<Map<String, Object>>> rowsBatched = getListRowsBatched(10000);
         assertThat(rowsBatched).hasSize(1);

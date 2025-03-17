@@ -102,7 +102,7 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(null);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
@@ -110,7 +110,7 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
                     handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build(null, false);
+                    Response<AiMessage> response = responseBuilder.build();
                     handler.onComplete(response);
                 })
                 .onError(handler::onError)

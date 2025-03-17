@@ -11,7 +11,7 @@ class ResponseTest implements WithAssertions {
             assertThat(response.content()).isEqualTo("content");
             assertThat(response.tokenUsage()).isNull();
             assertThat(response.finishReason()).isNull();
-            assertThat(response).hasToString("Response { content = content, tokenUsage = null, finishReason = null }");
+            assertThat(response).hasToString("Response { content = content, tokenUsage = null, finishReason = null, metadata = {} }");
         }
         {
             TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
@@ -22,9 +22,10 @@ class ResponseTest implements WithAssertions {
             assertThat(response)
                     .hasToString(
                             "Response { " +
-                            "content = content, tokenUsage = TokenUsage { " +
-                            "inputTokenCount = 1, outputTokenCount = 2, totalTokenCount = 3 }, " +
-                            "finishReason = null }");
+                                    "content = content, tokenUsage = TokenUsage { " +
+                                    "inputTokenCount = 1, outputTokenCount = 2, totalTokenCount = 3 }, " +
+                                    "finishReason = null, " +
+                                    "metadata = {} }");
         }
         {
             TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
@@ -37,7 +38,8 @@ class ResponseTest implements WithAssertions {
                             "Response { " +
                                     "content = content, tokenUsage = TokenUsage { " +
                                     "inputTokenCount = 1, outputTokenCount = 2, totalTokenCount = 3 }, " +
-                                    "finishReason = LENGTH }");
+                                    "finishReason = LENGTH, " +
+                                    "metadata = {} }");
         }
     }
 

@@ -77,7 +77,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
 
         TextGenerationResponse response = client.generate(request);
 
-        return Response.from(response.generatedText());
+        return Response.from(response.getGeneratedText());
     }
 
     public static Builder builder() {

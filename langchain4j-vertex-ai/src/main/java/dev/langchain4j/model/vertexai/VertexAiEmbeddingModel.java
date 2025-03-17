@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.cloud.aiplatform.util.ValueConverter.EMPTY_VALUE;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -52,9 +51,12 @@ import static java.util.stream.Collectors.toList;
  */
 public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
-    private static final int COMPUTE_TOKENS_MAX_INPUTS_PER_REQUEST = 2048;
+    private static final String DEFAULT_GOOGLEAPIS_ENDPOINT_SUFFIX = "-aiplatform.googleapis.com:443";
+
+    private static final int COMPUTE_TOKENS_MAX_INPUTS_PER_REQUEST = 2_048;
     private static final int DEFAULT_MAX_SEGMENTS_PER_BATCH = 250;
     private static final int DEFAULT_MAX_TOKENS_PER_BATCH = 20_000;
+
     private final PredictionServiceSettings settings;
     private final LlmUtilityServiceSettings llmUtilitySettings;
     private final EndpointName endpointName;
@@ -63,10 +65,12 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxTokensPerBatch;
     private final TaskType taskType;
     private final String titleMetadataKey;
+    private final Integer outputDimensionality;
+    private final Boolean autoTruncate;
 
     public enum TaskType {
         RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION,
-        CLUSTERING, QUESTION_ANSWERING, FACT_VERIFICATION
+        CLUSTERING, QUESTION_ANSWERING, FACT_VERIFICATION, CODE_RETRIEVAL_QUERY
     }
 
     public VertexAiEmbeddingModel(String endpoint,
@@ -78,18 +82,23 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                                   Integer maxSegmentsPerBatch,
                                   Integer maxTokensPerBatch,
                                   TaskType taskType,
-                                  String titleMetadataKey) {
+                                  String titleMetadataKey,
+                                  Integer outputDimensionality,
+                                  Boolean autoTruncate) {
+
+        String regionWithBaseAPI = endpoint != null ? endpoint :
+            ensureNotBlank(location, "location") + DEFAULT_GOOGLEAPIS_ENDPOINT_SUFFIX;
 
         this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
                 ensureNotBlank(project, "project"),
-                ensureNotBlank(location, "location"),
+                location,
                 ensureNotBlank(publisher, "publisher"),
                 ensureNotBlank(modelName, "modelName")
         );
 
         try {
             this.settings = PredictionServiceSettings.newBuilder()
-                    .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
+                    .setEndpoint(regionWithBaseAPI)
                     .build();
 
             this.llmUtilitySettings = LlmUtilityServiceSettings.newBuilder()
@@ -108,6 +117,9 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         this.taskType = taskType;
         this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");
+
+        this.outputDimensionality = outputDimensionality;
+        this.autoTruncate = getOrDefault(autoTruncate, false);
     }
 
     @Override
@@ -132,7 +144,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         embeddingInstance.setTaskType(taskType);
                         if (this.taskType.equals(TaskType.RETRIEVAL_DOCUMENT)) {
                             // Title metadata is used for calculating embeddings for document retrieval
-                            embeddingInstance.setTitle(segment.metadata(titleMetadataKey));
+                            embeddingInstance.setTitle(segment.metadata().getString(titleMetadataKey));
                         }
                     }
 
@@ -141,7 +153,12 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                     instances.add(instanceBuilder.build());
                 }
 
-                PredictResponse response = withRetry(() -> client.predict(endpointName, instances, EMPTY_VALUE), maxRetries);
+                VertexAiEmbeddingParameters parameters = new VertexAiEmbeddingParameters(
+                    outputDimensionality, getOrDefault(autoTruncate, false));
+                Value.Builder parameterBuilder = Value.newBuilder();
+                JsonFormat.parser().merge(toJson(parameters), parameterBuilder);
+
+                PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameterBuilder.build()), maxRetries);
 
                 embeddings.addAll(response.getPredictionsList().stream()
                         .map(VertexAiEmbeddingModel::toEmbedding)
@@ -290,6 +307,8 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Integer maxTokensPerBatch;
         private TaskType taskType;
         private String titleMetadataKey;
+        private Integer outputDimensionality;
+        private Boolean autoTruncate;
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -341,6 +360,16 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        public Builder autoTruncate(Boolean autoTruncate) {
+            this.autoTruncate = autoTruncate;
+            return this;
+        }
+
+        public Builder outputDimensionality(Integer outputDimensionality) {
+            this.outputDimensionality = outputDimensionality;
+            return this;
+        }
+
         public VertexAiEmbeddingModel build() {
             return new VertexAiEmbeddingModel(
                     endpoint,
@@ -352,7 +381,10 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                     maxSegmentsPerBatch,
                     maxTokensPerBatch,
                     taskType,
-                    titleMetadataKey);
+                    titleMetadataKey,
+                    outputDimensionality,
+                    autoTruncate
+                );
         }
     }
 }

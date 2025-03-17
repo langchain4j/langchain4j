@@ -65,7 +65,8 @@ class JsonSchemasTest {
         Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
-        JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
+        JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
+        JsonObjectSchema addressSchema = (JsonObjectSchema) rootElement.properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address");
     }
 
@@ -89,7 +90,8 @@ class JsonSchemasTest {
         Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
-        JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
+        JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
+        JsonObjectSchema addressSchema = (JsonObjectSchema) rootElement.properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address");
     }
 
@@ -114,7 +116,8 @@ class JsonSchemasTest {
         Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
-        JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
+        JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
+        JsonObjectSchema addressSchema = (JsonObjectSchema) rootElement.properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address 2");
     }
 
@@ -140,7 +143,8 @@ class JsonSchemasTest {
         Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
+        JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
+        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) rootElement.properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status");
     }
 
@@ -164,7 +168,8 @@ class JsonSchemasTest {
         Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
+        JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
+        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) rootElement.properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status");
     }
 
@@ -189,7 +194,8 @@ class JsonSchemasTest {
         Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
+        JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
+        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) rootElement.properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status 2");
     }
 
@@ -214,7 +220,8 @@ class JsonSchemasTest {
         Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
-        JsonArraySchema petsSchema = (JsonArraySchema) jsonSchema.get().schema().properties().get("pets");
+        JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
+        JsonArraySchema petsSchema = (JsonArraySchema) rootElement.properties().get("pets");
         assertThat(petsSchema.description()).isEqualTo("pets of a person");
     }
 }

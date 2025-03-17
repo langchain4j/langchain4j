@@ -5,7 +5,8 @@ sidebar_position: 30
 # Logging
 
 LangChain4j uses [SLF4J](https://www.slf4j.org/) for logging,
-allowing you to plug in any logging backend you prefer.
+allowing you to plug in any logging backend you prefer,
+such as [Logback](https://logback.qos.ch/) or [Log4j](https://logging.apache.org/log4j/2.x/index.html)).
 
 ## Pure Java
 
@@ -17,6 +18,15 @@ OpenAiChatModel.builder()
     .logRequests(true)
     .logResponses(true)
     .build();
+```
+
+Make sure you have one of the SLF4J logging backends in your dependencies, for example, Logback:
+```xml
+<dependency>
+    <groupId>ch.qos.logback</groupId>
+    <artifactId>logback-classic</artifactId>
+    <version>1.5.8</version>
+</dependency>
 ```
 
 ## Quarkus

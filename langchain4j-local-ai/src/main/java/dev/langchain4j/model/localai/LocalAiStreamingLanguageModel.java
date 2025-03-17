@@ -67,7 +67,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                 .maxTokens(maxTokens)
                 .build();
 
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(null);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
@@ -78,7 +78,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build(null, false);
+                    Response<AiMessage> response = responseBuilder.build();
                     handler.onComplete(Response.from(
                             response.content().text(),
                             response.tokenUsage(),

@@ -6,9 +6,11 @@ import retrofit2.http.Header;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
 
+import java.util.List;
+
 public interface OvhAiApi {
 
-  @POST("api/text2vec")
+  @POST("api/batch_text2vec")
   @Headers({"Content-Type: application/json"})
-  Call<float[]> embed(@Body EmbeddingRequest request, @Header("Authorization") String authorizationHeader);
+  Call<List<float[]>> embed(@Body EmbeddingRequest request, @Header("Authorization") String authorizationHeader);
 }

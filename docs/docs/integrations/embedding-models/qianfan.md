@@ -1,5 +1,5 @@
 ---
-sidebar_position: 14
+sidebar_position: 16
 ---
 
 # Qianfan
@@ -10,7 +10,7 @@ sidebar_position: 14
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-qianfan</artifactId>
-    <version>0.33.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 

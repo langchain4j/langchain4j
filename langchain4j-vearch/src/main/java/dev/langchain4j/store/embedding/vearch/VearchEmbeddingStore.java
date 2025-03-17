@@ -56,44 +56,6 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new Builder();
     }
 
-    public static class Builder {
-
-        private VearchConfig vearchConfig;
-        private String baseUrl;
-        private Duration timeout;
-        private Boolean normalizeEmbeddings;
-
-        public Builder vearchConfig(VearchConfig vearchConfig) {
-            this.vearchConfig = vearchConfig;
-            return this;
-        }
-
-        public Builder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
-            return this;
-        }
-
-        /**
-         * Set whether to normalize embedding when add to embedding store
-         *
-         * @param normalizeEmbeddings whether to normalize embedding when add to embedding store
-         * @return builder
-         */
-        public Builder normalizeEmbeddings(Boolean normalizeEmbeddings) {
-            this.normalizeEmbeddings = normalizeEmbeddings;
-            return this;
-        }
-
-        public VearchEmbeddingStore build() {
-            return new VearchEmbeddingStore(baseUrl, timeout, vearchConfig, normalizeEmbeddings);
-        }
-    }
-
     @Override
     public String add(Embedding embedding) {
         String id = randomUUID();
@@ -282,6 +244,44 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                 return emptyList();
             default:
                 throw new RuntimeException("Unsupported SpacePropertyParam type " + param.type);
+        }
+    }
+
+    public static class Builder {
+
+        private VearchConfig vearchConfig;
+        private String baseUrl;
+        private Duration timeout;
+        private Boolean normalizeEmbeddings;
+
+        public Builder vearchConfig(VearchConfig vearchConfig) {
+            this.vearchConfig = vearchConfig;
+            return this;
+        }
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        /**
+         * Set whether to normalize embedding when add to embedding store
+         *
+         * @param normalizeEmbeddings whether to normalize embedding when add to embedding store
+         * @return builder
+         */
+        public Builder normalizeEmbeddings(Boolean normalizeEmbeddings) {
+            this.normalizeEmbeddings = normalizeEmbeddings;
+            return this;
+        }
+
+        public VearchEmbeddingStore build() {
+            return new VearchEmbeddingStore(baseUrl, timeout, vearchConfig, normalizeEmbeddings);
         }
     }
 }

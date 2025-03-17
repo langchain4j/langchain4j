@@ -10,7 +10,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -28,7 +27,10 @@ public class QwenTokenizerIT {
 
     @BeforeEach
     public void setUp() {
-        tokenizer = new QwenTokenizer(apiKey(), QwenModelName.QWEN_PLUS);
+        tokenizer = QwenTokenizer.builder()
+                .apiKey(apiKey())
+                .modelName(QwenModelName.QWEN_PLUS)
+                .build();
     }
 
     @ParameterizedTest

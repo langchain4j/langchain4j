@@ -26,7 +26,7 @@ For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `l
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.33.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
@@ -77,7 +77,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>0.33.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
@@ -111,8 +111,59 @@ class AssistantController {
     }
 }
 ```
-More details [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
 
+### Automatic Component Wiring
+The following components will be automatically wired into the AI Service if available in the application context:
+- `ChatLanguageModel`
+- `StreamingChatLanguageModel`
+- `ChatMemory`
+- `ChatMemoryProvider`
+- `ContentRetriever`
+- `RetrievalAugmentor`
+- All methods annotated with `@Tool` (note that these methods must be defined in a class that is a Spring **bean**)
+
+:::note
+If multiple components of the same type are present in the application context, the application will fail to start.
+In this case, use the explicit wiring mode (explained below).
+:::
+
+### Explicit Component Wiring
+
+If you have multiple AI Services and want to wire different LangChain4j components into each of them,
+you can specify which components to use with explicit wiring mode (`@AiService(wiringMode = EXPLICIT)`).
+
+Let's say we have two `ChatLanguageModel`s configured:
+```properties
+# OpenAI
+langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
+langchain4j.open-ai.chat-model.model-name=gpt-4o-mini
+
+# Ollama
+langchain4j.ollama.chat-model.base-url=http://localhost:11434
+langchain4j.ollama.chat-model.model-name=llama3.1
+```
+
+```java
+@AiService(wiringMode = EXPLICIT, chatModel = "openAiChatModel")
+interface OpenAiAssistant {
+
+    @SystemMessage("You are a polite assistant")
+    String chat(String userMessage);
+}
+
+@AiService(wiringMode = EXPLICIT, chatModel = "ollamaChatModel")
+interface OllamaAssistant {
+
+    @SystemMessage("You are a polite assistant")
+    String chat(String userMessage);
+}
+```
+
+:::note
+In this case, you must explicitly specify **all** components.
+:::
+
+More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
 
 ## Supported versions
 

@@ -105,7 +105,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -174,7 +174,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -243,7 +243,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -300,7 +300,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -357,7 +357,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -414,7 +414,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -480,7 +480,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -555,7 +555,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -631,7 +631,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -703,7 +703,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -769,7 +769,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -835,7 +835,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()
@@ -904,7 +904,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
-                                .schema(JsonObjectSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
                                         .description("a person")
                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                             put("name", JsonStringSchema.builder()

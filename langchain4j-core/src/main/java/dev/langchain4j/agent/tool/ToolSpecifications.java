@@ -148,15 +148,16 @@ public class ToolSpecifications {
     }
 
     static JsonSchemaProperty schema(Class<?> structured) {
-        return schema(structured, new HashSet<>());
+        return schema(structured, new HashMap<>());
     }
 
-    private static JsonSchemaProperty schema(Class<?> structured, Set<Class<?>> visited) {
-        if (visited.contains(structured)) {
-            return null;
+    private static JsonSchemaProperty schema(Class<?> structured, HashMap<Class<?>, JsonSchemaProperty> visited) {
+        if (visited.containsKey(structured)) {
+            return visited.get(structured);
         }
 
-        visited.add(structured);
+        // Mark the class as visited by inserting it in the visited map with a null value initially.
+        visited.put(structured, null);
         Map<String, Object> properties = new HashMap<>();
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
@@ -171,10 +172,13 @@ public class ToolSpecifications {
             }
             properties.put(name, objectMap);
         }
-        return from("properties", properties);
+        JsonSchemaProperty jsonSchemaProperty = from("properties", properties);
+        // Update the visited map with the final JsonSchemaProperty for the current class
+        visited.put(structured, jsonSchemaProperty);
+        return jsonSchemaProperty;
     }
 
-    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited) {
+    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, HashMap<Class<?>, JsonSchemaProperty> visited) {
 
         Class<?> type = field.getType();
 

@@ -25,7 +25,6 @@ class ExpandingQueryTransformerIT {
 
         // when
         Collection<Query> queries = transformer.transform(query);
-        System.out.println(queries);
 
         // then
         assertThat(queries).hasSize(3);

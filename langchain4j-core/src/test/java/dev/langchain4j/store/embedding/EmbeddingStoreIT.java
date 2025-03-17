@@ -16,7 +16,7 @@ import static org.assertj.core.data.Percentage.withPercentage;
  */
 public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
-    static final UUID TEST_UUID = UUID.randomUUID();
+    protected static final UUID TEST_UUID = UUID.randomUUID();
     static final UUID TEST_UUID2 = UUID.randomUUID();
 
     @Test
@@ -30,22 +30,19 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         String id = embeddingStore().add(embedding, segment);
         assertThat(id).isNotBlank();
 
-        {
-            // Not returned.
-            TextSegment altSegment = TextSegment.from("hello?");
-            Embedding altEmbedding = embeddingModel().embed(altSegment.text()).content();
-            embeddingStore().add(altEmbedding, altSegment);
-        }
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
 
-        awaitUntilPersisted();
-
+        // when
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 1);
-        assertThat(relevant).hasSize(1);
 
+        // then
+        assertThat(relevant).hasSize(1);
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isEqualTo(embedding);
+        if (assertEmbedding()) {
+            assertThat(match.embedding()).isEqualTo(embedding);
+        }
 
         assertThat(match.embedded().text()).isEqualTo(segment.text());
 

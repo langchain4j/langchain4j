@@ -62,7 +62,7 @@ class OpenAiTokenizerIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
-                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -127,7 +127,7 @@ class OpenAiTokenizerIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
-                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -343,7 +343,7 @@ class OpenAiTokenizerIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
-                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -770,7 +770,7 @@ class OpenAiTokenizerIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
-                .maxTokens(2) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(2) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();

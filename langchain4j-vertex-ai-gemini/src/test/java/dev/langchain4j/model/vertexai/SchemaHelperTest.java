@@ -27,7 +27,6 @@ public class SchemaHelperTest {
 
         // when
         Schema schema = fromClass(Person.class);
-        System.out.println("schema = " + schema);
 
         // then
         assertThat(schema.getRequiredList()).contains("name", "age", "isStudent", "friends");

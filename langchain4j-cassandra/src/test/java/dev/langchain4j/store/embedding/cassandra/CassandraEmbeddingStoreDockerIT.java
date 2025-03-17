@@ -1,12 +1,10 @@
 package dev.langchain4j.store.embedding.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -15,10 +13,11 @@ import org.testcontainers.utility.DockerImageName;
 import java.net.InetSocketAddress;
 import java.util.Collections;
 
+import static com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric.COSINE;
+
 /**
  * Work with Cassandra Embedding Store.
  */
-@Disabled("No Docker in the CI")
 @Testcontainers
 class CassandraEmbeddingStoreDockerIT extends CassandraEmbeddingStoreIT {
 
@@ -55,7 +54,7 @@ class CassandraEmbeddingStoreDockerIT extends CassandraEmbeddingStoreIT {
      * Stop Cassandra Node
      */
     @AfterAll
-    static void afterTests() throws Exception {
+    static void afterTests() {
         cassandraContainer.stop();
     }
 
@@ -69,11 +68,10 @@ class CassandraEmbeddingStoreDockerIT extends CassandraEmbeddingStoreIT {
                     .localDataCenter(DATACENTER)
                     .keyspace(KEYSPACE)
                     .table(TEST_INDEX)
-                    .dimension(embeddingModelDimension())
-                    .metric(CassandraSimilarityMetric.COSINE)
+                    .dimension(embeddingModel().dimension())
+                    .metric(COSINE)
                     .build();
         }
         return embeddingStore;
     }
-
 }

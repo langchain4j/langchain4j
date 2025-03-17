@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
@@ -24,13 +25,15 @@ public class Result<T> {
     private final TokenUsage tokenUsage;
     private final List<Content> sources;
     private final FinishReason finishReason;
+    private final List<ToolExecution> toolExecutions;
 
     @Builder
-    public Result(T content, TokenUsage tokenUsage, List<Content> sources, FinishReason finishReason) {
+    public Result(T content, TokenUsage tokenUsage, List<Content> sources, FinishReason finishReason, List<ToolExecution> toolExecutions) {
         this.content = ensureNotNull(content, "content");
         this.tokenUsage = tokenUsage;
         this.sources = copyIfNotNull(sources);
         this.finishReason = finishReason;
+        this.toolExecutions = copyIfNotNull(toolExecutions);
     }
 
     public T content() {
@@ -47,5 +50,9 @@ public class Result<T> {
 
     public FinishReason finishReason() {
         return finishReason;
+    }
+
+    public List<ToolExecution> toolExecutions() {
+        return toolExecutions;
     }
 }

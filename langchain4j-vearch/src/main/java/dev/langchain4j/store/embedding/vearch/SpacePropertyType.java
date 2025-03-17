@@ -1,26 +1,28 @@
 package dev.langchain4j.store.embedding.vearch;
 
-import com.google.gson.annotations.SerializedName;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public enum SpacePropertyType {
 
     /**
      * keyword is equivalent to string
      */
-    @SerializedName("string")
+    @JsonProperty("string")
     STRING(SpacePropertyParam.StringParam.class),
-    @SerializedName("integer")
+    @JsonProperty("integer")
     INTEGER(SpacePropertyParam.IntegerParam.class),
-    @SerializedName("float")
+    @JsonProperty("float")
     FLOAT(SpacePropertyParam.FloatParam.class),
-    @SerializedName("vector")
+    @JsonProperty("vector")
     VECTOR(SpacePropertyParam.VectorParam.class);
 
-    @Getter
     private final Class<? extends SpacePropertyParam> paramClass;
 
     SpacePropertyType(Class<? extends SpacePropertyParam> paramClass) {
         this.paramClass = paramClass;
+    }
+
+    public Class<? extends SpacePropertyParam> getParamClass() {
+        return paramClass;
     }
 }

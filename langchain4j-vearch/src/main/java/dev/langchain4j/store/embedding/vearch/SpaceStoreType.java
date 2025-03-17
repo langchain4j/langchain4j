@@ -1,14 +1,13 @@
 package dev.langchain4j.store.embedding.vearch;
 
-import com.google.gson.annotations.SerializedName;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public enum SpaceStoreType {
 
-    @SerializedName("MemoryOnly")
+    @JsonProperty("MemoryOnly")
     MEMORY_ONLY,
-    @SerializedName("Mmap")
+    @JsonProperty("Mmap")
     M_MAP,
-    @SerializedName("RocksDB")
+    @JsonProperty("RocksDB")
     ROCKS_DB
 }

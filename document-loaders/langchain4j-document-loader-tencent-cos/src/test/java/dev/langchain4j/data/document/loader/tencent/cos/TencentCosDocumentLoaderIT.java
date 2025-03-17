@@ -8,8 +8,8 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.io.File;
 import java.net.URL;
@@ -17,7 +17,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("need Tencent COS credentials")
+@EnabledIfEnvironmentVariable(named = "TENCENT_SECRET_KEY", matches = ".+")
 class TencentCosDocumentLoaderIT {
 
     private static final String TEST_BUCKET = "test-buket";
@@ -34,8 +34,15 @@ class TencentCosDocumentLoaderIT {
 
     @BeforeAll
     public static void beforeAll() {
-        cosClient = new COSClient(new TencentCredentials("test", "test",
-                null).toCredentialsProvider(), new ClientConfig(new Region("ap-shanghai")));
+        TencentCredentials tencentCredentials = new TencentCredentials(
+                System.getenv("TENCENT_SECRET_ID"),
+                System.getenv("TENCENT_SECRET_KEY"),
+                null
+        );
+        cosClient = new COSClient(
+                tencentCredentials.toCredentialsProvider(),
+                new ClientConfig(new Region("ap-shanghai"))
+        );
         loader = new TencentCosDocumentLoader(cosClient);
     }
 

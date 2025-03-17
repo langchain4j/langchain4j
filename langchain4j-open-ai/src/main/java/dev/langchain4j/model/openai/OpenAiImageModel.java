@@ -3,12 +3,12 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.image.GenerateImagesRequest;
 import dev.ai4j.openai4j.image.GenerateImagesResponse;
+import dev.ai4j.openai4j.image.ImageData;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
-import lombok.NonNull;
 
 import java.net.Proxy;
 import java.nio.file.Path;
@@ -164,11 +164,15 @@ public class OpenAiImageModel implements ImageModel {
         }
     }
 
+    /**
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
+     */
+    @Deprecated
     public static OpenAiImageModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
 
-    private static Image fromImageData(GenerateImagesResponse.ImageData data) {
+    private static Image fromImageData(ImageData data) {
         return Image.builder().url(data.url()).base64Data(data.b64Json()).revisedPrompt(data.revisedPrompt()).build();
     }
 

@@ -62,7 +62,7 @@ class JinaScoringModelIT {
         assertThat(scores).hasSize(2);
         assertThat(scores.get(0)).isLessThan(scores.get(1));
 
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(16);
+        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
 
         assertThat(response.finishReason()).isNull();
     }

@@ -52,7 +52,7 @@ class GoogleCustomWebSearchContentRetrieverIT extends WebSearchContentRetrieverI
         String answer = assistant.answer(query);
 
         // then
-        assertThat(answer).contains("RAG");
+        assertThat(answer).containsIgnoringCase("memory");
     }
 
     @Override

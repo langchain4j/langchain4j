@@ -6,7 +6,7 @@ import retrofit2.http.*;
 
 import java.util.List;
 
-public interface VearchApi {
+interface VearchApi {
 
     int OK = 200;
 

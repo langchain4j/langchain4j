@@ -27,7 +27,6 @@ class VertexAiChatModelIT {
                 .build();
 
         Response<AiMessage> response = vertexAiChatModel.generate(UserMessage.from("hi, how are you doing?"));
-        System.out.println(response);
 
         assertThat(response.content().text()).isNotBlank();
 

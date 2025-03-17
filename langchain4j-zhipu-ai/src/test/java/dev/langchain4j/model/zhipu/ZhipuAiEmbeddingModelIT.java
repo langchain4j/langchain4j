@@ -37,7 +37,6 @@ public class ZhipuAiEmbeddingModelIT {
 
         // when
         Response<Embedding> response = model.embed(text);
-        System.out.println(response);
 
         assertThat(response.content().dimension()).isEqualTo(1024);
         // then
@@ -61,7 +60,6 @@ public class ZhipuAiEmbeddingModelIT {
         }
 
         Response<List<Embedding>> response = model.embedAll(segments);
-        System.out.println(response);
 
         assertThat(response.content()).hasSize(11);
         assertThat(response.content().get(0).dimension()).isEqualTo(1024);

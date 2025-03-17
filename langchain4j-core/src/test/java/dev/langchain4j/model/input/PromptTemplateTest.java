@@ -193,7 +193,6 @@ class PromptTemplateTest {
 
         // when
         Prompt prompt = promptTemplate.apply(s);
-        System.out.println(prompt.text());
 
         // then
         assertThat(prompt.text()).isEqualTo("This is " + s + ".");

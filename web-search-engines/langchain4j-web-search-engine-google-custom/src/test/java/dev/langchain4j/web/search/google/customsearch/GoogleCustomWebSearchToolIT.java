@@ -84,7 +84,6 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         messages.add(toolExecutionResultMessage);
 
         AiMessage finalResponse = chatLanguageModel().generate(messages).content();
-        System.out.println(finalResponse.text());
 
         // then
         assertThat(finalResponse.text())
@@ -132,7 +131,6 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         messages.add(toolExecutionResultMessage);
 
         AiMessage finalResponse = chatLanguageModel().generate(messages).content();
-        System.out.println(finalResponse.text());
 
         // then
         assertThat(finalResponse.text())

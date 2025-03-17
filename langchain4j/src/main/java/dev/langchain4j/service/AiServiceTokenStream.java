@@ -1,105 +1,156 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyList;
 
 public class AiServiceTokenStream implements TokenStream {
 
-    private final List<ChatMessage> messagesToSend;
+    private final List<ChatMessage> messages;
+    private final List<ToolSpecification> toolSpecifications;
+    private final Map<String, ToolExecutor> toolExecutors;
+    private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
 
-    public AiServiceTokenStream(List<ChatMessage> messagesToSend, AiServiceContext context, Object memoryId) {
-        this.messagesToSend = ensureNotEmpty(messagesToSend, "messagesToSend");
+    private Consumer<String> tokenHandler;
+    private Consumer<List<Content>> contentsHandler;
+    private Consumer<ToolExecution> toolExecutionHandler;
+    private Consumer<Throwable> errorHandler;
+    private Consumer<Response<AiMessage>> completionHandler;
+
+    private int onNextInvoked;
+    private int onCompleteInvoked;
+    private int onRetrievedInvoked;
+    private int onToolExecutedInvoked;
+    private int onErrorInvoked;
+    private int ignoreErrorsInvoked;
+
+    public AiServiceTokenStream(List<ChatMessage> messages,
+                                List<ToolSpecification> toolSpecifications,
+                                Map<String, ToolExecutor> toolExecutors,
+                                List<Content> retrievedContents,
+                                AiServiceContext context,
+                                Object memoryId) {
+        this.messages = ensureNotEmpty(messages, "messages");
+        this.toolSpecifications = copyIfNotNull(toolSpecifications);
+        this.toolExecutors = copyIfNotNull(toolExecutors);
+        this.retrievedContents = retrievedContents;
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
         ensureNotNull(context.streamingChatModel, "streamingChatModel");
     }
 
     @Override
-    public OnCompleteOrOnError onNext(Consumer<String> tokenHandler) {
-
-        return new OnCompleteOrOnError() {
-
-            @Override
-            public OnError onComplete(Consumer<Response<AiMessage>> completionHandler) {
-
-                return new OnError() {
-
-                    @Override
-                    public OnStart onError(Consumer<Throwable> errorHandler) {
-                        return new AiServiceOnStart(tokenHandler, completionHandler, errorHandler);
-                    }
-
-                    @Override
-                    public OnStart ignoreErrors() {
-                        return new AiServiceOnStart(tokenHandler, completionHandler, null);
-                    }
-                };
-            }
-
-            @Override
-            public OnStart onError(Consumer<Throwable> errorHandler) {
-                return new AiServiceOnStart(tokenHandler, null, errorHandler);
-            }
-
-            @Override
-            public OnStart ignoreErrors() {
-                return new AiServiceOnStart(tokenHandler, null, null);
-            }
-        };
+    public TokenStream onNext(Consumer<String> tokenHandler) {
+        this.tokenHandler = tokenHandler;
+        this.onNextInvoked++;
+        return this;
     }
 
-    private class AiServiceOnStart implements OnStart {
+    @Override
+    public TokenStream onRetrieved(Consumer<List<Content>> contentsHandler) {
+        this.contentsHandler = contentsHandler;
+        this.onRetrievedInvoked++;
+        return this;
+    }
 
-        private final Consumer<String> tokenHandler;
-        private final Consumer<Response<AiMessage>> completionHandler;
-        private final Consumer<Throwable> errorHandler;
+    @Override
+    public TokenStream onToolExecuted(Consumer<ToolExecution> toolExecutionHandler) {
+        this.toolExecutionHandler = toolExecutionHandler;
+        this.onToolExecutedInvoked++;
+        return this;
+    }
 
-        private AiServiceOnStart(Consumer<String> tokenHandler,
-                                 Consumer<Response<AiMessage>> completionHandler,
-                                 Consumer<Throwable> errorHandler) {
-            this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
-            this.completionHandler = completionHandler;
-            this.errorHandler = errorHandler;
+    @Override
+    public TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler) {
+        this.completionHandler = completionHandler;
+        this.onCompleteInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onError(Consumer<Throwable> errorHandler) {
+        this.errorHandler = errorHandler;
+        this.onErrorInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream ignoreErrors() {
+        this.errorHandler = null;
+        this.ignoreErrorsInvoked++;
+        return this;
+    }
+
+    @Override
+    public void start() {
+        validateConfiguration();
+
+        AiServiceStreamingResponseHandler handler = new AiServiceStreamingResponseHandler(
+                context,
+                memoryId,
+                tokenHandler,
+                toolExecutionHandler,
+                completionHandler,
+                errorHandler,
+                initTemporaryMemory(context, messages),
+                new TokenUsage(),
+                toolSpecifications,
+                toolExecutors
+        );
+
+        if (contentsHandler != null && retrievedContents != null) {
+            contentsHandler.accept(retrievedContents);
         }
 
-        @Override
-        public void start() {
-
-            AiServiceStreamingResponseHandler handler = new AiServiceStreamingResponseHandler(
-                    context,
-                    memoryId,
-                    tokenHandler,
-                    completionHandler,
-                    errorHandler,
-                    initTemporaryMemory(context, messagesToSend),
-                    new TokenUsage()
-            );
-
-            if (context.toolSpecifications != null) {
-                context.streamingChatModel.generate(messagesToSend, context.toolSpecifications, handler);
-            } else {
-                context.streamingChatModel.generate(messagesToSend, handler);
-            }
+        if (isNullOrEmpty(toolSpecifications)) {
+            context.streamingChatModel.generate(messages, handler);
+        } else {
+            context.streamingChatModel.generate(messages, toolSpecifications, handler);
         }
+    }
 
-        private List<ChatMessage> initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
-            if (context.hasChatMemory()) {
-                return emptyList();
-            } else {
-                return new ArrayList<>(messagesToSend);
-            }
+    private void validateConfiguration() {
+        if (onNextInvoked != 1) {
+            throw new IllegalConfigurationException("onNext must be invoked exactly 1 time");
+        }
+        if (onCompleteInvoked > 1) {
+            throw new IllegalConfigurationException("onComplete must be invoked at most 1 time");
+        }
+        if (onRetrievedInvoked > 1) {
+            throw new IllegalConfigurationException("onRetrieved must be invoked at most 1 time");
+        }
+        if (onToolExecutedInvoked > 1) {
+            throw new IllegalConfigurationException("onToolExecuted must be invoked at most 1 time");
+        }
+        if (onErrorInvoked + ignoreErrorsInvoked != 1) {
+            throw new IllegalConfigurationException("One of onError or ignoreErrors must be invoked exactly 1 time");
+        }
+    }
+
+    private List<ChatMessage> initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
+        if (context.hasChatMemory()) {
+            return emptyList();
+        } else {
+            return new ArrayList<>(messagesToSend);
         }
     }
 }

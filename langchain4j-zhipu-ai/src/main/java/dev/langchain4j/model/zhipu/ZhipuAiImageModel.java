@@ -6,7 +6,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.zhipu.image.ImageModelName;
 import dev.langchain4j.model.zhipu.image.ImageRequest;
 import dev.langchain4j.model.zhipu.image.ImageResponse;
-import lombok.Builder;
 
 import java.time.Duration;
 
@@ -29,7 +28,6 @@ public class ZhipuAiImageModel implements ImageModel {
      *               and detect abuse. User ID length requirement: minimum of 6 characters, maximum of
      *               128 characters
      */
-    @Builder
     public ZhipuAiImageModel(
             String model,
             String userId,
@@ -58,6 +56,10 @@ public class ZhipuAiImageModel implements ImageModel {
                 .build();
     }
 
+    public static ZhipuAiImageModelBuilder builder() {
+        return new ZhipuAiImageModelBuilder();
+    }
+
     @Override
     public Response<Image> generate(String prompt) {
         ImageRequest request = ImageRequest.builder()
@@ -74,5 +76,81 @@ public class ZhipuAiImageModel implements ImageModel {
                         .url(response.getData().get(0).getUrl())
                         .build()
         );
+    }
+
+    public static class ZhipuAiImageModelBuilder {
+        private String model;
+        private String userId;
+        private String apiKey;
+        private String baseUrl;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Duration callTimeout;
+        private Duration connectTimeout;
+        private Duration readTimeout;
+        private Duration writeTimeout;
+
+        ZhipuAiImageModelBuilder() {
+        }
+
+        public ZhipuAiImageModelBuilder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder userId(String userId) {
+            this.userId = userId;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder callTimeout(Duration callTimeout) {
+            this.callTimeout = callTimeout;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder connectTimeout(Duration connectTimeout) {
+            this.connectTimeout = connectTimeout;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder readTimeout(Duration readTimeout) {
+            this.readTimeout = readTimeout;
+            return this;
+        }
+
+        public ZhipuAiImageModelBuilder writeTimeout(Duration writeTimeout) {
+            this.writeTimeout = writeTimeout;
+            return this;
+        }
+
+        public ZhipuAiImageModel build() {
+            return new ZhipuAiImageModel(this.model, this.userId, this.apiKey, this.baseUrl, this.maxRetries, this.logRequests, this.logResponses, this.callTimeout, this.connectTimeout, this.readTimeout, this.writeTimeout);
+        }
     }
 }

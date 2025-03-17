@@ -29,7 +29,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * String chat(@V String name, @V int age);
  * </pre>
  * <p>
- * When using Spring Boot, defining the value of this annotation is not required.
+ * When using LangChain4j with Quarkus or Spring Boot, using this annotation is not necessary.
  *
  * @see UserMessage
  * @see SystemMessage

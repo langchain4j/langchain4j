@@ -1,34 +1,34 @@
 package dev.langchain4j.model.bedrock.internal;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ChatMessageType;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
+import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
-import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static java.util.stream.Collectors.joining;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Bedrock chat model
  */
+@Slf4j
 @Getter
 @SuperBuilder
 public abstract class AbstractBedrockChatModel<T extends BedrockChatModelResponse> extends AbstractSharedBedrockChatModel implements ChatLanguageModel {
@@ -40,15 +40,57 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
 
         final String body = convertMessagesToAwsBody(messages);
 
-        InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(body), maxRetries);
-        final String response = invokeModelResponse.body().asUtf8String();
-        final T result = Json.fromJson(response, getResponseClassType());
+        InvokeModelRequest invokeModelRequest = InvokeModelRequest
+                .builder()
+                .modelId(getModelId())
+                .body(SdkBytes.fromString(body, Charset.defaultCharset()))
+                .build();
 
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, messages, Collections.emptyList());
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+
+        try {
+            InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(invokeModelRequest, requestContext), maxRetries);
+            final String response = invokeModelResponse.body().asUtf8String();
+            final T result = Json.fromJson(response, getResponseClassType());
+
+            Response<AiMessage> responseMessage = toAiMessage(result);;
+            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    null,
+                    null,
+                    responseMessage
+            );
+            ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                    modelListenerResponse,
+                    modelListenerRequest,
+                    attributes
+            );
+
+            listeners.forEach(listener -> {
+                try {
+                    listener.onResponse(responseContext);
+                } catch (Exception e) {
+                    log.warn("Exception while calling model listener", e);
+                }
+            });
+
+            return responseMessage;
+        } catch (RuntimeException e) {
+            listenerErrorResponse(
+                    e,
+                    modelListenerRequest,
+                    attributes
+            );
+            throw e;
+        }
+    }
+
+    public Response<AiMessage> toAiMessage(T result) {
         return new Response<>(new AiMessage(result.getOutputText()),
                 result.getTokenUsage(),
                 result.getFinishReason());
     }
-
 
     /**
      * Get request parameters
@@ -69,16 +111,19 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
     /**
      * Invoke call to the API
      *
-     * @param body body
+     * @param invokeModelRequest invokeModelRequest
+     * @param requestContext requestContext
      * @return invoke model response
      */
-    protected InvokeModelResponse invoke(final String body) {
-        // Invoke model
-        InvokeModelRequest invokeModelRequest = InvokeModelRequest
-                .builder()
-                .modelId(getModelId())
-                .body(SdkBytes.fromString(body, Charset.defaultCharset()))
-                .build();
+    protected InvokeModelResponse invoke(final InvokeModelRequest invokeModelRequest, final ChatModelRequestContext requestContext) {
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
+
         return getClient().invokeModel(invokeModelRequest);
     }
 
@@ -104,6 +149,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
         return BedrockRuntimeClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
+                .overrideConfiguration(c-> c.apiCallTimeout(timeout))
                 .build();
     }
 }

@@ -29,16 +29,16 @@ Closes #
 - [ ] I have added an example in the [examples repo](https://github.com/langchain4j/langchain4j-examples) (only for "big" features)
 - [ ] I have added/updated [Spring Boot starter(s)](https://github.com/langchain4j/langchain4j-spring) (if applicable)
 
-## Checklist for adding new model integration
+
+## Checklist for adding new maven module
 <!-- Please double-check the following points and mark them like this: [X] -->
-- [ ] I have added my new module in the [BOM](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-bom/pom.xml)
+- [ ] I have added my new module in the root `pom.xml` and `langchain4j-bom/pom.xml`
 
 
 ## Checklist for adding new embedding store integration
 <!-- Please double-check the following points and mark them like this: [X] -->
 - [ ] I have added a `{NameOfIntegration}EmbeddingStoreIT` that extends from either `EmbeddingStoreIT` or `EmbeddingStoreWithFilteringIT`
-- [ ] I have added my new module in the [BOM](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-bom/pom.xml)
-
+- [ ] I have added a `{NameOfIntegration}EmbeddingStoreRemovalIT` that extends from `EmbeddingStoreWithRemovalIT`
 
 ## Checklist for changing existing embedding store integration
 <!-- Please double-check the following points and mark them like this: [X] -->

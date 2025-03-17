@@ -3,30 +3,24 @@ package dev.langchain4j.store.embedding.astradb;
 import com.dtsx.astra.sdk.AstraDB;
 import com.dtsx.astra.sdk.AstraDBAdmin;
 import com.dtsx.astra.sdk.AstraDBCollection;
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiModelName;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import io.stargate.sdk.data.domain.SimilarityMetric;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import java.util.List;
 import java.util.UUID;
 
 import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("AstraDB is not available in the CI")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = "sk.*")
@@ -81,25 +75,4 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
         }
         return embeddingModel;
     }
-
-    void testAddEmbeddingAndFindRelevant() {
-
-        Embedding embedding = Embedding.from(new float[]{9.9F, 4.5F, 3.5F, 1.3F, 1.7F, 5.7F, 6.4F, 5.5F, 8.2F, 9.3F, 1.5F});
-        TextSegment textSegment = TextSegment.from("Text", Metadata.from("Key", "Value"));
-        String id = embeddingStore.add(embedding, textSegment);
-        assertThat(id != null && !id.isEmpty()).isTrue();
-
-        Embedding referenceEmbedding = Embedding.from(new float[]{8.7F, 4.5F, 3.4F, 1.2F, 5.5F, 5.6F, 6.4F, 5.5F, 8.1F, 9.1F, 1.1F});
-        List<EmbeddingMatch<TextSegment>> embeddingMatches = embeddingStore.findRelevant(referenceEmbedding, 1);
-        assertThat(embeddingMatches).hasSize(1);
-
-        EmbeddingMatch<TextSegment> embeddingMatch = embeddingMatches.get(0);
-        assertThat(embeddingMatch.score()).isBetween(0d, 1d);
-        assertThat(embeddingMatch.embeddingId()).isEqualTo(id);
-        assertThat(embeddingMatch.embedding()).isEqualTo(embedding);
-        assertThat(embeddingMatch.embedded()).isEqualTo(textSegment);
-    }
-
-
-
 }

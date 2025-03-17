@@ -4,31 +4,36 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static dev.langchain4j.model.zhipu.chat.Role.ASSISTANT;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public final class AssistantMessage implements Message {
 
-    private final Role role = ASSISTANT;
+    private final Role role;
     private String content;
     private String name;
     private List<ToolCall> toolCalls;
 
+    public AssistantMessage() {
+        this.role = Role.ASSISTANT;
+    }
+
+    public AssistantMessage(String content, String name, List<ToolCall> toolCalls) {
+        this.role = Role.ASSISTANT;
+        this.content = content;
+        this.name = name;
+        this.toolCalls = toolCalls;
+    }
+
     private AssistantMessage(Builder builder) {
+        this.role = Role.ASSISTANT;
         this.content = builder.content;
         this.name = builder.name;
         this.toolCalls = builder.toolCalls;
@@ -49,14 +54,35 @@ public final class AssistantMessage implements Message {
         return role;
     }
 
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<ToolCall> getToolCalls() {
+        return toolCalls;
+    }
+
+    public void setToolCalls(List<ToolCall> toolCalls) {
+        this.toolCalls = toolCalls;
+    }
+
     public static final class Builder {
 
         private String content;
         private String name;
         private List<ToolCall> toolCalls;
-
-        private Builder() {
-        }
 
         public Builder content(String content) {
             this.content = content;

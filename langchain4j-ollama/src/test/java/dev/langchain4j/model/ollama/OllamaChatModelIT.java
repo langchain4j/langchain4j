@@ -33,7 +33,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         AiMessage aiMessage = response.content();
@@ -66,7 +65,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).doesNotContain("Berlin");
@@ -82,7 +80,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(systemMessage, userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("liebe");
@@ -104,7 +101,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(messages);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).startsWith(">>> 8");

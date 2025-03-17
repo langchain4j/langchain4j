@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,8 +12,10 @@ import java.net.URI;
 import java.util.List;
 
 import static dev.ai4j.openai4j.image.ImageModel.*;
+import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Disabled("Run manually before release. Expensive to run very often.")
 class OpenAiImageModelIT {
 
     Logger log = LoggerFactory.getLogger(OpenAiImageModelIT.class);
@@ -21,7 +24,7 @@ class OpenAiImageModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(OpenAiModelName.DALL_E_2) // so that you pay not much :)
+            .modelName(DALL_E_2) // so that you pay not much :)
             .size(DALL_E_SIZE_256_x_256)
             .logRequests(true)
             .logResponses(true);
@@ -99,7 +102,7 @@ class OpenAiImageModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(OpenAiImageModelName.DALL_E_2)
+                .modelName(DALL_E_2)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -108,7 +111,6 @@ class OpenAiImageModelIT {
 
         // when
         Response<Image> response = model.generate(prompt);
-        System.out.println(response);
 
         // then
         URI remoteImage = response.content().url();
