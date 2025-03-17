@@ -49,7 +49,6 @@ class DocumentTest implements WithAssertions {
 
         assertThat(document.metadata().asMap()).hasSize(1);
         assertThat(document.metadata().toMap()).hasSize(1);
-        assertThat(document.metadata("foo")).isEqualTo("bar");
         assertThat(document.metadata().getString("foo")).isEqualTo("bar");
 
         assertThat(document).hasToString("DefaultDocument[text=foo bar, metadata=Metadata { metadata = {foo=bar} }]");
