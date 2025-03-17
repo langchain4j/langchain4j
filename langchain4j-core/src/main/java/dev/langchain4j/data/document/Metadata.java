@@ -87,25 +87,6 @@ public class Metadata {
     }
 
     /**
-     * Returns the value associated with the given key.
-     *
-     * @param key the key
-     * @return the value associated with the given key, or {@code null} if the key is not present.
-     * @deprecated as of 0.31.0, use {@link #getString(String)}, {@link #getInteger(String)}, {@link #getLong(String)},
-     * {@link #getFloat(String)}, {@link #getDouble(String)} instead.
-     */
-    @Deprecated(forRemoval = true)
-    @Nullable
-    public String get(String key) {
-        Object value = metadata.get(key);
-        if (value != null) {
-            return value.toString();
-        } else {
-            return null;
-        }
-    }
-
-    /**
      * Returns the {@code String} value associated with the given key.
      *
      * @param key the key
