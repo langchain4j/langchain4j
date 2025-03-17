@@ -10,7 +10,7 @@ public class ChatMemories {
 
     public static final String DEFAULT = "default";
 
-    private ChatMemory defaultChatMemories;
+    private ChatMemory defaultChatMemory;
     private Map<Object, ChatMemory> chatMemories;
     private ChatMemoryProvider chatMemoryProvider;
 
