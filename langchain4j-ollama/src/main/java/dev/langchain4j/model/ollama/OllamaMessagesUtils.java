@@ -3,7 +3,18 @@ package dev.langchain4j.model.ollama;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ContentType;
+import dev.langchain4j.data.message.CustomMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,8 +25,9 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 
 class OllamaMessagesUtils {
 
@@ -42,22 +54,41 @@ class OllamaMessagesUtils {
                                 .function(Function.builder()
                                         .name(toolSpecification.name())
                                         .description(toolSpecification.description())
-                                        .parameters(toolSpecification.parameters() == null ? null : Parameters.builder()
-                                                .properties(toolSpecification.parameters().properties())
-                                                .required(toolSpecification.parameters().required())
-                                                .build())
+                                        .parameters(toOllamaParameters(toolSpecification))
                                         .build())
                                 .build())
                 .collect(Collectors.toList());
     }
 
-    static List<ToolExecutionRequest> toToolExecutionRequest(List<ToolCall> toolCalls) {
+    private static Parameters toOllamaParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            JsonObjectSchema parameters = toolSpecification.parameters();
+            return Parameters.builder()
+                    .properties(toMap(parameters.properties()))
+                    .required(parameters.required())
+                    .build();
+        } else {
+            return null;
+        }
+    }
+
+    static List<ToolExecutionRequest> toToolExecutionRequests(List<ToolCall> toolCalls) {
         return toolCalls.stream().map(toolCall ->
                         ToolExecutionRequest.builder()
                                 .name(toolCall.getFunction().getName())
                                 .arguments(toJson(toolCall.getFunction().getArguments()))
                                 .build())
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    static String toOllamaResponseFormat(ResponseFormat responseFormat) {
+        if (responseFormat == null || responseFormat == ResponseFormat.TEXT) {
+            return null;
+        } else if (responseFormat == ResponseFormat.JSON && responseFormat.jsonSchema() == null) {
+            return "json";
+        } else {
+            return toJson(JsonSchemaElementHelper.toMap(responseFormat.jsonSchema().rootElement()));
+        }
     }
 
     private static Message messagesWithImageSupport(UserMessage userMessage) {
@@ -82,6 +113,12 @@ class OllamaMessagesUtils {
     }
 
     private static Message otherMessages(ChatMessage chatMessage) {
+        if (chatMessage instanceof CustomMessage customMessage) {
+            return Message.builder()
+                    .additionalFields(customMessage.attributes())
+                    .build();
+        }
+
         List<ToolCall> toolCalls = null;
         if (ChatMessageType.AI == chatMessage.type()) {
             AiMessage aiMessage = (AiMessage) chatMessage;
@@ -93,7 +130,7 @@ class OllamaMessagesUtils {
                                 };
                                 FunctionCall functionCall = FunctionCall.builder()
                                         .name(toolExecutionRequest.name())
-                                        .arguments(toObject(toolExecutionRequest.arguments(), typeReference))
+                                        .arguments(fromJson(toolExecutionRequest.arguments(), typeReference))
                                         .build();
                                 return ToolCall.builder()
                                         .function(functionCall).build();

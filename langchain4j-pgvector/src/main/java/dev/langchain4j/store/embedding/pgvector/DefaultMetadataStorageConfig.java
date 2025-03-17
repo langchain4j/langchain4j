@@ -1,6 +1,9 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
 import lombok.experimental.Accessors;
 
 import java.util.Collections;

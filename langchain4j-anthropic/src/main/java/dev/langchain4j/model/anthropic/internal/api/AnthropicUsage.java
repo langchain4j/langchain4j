@@ -14,4 +14,6 @@ public class AnthropicUsage {
 
     public Integer inputTokens;
     public Integer outputTokens;
+    public Integer cacheCreationInputTokens;
+    public Integer cacheReadInputTokens;
 }

@@ -19,7 +19,7 @@ import org.testcontainers.junit.jupiter.Container;
 import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -80,26 +80,26 @@ class Neo4jContentRetrieverIT {
     void shouldRetrieveContentWhenQueryIsValid() {
         // Given
         Query query = new Query("Who is the author of the book 'Dune'?");
-        when(chatLanguageModel.generate(anyString())).thenReturn("MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
+        when(chatLanguageModel.chat(anyString())).thenReturn("MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
 
         // When
         List<Content> contents = retriever.retrieve(query);
 
         // Then
-        assertEquals(1, contents.size());
+        assertThat(contents).hasSize(1);
     }
 
     @Test
     void shouldRetrieveContentWhenQueryIsValidAndResponseHasBackticks() {
         // Given
         Query query = new Query("Who is the author of the book 'Dune'?");
-        when(chatLanguageModel.generate(anyString())).thenReturn("```MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output```");
+        when(chatLanguageModel.chat(anyString())).thenReturn("```MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output```");
 
         // When
         List<Content> contents = retriever.retrieve(query);
 
         // Then
-        assertEquals(1, contents.size());
+        assertThat(contents).hasSize(1);
     }
 
     @Test
@@ -127,19 +127,19 @@ class Neo4jContentRetrieverIT {
         List<Content> contents = neo4jContentRetriever.retrieve(query);
 
         // Then
-        assertEquals(1, contents.size());
+        assertThat(contents).hasSize(1);
     }
 
     @Test
     void shouldReturnEmptyListWhenQueryIsInvalid() {
         // Given
         Query query = new Query("Who is the author of the movie 'Dune'?");
-        when(chatLanguageModel.generate(anyString())).thenReturn("MATCH(movie:Movie {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
+        when(chatLanguageModel.chat(anyString())).thenReturn("MATCH(movie:Movie {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
 
         // When
         List<Content> contents = retriever.retrieve(query);
 
         // Then
-        assertEquals(0, contents.size());
+        assertThat(contents).isEmpty();
     }
 }

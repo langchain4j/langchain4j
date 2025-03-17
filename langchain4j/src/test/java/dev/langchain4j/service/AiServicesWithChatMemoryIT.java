@@ -5,10 +5,12 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -23,14 +25,17 @@ import static dev.langchain4j.data.message.ChatMessageSerializer.messagesToJson;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.service.AiServicesIT.chatRequest;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.ANOTHER_SYSTEM_MESSAGE;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.SYSTEM_MESSAGE;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class AiServicesWithChatMemoryIT {
 
     @Spy
@@ -63,7 +68,7 @@ class AiServicesWithChatMemoryIT {
 
     @AfterEach
     void afterEach() {
-        verifyNoMoreInteractions(chatLanguageModel);
+        verifyNoMoreInteractionsFor(chatLanguageModel);
         verifyNoMoreInteractions(chatMemory);
     }
 
@@ -83,7 +88,7 @@ class AiServicesWithChatMemoryIT {
 
         // then
         verify(chatMemory).add(userMessage(firstUserMessage));
-        verify(chatLanguageModel).generate(singletonList(userMessage(firstUserMessage)));
+        verify(chatLanguageModel).chat(chatRequest(firstUserMessage));
         verify(chatMemory).add(aiMessage(firstAiMessage));
 
 
@@ -97,11 +102,13 @@ class AiServicesWithChatMemoryIT {
         assertThat(secondAiMessage).contains("Klaus");
 
         verify(chatMemory).add(userMessage(secondUserMessage));
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstUserMessage),
-                aiMessage(firstAiMessage),
-                userMessage(secondUserMessage)
-        ));
+        verify(chatLanguageModel).chat(ChatRequest.builder()
+                .messages(
+                        userMessage(firstUserMessage),
+                        aiMessage(firstAiMessage),
+                        userMessage(secondUserMessage)
+                ).build()
+        );
         verify(chatMemory).add(aiMessage(secondAiMessage));
 
 
@@ -113,13 +120,15 @@ class AiServicesWithChatMemoryIT {
 
         // then
         verify(chatMemory).add(userMessage(thirdUserMessage));
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstUserMessage),
-                aiMessage(firstAiMessage),
-                userMessage(secondUserMessage),
-                aiMessage(secondAiMessage),
-                userMessage(thirdUserMessage)
-        ));
+        verify(chatLanguageModel).chat(ChatRequest.builder()
+                .messages(
+                        userMessage(firstUserMessage),
+                        aiMessage(firstAiMessage),
+                        userMessage(secondUserMessage),
+                        aiMessage(secondAiMessage),
+                        userMessage(thirdUserMessage)
+                ).build()
+        );
         verify(chatMemory).add(aiMessage(thirdAiMessage));
 
 
@@ -133,15 +142,17 @@ class AiServicesWithChatMemoryIT {
         assertThat(fourthAiMessage).contains("42");
 
         verify(chatMemory).add(userMessage(fourthUserMessage));
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstUserMessage),
-                aiMessage(firstAiMessage),
-                userMessage(secondUserMessage),
-                aiMessage(secondAiMessage),
-                userMessage(thirdUserMessage),
-                aiMessage(thirdAiMessage),
-                userMessage(fourthUserMessage)
-        ));
+        verify(chatLanguageModel).chat(ChatRequest.builder()
+                .messages(
+                        userMessage(firstUserMessage),
+                        aiMessage(firstAiMessage),
+                        userMessage(secondUserMessage),
+                        aiMessage(secondAiMessage),
+                        userMessage(thirdUserMessage),
+                        aiMessage(thirdAiMessage),
+                        userMessage(fourthUserMessage)
+                ).build()
+        );
         verify(chatMemory).add(aiMessage(fourthAiMessage));
 
         verify(chatLanguageModel, times(4)).supportedCapabilities();
@@ -159,21 +170,25 @@ class AiServicesWithChatMemoryIT {
         String firstUserMessage = "Hello, my name is Klaus";
         String firstAiMessage = chatWithMemory.chatWithSystemMessage(firstUserMessage);
 
-        verify(chatLanguageModel).generate(asList(
-                systemMessage(SYSTEM_MESSAGE),
-                userMessage(firstUserMessage)
-        ));
+        verify(chatLanguageModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage(SYSTEM_MESSAGE),
+                        userMessage(firstUserMessage)
+                ).build()
+        );
 
         String secondUserMessage = "What is my name?";
         String secondAiMessage = chatWithMemory.chatWithSystemMessage(secondUserMessage);
         assertThat(secondAiMessage).contains("Klaus");
 
-        verify(chatLanguageModel).generate(asList(
-                systemMessage(SYSTEM_MESSAGE),
-                userMessage(firstUserMessage),
-                aiMessage(firstAiMessage),
-                userMessage(secondUserMessage)
-        ));
+        verify(chatLanguageModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage(SYSTEM_MESSAGE),
+                        userMessage(firstUserMessage),
+                        aiMessage(firstAiMessage),
+                        userMessage(secondUserMessage)
+                ).build()
+        );
         verify(chatLanguageModel, times(2)).supportedCapabilities();
 
         verify(chatMemory, times(2)).add(systemMessage(SYSTEM_MESSAGE));
@@ -195,22 +210,26 @@ class AiServicesWithChatMemoryIT {
         String firstUserMessage = "Hello, my name is Klaus";
         String firstAiMessage = chatWithMemory.chatWithSystemMessage(firstUserMessage);
 
-        verify(chatLanguageModel).generate(asList(
-                systemMessage(SYSTEM_MESSAGE),
-                userMessage(firstUserMessage)
-        ));
+        verify(chatLanguageModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage(SYSTEM_MESSAGE),
+                        userMessage(firstUserMessage)
+                ).build()
+        );
 
 
         String secondUserMessage = "What is my name?";
         String secondAiMessage = chatWithMemory.chatWithAnotherSystemMessage(secondUserMessage);
         assertThat(secondAiMessage).contains("Klaus");
 
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstUserMessage),
-                aiMessage(firstAiMessage),
-                systemMessage(ANOTHER_SYSTEM_MESSAGE),
-                userMessage(secondUserMessage)
-        ));
+        verify(chatLanguageModel).chat(ChatRequest.builder()
+                .messages(
+                        userMessage(firstUserMessage),
+                        aiMessage(firstAiMessage),
+                        systemMessage(ANOTHER_SYSTEM_MESSAGE),
+                        userMessage(secondUserMessage)
+                ).build()
+        );
         verify(chatLanguageModel, times(2)).supportedCapabilities();
 
         verify(chatMemory).add(systemMessage(SYSTEM_MESSAGE));
@@ -268,29 +287,33 @@ class AiServicesWithChatMemoryIT {
 
         String firstMessageFromFirstUser = "Hello, my name is Klaus";
         String firstAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, firstMessageFromFirstUser);
-        verify(chatLanguageModel).generate(singletonList(userMessage(firstMessageFromFirstUser)));
+        verify(chatLanguageModel).chat(chatRequest(firstMessageFromFirstUser));
 
         String firstMessageFromSecondUser = "Hello, my name is Francine";
         String firstAiResponseToSecondUser = chatWithMemory.chat(secondMemoryId, firstMessageFromSecondUser);
-        verify(chatLanguageModel).generate(singletonList(userMessage(firstMessageFromSecondUser)));
+        verify(chatLanguageModel).chat(chatRequest(firstMessageFromSecondUser));
 
         String secondMessageFromFirstUser = "What is my name?";
         String secondAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, secondMessageFromFirstUser);
         assertThat(secondAiResponseToFirstUser).contains("Klaus");
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstMessageFromFirstUser),
-                aiMessage(firstAiResponseToFirstUser),
-                userMessage(secondMessageFromFirstUser)
-        ));
+        verify(chatLanguageModel).chat(ChatRequest.builder()
+                .messages(
+                        userMessage(firstMessageFromFirstUser),
+                        aiMessage(firstAiResponseToFirstUser),
+                        userMessage(secondMessageFromFirstUser)
+                ).build()
+        );
 
         String secondMessageFromSecondUser = "What is my name?";
         String secondAiResponseToSecondUser = chatWithMemory.chat(secondMemoryId, secondMessageFromSecondUser);
         assertThat(secondAiResponseToSecondUser).contains("Francine");
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstMessageFromSecondUser),
-                aiMessage(firstAiResponseToSecondUser),
-                userMessage(secondMessageFromSecondUser)
-        ));
+        verify(chatLanguageModel).chat(ChatRequest.builder()
+                .messages(
+                        userMessage(firstMessageFromSecondUser),
+                        aiMessage(firstAiResponseToSecondUser),
+                        userMessage(secondMessageFromSecondUser)
+                ).build()
+        );
 
         assertThat(persistentStorage).containsOnlyKeys(firstMemoryId, secondMemoryId);
 

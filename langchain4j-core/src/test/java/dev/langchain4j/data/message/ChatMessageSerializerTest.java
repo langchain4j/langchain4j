@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -50,7 +51,7 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         UserMessage.from(ImageContent.from("aGVsbG8=", "image/png")),
-                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8\\u003d\",\"mimeType\":\"image/png\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8=\",\"mimeType\":\"image/png\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         UserMessage.from(AudioContent.from("bXAz", "audio/mp3")),
@@ -59,6 +60,10 @@ class ChatMessageSerializerTest {
                 Arguments.of(
                         UserMessage.from(VideoContent.from("bXA0", "video/mp4")),
                         "{\"contents\":[{\"video\":{\"base64Data\":\"bXA0\",\"mimeType\":\"video/mp4\"},\"type\":\"VIDEO\"}],\"type\":\"USER\"}"
+                ),
+                Arguments.of(
+                        UserMessage.from(TextFileContent.from("cGRm", "text/markdown")),
+                        "{\"contents\":[{\"textFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"text/markdown\"},\"type\":\"TEXT_FILE\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
@@ -78,18 +83,13 @@ class ChatMessageSerializerTest {
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"
-                )
-        );
-    }
-
-    @Test
-    void should_deserialize_user_message_in_old_schema() {
-
-        String json = "{\"text\":\"hello\",\"type\":\"USER\"}";
-
-        ChatMessage deserializedMessage = messageFromJson(json);
-
-        assertThat(deserializedMessage).isEqualTo(UserMessage.from("hello"));
+                ),
+                Arguments.of(
+                        CustomMessage.from(new LinkedHashMap<>() {{
+                            put("k1", "v1");
+                            put("k2", "v2");
+                        }}),
+                        "{\"attributes\":{\"k1\":\"v1\", \"k2\":\"v2\"},\"type\":\"CUSTOM\"}"));
     }
 
     @Test
@@ -118,15 +118,5 @@ class ChatMessageSerializerTest {
 
         List<ChatMessage> deserializedMessages = messagesFromJson(json);
         assertThat(deserializedMessages).isEqualTo(messages);
-    }
-
-    @Test
-    void should_serialize_and_deserialize_list_with_one_message_in_old_schema() {
-
-        String json = "[{\"text\":\"hello\",\"type\":\"USER\"}]";
-
-        List<ChatMessage> deserializedMessages = messagesFromJson(json);
-
-        assertThat(deserializedMessages).containsExactly(UserMessage.from("hello"));
     }
 }

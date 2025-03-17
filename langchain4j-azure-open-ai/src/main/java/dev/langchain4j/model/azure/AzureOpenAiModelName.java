@@ -3,7 +3,7 @@ package dev.langchain4j.model.azure;
 /**
  * @deprecated use {@link AzureOpenAiChatModelName}, {@link AzureOpenAiEmbeddingModelName}, {@link AzureOpenAiImageModelName} and {@link AzureOpenAiLanguageModelName}, instead.
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class AzureOpenAiModelName {
 
     // Use with AzureOpenAiChatModel and AzureOpenAiStreamingChatModel

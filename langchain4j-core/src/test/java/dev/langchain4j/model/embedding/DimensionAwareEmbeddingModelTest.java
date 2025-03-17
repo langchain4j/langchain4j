@@ -8,9 +8,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 class DimensionAwareEmbeddingModelTest implements WithAssertions {

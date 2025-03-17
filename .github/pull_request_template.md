@@ -21,7 +21,8 @@ Closes #
 ## General checklist
 <!-- Please double-check the following points and mark them like this: [X] -->
 - [ ] There are no breaking changes
-- [ ] I have added unit and integration tests for my change
+- [ ] I have added unit and/or integration tests for my change
+- [ ] The tests cover both positive and negative cases
 - [ ] I have manually run all the unit and integration tests in the module I have added/changed, and they are all green
 - [ ] I have manually run all the unit and integration tests in the [core](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-core) and [main](https://github.com/langchain4j/langchain4j/tree/main/langchain4j) modules, and they are all green
 <!-- Before adding documentation and example(s) (below), please wait until the PR is reviewed and approved. -->

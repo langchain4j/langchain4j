@@ -6,6 +6,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * @deprecated please use {@link BedrockChatModel}
+ */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @Setter
 @Builder

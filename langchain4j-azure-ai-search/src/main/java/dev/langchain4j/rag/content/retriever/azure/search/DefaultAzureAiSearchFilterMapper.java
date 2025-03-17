@@ -35,7 +35,7 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
         if (operator instanceof And) return  format(getLogicalFormat(operator), map(((And) operator).left()), map(((And) operator).right()));
         if (operator instanceof Or) return format(getLogicalFormat(operator), map(((Or) operator).left()), map(((Or) operator).right()));
         if (operator instanceof Not) return format(getLogicalFormat(operator), map(((Not) operator).expression()));
-        throw new IllegalArgumentException("Unsupported operator: " + operator);
+        throw new UnsupportedOperationException("Unsupported filter type: " + operator.getClass().getName());
     }
 
     private boolean isLogicalOperator(Filter filter) {
@@ -51,14 +51,14 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
         if (filter instanceof IsLessThanOrEqualTo) return mapIsLessThanOrEqualTo((IsLessThanOrEqualTo) filter);
         if (filter instanceof IsIn) return mapIsIn((IsIn) filter);
         if (filter instanceof IsNotIn) return mapIsNotIn((IsNotIn) filter);
-        throw new IllegalArgumentException("Unsupported filter: " + filter);
+        throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
     }
 
     private String getLogicalFormat(Filter filter) {
         if (filter instanceof And) return "(%s and %s)";
         if (filter instanceof Or) return "(%s or %s)";
         if (filter instanceof Not) return "(not %s)";
-        throw new IllegalArgumentException("Unsupported filter: " + filter);
+        throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
     }
 
     private String getComparisonFormat(Filter filter) {
@@ -72,7 +72,7 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
         if (filter instanceof IsIn) return "search.in(k/value, ('%s'))";
 // not use, it raplace by Not ( IsIn )
 //        if (filter instanceof IsNotIn) return "not search.in(k/value, ('%s'))";
-        throw new IllegalArgumentException("Unsupported filter: " + filter);
+        throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
     }
 
     private String mapIsNotIn(IsNotIn filter) {

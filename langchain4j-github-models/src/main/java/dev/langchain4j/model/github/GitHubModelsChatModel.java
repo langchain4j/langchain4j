@@ -12,10 +12,18 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.Capability;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.github.spi.GitHubModelsChatModelBuilderFactory;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -30,6 +38,8 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.ModelProvider.GITHUB_MODELS;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
@@ -123,7 +133,6 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
         this.frequencyPenalty = frequencyPenalty;
         this.seed = seed;
         this.responseFormat = responseFormat;
-        this.strictJsonSchema = strictJsonSchema;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
@@ -137,6 +146,39 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
     }
 
     @Override
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.responseFormat());
+
+        Response<AiMessage> response;
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            response = generate(chatRequest.messages());
+        } else {
+            if (parameters.toolChoice() == REQUIRED) {
+                if (toolSpecifications.size() != 1) {
+                    throw new UnsupportedFeatureException(
+                            String.format("%s.%s is currently supported only when there is a single tool",
+                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                }
+                response = generate(chatRequest.messages(), toolSpecifications.get(0));
+            } else {
+                response = generate(chatRequest.messages(), toolSpecifications);
+            }
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
+    }
+
+    private Response<AiMessage> generate(List<ChatMessage> messages) {
+        return generate(messages, null, null);
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         return generate(messages, null, null, this.responseFormat);
     }
@@ -144,6 +186,8 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         return generate(messages, toolSpecifications, null, this.responseFormat);
+    private Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return generate(messages, toolSpecifications, null);
     }
 
     @Override
@@ -165,6 +209,8 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                 .tokenUsage(response.tokenUsage())
                 .finishReason(response.finishReason())
                 .build();
+    private Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return generate(messages, singletonList(toolSpecification), toolSpecification);
     }
 
     private Response<AiMessage> generate(List<ChatMessage> messages,
@@ -197,9 +243,10 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
             options.setTools(toToolDefinitions(toolSpecifications));
         }
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -216,14 +263,15 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                     finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason())
             );
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+            ChatResponse listenerResponse = createListenerResponse(
                     chatCompletions.getId(),
                     options.getModel(),
                     response
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
+                    listenerResponse,
+                    listenerRequest,
+                    provider(),
                     attributes
             );
             listeners.forEach(listener -> {
@@ -240,8 +288,8 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
 
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
                     httpResponseException,
-                    modelListenerRequest,
-                    null,
+                    listenerRequest,
+                    provider(),
                     attributes
             );
 
@@ -264,6 +312,16 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                     exceptionFinishReason
             );
         }
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return GITHUB_MODELS;
     }
 
     public static Builder builder() {

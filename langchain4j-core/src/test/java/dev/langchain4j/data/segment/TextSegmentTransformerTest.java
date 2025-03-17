@@ -1,10 +1,9 @@
 package dev.langchain4j.data.segment;
 
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class TextSegmentTransformerTest implements WithAssertions {
     public static class LowercaseFnordTransformer implements TextSegmentTransformer {
@@ -19,7 +18,7 @@ class TextSegmentTransformerTest implements WithAssertions {
     }
 
     @Test
-    public void test_transformAll() {
+    void transform_all() {
         TextSegmentTransformer transformer = new LowercaseFnordTransformer();
         TextSegment ts1 = TextSegment.from("Text");
         ts1.metadata().put("abc", "123"); // metadata is copied over (not transformed
@@ -39,7 +38,5 @@ class TextSegmentTransformerTest implements WithAssertions {
                         TextSegment.from("text", ts1.metadata()),
                         TextSegment.from("segment"),
                         TextSegment.from("transformer"));
-
     }
-
 }

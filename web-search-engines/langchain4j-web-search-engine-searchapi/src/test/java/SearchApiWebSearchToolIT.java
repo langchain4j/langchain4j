@@ -6,8 +6,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchTool;
@@ -59,8 +59,14 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
         messages.add(systemMessage);
         UserMessage userMessage = UserMessage.from(query);
         messages.add(userMessage);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(tools)
+                .build();
+
         // when
-        AiMessage aiMessage = chatLanguageModel().generate(messages, tools).content();
+        AiMessage aiMessage = chatLanguageModel().chat(request).aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -79,7 +85,7 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(aiMessage.toolExecutionRequests().get(0), strResult);
         messages.add(toolExecutionResultMessage);
 
-        AiMessage finalResponse = chatLanguageModel().generate(messages).content();
+        AiMessage finalResponse = chatLanguageModel().chat(messages).aiMessage();
 
         // then
         assertThat(finalResponse.text())
@@ -104,8 +110,14 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
         messages.add(systemMessage);
         UserMessage userMessage = UserMessage.from(query);
         messages.add(userMessage);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(tools)
+                .build();
+
         // when
-        AiMessage aiMessage = chatLanguageModel().generate(messages, tools).content();
+        AiMessage aiMessage = chatLanguageModel().chat(request).aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -124,7 +136,7 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(aiMessage.toolExecutionRequests().get(0), strResult);
         messages.add(toolExecutionResultMessage);
 
-        AiMessage finalResponse = chatLanguageModel().generate(messages).content();
+        AiMessage finalResponse = chatLanguageModel().chat(messages).aiMessage();
 
         // then
         assertThat(finalResponse.text())
@@ -170,8 +182,14 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
         messages.add(systemMessage);
         UserMessage userMessage = UserMessage.from(query);
         messages.add(userMessage);
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(tools)
+                .build();
+
         // when
-        AiMessage aiMessage = chatLanguageModel().generate(messages, tools).content();
+        AiMessage aiMessage = chatLanguageModel().chat(request).aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -190,7 +208,7 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(aiMessage.toolExecutionRequests().get(0), strResult);
         messages.add(toolExecutionResultMessage);
 
-        AiMessage finalResponse = chatLanguageModel().generate(messages).content();
+        AiMessage finalResponse = chatLanguageModel().chat(messages).aiMessage();
 
         // then
         assertThat(finalResponse.text())

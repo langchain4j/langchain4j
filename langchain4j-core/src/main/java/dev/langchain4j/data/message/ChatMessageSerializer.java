@@ -14,7 +14,7 @@ public class ChatMessageSerializer {
         for (ChatMessageJsonCodecFactory factory : loadFactories(ChatMessageJsonCodecFactory.class)) {
             return factory.create();
         }
-                return new GsonChatMessageJsonCodec();
+        return new JacksonChatMessageJsonCodec();
     }
 
     /**

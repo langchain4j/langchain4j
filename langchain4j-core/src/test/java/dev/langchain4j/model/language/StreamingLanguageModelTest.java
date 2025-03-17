@@ -6,7 +6,6 @@ import dev.langchain4j.model.output.Response;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-
 class StreamingLanguageModelTest implements WithAssertions {
     public static class EchoStreamingLanguageModel implements StreamingLanguageModel {
         @Override
@@ -35,14 +34,12 @@ class StreamingLanguageModelTest implements WithAssertions {
     }
 
     @Test
-    public void test_generate() {
+    void generate() {
         StreamingLanguageModel model = new EchoStreamingLanguageModel();
 
         CaptureHandler<String> handler = new CaptureHandler<>();
         model.generate(new Prompt("text"), handler);
 
-        assertThat(handler.response)
-                .isEqualTo(new Response<>("text"));
+        assertThat(handler.response).isEqualTo(new Response<>("text"));
     }
-
 }

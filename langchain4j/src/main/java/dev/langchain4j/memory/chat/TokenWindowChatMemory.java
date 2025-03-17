@@ -92,6 +92,10 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     private static void ensureCapacity(List<ChatMessage> messages, int maxTokens, Tokenizer tokenizer) {
 
+        if (messages.isEmpty()) {
+            return;
+        }
+
         int currentTokenCount = tokenizer.estimateTokenCountInMessages(messages);
         while (currentTokenCount > maxTokens) {
 

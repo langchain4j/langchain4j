@@ -20,10 +20,10 @@ import lombok.Getter;
 import lombok.NonNull;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static java.util.stream.Collectors.toList;
@@ -253,7 +253,11 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public String add(@NonNull Embedding embedding, TextSegment textSegment) {
-        MetadataVectorRecord record = new MetadataVectorRecord(embedding.vectorAsList());
+        return addInternal(randomUUID(), embedding, textSegment);
+    }
+
+    private String addInternal(@NonNull String id, @NonNull Embedding embedding, TextSegment textSegment) {
+        MetadataVectorRecord record = new MetadataVectorRecord(id, embedding.vectorAsList());
         if (textSegment != null) {
             record.setBody(textSegment.text());
             record.setMetadata(textSegment.metadata().asMap());
@@ -289,24 +293,15 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .collect(toList());
     }
 
-    /**
-     * Add multiple embeddings as a single action.
-     *
-     * @param embeddingList   embeddings
-     * @param textSegmentList text segments
-     * @return list of new row if (same order as the input)
-     */
     @Override
-    public List<String> addAll(List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
+    public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
         if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
             throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");
         }
         // Looping on both list with an index
-        List<String> ids = new ArrayList<>();
         for (int i = 0; i < embeddingList.size(); i++) {
-            ids.add(add(embeddingList.get(i), textSegmentList.get(i)));
+            addInternal(ids.get(i), embeddingList.get(i), textSegmentList.get(i));
         }
-        return ids;
     }
 
     /**

@@ -37,7 +37,6 @@ class GoogleAiGeminiChatModelListenerIT extends ChatModelListenerIT {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey("banana")
                 .modelName(modelName())
-                .maxRetries(1)
                 .listeners(singletonList(listener))
                 .logRequestsAndResponses(true)
                 .build();

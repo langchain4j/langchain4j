@@ -5,7 +5,6 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
-import lombok.Builder;
 
 import java.util.List;
 
@@ -26,10 +25,13 @@ public class WebSearchContentRetriever implements ContentRetriever {
     private final WebSearchEngine webSearchEngine;
     private final int maxResults;
 
-    @Builder
     public WebSearchContentRetriever(WebSearchEngine webSearchEngine, Integer maxResults) {
         this.webSearchEngine = ensureNotNull(webSearchEngine, "webSearchEngine");
         this.maxResults = getOrDefault(maxResults, 5);
+    }
+
+    public static WebSearchContentRetrieverBuilder builder() {
+        return new WebSearchContentRetrieverBuilder();
     }
 
     @Override
@@ -45,5 +47,31 @@ public class WebSearchContentRetriever implements ContentRetriever {
         return webSearchResults.toTextSegments().stream()
                 .map(Content::from)
                 .collect(toList());
+    }
+
+    public static class WebSearchContentRetrieverBuilder {
+        private WebSearchEngine webSearchEngine;
+        private Integer maxResults;
+
+        WebSearchContentRetrieverBuilder() {
+        }
+
+        public WebSearchContentRetrieverBuilder webSearchEngine(WebSearchEngine webSearchEngine) {
+            this.webSearchEngine = webSearchEngine;
+            return this;
+        }
+
+        public WebSearchContentRetrieverBuilder maxResults(Integer maxResults) {
+            this.maxResults = maxResults;
+            return this;
+        }
+
+        public WebSearchContentRetriever build() {
+            return new WebSearchContentRetriever(this.webSearchEngine, this.maxResults);
+        }
+
+        public String toString() {
+            return "WebSearchContentRetriever.WebSearchContentRetrieverBuilder(webSearchEngine=" + this.webSearchEngine + ", maxResults=" + this.maxResults + ")";
+        }
     }
 }

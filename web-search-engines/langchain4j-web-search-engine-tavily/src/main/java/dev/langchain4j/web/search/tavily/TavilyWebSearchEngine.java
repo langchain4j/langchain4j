@@ -4,6 +4,8 @@ import dev.langchain4j.web.search.*;
 import lombok.Builder;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -97,8 +99,9 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
     }
 
     private static WebSearchOrganicResult toWebSearchOrganicResult(TavilySearchResult tavilySearchResult) {
+        String safeUrlEncoded = URLEncoder.encode(tavilySearchResult.getUrl(), StandardCharsets.UTF_8).replace("+", "%20");
         return WebSearchOrganicResult.from(tavilySearchResult.getTitle(),
-                URI.create(tavilySearchResult.getUrl().replaceAll(" ", "%20")),
+                URI.create(safeUrlEncoded),
                 tavilySearchResult.getContent(),
                 tavilySearchResult.getRawContent(),
                 Collections.singletonMap("score", String.valueOf(tavilySearchResult.getScore())));

@@ -1,19 +1,21 @@
 package dev.langchain4j.model.workersai;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiChatCompletionRequest;
 import dev.langchain4j.model.workersai.spi.WorkersAiChatModelBuilderFactory;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -132,38 +134,32 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLa
         }
     }
 
-    /** {@inheritDoc} */
     @Override
-    public String generate(String userMessage) {
-        return generate(new WorkersAiChatCompletionRequest(WorkersAiChatCompletionRequest.MessageRole.user, userMessage));
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.toolSpecifications());
+        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidator.validate(parameters.responseFormat());
+
+        Response<AiMessage> response = generate(chatRequest.messages());
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public Response<AiMessage> generate(@NonNull  ChatMessage... messages) {
-        return generate(Arrays.asList(messages));
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    private Response<AiMessage> generate(List<ChatMessage> messages) {
         WorkersAiChatCompletionRequest req = new WorkersAiChatCompletionRequest();
         req.setMessages(messages.stream()
                 .map(this::toMessage)
                 .collect(Collectors.toList()));
         return new Response<>(new AiMessage(generate(req)),null, FinishReason.STOP);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        throw new UnsupportedOperationException("Tools are currently not supported for WorkerAI models");
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        throw new UnsupportedOperationException("Tools are currently not supported for WorkerAI models");
     }
 
     /**
@@ -202,5 +198,4 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLa
             throw new RuntimeException(e);
         }
     }
-
 }

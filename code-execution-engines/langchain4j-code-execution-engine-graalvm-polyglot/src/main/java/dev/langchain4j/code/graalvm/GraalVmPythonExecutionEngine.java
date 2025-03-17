@@ -22,11 +22,11 @@ public class GraalVmPythonExecutionEngine implements CodeExecutionEngine {
     public String execute(String code) {
         OutputStream outputStream = new ByteArrayOutputStream();
         try (Context context = Context.newBuilder("python")
-                .sandbox(TRUSTED)
-                .allowHostAccess(UNTRUSTED)
-                .out(outputStream)
-                .err(outputStream)
-                .build()) {
+            .sandbox(TRUSTED)
+            .allowHostAccess(UNTRUSTED)
+            .out(outputStream)
+            .err(outputStream)
+            .build()) {
             Object result = context.eval("python", code).as(Object.class);
             return String.valueOf(result);
         }

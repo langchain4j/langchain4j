@@ -40,7 +40,11 @@ class PineconeEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @AfterEach
     protected void clear() {
-        embeddingStore.removeAll();
+        try {
+            embeddingStore.removeAll();
+        } catch (Exception e) {
+            // ignore
+        }
     }
 
     @Override
@@ -79,5 +83,10 @@ class PineconeEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                             }
                         }
                 );
+    }
+
+    @Override
+    protected boolean testLong1746714878034235396() {
+        return false; // TODO remove after https://github.com/langchain4j/langchain4j/issues/1948 is fixed
     }
 }

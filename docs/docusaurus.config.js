@@ -92,13 +92,18 @@ const config = {
                     },
                     { to: '/get-started', label: 'Get Started', position: 'left' },
                     { to: '/category/tutorials', label: 'Tutorials', position: 'left' },
+                    { to: '/category/integrations', label: 'Integrations', position: 'left' },
+                    { to: '/useful-materials', label: 'Useful Materials', position: 'left' },
                     {
                         href: 'https://github.com/langchain4j/langchain4j-examples',
                         label: 'Examples',
                         position: 'left',
                     },
-                    { to: '/category/integrations', label: 'Integrations', position: 'left' },
-                    { to: '/useful-materials', label: 'Useful Materials', position: 'left' },
+                    {
+                        href: 'https://chat.langchain4j.dev/',
+                        label: 'Docu chatbot',
+                        position: 'left',
+                    },
                     {
                         href: 'https://docs.langchain4j.dev/apidocs/index.html',
                         label: 'Javadoc',
@@ -107,7 +112,17 @@ const config = {
                     {
                         href: 'https://github.com/langchain4j/langchain4j',
                         label: 'GitHub',
-                        position: 'left',
+                        position: 'right',
+                    },
+                    {
+                        href: 'https://twitter.com/langchain4j',
+                        label: 'Twitter',
+                        position: 'right',
+                    },
+                    {
+                        href: 'https://discord.com/invite/JzTFvyjG6R',
+                        label: 'Discord',
+                        position: 'right',
                     },
                 ],
             },
@@ -130,10 +145,6 @@ const config = {
                                 to: '/category/tutorials',
                             },
                             {
-                                label: 'Examples',
-                                href: 'https://github.com/langchain4j/langchain4j-examples',
-                            },
-                            {
                                 label: 'Integrations',
                                 to: '/category/integrations',
                             },
@@ -141,11 +152,27 @@ const config = {
                                 label: 'Useful Materials',
                                 to: '/useful-materials',
                             },
+                            {
+                                label: 'Examples',
+                                href: 'https://github.com/langchain4j/langchain4j-examples',
+                            },
+                            {
+                                label: 'Documentation chatbot (experimental)',
+                                href: 'https://chat.langchain4j.dev/',
+                            },
+                            {
+                                label: 'Javadoc',
+                                href: 'https://docs.langchain4j.dev/apidocs/index.html',
+                            },
                         ],
                     },
                     {
                         title: 'Community',
                         items: [
+                            {
+                                label: 'GitHub',
+                                href: 'https://github.com/langchain4j/langchain4j',
+                            },
                             {
                                 label: 'Twitter',
                                 href: 'https://twitter.com/langchain4j',
@@ -158,19 +185,6 @@ const config = {
                                 label: 'Stack Overflow',
                                 href: 'https://stackoverflow.com/questions/tagged/langchain4j',
                             },
-                        ],
-                    },
-                    {
-                        title: 'More',
-                        items: [
-                            {
-                                label: 'GitHub',
-                                href: 'https://github.com/langchain4j/langchain4j',
-                            },
-                            {
-                                label: "Examples",
-                                href: 'https://github.com/langchain4j/langchain4j-examples'
-                            }
                         ],
                     },
                 ],

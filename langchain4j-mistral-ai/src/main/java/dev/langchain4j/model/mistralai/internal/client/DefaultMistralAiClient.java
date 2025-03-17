@@ -199,6 +199,21 @@ public class DefaultMistralAiClient extends MistralAiClient {
     }
 
     @Override
+    public MistralAiModerationResponse moderation(MistralAiModerationRequest request) {
+        try {
+            retrofit2.Response<MistralAiModerationResponse> retrofitResponse
+                = mistralAiApi.moderations(request).execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public MistralAiModelResponse listModels() {
         try {
             retrofit2.Response<MistralAiModelResponse> retrofitResponse

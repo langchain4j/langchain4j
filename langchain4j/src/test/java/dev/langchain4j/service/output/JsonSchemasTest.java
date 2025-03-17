@@ -1,6 +1,6 @@
 package dev.langchain4j.service.output;
 
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -27,7 +27,7 @@ class JsonSchemasTest {
     @Test
     void should_return_json_schema_for_pojos() {
         assertThat(jsonSchemaFrom(Pojo.class)).isPresent();
-        assertThat(jsonSchemaFrom(new TypeToken<Result<Pojo>>() {
+        assertThat(jsonSchemaFrom(new TypeReference<Result<Pojo>>() {
         }.getType())).isPresent();
     }
 
@@ -38,7 +38,7 @@ class JsonSchemasTest {
         assertThat(jsonSchemaFrom(Response.class)).isEmpty();
         assertThat(jsonSchemaFrom(Integer.class)).isEmpty();
         assertThat(jsonSchemaFrom(LocalDate.class)).isEmpty();
-        assertThat(jsonSchemaFrom(new TypeToken<Result<String>>() {
+        assertThat(jsonSchemaFrom(new TypeReference<Result<String>>() {
         }.getType())).isEmpty();
     }
 

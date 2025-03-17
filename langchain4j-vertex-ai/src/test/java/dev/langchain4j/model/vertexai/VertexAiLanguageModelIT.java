@@ -1,15 +1,15 @@
 package dev.langchain4j.model.vertexai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class VertexAiLanguageModelIT {
 
     @Test
-    void testLanguageModel() {
+    void languageModel() {
         VertexAiLanguageModel vertexAiLanguageModel = VertexAiLanguageModel.builder()
                 .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
                 .project(System.getenv("GCP_PROJECT_ID"))

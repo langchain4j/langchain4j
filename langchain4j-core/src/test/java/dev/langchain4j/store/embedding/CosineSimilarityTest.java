@@ -1,16 +1,16 @@
 package dev.langchain4j.store.embedding;
 
+import static org.assertj.core.data.Percentage.withPercentage;
+
 import dev.langchain4j.data.embedding.Embedding;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.data.Percentage.withPercentage;
-
 class CosineSimilarityTest implements WithAssertions {
     @Test
-    public void test_bad() {
-        Embedding embeddingA = Embedding.from(new float[]{1, 1, 1});
-        Embedding embeddingB = Embedding.from(new float[]{1, 1, 1, 1});
+    void bad() {
+        Embedding embeddingA = Embedding.from(new float[] {1, 1, 1});
+        Embedding embeddingB = Embedding.from(new float[] {1, 1, 1, 1});
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> CosineSimilarity.between(embeddingA, embeddingB))
@@ -18,17 +18,17 @@ class CosineSimilarityTest implements WithAssertions {
     }
 
     @Test
-    public void test_zeros() {
-        Embedding embeddingA = Embedding.from(new float[]{0, 0, 0});
-        Embedding embeddingB = Embedding.from(new float[]{0, 0, 0});
+    void zeros() {
+        Embedding embeddingA = Embedding.from(new float[] {0, 0, 0});
+        Embedding embeddingB = Embedding.from(new float[] {0, 0, 0});
 
         assertThat(CosineSimilarity.between(embeddingA, embeddingB)).isCloseTo(0, withPercentage(1));
     }
 
     @Test
     void should_calculate_cosine_similarity() {
-        Embedding embeddingA = Embedding.from(new float[]{1, -1, 1});
-        Embedding embeddingB = Embedding.from(new float[]{-1, 1, -1});
+        Embedding embeddingA = Embedding.from(new float[] {1, -1, 1});
+        Embedding embeddingB = Embedding.from(new float[] {-1, 1, -1});
 
         assertThat(CosineSimilarity.between(embeddingA, embeddingA)).isCloseTo(1, withPercentage(1));
         assertThat(CosineSimilarity.between(embeddingA, embeddingB)).isCloseTo(-1, withPercentage(1));

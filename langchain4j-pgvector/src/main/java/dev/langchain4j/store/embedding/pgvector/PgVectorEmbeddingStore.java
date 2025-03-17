@@ -221,21 +221,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
-        addAllInternal(ids, embeddings, null);
-        return ids;
-    }
-
-    /**
-     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
-     *
-     * @param embeddings A list of embeddings to be added to the store.
-     * @param embedded   A list of original contents that were embedded.
-     * @return A list of auto-generated IDs associated with the added embeddings.
-     */
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
-        addAllInternal(ids, embeddings, embedded);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
@@ -297,11 +283,13 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         try (Connection connection = getConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
             String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
-            whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
+            whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
             String query = String.format(
-                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, " +
-                            "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
-                    referenceVector, join(",", metadataHandler.columnsNames()), table, whereClause, minScore, maxResults);
+                    "SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, %s FROM %s " +
+                    "WHERE round(cast(float8 (embedding <=> '%s') as numeric), 8) <= round(2 - 2 * %s, 8) %s " +                    "ORDER BY embedding <=> '%s' LIMIT %s;",
+                    referenceVector, join(",", metadataHandler.columnsNames()), table, referenceVector,
+                    minScore, whereClause, referenceVector, maxResults
+            );
             try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
                 try (ResultSet resultSet = selectStmt.executeQuery()) {
                     while (resultSet.next()) {
@@ -328,13 +316,14 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(
+        addAll(
                 singletonList(id),
                 singletonList(embedding),
                 embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(
+    @Override
+    public void addAll(
             List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");

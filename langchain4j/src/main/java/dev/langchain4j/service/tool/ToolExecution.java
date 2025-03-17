@@ -1,10 +1,9 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.Objects;
 
 /**
  * Represents the execution of a tool, including the request and the result.
@@ -40,13 +39,11 @@ public class ToolExecution {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolExecution
-                && equalTo((ToolExecution) another);
+        return another instanceof ToolExecution && equalTo((ToolExecution) another);
     }
 
     private boolean equalTo(ToolExecution another) {
-        return Objects.equals(request, another.request)
-                && Objects.equals(result, another.result);
+        return Objects.equals(request, another.request) && Objects.equals(result, another.result);
     }
 
     @Override
@@ -59,10 +56,7 @@ public class ToolExecution {
 
     @Override
     public String toString() {
-        return "ToolExecution {"
-                + " request = " + request
-                + ", result = " + quoted(result)
-                + " }";
+        return "ToolExecution {" + " request = " + request + ", result = " + quoted(result) + " }";
     }
 
     public static Builder builder() {
@@ -74,8 +68,7 @@ public class ToolExecution {
         private ToolExecutionRequest request;
         private String result;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         public Builder request(ToolExecutionRequest request) {
             this.request = request;

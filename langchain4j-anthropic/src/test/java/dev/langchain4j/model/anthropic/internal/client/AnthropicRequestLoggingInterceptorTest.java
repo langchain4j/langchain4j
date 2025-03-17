@@ -43,7 +43,7 @@ class AnthropicRequestLoggingInterceptorTest {
     void should_mask_secret() {
 
         assertThat(maskSecretKey(null)).isNull();
-        assertThat(maskSecretKey("")).isEqualTo("");
+        assertThat(maskSecretKey("")).isEmpty();
         assertThat(maskSecretKey(" ")).isEqualTo(" ");
         assertThat(maskSecretKey("key")).isEqualTo("...");
         assertThat(maskSecretKey("sk-1234567890")).isEqualTo("sk-12...90");

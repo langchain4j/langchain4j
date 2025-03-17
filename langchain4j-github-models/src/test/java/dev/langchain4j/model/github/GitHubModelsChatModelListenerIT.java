@@ -34,7 +34,6 @@ class GitHubModelsChatModelListenerIT extends ChatModelListenerIT {
         return GitHubModelsChatModel.builder()
                 .gitHubToken("banana")
                 .modelName(modelName())
-                .maxRetries(1)
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();

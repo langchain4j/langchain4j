@@ -5,13 +5,15 @@ import org.junit.jupiter.api.Test;
 
 class ResponseTest implements WithAssertions {
     @Test
-    public void test_methods() {
+    void methods() {
         {
             Response<String> response = new Response<>("content");
             assertThat(response.content()).isEqualTo("content");
             assertThat(response.tokenUsage()).isNull();
             assertThat(response.finishReason()).isNull();
-            assertThat(response).hasToString("Response { content = content, tokenUsage = null, finishReason = null, metadata = {} }");
+            assertThat(response)
+                    .hasToString(
+                            "Response { content = content, tokenUsage = null, finishReason = null, metadata = {} }");
         }
         {
             TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
@@ -20,12 +22,10 @@ class ResponseTest implements WithAssertions {
             assertThat(response.tokenUsage()).isEqualTo(tokenUsage);
             assertThat(response.finishReason()).isNull();
             assertThat(response)
-                    .hasToString(
-                            "Response { " +
-                                    "content = content, tokenUsage = TokenUsage { " +
-                                    "inputTokenCount = 1, outputTokenCount = 2, totalTokenCount = 3 }, " +
-                                    "finishReason = null, " +
-                                    "metadata = {} }");
+                    .hasToString("Response { " + "content = content, tokenUsage = TokenUsage { "
+                            + "inputTokenCount = 1, outputTokenCount = 2, totalTokenCount = 3 }, "
+                            + "finishReason = null, "
+                            + "metadata = {} }");
         }
         {
             TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
@@ -34,17 +34,15 @@ class ResponseTest implements WithAssertions {
             assertThat(response.tokenUsage()).isEqualTo(tokenUsage);
             assertThat(response.finishReason()).isEqualTo(FinishReason.LENGTH);
             assertThat(response)
-                    .hasToString(
-                            "Response { " +
-                                    "content = content, tokenUsage = TokenUsage { " +
-                                    "inputTokenCount = 1, outputTokenCount = 2, totalTokenCount = 3 }, " +
-                                    "finishReason = LENGTH, " +
-                                    "metadata = {} }");
+                    .hasToString("Response { " + "content = content, tokenUsage = TokenUsage { "
+                            + "inputTokenCount = 1, outputTokenCount = 2, totalTokenCount = 3 }, "
+                            + "finishReason = LENGTH, "
+                            + "metadata = {} }");
         }
     }
 
     @Test
-    public void test_equals_hashCode() {
+    void equals_hash_code() {
         String content1 = "content";
         String content2 = "changed";
         TokenUsage tokenUsage1 = new TokenUsage(1, 2, 3);
@@ -73,9 +71,8 @@ class ResponseTest implements WithAssertions {
     }
 
     @Test
-    public void test_builders() {
-        assertThat(new Response<>("content"))
-                .isEqualTo(Response.from("content"));
+    void builders() {
+        assertThat(new Response<>("content")).isEqualTo(Response.from("content"));
 
         TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
 
@@ -85,6 +82,5 @@ class ResponseTest implements WithAssertions {
 
         assertThat(new Response<>("content", tokenUsage, FinishReason.LENGTH))
                 .isEqualTo(Response.from("content", tokenUsage, FinishReason.LENGTH));
-
     }
 }

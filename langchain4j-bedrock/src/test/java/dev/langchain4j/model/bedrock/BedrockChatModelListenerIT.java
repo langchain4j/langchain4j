@@ -35,6 +35,6 @@ class BedrockChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return software.amazon.awssdk.services.bedrockruntime.model.ValidationException.class;
     }
 }

@@ -10,7 +10,7 @@ import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
@@ -53,9 +53,10 @@ public class CohereScoringModel implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static CohereScoringModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
@@ -71,7 +72,7 @@ public class CohereScoringModel implements ScoringModel {
                         .collect(toList()))
                 .build();
 
-        RerankResponse response = withRetry(() -> client.rerank(request), maxRetries);
+        RerankResponse response = withRetryMappingExceptions(() -> client.rerank(request), maxRetries);
 
         List<Double> scores = response.getResults().stream()
                 .sorted(comparingInt(Result::getIndex))

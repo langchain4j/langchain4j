@@ -5,14 +5,14 @@ import org.junit.jupiter.api.Test;
 
 class SystemMessageTest implements WithAssertions {
     @Test
-    public void test_builders() {
+    void builders() {
         assertThat(new SystemMessage("text"))
                 .isEqualTo(SystemMessage.from("text"))
                 .isEqualTo(SystemMessage.systemMessage("text"));
     }
 
     @Test
-    public void test_methods() {
+    void methods() {
         SystemMessage message = new SystemMessage("text");
         assertThat(message.text()).isEqualTo("text");
         assertThat(message.type()).isEqualTo(ChatMessageType.SYSTEM);
@@ -21,7 +21,7 @@ class SystemMessageTest implements WithAssertions {
     }
 
     @Test
-    public void test_equals_hashCode() {
+    void equals_hash_code() {
         SystemMessage s1 = new SystemMessage("text");
         SystemMessage s2 = new SystemMessage("text");
 
@@ -37,9 +37,6 @@ class SystemMessageTest implements WithAssertions {
                 .isNotEqualTo(s3)
                 .doesNotHaveSameHashCodeAs(s3);
 
-        assertThat(s3)
-                .isEqualTo(s3)
-                .isEqualTo(s4)
-                .hasSameHashCodeAs(s4);
+        assertThat(s3).isEqualTo(s3).isEqualTo(s4).hasSameHashCodeAs(s4);
     }
 }

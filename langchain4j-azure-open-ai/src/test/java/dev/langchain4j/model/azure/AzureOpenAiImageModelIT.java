@@ -1,23 +1,22 @@
 package dev.langchain4j.model.azure;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+
 import com.azure.ai.openai.models.ImageGenerationResponseFormat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Base64;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
-
 @Disabled("Run manually before release. Expensive to run very often.")
-public class AzureOpenAiImageModelIT {
+class AzureOpenAiImageModelIT {
 
     @Test
     void should_generate_image_with_url() {

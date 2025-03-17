@@ -8,6 +8,10 @@ import lombok.Setter;
 
 import java.util.Map;
 
+/**
+ * @deprecated please use {@link BedrockChatModel}
+ */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @Setter
 @Builder

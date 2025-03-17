@@ -23,7 +23,12 @@ public enum ChatMessageType {
     /**
      * A message from a tool.
      */
-    TOOL_EXECUTION_RESULT(ToolExecutionResultMessage.class);
+    TOOL_EXECUTION_RESULT(ToolExecutionResultMessage.class),
+
+    /**
+     * A custom message.
+     */
+    CUSTOM(CustomMessage.class);
 
     private final Class<? extends ChatMessage> messageClass;
 

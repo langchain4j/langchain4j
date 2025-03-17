@@ -1,18 +1,17 @@
 package dev.langchain4j.model.jina.internal.client;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.jina.internal.api.*;
+import java.io.IOException;
+import java.time.Duration;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
-
-import java.io.IOException;
-import java.time.Duration;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public class JinaClient {
 
@@ -49,8 +48,8 @@ public class JinaClient {
 
     public JinaEmbeddingResponse embed(JinaEmbeddingRequest request) {
         try {
-            retrofit2.Response<JinaEmbeddingResponse> retrofitResponse
-                    = jinaApi.embed(request, authorizationHeader).execute();
+            retrofit2.Response<JinaEmbeddingResponse> retrofitResponse =
+                    jinaApi.embed(request, authorizationHeader).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -63,8 +62,8 @@ public class JinaClient {
 
     public JinaRerankingResponse rerank(JinaRerankingRequest request) {
         try {
-            retrofit2.Response<JinaRerankingResponse> retrofitResponse
-                    = jinaApi.rerank(request, authorizationHeader).execute();
+            retrofit2.Response<JinaRerankingResponse> retrofitResponse =
+                    jinaApi.rerank(request, authorizationHeader).execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();

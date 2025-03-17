@@ -1,44 +1,48 @@
 package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * The response context. It contains {@link ChatModelResponse}, corresponding {@link ChatModelRequest} and attributes.
+ * The chat response context.
+ * It contains {@link ChatResponse}, corresponding {@link ChatRequest}, {@link ModelProvider} and attributes.
  * The attributes can be used to pass data between methods of a {@link ChatModelListener}
  * or between multiple {@link ChatModelListener}s.
  */
 @Experimental
 public class ChatModelResponseContext {
 
-    private final ChatModelResponse response;
-    private final ChatModelRequest request;
+    private final ChatResponse chatResponse;
+    private final ChatRequest chatRequest;
+    private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
-    public ChatModelResponseContext(ChatModelResponse response,
-                                    ChatModelRequest request,
+    public ChatModelResponseContext(ChatResponse chatResponse,
+                                    ChatRequest chatRequest,
+                                    ModelProvider modelProvider,
                                     Map<Object, Object> attributes) {
-        this.response = ensureNotNull(response, "response");
-        this.request = ensureNotNull(request, "request");
+        this.chatResponse = ensureNotNull(chatResponse, "chatResponse");
+        this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
+        this.modelProvider = modelProvider;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
-    /**
-     * @return The response from the {@link ChatLanguageModel}.
-     */
-    public ChatModelResponse response() {
-        return response;
+    public ChatResponse chatResponse() {
+        return chatResponse;
     }
 
-    /**
-     * @return The request to the {@link ChatLanguageModel} the response corresponds to.
-     */
-    public ChatModelRequest request() {
-        return request;
+    public ChatRequest chatRequest() {
+        return chatRequest;
+    }
+
+    public ModelProvider modelProvider() {
+        return modelProvider;
     }
 
     /**

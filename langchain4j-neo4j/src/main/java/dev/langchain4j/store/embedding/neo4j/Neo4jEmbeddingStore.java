@@ -3,6 +3,8 @@ package dev.langchain4j.store.embedding.neo4j;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +21,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 import org.neo4j.driver.Driver;
@@ -166,43 +169,39 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .toList();
-        addAllInternal(ids, embeddings, embedded);
-        return ids;
-    }
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
 
-    @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        var embeddingValue = Values.value(referenceEmbedding.vector());
+        var embeddingValue = Values.value(request.queryEmbedding().vector());
 
         try (var session = session()) {
             Map<String, Object> params = Map.of("indexName", indexName,
                     "embeddingValue", embeddingValue,
-                    "minScore", minScore,
-                    "maxResults", maxResults);
-            return session
-                    .run("""
-						CALL db.index.vector.queryNodes($indexName, $maxResults, $embeddingValue)
-						YIELD node, score
-						WHERE score >= $minScore
-						""" + retrievalQuery, 
-                        params)
-                    .list(item -> Neo4jEmbeddingUtils.toEmbeddingMatch(this, item));
+                    "minScore", request.minScore(),
+                    "maxResults", request.maxResults());
+
+            List<EmbeddingMatch<TextSegment>> matches = session
+                .run("""
+                        CALL db.index.vector.queryNodes($indexName, $maxResults, $embeddingValue)
+                        YIELD node, score
+                        WHERE score >= $minScore
+                        """ + retrievalQuery,
+                    params)
+                .list(item -> toEmbeddingMatch(this, item));
+
+            return new EmbeddingSearchResult<>(matches);
         }
     }
 
     /*
     Private methods
     */
-    
+
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("[do not add empty embeddings to neo4j]");
             return;

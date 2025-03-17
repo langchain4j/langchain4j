@@ -1,7 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -11,18 +10,20 @@ import java.util.function.Consumer;
 
 /**
  * Represents a token stream from language model to which you can subscribe and receive updates
- * when a new token is available, when language model finishes streaming, or when an error occurs during streaming.
+ * when a new partial response (usually a single token) is available,
+ * when language model finishes streaming, or when an error occurs during streaming.
  * It is intended to be used as a return type in AI Service.
  */
 public interface TokenStream {
 
     /**
-     * The provided consumer will be invoked every time a new token from a language model is available.
+     * The provided consumer will be invoked every time a new partial response (usually a single token)
+     * from a language model is available.
      *
-     * @param tokenHandler lambda that consumes tokens of the response
+     * @param partialResponseHandler lambda that will be invoked when language model generates new partial response
      * @return token stream instance used to configure or start stream processing
      */
-    TokenStream onNext(Consumer<String> tokenHandler);
+    TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
 
     /**
      * The provided consumer will be invoked if any {@link Content}s are retrieved using {@link RetrievalAugmentor}.
@@ -45,12 +46,12 @@ public interface TokenStream {
     TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
 
     /**
-     * The provided consumer will be invoked when a language model finishes streaming a response.
+     * The provided handler will be invoked when a language model finishes streaming a response.
      *
-     * @param completionHandler lambda that will be invoked when language model finishes streaming
+     * @param completeResponseHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
      */
-    TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler);
+    TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler);
 
     /**
      * The provided consumer will be invoked when an error occurs during streaming.

@@ -34,7 +34,6 @@ class GitHubModelsStreamingChatModelListenerIT extends StreamingChatModelListene
         return GitHubModelsStreamingChatModel.builder()
                 .gitHubToken("banana")
                 .modelName(modelName())
-                .maxRetries(1)
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();

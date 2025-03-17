@@ -5,25 +5,27 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.chat.request.json.JsonBooleanSchema.JSON_BOOLEAN_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonNumberSchema.JSON_NUMBER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +33,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 public abstract class AiServicesWithJsonSchemaIT {
+    // TODO move to common, use parameterized tests
+    // TODO test the same for streaming models
 
     protected abstract List<ChatLanguageModel> models();
 
@@ -48,7 +52,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_primitives() {
+    protected void should_extract_pojo_with_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -68,36 +72,34 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.height).isEqualTo(1.78);
             assertThat(person.married).isFalse();
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("age", JSON_INTEGER_SCHEMA);
-                                                put("height", JSON_NUMBER_SCHEMA);
-                                                put("married", JSON_BOOLEAN_SCHEMA);
-                                            }})
-                                            .required("name", "age", "height", "married")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addIntegerProperty("age")
+                                                    .addNumberProperty("height")
+                                                    .addBooleanProperty("married")
+                                                    .required("name", "age", "height", "married")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor2 {
 
         class Person {
 
             String name;
-            Address address;
+            Address shippingAddress;
+            Address billingAddress;
         }
 
         class Address {
@@ -109,7 +111,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_nested_pojo() {
+    protected void should_extract_pojo_with_nested_pojo() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -118,42 +120,45 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             PersonExtractor2 personExtractor = AiServices.create(PersonExtractor2.class, model);
 
-            String text = "Klaus lives in Langley Falls";
+            String text = "Klaus wants a delivery to Langley Falls, but his company is in New York";
 
             // when
             PersonExtractor2.Person person = personExtractor.extractPersonFrom(text);
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.address.city).isEqualTo("Langley Falls");
+            assertThat(person.shippingAddress.city).isEqualTo("Langley Falls");
+            assertThat(person.billingAddress.city).isEqualTo("New York");
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("address", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("city", JSON_STRING_SCHEMA);
-                                                        }})
-                                                        .required("city")
-                                                        .additionalProperties(false)
-                                                        .build());
-                                            }})
-                                            .required("name", "address")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty(
+                                                            "shippingAddress",
+                                                            JsonObjectSchema.builder()
+                                                                    .addStringProperty("city")
+                                                                    .required("city")
+                                                                    .build())
+                                                    .addProperty(
+                                                            "billingAddress",
+                                                            JsonObjectSchema.builder()
+                                                                    .addStringProperty("city")
+                                                                    .required("city")
+                                                                    .build())
+                                                    .required("name", "shippingAddress", "billingAddress")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor3 {
 
@@ -164,15 +169,15 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
 
         enum MaritalStatus {
-
-            SINGLE, MARRIED
+            SINGLE,
+            MARRIED
         }
 
         Person extractPersonFrom(String text);
     }
 
     @Test
-    void should_extract_pojo_with_enum() {
+    protected void should_extract_pojo_with_enum() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -190,29 +195,24 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.name).isEqualTo("Klaus");
             assertThat(person.maritalStatus).isEqualTo(SINGLE);
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("maritalStatus", JsonEnumSchema.builder()
-                                                        .enumValues("SINGLE", "MARRIED")
-                                                        .build());
-                                            }})
-                                            .required("name", "maritalStatus")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addEnumProperty("maritalStatus", List.of("SINGLE", "MARRIED"))
+                                                    .required("name", "maritalStatus")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor4 {
 
@@ -226,7 +226,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_array_of_primitives() {
+    protected void should_extract_pojo_with_array_of_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -244,25 +244,25 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.name).isEqualTo("Klaus");
             assertThat(person.favouriteColors).containsExactly("orange", "green");
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("favouriteColors", JsonArraySchema.builder()
-                                                        .items(JSON_STRING_SCHEMA)
-                                                        .build());
-                                            }})
-                                            .required("name", "favouriteColors")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty(
+                                                            "favouriteColors",
+                                                            JsonArraySchema.builder()
+                                                                    .items(new JsonStringSchema())
+                                                                    .build())
+                                                    .required("name", "favouriteColors")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -279,7 +279,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_list_of_primitives() {
+    protected void should_extract_pojo_with_list_of_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -297,29 +297,28 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.name).isEqualTo("Klaus");
             assertThat(person.favouriteColors).containsExactly("orange", "green");
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("favouriteColors", JsonArraySchema.builder()
-                                                        .items(JSON_STRING_SCHEMA)
-                                                        .build());
-                                            }})
-                                            .required("name", "favouriteColors")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty(
+                                                            "favouriteColors",
+                                                            JsonArraySchema.builder()
+                                                                    .items(new JsonStringSchema())
+                                                                    .build())
+                                                    .required("name", "favouriteColors")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor6 {
 
@@ -333,7 +332,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_set_of_primitives() {
+    protected void should_extract_pojo_with_set_of_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -351,29 +350,28 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.name).isEqualTo("Klaus");
             assertThat(person.favouriteColors).containsExactly("orange", "green");
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("favouriteColors", JsonArraySchema.builder()
-                                                        .items(JSON_STRING_SCHEMA)
-                                                        .build());
-                                            }})
-                                            .required("name", "favouriteColors")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty(
+                                                            "favouriteColors",
+                                                            JsonArraySchema.builder()
+                                                                    .items(new JsonStringSchema())
+                                                                    .build())
+                                                    .required("name", "favouriteColors")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor7 {
 
@@ -392,7 +390,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_array_of_pojos() {
+    protected void should_extract_pojo_with_array_of_pojos() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -412,35 +410,31 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.pets[0].name).isEqualTo("Peanut");
             assertThat(person.pets[1].name).isEqualTo("Muffin");
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("pets", JsonArraySchema.builder()
-                                                        .items(JsonObjectSchema.builder()
-                                                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("name", JSON_STRING_SCHEMA);
-                                                                }})
-                                                                .required("name")
-                                                                .additionalProperties(false)
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "pets")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty(
+                                                            "pets",
+                                                            JsonArraySchema.builder()
+                                                                    .items(JsonObjectSchema.builder()
+                                                                            .addStringProperty("name")
+                                                                            .required("name")
+                                                                            .build())
+                                                                    .build())
+                                                    .required("name", "pets")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor8 {
 
@@ -459,7 +453,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_list_of_pojos() {
+    protected void should_extract_pojo_with_list_of_pojos() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -479,103 +473,89 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.pets.get(0).name).isEqualTo("Peanut");
             assertThat(person.pets.get(1).name).isEqualTo("Muffin");
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("pets", JsonArraySchema.builder()
-                                                        .items(JsonObjectSchema.builder()
-                                                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("name", JSON_STRING_SCHEMA);
-                                                                }})
-                                                                .required("name")
-                                                                .additionalProperties(false)
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "pets")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty(
+                                                            "pets",
+                                                            JsonArraySchema.builder()
+                                                                    .items(JsonObjectSchema.builder()
+                                                                            .addStringProperty("name")
+                                                                            .required("name")
+                                                                            .build())
+                                                                    .build())
+                                                    .required("name", "pets")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
 
-
-    interface PersonExtractor9 {
-
-        class Person {
-
-            String name;
-            Set<Pet> pets;
-        }
-
-        class Pet {
-
-            String name;
-        }
-
-        Person extractPersonFrom(String text);
-    }
-
     @Test
-    void should_extract_pojo_with_set_of_pojos() {
+    protected void should_extract_pojo_with_set_of_pojos() {
+
+        record Pet(String name) {
+        }
+
+        record Person(String name, Set<Pet> pets) {
+        }
+
+        interface PersonExtractor {
+
+            Person extractPersonFrom(String text);
+        }
 
         for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            PersonExtractor9 personExtractor = AiServices.create(PersonExtractor9.class, model);
+            PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, model);
 
             String text = "Klaus has 2 pets: Peanut and Muffin";
 
             // when
-            PersonExtractor9.Person person = personExtractor.extractPersonFrom(text);
+            Person person = personExtractor.extractPersonFrom(text);
 
             // then
-            assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.pets).hasSize(2);
-            Iterator<PersonExtractor9.Pet> iterator = person.pets.iterator();
-            assertThat(iterator.next().name).isEqualTo("Peanut");
-            assertThat(iterator.next().name).isEqualTo("Muffin");
+            assertThat(person).isEqualTo(new Person("Klaus", Set.of(
+                    new Pet("Peanut"),
+                    new Pet("Muffin")
+            )));
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("pets", JsonArraySchema.builder()
-                                                        .items(JsonObjectSchema.builder()
-                                                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("name", JSON_STRING_SCHEMA);
-                                                                }})
-                                                                .required("name")
-                                                                .additionalProperties(false)
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "pets")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty(
+                                                            "pets",
+                                                            JsonArraySchema.builder()
+                                                                    .items(JsonObjectSchema.builder()
+                                                                            .addStringProperty("name")
+                                                                            .required("name")
+                                                                            .build())
+                                                                    .build())
+                                                    .required("name", "pets")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor10 {
 
@@ -586,15 +566,16 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
 
         enum Group {
-
-            A, B, C
+            A,
+            B,
+            C
         }
 
         Person extractPersonFrom(String text);
     }
 
     @Test
-    void should_extract_pojo_with_array_of_enums() {
+    protected void should_extract_pojo_with_array_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -610,34 +591,36 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.groups).containsExactly(PersonExtractor10.Group.A, PersonExtractor10.Group.C);
+            assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor10.Group.A, PersonExtractor10.Group.C);
 
-
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("groups", JsonArraySchema.builder()
-                                                        .items(JsonEnumSchema.builder()
-                                                                .enumValues("A", "B", "C")
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "groups")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                        {
+                                                            put("name", new JsonStringSchema());
+                                                            put(
+                                                                    "groups",
+                                                                    JsonArraySchema.builder()
+                                                                            .items(JsonEnumSchema.builder()
+                                                                                    .enumValues("A", "B", "C")
+                                                                                    .build())
+                                                                            .build());
+                                                        }
+                                                    })
+                                                    .required("name", "groups")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor11 {
 
@@ -648,15 +631,16 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
 
         enum Group {
-
-            A, B, C
+            A,
+            B,
+            C
         }
 
         Person extractPersonFrom(String text);
     }
 
     @Test
-    void should_extract_pojo_with_list_of_enums() {
+    protected void should_extract_pojo_with_list_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -672,33 +656,36 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.groups).containsExactly(PersonExtractor11.Group.A, PersonExtractor11.Group.C);
+            assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor11.Group.A, PersonExtractor11.Group.C);
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("groups", JsonArraySchema.builder()
-                                                        .items(JsonEnumSchema.builder()
-                                                                .enumValues("A", "B", "C")
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "groups")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                        {
+                                                            put("name", new JsonStringSchema());
+                                                            put(
+                                                                    "groups",
+                                                                    JsonArraySchema.builder()
+                                                                            .items(JsonEnumSchema.builder()
+                                                                                    .enumValues("A", "B", "C")
+                                                                                    .build())
+                                                                            .build());
+                                                        }
+                                                    })
+                                                    .required("name", "groups")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor12 {
 
@@ -709,15 +696,16 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
 
         enum Group {
-
-            A, B, C
+            A,
+            B,
+            C
         }
 
         Person extractPersonFrom(String text);
     }
 
     @Test
-    void should_extract_pojo_with_set_of_enums() {
+    protected void should_extract_pojo_with_set_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -733,33 +721,36 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.groups).containsExactly(PersonExtractor12.Group.A, PersonExtractor12.Group.C);
+            assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor12.Group.A, PersonExtractor12.Group.C);
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("groups", JsonArraySchema.builder()
-                                                        .items(JsonEnumSchema.builder()
-                                                                .enumValues("A", "B", "C")
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "groups")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                        {
+                                                            put("name", new JsonStringSchema());
+                                                            put(
+                                                                    "groups",
+                                                                    JsonArraySchema.builder()
+                                                                            .items(JsonEnumSchema.builder()
+                                                                                    .enumValues("A", "B", "C")
+                                                                                    .build())
+                                                                            .build());
+                                                        }
+                                                    })
+                                                    .required("name", "groups")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
-
 
     interface PersonExtractor13 {
 
@@ -775,7 +766,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_local_date_time_fields() {
+    protected void should_extract_pojo_with_local_date_time_fields() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -793,69 +784,139 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.name).isEqualTo("Klaus");
             assertThat(person.birthDate).isEqualTo(LocalDate.of(1976, 8, 12));
             assertThat(person.birthTime).isEqualTo(LocalTime.of(14, 43));
-            assertThat(person.birthDateTime)
-                    .isEqualTo(LocalDateTime.of(1976, 8, 12, 14, 43));
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("birthDate", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("year", JSON_INTEGER_SCHEMA);
-                                                            put("month", JSON_INTEGER_SCHEMA);
-                                                            put("day", JSON_INTEGER_SCHEMA);
-                                                        }})
-                                                        .required("year", "month", "day")
-                                                        .additionalProperties(false)
-                                                        .build());
-                                                put("birthTime", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("hour", JSON_INTEGER_SCHEMA);
-                                                            put("minute", JSON_INTEGER_SCHEMA);
-                                                            put("second", JSON_INTEGER_SCHEMA);
-                                                            put("nano", JSON_INTEGER_SCHEMA);
-                                                        }})
-                                                        .required("hour", "minute", "second", "nano")
-                                                        .additionalProperties(false)
-                                                        .build());
-                                                put("birthDateTime", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("date", JsonObjectSchema.builder()
-                                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("year", JSON_INTEGER_SCHEMA);
-                                                                        put("month", JSON_INTEGER_SCHEMA);
-                                                                        put("day", JSON_INTEGER_SCHEMA);
-                                                                    }})
-                                                                    .required("year", "month", "day")
-                                                                    .additionalProperties(false)
-                                                                    .build());
-                                                            put("time", JsonObjectSchema.builder()
-                                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("hour", JSON_INTEGER_SCHEMA);
-                                                                        put("minute", JSON_INTEGER_SCHEMA);
-                                                                        put("second", JSON_INTEGER_SCHEMA);
-                                                                        put("nano", JSON_INTEGER_SCHEMA);
-                                                                    }})
-                                                                    .required("hour", "minute", "second", "nano")
-                                                                    .additionalProperties(false)
-                                                                    .build());
-                                                        }})
-                                                        .required("date", "time")
-                                                        .additionalProperties(false)
-                                                        .build());
-                                            }})
-                                            .required("name", "birthDate", "birthTime", "birthDateTime")
-                                            .additionalProperties(false)
+            assertThat(person.birthDateTime).isEqualTo(LocalDateTime.of(1976, 8, 12, 14, 43));
+
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                        {
+                                                            put("name", new JsonStringSchema());
+                                                            put(
+                                                                    "birthDate",
+                                                                    JsonObjectSchema.builder()
+                                                                            .properties(
+                                                                                    new LinkedHashMap<
+                                                                                            String,
+                                                                                            JsonSchemaElement>() {
+                                                                                        {
+                                                                                            put(
+                                                                                                    "year",
+                                                                                                    new JsonIntegerSchema());
+                                                                                            put(
+                                                                                                    "month",
+                                                                                                    new JsonIntegerSchema());
+                                                                                            put(
+                                                                                                    "day",
+                                                                                                    new JsonIntegerSchema());
+                                                                                        }
+                                                                                    })
+                                                                            .required("year", "month", "day")
+                                                                            .build());
+                                                            put(
+                                                                    "birthTime",
+                                                                    JsonObjectSchema.builder()
+                                                                            .properties(
+                                                                                    new LinkedHashMap<
+                                                                                            String,
+                                                                                            JsonSchemaElement>() {
+                                                                                        {
+                                                                                            put(
+                                                                                                    "hour",
+                                                                                                    new JsonIntegerSchema());
+                                                                                            put(
+                                                                                                    "minute",
+                                                                                                    new JsonIntegerSchema());
+                                                                                            put(
+                                                                                                    "second",
+                                                                                                    new JsonIntegerSchema());
+                                                                                            put(
+                                                                                                    "nano",
+                                                                                                    new JsonIntegerSchema());
+                                                                                        }
+                                                                                    })
+                                                                            .required(
+                                                                                    "hour", "minute", "second", "nano")
+                                                                            .build());
+                                                            put(
+                                                                    "birthDateTime",
+                                                                    JsonObjectSchema.builder()
+                                                                            .properties(
+                                                                                    new LinkedHashMap<
+                                                                                            String,
+                                                                                            JsonSchemaElement>() {
+                                                                                        {
+                                                                                            put(
+                                                                                                    "date",
+                                                                                                    JsonObjectSchema
+                                                                                                            .builder()
+                                                                                                            .properties(
+                                                                                                                    new LinkedHashMap<
+                                                                                                                            String,
+                                                                                                                            JsonSchemaElement>() {
+                                                                                                                        {
+                                                                                                                            put(
+                                                                                                                                    "year",
+                                                                                                                                    new JsonIntegerSchema());
+                                                                                                                            put(
+                                                                                                                                    "month",
+                                                                                                                                    new JsonIntegerSchema());
+                                                                                                                            put(
+                                                                                                                                    "day",
+                                                                                                                                    new JsonIntegerSchema());
+                                                                                                                        }
+                                                                                                                    })
+                                                                                                            .required(
+                                                                                                                    "year",
+                                                                                                                    "month",
+                                                                                                                    "day")
+                                                                                                            .build());
+                                                                                            put(
+                                                                                                    "time",
+                                                                                                    JsonObjectSchema
+                                                                                                            .builder()
+                                                                                                            .properties(
+                                                                                                                    new LinkedHashMap<
+                                                                                                                            String,
+                                                                                                                            JsonSchemaElement>() {
+                                                                                                                        {
+                                                                                                                            put(
+                                                                                                                                    "hour",
+                                                                                                                                    new JsonIntegerSchema());
+                                                                                                                            put(
+                                                                                                                                    "minute",
+                                                                                                                                    new JsonIntegerSchema());
+                                                                                                                            put(
+                                                                                                                                    "second",
+                                                                                                                                    new JsonIntegerSchema());
+                                                                                                                            put(
+                                                                                                                                    "nano",
+                                                                                                                                    new JsonIntegerSchema());
+                                                                                                                        }
+                                                                                                                    })
+                                                                                                            .required(
+                                                                                                                    "hour",
+                                                                                                                    "minute",
+                                                                                                                    "second",
+                                                                                                                    "nano")
+                                                                                                            .build());
+                                                                                        }
+                                                                                    })
+                                                                            .required("date", "time")
+                                                                            .build());
+                                                        }
+                                                    })
+                                                    .required("name", "birthDate", "birthTime", "birthDateTime")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -872,7 +933,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_return_result_with_pojo() {
+    protected void should_return_result_with_pojo() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -890,23 +951,161 @@ public abstract class AiServicesWithJsonSchemaIT {
             // then
             assertThat(person.name).isEqualTo("Klaus");
 
-            verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                            }})
-                                            .required("name")
-                                            .additionalProperties(false)
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                        {
+                                                            put("name", new JsonStringSchema());
+                                                        }
+                                                    })
+                                                    .required("name")
+                                                    .build())
                                             .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
             verify(model).supportedCapabilities();
         }
+    }
+
+    interface PersonExtractor15 {
+
+        class Person {
+
+            String name;
+            List<Person> children;
+        }
+
+        Person extractPersonFrom(String text);
+    }
+
+    @Test
+    @EnabledIf("supportsRecursion")
+    void should_extract_pojo_with_recursion() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            PersonExtractor15 personExtractor = AiServices.create(PersonExtractor15.class, model);
+
+            String text = "Francine has 2 children: Steve and Hayley";
+
+            // when
+            PersonExtractor15.Person person = personExtractor.extractPersonFrom(text);
+
+            // then
+            assertThat(person.name).isEqualTo("Francine");
+            assertThat(person.children).hasSize(2);
+            assertThat(person.children.get(0).name).isEqualTo("Steve");
+            assertThat(person.children.get(0).children).isNullOrEmpty();
+            assertThat(person.children.get(1).name).isEqualTo("Hayley");
+            assertThat(person.children.get(1).children).isNullOrEmpty();
+
+            String reference = generateUUIDFrom(PersonExtractor15.Person.class.getName());
+
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty(
+                                                            "children",
+                                                            JsonArraySchema.builder()
+                                                                    .items(JsonReferenceSchema.builder()
+                                                                            .reference(reference)
+                                                                            .build())
+                                                                    .build())
+                                                    .required("name", "children")
+                                                    .definitions(Map.of(
+                                                            reference,
+                                                            JsonObjectSchema.builder()
+                                                                    .addStringProperty("name")
+                                                                    .addProperty(
+                                                                            "children",
+                                                                            JsonArraySchema.builder()
+                                                                                    .items(
+                                                                                            JsonReferenceSchema
+                                                                                                    .builder()
+                                                                                                    .reference(
+                                                                                                            reference)
+                                                                                                    .build())
+                                                                                    .build())
+                                                                    .required("name", "children")
+                                                                    .build()))
+                                                    .build())
+                                            .build())
+                                    .build())
+                            .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface PersonExtractor16 {
+
+        class Person {
+
+            UUID id;
+            String name;
+        }
+
+        Person extractPersonFrom(String text);
+    }
+
+    @Test
+    protected void should_extract_pojo_with_uuid() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            PersonExtractor16 personExtractor = AiServices.create(PersonExtractor16.class, model);
+
+            String text = """
+                    Klaus can be identified by the following IDs:
+                    - 12345
+                    - 567b229a-6b0a-4f1e-9006-448cd9dfbfda
+                    - Klaus12345
+                    """;
+
+            // when
+            PersonExtractor16.Person person = personExtractor.extractPersonFrom(text);
+
+            // then
+            assertThat(person.name).isEqualTo("Klaus");
+            assertThat(person.id).isEqualTo(UUID.fromString("567b229a-6b0a-4f1e-9006-448cd9dfbfda"));
+
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("id", "String in a UUID format")
+                                                    .addStringProperty("name")
+                                                    .required("id", "name")
+                                                    .build())
+                                            .build())
+                                    .build())
+                            .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    protected boolean supportsRecursion() {
+        return false;
     }
 }

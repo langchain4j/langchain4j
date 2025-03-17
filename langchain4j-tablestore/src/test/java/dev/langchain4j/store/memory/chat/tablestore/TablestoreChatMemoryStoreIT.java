@@ -1,5 +1,10 @@
 package dev.langchain4j.store.memory.chat.tablestore;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.alicloud.openservices.tablestore.SyncClient;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -9,19 +14,13 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ENDPOINT", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_INSTANCE_NAME", matches = ".+")
@@ -30,8 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class TablestoreChatMemoryStoreIT {
 
     private final TablestoreChatMemoryStore chatMemoryStore;
-    private final static String USER_ID = "someUserId";
-
+    private static final String USER_ID = "someUserId";
 
     public TablestoreChatMemoryStoreIT() {
         String endpoint = System.getenv("TABLESTORE_ENDPOINT");
@@ -39,12 +37,8 @@ class TablestoreChatMemoryStoreIT {
         String accessKeyId = System.getenv("TABLESTORE_ACCESS_KEY_ID");
         String accessKeySecret = System.getenv("TABLESTORE_ACCESS_KEY_SECRET");
 
-        chatMemoryStore = new TablestoreChatMemoryStore(new SyncClient(
-                endpoint,
-                accessKeyId,
-                accessKeySecret,
-                instanceName)
-        );
+        chatMemoryStore =
+                new TablestoreChatMemoryStore(new SyncClient(endpoint, accessKeyId, accessKeySecret, instanceName));
 
         chatMemoryStore.init();
     }
@@ -58,7 +52,7 @@ class TablestoreChatMemoryStoreIT {
     }
 
     @Test
-    void test_should_insert_items() {
+    void should_insert_items() {
         // When
         String chatSessionId = "chat-" + UUID.randomUUID();
 

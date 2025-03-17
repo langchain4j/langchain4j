@@ -1,19 +1,12 @@
 package dev.langchain4j.internal;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.junit.jupiter.api.Test;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
-import com.google.gson.annotations.SerializedName;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class JsonTest {
 
@@ -26,13 +19,15 @@ class JsonTest {
 
     String json = Json.toJson(testData);
 
+    // language=json
     assertThat(json)
-      .isEqualTo(
-        "{\n" +
-        "  \"sampleDate\": \"2023-01-15\",\n" +
-        "  \"sampleDateTime\": \"2023-01-15T10:20:00\",\n" +
-        "  \"some_value\": \"value\"\n" +
-        "}"
+      .isEqualToIgnoringWhitespace(
+        """
+        {
+          "sampleDate": "2023-01-15",
+          "sampleDateTime": "2023-01-15T10:20:00",
+          "some_value": "value"
+        }"""
       );
 
     TestData deserializedData = Json.fromJson(json, TestData.class);
@@ -42,48 +37,11 @@ class JsonTest {
     assertThat(deserializedData.getSomeValue()).isEqualTo(testData.getSomeValue());
   }
 
-  @Test
-  void toInputStreamWorksForList() throws IOException {
-    List<TestObject> testObjects = Arrays.asList(
-            new TestObject("John", LocalDate.of(2021, 8, 17), LocalDateTime.of(2021, 8, 17, 14, 20)),
-            new TestObject("Jane", LocalDate.of(2021, 8, 16), LocalDateTime.of(2021, 8, 16, 13, 19))
-    );
-
-    String expectedJson = "[{" +
-            "\"name\":\"John\"," +
-            "\"date\":\"2021-08-17\"," +
-            "\"dateTime\":\"2021-08-17T14:20:00\"" +
-            "},{" +
-            "\"name\":\"Jane\"," +
-            "\"date\":\"2021-08-16\"," +
-            "\"dateTime\":\"2021-08-16T13:19:00\"" +
-            "}]";
-
-    InputStream inputStream = Json.toInputStream(testObjects, List.class);
-    try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
-      String resultJson = bufferedReader.lines().collect(Collectors.joining());
-
-      assertThat(resultJson).isEqualTo(expectedJson);
-    }
-  }
-
-  private static class TestObject {
-    private final String name;
-    private final LocalDate date;
-    private final LocalDateTime dateTime;
-
-    public TestObject(String name, LocalDate date, LocalDateTime dateTime) {
-      this.name = name;
-      this.date = date;
-      this.dateTime = dateTime;
-    }
-  }
-
   private static class TestData {
 
     private LocalDate sampleDate;
     private LocalDateTime sampleDateTime;
-    @SerializedName("some_value")
+    @JsonProperty("some_value")
     private String someValue;
 
     LocalDate getSampleDate() {

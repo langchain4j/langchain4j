@@ -7,11 +7,11 @@ import org.junit.jupiter.api.Test;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LocalAiLanguageModelIT extends AbstractLocalAiInfrastructure {
+class LocalAiLanguageModelIT {
 
     LanguageModel model = LocalAiLanguageModel.builder()
-            .baseUrl(localAi.getBaseUrl())
-            .modelName("ggml-gpt4all-j")
+            .baseUrl("http://localhost:8082/v1")
+            .modelName("gpt-4")
             .maxTokens(3)
             .logRequests(true)
             .logResponses(true)

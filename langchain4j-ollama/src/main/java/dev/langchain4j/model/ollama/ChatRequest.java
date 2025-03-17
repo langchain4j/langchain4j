@@ -1,13 +1,13 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -17,15 +17,17 @@ class ChatRequest {
     private String model;
     private List<Message> messages;
     private Options options;
+
+    @JsonSerialize(using = FormatSerializer.class)
     private String format;
+
     private Boolean stream;
     private List<Tool> tools;
 
-    ChatRequest() {
+    ChatRequest() {}
 
-    }
-
-    ChatRequest(String model, List<Message> messages, Options options, Boolean stream, List<Tool> tools, String format) {
+    ChatRequest(
+            String model, List<Message> messages, Options options, Boolean stream, List<Tool> tools, String format) {
         this.model = model;
         this.messages = messages;
         this.options = options;

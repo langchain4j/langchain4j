@@ -1,11 +1,10 @@
 package dev.langchain4j.service.output;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Iterator;
 import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 class EnumSetOutputParserTest {
 
@@ -19,7 +18,7 @@ class EnumSetOutputParserTest {
     }
 
     @Test()
-    public void ensureThatOrderIsPreserved() {
+    void ensureThatOrderIsPreserved() {
         // Given
         String toParse = "SUNNY\nRAINY";
 
@@ -28,7 +27,7 @@ class EnumSetOutputParserTest {
 
         // Then
         Iterator<Enum> enumIterator = parsed.iterator();
-        assertEquals(Weather.SUNNY, enumIterator.next());
-        assertEquals(Weather.RAINY, enumIterator.next());
+        assertThat(enumIterator.next()).isEqualTo(Weather.SUNNY);
+        assertThat(enumIterator.next()).isEqualTo(Weather.RAINY);
     }
 }

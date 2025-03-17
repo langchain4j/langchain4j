@@ -4,7 +4,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -89,7 +88,7 @@ public class TestUtils {
     }
 
     public static List<String> repeat(String s, int n) {
-        val result = new ArrayList<String>();
+        final var result = new ArrayList<String>();
         for (int i = 0; i < n; i++) {
             result.add(s);
         }

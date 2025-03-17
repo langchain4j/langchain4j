@@ -4,11 +4,34 @@ import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.OpenAIServiceVersion;
-import com.azure.ai.openai.models.*;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinition;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinitionFunction;
+import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormatJsonSchema;
+import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsTextResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsToolCall;
+import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
+import com.azure.ai.openai.models.ChatCompletionsToolSelection;
+import com.azure.ai.openai.models.ChatMessageImageContentItem;
+import com.azure.ai.openai.models.ChatMessageImageUrl;
+import com.azure.ai.openai.models.ChatMessageTextContentItem;
+import com.azure.ai.openai.models.ChatRequestAssistantMessage;
+import com.azure.ai.openai.models.ChatRequestMessage;
+import com.azure.ai.openai.models.ChatRequestSystemMessage;
+import com.azure.ai.openai.models.ChatRequestToolMessage;
+import com.azure.ai.openai.models.ChatRequestUserMessage;
+import com.azure.ai.openai.models.ChatResponseMessage;
+import com.azure.ai.openai.models.CompletionsFinishReason;
+import com.azure.ai.openai.models.CompletionsUsage;
+import com.azure.ai.openai.models.FunctionCall;
+import com.azure.ai.openai.models.ImageGenerationData;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.HttpClient;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
@@ -20,33 +43,51 @@ import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 class InternalAzureOpenAiHelper {
-
-    private static final Logger logger = LoggerFactory.getLogger(InternalAzureOpenAiHelper.class);
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
@@ -70,7 +111,7 @@ class InternalAzureOpenAiHelper {
         clientOptions.setProxyOptions(proxyOptions);
 
         String userAgent = DEFAULT_USER_AGENT;
-        if (userAgentSuffix!=null && !userAgentSuffix.isEmpty()) {
+        if (userAgentSuffix != null && !userAgentSuffix.isEmpty()) {
             userAgent = DEFAULT_USER_AGENT + "-" + userAgentSuffix;
         }
         List<Header> headers = new ArrayList<>();
@@ -160,7 +201,8 @@ class InternalAzureOpenAiHelper {
                             } else if (content instanceof ImageContent) {
                                 ImageContent imageContent = (ImageContent) content;
                                 if (imageContent.image().url() == null) {
-                                    throw new IllegalArgumentException("Image URL is not present. Base64 encoded images are not supported at the moment.");
+                                    throw new UnsupportedFeatureException("Image URL is not present. " +
+                                            "Base64 encoded images are not supported at the moment.");
                                 }
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageContent.image().url().toString());
                                 return new ChatMessageImageContentItem(imageUrl);
@@ -209,16 +251,20 @@ class InternalAzureOpenAiHelper {
     }
 
     private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
-        FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
+        ChatCompletionsFunctionToolDefinitionFunction functionDefinition = new ChatCompletionsFunctionToolDefinitionFunction(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
-        functionDefinition.setParameters(toOpenAiParameters(toolSpecification.parameters()));
+        functionDefinition.setParameters(getParameters(toolSpecification));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
     public static ChatCompletionsToolSelection toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.parameters()).toString());
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
         return ChatCompletionsToolSelection.fromBinaryData(BinaryData.fromObject(toolToCall));
+    }
+
+    private static BinaryData getParameters(ToolSpecification toolSpecification) {
+        return toOpenAiParameters(toolSpecification.parameters());
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -228,12 +274,12 @@ class InternalAzureOpenAiHelper {
         NO_PARAMETER_DATA.put("properties", new HashMap<>());
     }
 
-    private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
+    private static BinaryData toOpenAiParameters(JsonObjectSchema toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
         }
-        parameters.setProperties(toolParameters.properties());
+        parameters.setProperties(toMap(toolParameters.properties()));
         parameters.setRequired(toolParameters.required());
         return BinaryData.fromObject(parameters);
     }
@@ -338,59 +384,58 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    /**
-     * Support for Responsible AI (content filtered by Azure OpenAI for violence, self harm, or hate).
-     */
-    public static FinishReason contentFilterManagement(HttpResponseException httpResponseException, String contentFilterCode) {
-        FinishReason exceptionFinishReason = FinishReason.OTHER;
-        if (httpResponseException.getValue() instanceof Map) {
-            try {
-                Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
-                Object errorMap = error.get("error");
-                if (errorMap instanceof Map) {
-                    Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
-                    Object errorCode = errorDetails.get("code");
-                    if (errorCode instanceof String) {
-                        String code = (String) errorCode;
-                        if (contentFilterCode.equals(code)) {
-                            // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
-                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
-                        }
-                    }
-                }
-            } catch (ClassCastException classCastException) {
-                logger.error("Error parsing error response from Azure OpenAI", classCastException);
-            }
-        }
-        return exceptionFinishReason;
+    static ChatRequest createListenerRequest(ChatCompletionsOptions options,
+                                             List<ChatMessage> messages,
+                                             List<ToolSpecification> toolSpecifications) {
+        return ChatRequest.builder()
+                .messages(messages)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(options.getModel())
+                        .temperature(options.getTemperature())
+                        .topP(options.getTopP())
+                        .maxOutputTokens(options.getMaxTokens())
+                        .toolSpecifications(toolSpecifications)
+                        .build())
+                .build();
     }
 
-    static ChatModelRequest createModelListenerRequest(ChatCompletionsOptions options,
-                                                       List<ChatMessage> messages,
-                                                       List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-            .model(options.getModel())
-            .temperature(options.getTemperature())
-            .topP(options.getTopP())
-            .maxTokens(options.getMaxTokens())
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
-    }
-
-    static ChatModelResponse createModelListenerResponse(String responseId,
-                                                         String responseModel,
-                                                         Response<AiMessage> response) {
+    static ChatResponse createListenerResponse(String responseId,
+                                               String responseModel,
+                                               Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
 
-        return ChatModelResponse.builder()
-            .id(responseId)
-            .model(responseModel)
-            .tokenUsage(response.tokenUsage())
-            .finishReason(response.finishReason())
-            .aiMessage(response.content())
-            .build();
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .id(responseId)
+                        .modelName(responseModel)
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
+    }
+
+    static ChatCompletionsResponseFormat toAzureOpenAiResponseFormat(ResponseFormat responseFormat, boolean strict) {
+        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
+            return new ChatCompletionsTextResponseFormat();
+        } else if (responseFormat.type() != ResponseFormatType.JSON) {
+            throw new IllegalArgumentException("Unsupported response format: " + responseFormat);
+        }
+
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
+            return new ChatCompletionsJsonResponseFormat();
+        } else {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+                throw new IllegalArgumentException("For Azure OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: " + jsonSchema.rootElement().getClass());
+            }
+            ChatCompletionsJsonSchemaResponseFormatJsonSchema schema = new ChatCompletionsJsonSchemaResponseFormatJsonSchema(jsonSchema.name());
+            schema.setStrict(strict);
+            Map<String, Object> schemaMap = toMap(jsonSchema.rootElement(), strict);
+            schema.setSchema(BinaryData.fromObject(schemaMap));
+            return new ChatCompletionsJsonSchemaResponseFormat(schema);
+        }
     }
 }

@@ -9,8 +9,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Bedrock Amazon Titan chat model
+ * @deprecated please use {@link BedrockChatModel} instead
  */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @SuperBuilder
 public class BedrockTitanChatModel extends AbstractBedrockChatModel<BedrockTitanChatModelResponse> {

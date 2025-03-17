@@ -12,7 +12,7 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.stream.Collectors.toList;
 
@@ -58,9 +58,11 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
     }
 
     /**
-     * @deprecated use {@code builder()} instead and explicitly set the base URL and, if required, other parameters.
+     * @deprecated Please use {@code builder()} instead, and explicitly set the baseUrl and,
+     * if necessary, other parameters.
+     * <b>The default value for baseUrl will be removed in future releases!</b>
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static OvhAiEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
@@ -73,7 +75,7 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
                 .input(textSegments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
-        EmbeddingResponse response = withRetry(() -> client.embed((request)), maxRetries);
+        EmbeddingResponse response = withRetryMappingExceptions(() -> client.embed((request)), maxRetries);
 
         List<Embedding> embeddings = response.getEmbeddings()
                 .stream()

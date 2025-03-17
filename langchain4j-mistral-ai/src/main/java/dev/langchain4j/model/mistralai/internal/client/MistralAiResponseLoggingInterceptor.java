@@ -1,16 +1,16 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
-import lombok.extern.slf4j.Slf4j;
+import static dev.langchain4j.model.mistralai.internal.client.MistralAiRequestLoggingInterceptor.getHeaders;
+
+import java.io.IOException;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
-import static dev.langchain4j.model.mistralai.internal.client.MistralAiRequestLoggingInterceptor.getHeaders;
-
-@Slf4j
 class MistralAiResponseLoggingInterceptor implements Interceptor {
+    private static final Logger log = LoggerFactory.getLogger(MistralAiResponseLoggingInterceptor.class);
 
     @Override
     public Response intercept(Chain chain) throws IOException {
@@ -22,8 +22,11 @@ class MistralAiResponseLoggingInterceptor implements Interceptor {
 
     private void log(Response response) {
         try {
-            log.debug("Response:\n- status code: {}\n- headers: {}\n- body: {}",
-                    response.code(), getHeaders(response.headers()), this.getBody(response));
+            log.debug(
+                    "Response:\n- status code: {}\n- headers: {}\n- body: {}",
+                    response.code(),
+                    getHeaders(response.headers()),
+                    this.getBody(response));
         } catch (Exception e) {
             log.warn("Error while logging response: {}", e.getMessage());
         }

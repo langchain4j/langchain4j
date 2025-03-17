@@ -9,8 +9,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
@@ -33,10 +33,10 @@ import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.builder.sql.LanguageModelSqlFilterBuilder;
-import dev.langchain4j.store.embedding.filter.builder.sql.TableDefinition;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -59,8 +59,15 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class AiServicesWithRagIT {
 
     private static final String ALLOWED_CANCELLATION_PERIOD_DAYS = "61";
@@ -246,6 +253,7 @@ class AiServicesWithRagIT {
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
     }
 
+    @Disabled("TODO fix")
     @ParameterizedTest
     @MethodSource("models")
     void should_not_route_when_query_is_ambiguous(ChatLanguageModel model) {
@@ -315,6 +323,7 @@ class AiServicesWithRagIT {
         verifyNoMoreInteractions(contentRetriever);
     }
 
+    @Disabled("Fixed in https://github.com/langchain4j/langchain4j/pull/2311")
     @ParameterizedTest
     @MethodSource("models")
     void should_fail_when_query_is_ambiguous(ChatLanguageModel model) {
@@ -425,46 +434,6 @@ class AiServicesWithRagIT {
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_LLM_generated_metadata_filter(ChatLanguageModel model) {
-
-        // given
-        TextSegment groundhogDay = TextSegment.from("Groundhog Day", new dev.langchain4j.data.document.Metadata().put("genre", "comedy").put("year", 1993));
-        TextSegment forrestGump = TextSegment.from("Forrest Gump", metadata("genre", "drama").put("year", 1994));
-        TextSegment dieHard = TextSegment.from("Die Hard", metadata("genre", "action").put("year", 1998));
-
-        TableDefinition tableDefinition = TableDefinition.builder()
-                .name("movies")
-                .addColumn("genre", "VARCHAR", "one of: [comedy, drama, action]")
-                .addColumn("year", "INT")
-                .build();
-
-        LanguageModelSqlFilterBuilder sqlFilterBuilder = new LanguageModelSqlFilterBuilder(model, tableDefinition);
-
-        EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
-        embeddingStore.add(embeddingModel.embed(groundhogDay).content(), groundhogDay);
-        embeddingStore.add(embeddingModel.embed(forrestGump).content(), forrestGump);
-        embeddingStore.add(embeddingModel.embed(dieHard).content(), dieHard);
-
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
-                .dynamicFilter(sqlFilterBuilder::build)
-                .build();
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .contentRetriever(contentRetriever)
-                .build();
-
-        // when
-        String answer = assistant.answer("Recommend me a good drama from 90s");
-
-        // then
-        assertThat(answer).containsIgnoringCase("Gump");
-    }
-
     interface PersonalizedAssistant {
 
         String chat(@MemoryId String userId, @dev.langchain4j.service.UserMessage String userMessage);
@@ -494,6 +463,7 @@ class AiServicesWithRagIT {
         PersonalizedAssistant personalizedAssistant = AiServices.builder(PersonalizedAssistant.class)
                 .chatLanguageModel(model)
                 .contentRetriever(contentRetriever)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
 
         // when

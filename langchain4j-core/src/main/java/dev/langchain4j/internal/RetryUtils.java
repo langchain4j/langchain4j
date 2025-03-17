@@ -1,17 +1,20 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.exception.LangChain4jException;
+import dev.langchain4j.exception.NonRetriableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 import java.util.concurrent.Callable;
 
-import static java.lang.String.format;
-
 /**
  * Utility class for retrying actions.
  */
 public final class RetryUtils {
+
+    private static final Random RANDOM = new Random();
+
     private RetryUtils() {}
 
     private static final Logger log = LoggerFactory.getLogger(RetryUtils.class);
@@ -28,6 +31,7 @@ public final class RetryUtils {
      * This class encapsulates a retry policy.
      */
     public static final class RetryPolicy {
+
         /**
          * This class encapsulates a retry policy builder.
          */
@@ -143,10 +147,9 @@ public final class RetryUtils {
          * @return The jitter delay in milliseconds.
          */
         public int jitterDelayMillis(int attempt) {
-            Random rand = new Random();
             double delay = rawDelayMs(attempt);
             double jitter = delay * jitterScale;
-            return (int) (delay + rand.nextInt((int) jitter));
+            return (int) (delay + RANDOM.nextInt((int) jitter));
         }
 
         /**
@@ -190,12 +193,14 @@ public final class RetryUtils {
             while (true) {
                 try {
                     return action.call();
+                } catch (NonRetriableException e) {
+                    throw e;
                 } catch (Exception e) {
                     if (attempt >= maxAttempts) {
-                        throw new RuntimeException(e);
+                        throw e instanceof RuntimeException re ? re : new LangChain4jException(e);
                     }
 
-                    log.warn(format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);
+                    log.warn(String.format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);
 
                     sleep(attempt);
                 }
@@ -219,6 +224,19 @@ public final class RetryUtils {
      * If the action fails on all attempts, it throws a RuntimeException.
      *
      * @param action      The action to be executed.
+     * @param <T> The type of the result of the action.
+     * @return The result of the action if it is successful.
+     * @throws RuntimeException if the action fails on all attempts.
+     */
+    public static <T> T withRetry(Callable<T> action) {
+        return DEFAULT_RETRY_POLICY.withRetry(action);
+    }
+
+    /**
+     * This method attempts to execute a given action up to a specified number of times with a 1-second delay.
+     * If the action fails on all attempts, it throws a RuntimeException.
+     *
+     * @param action      The action to be executed.
      * @param maxAttempts The maximum number of attempts to execute the action.
      * @param <T> The type of the result of the action.
      *
@@ -231,14 +249,46 @@ public final class RetryUtils {
 
     /**
      * This method attempts to execute a given action up to a specified number of times with a 1-second delay.
-     * If the action fails on all attempts, it throws a RuntimeException.
+     * If the action fails, the Exception causing the failure will be mapped with the default {@link ExceptionMapper}.
      *
      * @param action      The action to be executed.
      * @param <T> The type of the result of the action.
+     *
      * @return The result of the action if it is successful.
      * @throws RuntimeException if the action fails on all attempts.
      */
-    public static <T> T withRetry(Callable<T> action) {
-        return DEFAULT_RETRY_POLICY.withRetry(action);
+    public static <T> T withRetryMappingExceptions(Callable<T> action) {
+        return withRetry(() -> ExceptionMapper.DEFAULT.withExceptionMapper(action));
+    }
+
+    /**
+     * This method attempts to execute a given action up to a specified number of times with a 1-second delay.
+     * If the action fails, the Exception causing the failure will be mapped with the default {@link ExceptionMapper}.
+     *
+     * @param action      The action to be executed.
+     * @param maxAttempts The maximum number of attempts to execute the action.
+     * @param <T> The type of the result of the action.
+     *
+     * @return The result of the action if it is successful.
+     * @throws RuntimeException if the action fails on all attempts.
+     */
+    public static <T> T withRetryMappingExceptions(Callable<T> action, int maxAttempts) {
+        return withRetryMappingExceptions(action, maxAttempts, ExceptionMapper.DEFAULT);
+    }
+
+    /**
+     * This method attempts to execute a given action up to a specified number of times with a 1-second delay.
+     * If the action fails, the Exception causing the failure will be mapped with the provided {@link ExceptionMapper}.
+     *
+     * @param action          The action to be executed.
+     * @param maxAttempts     The maximum number of attempts to execute the action.
+     * @param exceptionMapper The ExceptionMapper used to translate the exception that caused the failure of the action invocation.
+     * @param <T> The type of the result of the action.
+     *
+     * @return The result of the action if it is successful.
+     * @throws RuntimeException if the action fails on all attempts.
+     */
+    public static <T> T withRetryMappingExceptions(Callable<T> action, int maxAttempts, ExceptionMapper exceptionMapper) {
+        return withRetry(() -> exceptionMapper.withExceptionMapper(action), maxAttempts);
     }
 }

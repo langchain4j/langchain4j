@@ -20,5 +20,6 @@ public interface AnthropicApi {
     @Headers({"content-type: application/json"})
     Call<ResponseBody> streamMessage(@Header(X_API_KEY) String apiKey,
                                      @Header("anthropic-version") String version,
+                                     @Header("anthropic-beta") String beta,
                                      @Body AnthropicCreateMessageRequest request);
 }

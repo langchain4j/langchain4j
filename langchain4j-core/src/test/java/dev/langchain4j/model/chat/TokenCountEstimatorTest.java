@@ -5,31 +5,34 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class TokenCountEstimatorTest implements WithAssertions {
     public static class WhitespaceSplitTokenCountEstimator implements TokenCountEstimator {
         @Override
         public int estimateTokenCount(List<ChatMessage> messages) {
-            return messages.stream().mapToInt(message -> message.text().split("\\s+").length).sum();
+            return messages.stream()
+                    .mapToInt(message -> message.text().split("\\s+").length)
+                    .sum();
         }
     }
 
     @Test
-    public void test() {
+    void test() {
         TokenCountEstimator estimator = new WhitespaceSplitTokenCountEstimator();
 
         assertThat(estimator.estimateTokenCount("foo bar, baz")).isEqualTo(3);
 
-        assertThat(estimator.estimateTokenCount(new UserMessage("foo bar, baz"))).isEqualTo(3);
+        assertThat(estimator.estimateTokenCount(new UserMessage("foo bar, baz")))
+                .isEqualTo(3);
 
         assertThat(estimator.estimateTokenCount(new Prompt("foo bar, baz"))).isEqualTo(3);
 
-        assertThat(estimator.estimateTokenCount(TextSegment.from("foo bar, baz"))).isEqualTo(3);
+        assertThat(estimator.estimateTokenCount(TextSegment.from("foo bar, baz")))
+                .isEqualTo(3);
 
         {
             List<ChatMessage> messages = new ArrayList<>();

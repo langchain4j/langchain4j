@@ -1,13 +1,15 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiHttpException;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Collections.singletonList;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
 
     @Override
@@ -19,7 +21,7 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
-                .maxCompletionTokens(maxTokens())
+                .maxTokens(maxTokens())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -43,6 +45,6 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return OpenAiHttpException.class;
+        return HttpException.class;
     }
 }

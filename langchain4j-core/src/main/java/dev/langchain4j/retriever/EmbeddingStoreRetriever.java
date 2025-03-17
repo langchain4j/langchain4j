@@ -1,7 +1,7 @@
 package dev.langchain4j.retriever;
 
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
@@ -14,7 +14,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * @deprecated use {@link EmbeddingStoreContentRetriever} instead.
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
 
     private final EmbeddingStore<TextSegment> embeddingStore;

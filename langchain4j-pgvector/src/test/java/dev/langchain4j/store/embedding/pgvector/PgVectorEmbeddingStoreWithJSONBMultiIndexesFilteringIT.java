@@ -1,13 +1,12 @@
 package dev.langchain4j.store.embedding.pgvector;
 
+import java.util.Arrays;
+import java.util.Collections;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.Arrays;
-import java.util.Collections;
-
 @Testcontainers
-public class PgVectorEmbeddingStoreWithJSONBMultiIndexesFilteringIT extends PgVectorEmbeddingStoreConfigIT {
+class PgVectorEmbeddingStoreWithJSONBMultiIndexesFilteringIT extends PgVectorEmbeddingStoreConfigIT {
     @BeforeAll
     static void beforeAll() {
         MetadataStorageConfig config = DefaultMetadataStorageConfig.builder()

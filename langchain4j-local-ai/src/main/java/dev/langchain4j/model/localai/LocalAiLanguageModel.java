@@ -1,16 +1,16 @@
 package dev.langchain4j.model.localai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.completion.CompletionRequest;
-import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiLanguageModelBuilderFactory;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
+import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -44,12 +44,9 @@ public class LocalAiLanguageModel implements LanguageModel {
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
         this.client = OpenAiClient.builder()
-                .openAiApiKey("ignored")
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
@@ -71,7 +68,7 @@ public class LocalAiLanguageModel implements LanguageModel {
                 .maxTokens(maxTokens)
                 .build();
 
-        CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
+        CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request).execute(), maxRetries);
 
         return Response.from(
                 response.text(),

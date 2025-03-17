@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 class ToolExecutionRequestTest implements WithAssertions {
     @Test
-    public void test_builder() {
+    void builder() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("id")
                 .name("name")
@@ -17,12 +17,11 @@ class ToolExecutionRequestTest implements WithAssertions {
         assertThat(request.arguments()).isEqualTo("arguments");
 
         assertThat(request)
-                .hasToString(
-                        "ToolExecutionRequest { id = \"id\", name = \"name\", arguments = \"arguments\" }");
+                .hasToString("ToolExecutionRequest { id = \"id\", name = \"name\", arguments = \"arguments\" }");
     }
 
     @Test
-    public void test_equals_hash() {
+    void equals_hash() {
         ToolExecutionRequest req1 = ToolExecutionRequest.builder()
                 .id("id")
                 .name("name")
@@ -43,41 +42,38 @@ class ToolExecutionRequestTest implements WithAssertions {
                 .hasSameHashCodeAs(req2);
 
         assertThat(ToolExecutionRequest.builder()
-                .id("foo")
-                .name("name")
-                .arguments("arguments")
-                .build())
+                        .id("foo")
+                        .name("name")
+                        .arguments("arguments")
+                        .build())
                 .isNotEqualTo(req1)
                 .doesNotHaveSameHashCodeAs(req1);
 
         assertThat(ToolExecutionRequest.builder()
-                .id("id")
-                .name("foo")
-                .arguments("arguments")
-                .build())
+                        .id("id")
+                        .name("foo")
+                        .arguments("arguments")
+                        .build())
                 .isNotEqualTo(req1)
                 .doesNotHaveSameHashCodeAs(req1);
 
         assertThat(ToolExecutionRequest.builder()
-                .id("id")
-                .name("name")
-                .arguments("foo")
-                .build())
+                        .id("id")
+                        .name("name")
+                        .arguments("foo")
+                        .build())
                 .isNotEqualTo(req1)
                 .doesNotHaveSameHashCodeAs(req1);
     }
 
     @Test
-    public void test_allNull() {
-        ToolExecutionRequest request = ToolExecutionRequest.builder()
-                .build();
+    void all_null() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder().build();
 
         assertThat(request.id()).isNull();
         assertThat(request.name()).isNull();
         assertThat(request.arguments()).isNull();
 
-        assertThat(request)
-                .isEqualTo(ToolExecutionRequest.builder().build());
+        assertThat(request).isEqualTo(ToolExecutionRequest.builder().build());
     }
-
 }

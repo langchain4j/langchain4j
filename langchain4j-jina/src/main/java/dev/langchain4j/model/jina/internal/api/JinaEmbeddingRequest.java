@@ -17,5 +17,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 public class JinaEmbeddingRequest {
 
     public String model;
+    public Boolean lateChunking;
     public List<String> input;
 }

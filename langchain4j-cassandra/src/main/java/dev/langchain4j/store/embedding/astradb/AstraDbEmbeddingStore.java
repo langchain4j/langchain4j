@@ -11,8 +11,6 @@ import io.stargate.sdk.data.domain.JsonDocumentMutationResult;
 import io.stargate.sdk.data.domain.JsonDocumentResult;
 import io.stargate.sdk.data.domain.odm.Document;
 import io.stargate.sdk.data.domain.query.Filter;
-import io.stargate.sdk.data.domain.query.SelectQuery;
-import io.stargate.sdk.data.domain.query.SelectQueryBuilder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -23,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static dev.langchain4j.internal.Utils.randomUUID;
 
 /**
  * Implementation of {@link EmbeddingStore} using AstraDB.
@@ -106,7 +106,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
         return astraDBCollection
-                .insertOne(mapRecord(embedding, textSegment))
+                .insertOne(mapRecord(randomUUID(), embedding, textSegment))
                 .getDocument().getId();
     }
 
@@ -124,7 +124,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Map as a JsonDocument list.
         List<JsonDocument> recordList = embeddings
                 .stream()
-                .map(e -> mapRecord(e, null))
+                .map(e -> mapRecord(randomUUID(), e, null))
                 .collect(Collectors.toList());
 
         // No upsert needed as ids will be generated.
@@ -136,17 +136,8 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Add multiple embeddings as a single action.
-     *
-     * @param embeddingList
-     *      list of embeddings
-     * @param textSegmentList
-     *      list of text segment
-     *
-     * @return list of new row if (same order as the input)
-     */
-    public List<String> addAll(List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
         if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
             throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");
         }
@@ -154,16 +145,12 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Map as JsonDocument list
         List<JsonDocument> recordList = new ArrayList<>();
         for (int i = 0; i < embeddingList.size(); i++) {
-            recordList.add(mapRecord(embeddingList.get(i), textSegmentList.get(i)));
+            recordList.add(mapRecord(ids.get(i), embeddingList.get(i), textSegmentList.get(i)));
         }
 
         // No upsert needed (ids will be generated)
-        return astraDBCollection
-                .insertManyChunkedJsonDocuments(recordList, itemsPerChunk, concurrentThreads)
-                .stream()
-                .map(JsonDocumentMutationResult::getDocument)
-                .map(Document::getId)
-                .collect(Collectors.toList());
+        astraDBCollection
+                .insertManyChunkedJsonDocuments(recordList, itemsPerChunk, concurrentThreads);
     }
 
     /** {@inheritDoc}  */
@@ -231,8 +218,8 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return
      *      a json document
      */
-    private JsonDocument mapRecord(Embedding embedding, TextSegment textSegment) {
-        JsonDocument record = new JsonDocument().vector(embedding.vector());
+    private JsonDocument mapRecord(String id, Embedding embedding, TextSegment textSegment) {
+        JsonDocument record = new JsonDocument().id(id).vector(embedding.vector());
         if (textSegment != null) {
             record.put(KEY_ATTRIBUTES_BLOB, textSegment.text());
             textSegment.metadata().asMap().forEach(record::put);

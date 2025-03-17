@@ -7,9 +7,9 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Bedrock Anthropic Text Completions API Invoke response
- * <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-anthropic-claude-text-completion.html">...</a>
+ * @deprecated please use {@link BedrockChatModel}
  */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @Setter
 public class BedrockAnthropicCompletionChatModelResponse implements BedrockChatModelResponse {

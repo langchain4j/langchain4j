@@ -1,15 +1,17 @@
 package dev.langchain4j.model.huggingface;
 
-import dev.langchain4j.model.huggingface.client.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
+import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
+import dev.langchain4j.model.huggingface.client.Options;
+import dev.langchain4j.model.huggingface.client.Parameters;
+import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
+import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
-
 import java.time.Duration;
-
-import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class HuggingFaceLanguageModel implements LanguageModel {
 
@@ -19,13 +21,14 @@ public class HuggingFaceLanguageModel implements LanguageModel {
     private final Boolean returnFullText;
     private final Boolean waitForModel;
 
-    public HuggingFaceLanguageModel(String accessToken,
-                                    String modelId,
-                                    Duration timeout,
-                                    Double temperature,
-                                    Integer maxNewTokens,
-                                    Boolean returnFullText,
-                                    Boolean waitForModel) {
+    public HuggingFaceLanguageModel(
+            String accessToken,
+            String modelId,
+            Duration timeout,
+            Double temperature,
+            Integer maxNewTokens,
+            Boolean returnFullText,
+            Boolean waitForModel) {
         this(HuggingFaceLanguageModel.builder()
                 .accessToken(accessToken)
                 .modelId(modelId)
@@ -33,12 +36,36 @@ public class HuggingFaceLanguageModel implements LanguageModel {
                 .temperature(temperature)
                 .maxNewTokens(maxNewTokens)
                 .returnFullText(returnFullText)
-                .waitForModel(waitForModel)
-        );
+                .waitForModel(waitForModel));
+    }
+
+    public HuggingFaceLanguageModel(
+            String baseUrl,
+            String accessToken,
+            String modelId,
+            Duration timeout,
+            Double temperature,
+            Integer maxNewTokens,
+            Boolean returnFullText,
+            Boolean waitForModel) {
+        this(HuggingFaceLanguageModel.builder()
+                .baseUrl(baseUrl)
+                .accessToken(accessToken)
+                .modelId(modelId)
+                .timeout(timeout)
+                .temperature(temperature)
+                .maxNewTokens(maxNewTokens)
+                .returnFullText(returnFullText)
+                .waitForModel(waitForModel));
     }
 
     public HuggingFaceLanguageModel(Builder builder) {
         this.client = FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
+            @Override
+            public String baseUrl() {
+                return builder.baseUrl;
+            }
+
             @Override
             public String apiKey() {
                 return builder.accessToken;
@@ -70,9 +97,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
                         .maxNewTokens(maxNewTokens)
                         .returnFullText(returnFullText)
                         .build())
-                .options(Options.builder()
-                        .waitForModel(waitForModel)
-                        .build())
+                .options(Options.builder().waitForModel(waitForModel).build())
                 .build();
 
         TextGenerationResponse response = client.generate(request);
@@ -81,7 +106,8 @@ public class HuggingFaceLanguageModel implements LanguageModel {
     }
 
     public static Builder builder() {
-        for (HuggingFaceLanguageModelBuilderFactory factory : loadFactories(HuggingFaceLanguageModelBuilderFactory.class)) {
+        for (HuggingFaceLanguageModelBuilderFactory factory :
+                loadFactories(HuggingFaceLanguageModelBuilderFactory.class)) {
             return factory.get();
         }
         return new Builder();
@@ -89,13 +115,19 @@ public class HuggingFaceLanguageModel implements LanguageModel {
 
     public static final class Builder {
 
+        private String baseUrl;
         private String accessToken;
-        private String modelId = TII_UAE_FALCON_7B_INSTRUCT;
+        private String modelId;
         private Duration timeout = Duration.ofSeconds(15);
         private Double temperature;
         private Integer maxNewTokens;
         private Boolean returnFullText = false;
         private Boolean waitForModel = true;
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
 
         public Builder accessToken(String accessToken) {
             this.accessToken = accessToken;
@@ -142,7 +174,8 @@ public class HuggingFaceLanguageModel implements LanguageModel {
 
         public HuggingFaceLanguageModel build() {
             if (accessToken == null || accessToken.trim().isEmpty()) {
-                throw new IllegalArgumentException("HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
+                throw new IllegalArgumentException(
+                        "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
             }
             return new HuggingFaceLanguageModel(this);
         }
