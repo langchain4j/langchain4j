@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -34,7 +35,6 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
         return OllamaChatModel.builder()
                 .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
                 .modelName("banana")
-                .maxRetries(0)
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -43,7 +43,7 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return ModelNotFoundException.class;
     }
 
     @Override

@@ -2,6 +2,7 @@ package dev.langchain4j.model.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -14,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
@@ -50,18 +53,18 @@ public interface StreamingChatLanguageModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
+                ListenersUtil.onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+                ListenersUtil.onError(error, finalChatRequest, provider(), attributes, listeners);
                 handler.onError(error);
             }
         };
 
-        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, provider(), attributes, listeners);
         doChat(finalChatRequest, observingHandler);
     }
 
@@ -71,6 +74,10 @@ public interface StreamingChatLanguageModel {
 
     default List<ChatModelListener> listeners() {
         return Collections.emptyList();
+    }
+
+    default ModelProvider provider() {
+        return OTHER;
     }
 
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {

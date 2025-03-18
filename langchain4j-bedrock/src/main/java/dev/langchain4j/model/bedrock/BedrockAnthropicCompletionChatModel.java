@@ -8,6 +8,10 @@ import lombok.experimental.SuperBuilder;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @deprecated please use {@link BedrockChatModel} instead
+ */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Getter
 @SuperBuilder
 public class BedrockAnthropicCompletionChatModel extends AbstractBedrockChatModel<BedrockAnthropicCompletionChatModelResponse> {
