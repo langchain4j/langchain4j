@@ -9,9 +9,11 @@ import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import io.ktor.http.HttpStatusCode;
+import java.time.Duration;
 import java.util.Random;
 import me.kpavlov.aimocks.anthropic.MockAnthropic;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,11 +24,14 @@ class AnthropicChatModelErrorsTest {
 
     private static final MockAnthropic MOCK = new MockAnthropic(0, true);
 
+    public static final Duration TIMEOUT = Duration.ofSeconds(2);
+
     private static final ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey("dummy-key")
             .baseUrl(MOCK.baseUrl() + "/v1")
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
+            .timeout(TIMEOUT)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -59,18 +64,18 @@ class AnthropicChatModelErrorsTest {
         // language=json
         final var responseBody =
                 """
-                {
-                  "type": "error",
-                  "error": {
-                    "type": "%s",
-                    "message": "%s"
-                  }
-                }
-                """
+                        {
+                          "type": "error",
+                          "error": {
+                            "type": "%s",
+                            "message": "%s"
+                          }
+                        }
+                        """
                         .formatted(type, message);
 
         MOCK.messages(req -> {
-                    req.requestBodyContains(question);
+                    req.userMessageContains(question);
                 })
                 .respondsError(res -> {
                     res.setBody(responseBody);
@@ -88,5 +93,27 @@ class AnthropicChatModelErrorsTest {
                             .as("message")
                             .isEqualTo(responseBody); // not sure, if returning full body is right
                 });
+    }
+
+    @Test
+    void should_handle_timeout() {
+        // given
+        final var question = "Simulate timeout " + System.currentTimeMillis();
+        MOCK.messages(req -> {
+                    req.userMessageContains(question);
+                })
+                .responds(res -> {
+                    res.delayMillis(TIMEOUT.plusMillis(200).toMillis());
+                    res.assistantContent("You should never see this");
+                });
+
+        // when-then
+        final var chatRequest =
+                ChatRequest.builder().messages(userMessage(question)).build();
+
+        assertThatExceptionOfType(RuntimeException.class)
+                // when
+                .isThrownBy(() -> model.chat(chatRequest))
+                .withMessageContaining("timeout");
     }
 }
