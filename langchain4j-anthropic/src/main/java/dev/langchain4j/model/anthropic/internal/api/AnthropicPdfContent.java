@@ -1,13 +1,12 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.Objects;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -26,7 +25,7 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
@@ -41,8 +40,6 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
 
     @Override
     public String toString() {
-        return "AnthropicPdfContent{" +
-                "source=" + source +
-                '}';
+        return "AnthropicPdfContent{" + "source=" + source + '}';
     }
 }
