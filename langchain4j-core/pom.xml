@@ -123,14 +123,10 @@
                 <executions>
                     <execution>
                         <goals>
+                            <goal>dokka</goal>
                             <goal>javadocJar</goal>
-                            <goal>javadoc</goal>
                         </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <attach>true</attach>
-                            <outputDir>target/apidocs</outputDir>
-                        </configuration>
+                        <phase>prepare-package</phase>
                     </execution>
                 </executions>
             </plugin>

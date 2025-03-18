@@ -586,7 +586,7 @@
                     <version>${dokka.version}</version>
                     <configuration>
                         <jdkVersion>${java.version}</jdkVersion>
-                        <languageVersion>2.0</languageVersion>
+                        <languageVersion>1.9</languageVersion>
                         <dokkaPlugins>
                             <plugin>
                                 <groupId>org.jetbrains.dokka</groupId>
@@ -595,16 +595,6 @@
                             </plugin>
                         </dokkaPlugins>
                     </configuration>
-                    <executions>
-                        <execution>
-                            <goals>
-                                <goal>dokka</goal>
-                                <goal>javadoc</goal>
-                                <goal>javadocJar</goal>
-                            </goals>
-                            <phase>prepare-package</phase>
-                        </execution>
-                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>com.github.ozsie</groupId>
