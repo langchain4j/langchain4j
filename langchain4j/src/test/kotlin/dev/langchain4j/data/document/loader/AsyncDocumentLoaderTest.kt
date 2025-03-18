@@ -32,6 +32,7 @@ internal class AsyncDocumentLoaderTest {
     fun `Should load documents asynchronously`() =
         runTest {
             val document = loadAsync(documentSource, parser)
+            document.text()
             assertThat(document.text()).contains("Miles of Smiles Car Rental Services")
             assertThat(document.metadata()).isNotNull()
         }
