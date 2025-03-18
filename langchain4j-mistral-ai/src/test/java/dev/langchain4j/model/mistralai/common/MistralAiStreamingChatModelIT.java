@@ -1,12 +1,11 @@
 package dev.langchain4j.model.mistralai.common;
 
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
+
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
-
 import java.util.List;
-
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
 
 class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -20,9 +19,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatLanguageModel> models() {
-        return List.of(
-                MISTRAL_STREAMING_CHAT_MODEL
-        );
+        return List.of(MISTRAL_STREAMING_CHAT_MODEL);
     }
 
     @Override

@@ -53,7 +53,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
     private final Integer maxTokens;
     private final Boolean safePrompt;
     private final Integer randomSeed;
-    private final String responseFormat;
+    private final ResponseFormat responseFormat;
 
     private final Set<Capability> supportedCapabilities;
 
@@ -83,7 +83,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
             Integer maxTokens,
             Boolean safePrompt,
             Integer randomSeed,
-            String responseFormat,
+            ResponseFormat responseFormat,
             Boolean logRequests,
             Boolean logResponses,
             Duration timeout,
@@ -248,7 +248,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
 
         private Integer randomSeed;
 
-        private String responseFormat;
+        private ResponseFormat responseFormat;
 
         private Boolean logRequests;
 
@@ -270,15 +270,21 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        @Deprecated(forRemoval = true) // TODO move away from this and use ResponseFormat directly (?)
+        @Deprecated(forRemoval = true)
         public MistralAiStreamingChatModelBuilder responseFormat(String responseFormat) {
-            this.responseFormat = responseFormat;
+            this.responseFormat = MistralAiResponseFormatType.valueOf(responseFormat.toUpperCase())
+                    .toGenericResponseFormat();
             return this;
         }
 
-        @Deprecated(forRemoval = true) // TODO move away from this and use ResponseFormat directly (?)
+        @Deprecated(forRemoval = true)
         public MistralAiStreamingChatModelBuilder responseFormat(MistralAiResponseFormatType responseFormat) {
-            this.responseFormat = responseFormat.toString();
+            this.responseFormat = responseFormat.toGenericResponseFormat();
+            return this;
+        }
+
+        public MistralAiStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -372,11 +378,13 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        /**
-         * @return {@code this}.
-         */
         public MistralAiStreamingChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
+            return this;
+        }
+
+        public MistralAiStreamingChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = Set.copyOf(supportedCapabilities);
             return this;
         }
 

@@ -185,25 +185,18 @@ public class MistralAiMapper {
     }
 
     public static MistralAiResponseFormat toMistralAiResponseFormat(
-            ResponseFormat responseFormat, String fallbackFormat) {
+            ResponseFormat responseFormat, ResponseFormat fallbackFormat) {
         if (responseFormat == null) {
             if (fallbackFormat == null) {
                 return null;
             }
-            return switch (fallbackFormat) {
-                case "text" -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.TEXT);
-                case "json_object" -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
-                case "json_schema" -> throw new IllegalArgumentException(
-                        "json_schema response format requires a schema");
-                default -> throw new IllegalArgumentException("Unknown response format: " + fallbackFormat);
-            };
-        }
-        if (responseFormat.jsonSchema() != null) {
-            return MistralAiResponseFormat.fromSchema(responseFormat.jsonSchema());
+            responseFormat = fallbackFormat;
         }
         return switch (responseFormat.type()) {
             case TEXT -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.TEXT);
-            case JSON -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
+            case JSON -> responseFormat.jsonSchema() != null
+                    ? MistralAiResponseFormat.fromSchema(responseFormat.jsonSchema())
+                    : MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
         };
     }
 }

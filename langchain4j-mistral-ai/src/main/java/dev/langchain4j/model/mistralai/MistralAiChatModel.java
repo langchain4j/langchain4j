@@ -53,7 +53,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
     private final Integer maxTokens;
     private final Boolean safePrompt;
     private final Integer randomSeed;
-    private final String responseFormat;
+    private final ResponseFormat responseFormat;
 
     private final Integer maxRetries;
     private final Set<Capability> supportedCapabilities;
@@ -88,7 +88,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
             Integer maxTokens,
             Boolean safePrompt,
             Integer randomSeed,
-            String responseFormat,
+            ResponseFormat responseFormat,
             Duration timeout,
             Boolean logRequests,
             Boolean logResponses,
@@ -235,7 +235,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
 
         private Integer randomSeed;
 
-        private String responseFormat;
+        private ResponseFormat responseFormat;
 
         private Duration timeout;
 
@@ -259,15 +259,21 @@ public class MistralAiChatModel implements ChatLanguageModel {
             return this;
         }
 
-        @Deprecated(forRemoval = true) // TODO move away from this and on to using ResponseFormat type (?)
+        @Deprecated(forRemoval = true)
         public MistralAiChatModelBuilder responseFormat(String responseFormat) {
-            this.responseFormat = responseFormat;
+            this.responseFormat = MistralAiResponseFormatType.valueOf(responseFormat.toUpperCase())
+                    .toGenericResponseFormat();
             return this;
         }
 
-        @Deprecated(forRemoval = true) // TODO move away from this and on to using ResponseFormat type (?)
+        @Deprecated(forRemoval = true)
         public MistralAiChatModelBuilder responseFormat(MistralAiResponseFormatType responseFormat) {
-            this.responseFormat = responseFormat.toString();
+            this.responseFormat = responseFormat.toGenericResponseFormat();
+            return this;
+        }
+
+        public MistralAiChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -372,12 +378,13 @@ public class MistralAiChatModel implements ChatLanguageModel {
             return this;
         }
 
-        /**
-         * @param supportedCapabilities
-         * @return {@code this}.
-         */
         public MistralAiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
+            return this;
+        }
+
+        public MistralAiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = Set.copyOf(supportedCapabilities);
             return this;
         }
 
