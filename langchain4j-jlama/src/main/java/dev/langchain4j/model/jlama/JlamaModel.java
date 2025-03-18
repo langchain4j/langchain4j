@@ -6,7 +6,6 @@ import com.github.tjake.jlama.safetensors.DType;
 import com.github.tjake.jlama.safetensors.SafeTensorSupport;
 import com.github.tjake.jlama.safetensors.prompt.Function;
 import com.github.tjake.jlama.safetensors.prompt.Tool;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -133,11 +132,6 @@ class JlamaModel {
             JsonObjectSchema parameters = toolSpecification.parameters();
             for (Map.Entry<String, JsonSchemaElement> p : parameters.properties().entrySet()) {
                 builder.addParameter(p.getKey(), toMap(p.getValue()), parameters.required().contains(p.getKey()));
-            }
-        } else if (toolSpecification.toolParameters() != null) {
-            ToolParameters parameters = toolSpecification.toolParameters();
-            for (Map.Entry<String, Map<String, Object>> p : parameters.properties().entrySet()) {
-                builder.addParameter(p.getKey(), p.getValue(), parameters.required().contains(p.getKey()));
             }
         }
 

@@ -14,7 +14,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Collections.singletonList;
@@ -61,7 +61,7 @@ public class MistralAiModerationModel implements ModerationModel {
 
         MistralAiModerationRequest request = new MistralAiModerationRequest(modelName, inputs);
 
-        MistralAiModerationResponse response = withRetry(() -> client.moderation(request), maxRetries);
+        MistralAiModerationResponse response = withRetryMappingExceptions(() -> client.moderation(request), maxRetries);
 
         int i = 0;
         for (MistralModerationResult moderationResult : response.results()) {

@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.openai.OpenAiTokenizer.countArguments;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiTokenizerTest {
@@ -71,27 +70,6 @@ class OpenAiTokenizerTest {
 
         String text3 = String.join(" ", repeat("Hello, how are you doing? What do you want to talk about?", 100));
         assertThat(tokenizer.estimateTokenCountInText(text3)).isEqualTo(100 * 15);
-    }
-
-    @Test
-    void should_count_arguments() {
-        assertThat(countArguments(null)).isZero();
-        assertThat(countArguments("")).isZero();
-        assertThat(countArguments(" ")).isZero();
-        assertThat(countArguments("{}")).isZero();
-        assertThat(countArguments("{ }")).isZero();
-
-        assertThat(countArguments("{\"one\":1}")).isEqualTo(1);
-        assertThat(countArguments("{\"one\": 1}")).isEqualTo(1);
-        assertThat(countArguments("{\"one\" : 1}")).isEqualTo(1);
-
-        assertThat(countArguments("{\"one\":1,\"two\":2}")).isEqualTo(2);
-        assertThat(countArguments("{\"one\": 1,\"two\": 2}")).isEqualTo(2);
-        assertThat(countArguments("{\"one\" : 1,\"two\" : 2}")).isEqualTo(2);
-
-        assertThat(countArguments("{\"one\":1,\"two\":2,\"three\":3}")).isEqualTo(3);
-        assertThat(countArguments("{\"one\": 1,\"two\": 2,\"three\": 3}")).isEqualTo(3);
-        assertThat(countArguments("{\"one\" : 1,\"two\" : 2,\"three\" : 3}")).isEqualTo(3);
     }
 
     @ParameterizedTest

@@ -98,6 +98,11 @@ class AiServicesIT {
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }
+        try {
+            verify(model, atLeastOnce()).provider();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
         verifyNoMoreInteractions(model);
     }
 
