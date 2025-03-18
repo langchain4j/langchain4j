@@ -8,7 +8,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import dev.langchain4j.store.memory.chat.SingleSlotChatMemoryStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,19 +1,17 @@
-package dev.langchain4j.store.memory.chat;
+package dev.langchain4j.memory.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
 
 /**
  * Implementation of {@link ChatMemoryStore} that stores state of {@link dev.langchain4j.memory.ChatMemory} (chat messages) in-memory.
  * <p>
  * This storage mechanism is transient and does not persist data across application restarts.
  */
-public class SingleSlotChatMemoryStore implements ChatMemoryStore {
+class SingleSlotChatMemoryStore implements ChatMemoryStore {
     private List<ChatMessage> messages = new ArrayList<>();
 
     private final Object memoryId;

@@ -1,4 +1,4 @@
-package dev.langchain4j.store.memory.chat;
+package dev.langchain4j.memory.chat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
