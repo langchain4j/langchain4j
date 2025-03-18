@@ -82,6 +82,8 @@ ChatLanguageModel model = OpenAiOfficialChatModel.builder()
 
 ### Azure OpenAI configuration
 
+#### Generic configuration
+
 For Azure OpenAI, setting a `baseUrl` is mandatory, and Azure OpenAI will be automatically detected if that URL ends with `openai.azure.com`:
 
 ```java
@@ -100,6 +102,55 @@ ChatLanguageModel model = OpenAiOfficialChatModel.builder()
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .isAzure(true)
         .modelName(ChatModel.GPT_4O_MINI)
+        .build();
+```
+
+#### Passwordless authentication
+
+You can authenticate to Azure OpenAI using "passwordless" authentication, which is more secure as you won't manage the API key.
+
+To do so, you must first configure your Azure OpenAI instance to support managed identity, and then give access to this application, for example:
+
+```bash
+# Enable system managed identity on the Azure OpenAI instance
+az cognitiveservices identity assign \
+    --name <your-openai-instance-name> \
+    --resource-group <your-resource-group>
+
+# Get your logged-in identity
+az ad signed-in-user show \
+    --query id -o tsv
+    
+# Give access to the Azure OpenAI instance
+az role assignment create \
+    --role "Cognitive Services OpenAI User" \
+    --assignee <your-logged-identity-from-the-previous-command> \
+    --scope "/subscriptions/<your-subscription-id>/resourceGroups/<your-resource-group>"
+```
+
+Then, you need to add the `azure-identity` dependency to your Maven `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>com.azure</groupId>
+    <artifactId>azure-identity</artifactId>
+</dependency>
+```
+
+You can now connect to Azure OpenAI without using a password:
+
+```java
+import com.azure.identity.AuthenticationUtil;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.openai.credential.BearerTokenCredential;
+
+///  ...
+
+ChatLanguageModel model = OpenAiOfficialChatModel.builder()
+        .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
+        .credential(BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
+                new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default")))
+        .modelName(GPT_4O_MINI)
         .build();
 ```
 
