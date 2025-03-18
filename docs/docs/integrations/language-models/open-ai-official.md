@@ -113,7 +113,7 @@ To do so, you must first configure your Azure OpenAI instance to support managed
 
 ```bash
 # Enable system managed identity on the Azure OpenAI instance
-az cognitiveservices identity assign \
+az cognitiveservices account identity assign \
     --name <your-openai-instance-name> \
     --resource-group <your-resource-group>
 
@@ -137,22 +137,7 @@ Then, you need to add the `azure-identity` dependency to your Maven `pom.xml`:
 </dependency>
 ```
 
-You can now connect to Azure OpenAI without using a password:
-
-```java
-import com.azure.identity.AuthenticationUtil;
-import com.azure.identity.DefaultAzureCredentialBuilder;
-import com.openai.credential.BearerTokenCredential;
-
-///  ...
-
-ChatLanguageModel model = OpenAiOfficialChatModel.builder()
-        .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-        .credential(BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
-                new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default")))
-        .modelName(GPT_4O_MINI)
-        .build();
-```
+When no API key is configured, LangChain4j will then automatically use passwordless authentication with Azure OpenAI.
 
 ### GitHub Models configuration
 
