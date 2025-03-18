@@ -13,7 +13,7 @@ https://cloud.google.com/alloydb
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-alloydb-pg</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
