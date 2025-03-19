@@ -10,6 +10,7 @@ import java.sql.*;
 import java.util.*;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
@@ -87,15 +88,5 @@ class JSONMetadataHandler implements MetadataHandler {
         } catch (SQLException | JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static Map<String, String> toStringValueMap(Map<String, Object> map) {
-        Map<String, String> stringValueMap = new HashMap<>();
-        for (String key : map.keySet()) {
-            Object value = map.get(key);
-            String stringValue = Objects.toString(value, null);
-            stringValueMap.put(key, stringValue);
-        }
-        return stringValueMap;
     }
 }

@@ -10,9 +10,11 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -330,4 +332,14 @@ public class Utils {
 
     return unmodifiableMap(map);
   }
+
+    public static Map<String, String> toStringValueMap(Map<String, Object> map) {
+        Map<String, String> stringValueMap = new HashMap<>();
+        for (String key : map.keySet()) {
+            Object value = map.get(key);
+            String stringValue = Objects.toString(value, null);
+            stringValueMap.put(key, stringValue);
+        }
+        return stringValueMap;
+    }
 }
