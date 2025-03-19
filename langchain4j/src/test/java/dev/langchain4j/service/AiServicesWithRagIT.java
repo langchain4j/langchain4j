@@ -545,8 +545,8 @@ class AiServicesWithRagIT {
                         "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period." +
                         "4.2 If the booking period is less than 17 days, cancellations are not permitted."
         );
-        assertThat(content.textSegment().metadata("index")).isEqualTo("3");
-        assertThat(content.textSegment().metadata("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
+        assertThat(content.textSegment().metadata().getString("index")).isEqualTo("3");
+        assertThat(content.textSegment().metadata().getString("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
     }
 
     private void ingest(String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
