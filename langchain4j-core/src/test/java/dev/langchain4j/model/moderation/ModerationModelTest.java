@@ -21,7 +21,7 @@ class ModerationModelTest implements WithAssertions {
 
         @Override
         public Response<Moderation> moderate(List<ChatMessage> messages) {
-            throw new RuntimeException("not implemented");
+            return Response.from(Moderation.flagged(((UserMessage) messages.get(0)).singleText()));
         }
     }
 

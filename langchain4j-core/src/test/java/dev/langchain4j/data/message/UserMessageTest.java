@@ -7,8 +7,8 @@ import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-@SuppressWarnings("deprecation")
 class UserMessageTest implements WithAssertions {
+
     @Test
     void accessors() {
         UserMessage m = new UserMessage("name", "text");
