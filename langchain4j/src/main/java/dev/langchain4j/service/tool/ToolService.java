@@ -28,11 +28,10 @@ import java.util.function.Function;
 
 public class ToolService {
 
-    private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 100;
-
     private List<ToolSpecification> toolSpecifications;
     private Map<String, ToolExecutor> toolExecutors;
     private ToolProvider toolProvider;
+    private int maxSequentialToolsInvocations = 100;
 
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
@@ -98,6 +97,10 @@ public class ToolService {
         }
     }
 
+    public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
+    }
+
     public ToolExecutionContext executionContext(Object memoryId, UserMessage userMessage) {
         if (this.toolProvider == null) {
             return new ToolExecutionContext(this.toolSpecifications, this.toolExecutors);
@@ -126,14 +129,14 @@ public class ToolService {
             Object memoryId,
             Map<String, ToolExecutor> toolExecutors) {
         TokenUsage tokenUsageAccumulator = chatResponse.metadata().tokenUsage();
-        int executionsLeft = MAX_SEQUENTIAL_TOOL_EXECUTIONS;
+        int executionsLeft = maxSequentialToolsInvocations;
         List<ToolExecution> toolExecutions = new ArrayList<>();
 
         while (true) {
 
             if (executionsLeft-- == 0) {
                 throw runtime(
-                        "Something is wrong, exceeded %s sequential tool executions", MAX_SEQUENTIAL_TOOL_EXECUTIONS);
+                        "Something is wrong, exceeded %s sequential tool executions", maxSequentialToolsInvocations);
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();
