@@ -256,7 +256,6 @@ and update it in the `EmbeddingStore` as well to keep it in sync.
 - `Metadata.getString(String key)` / `getInteger(String key)` / etc., returns a value of the `Metadata` entry, casting it to the required type
 - `Metadata.containsKey(String key)` checks whether `Metadata` contains an entry with the specified key
 - `Metadata.remove(String key)` removes an entry from the `Metadata` by key
-- `Metadata.merge(String key)` removes an entry from the `Metadata` by key
 - `Metadata.copy()` returns a copy of the `Metadata`
 - `Metadata.toMap()` converts `Metadata` into a `Map`
 - `Metadata.merge(Metadata)` merges the current `Metadata` with another `Metadata`

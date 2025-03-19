@@ -334,6 +334,10 @@ public class Utils {
   }
 
     public static Map<String, String> toStringValueMap(Map<String, Object> map) {
+        if (map == null) {
+            return null;
+        }
+
         Map<String, String> stringValueMap = new HashMap<>();
         for (String key : map.keySet()) {
             Object value = map.get(key);

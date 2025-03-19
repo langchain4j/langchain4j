@@ -77,10 +77,10 @@ class ColumnsMetadataHandler implements MetadataHandler {
         Map<String, Object> metadataMap = metadata.toMap();
         int i = 0;
         // only column names fields will be stored
-        for (String c : this.columnsName) {
+        for (String columnName : this.columnsName) {
             try {
-                // TODO convert to string?
-                upsertStmt.setObject(parameterInitialIndex + i, Objects.toString(metadataMap.get(c), null), Types.OTHER);
+                String metadataValue = Objects.toString(metadataMap.get(columnName), null);
+                upsertStmt.setObject(parameterInitialIndex + i, metadataValue, Types.OTHER);
                 i++;
             } catch (SQLException e) {
                 throw new RuntimeException(e);
