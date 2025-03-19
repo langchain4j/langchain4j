@@ -83,9 +83,19 @@ class JSONMetadataHandler implements MetadataHandler {
     public void setMetadata(PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata) {
         try {
             upsertStmt.setObject(parameterInitialIndex,
-                    OBJECT_MAPPER.writeValueAsString(metadata.asMap()), Types.OTHER);
+                    OBJECT_MAPPER.writeValueAsString(toStringValueMap(metadata.toMap())), Types.OTHER);
         } catch (SQLException | JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Map<String, String> toStringValueMap(Map<String, Object> map) {
+        Map<String, String> stringValueMap = new HashMap<>();
+        for (String key : map.keySet()) {
+            Object value = map.get(key);
+            String stringValue = Objects.toString(value, null);
+            stringValueMap.put(key, stringValue);
+        }
+        return stringValueMap;
     }
 }

@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -73,11 +74,13 @@ class ColumnsMetadataHandler implements MetadataHandler {
 
     @Override
     public void setMetadata(PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata) {
+        Map<String, Object> metadataMap = metadata.toMap();
         int i = 0;
         // only column names fields will be stored
         for (String c : this.columnsName) {
             try {
-                upsertStmt.setObject(parameterInitialIndex + i, metadata.get(c), Types.OTHER);
+                // TODO convert to string?
+                upsertStmt.setObject(parameterInitialIndex + i, Objects.toString(metadataMap.get(c), null), Types.OTHER);
                 i++;
             } catch (SQLException e) {
                 throw new RuntimeException(e);
