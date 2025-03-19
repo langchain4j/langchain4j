@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -12,9 +13,11 @@ import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.request.json.JsonTypeArraySchema;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.StreamSupport;
 
 class ToolSpecificationHelper {
 
@@ -41,70 +44,81 @@ class ToolSpecificationHelper {
      * to a JsonSchemaElement object that describes the tool's arguments.
      */
     static JsonSchemaElement jsonNodeToJsonSchemaElement(JsonNode node) {
-        String nodeType = node.get("type").asText();
-        if (nodeType.equals("object")) {
-            JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
-            JsonNode required = node.get("required");
-            if (required != null) {
-                builder.required(toStringArray((ArrayNode) required));
-            }
-            if (node.has("additionalProperties")) {
-                builder.additionalProperties(node.get("additionalProperties").asBoolean(false));
-            }
-            JsonNode description = node.get("description");
-            if (description != null) {
-                builder.description(description.asText());
-            }
-            JsonNode properties = node.get("properties");
-            if (properties != null) {
-                ObjectNode propertiesObject = (ObjectNode) properties;
-                for (Map.Entry<String, JsonNode> property : propertiesObject.properties()) {
-                    builder.addProperty(property.getKey(), jsonNodeToJsonSchemaElement(property.getValue()));
+        if (node.get("type").getNodeType() != JsonNodeType.ARRAY) {
+            String nodeType = node.get("type").asText();
+            if (nodeType.equals("object")) {
+                JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
+                JsonNode required = node.get("required");
+                if (required != null) {
+                    builder.required(toStringArray((ArrayNode) required));
                 }
-            }
-            return builder.build();
-        } else if (nodeType.equals("string")) {
-            if (node.has("enum")) {
-                JsonEnumSchema.Builder builder = JsonEnumSchema.builder();
+                if (node.has("additionalProperties")) {
+                    builder.additionalProperties(
+                            node.get("additionalProperties").asBoolean(false));
+                }
+                JsonNode description = node.get("description");
+                if (description != null) {
+                    builder.description(description.asText());
+                }
+                JsonNode properties = node.get("properties");
+                if (properties != null) {
+                    ObjectNode propertiesObject = (ObjectNode) properties;
+                    for (Map.Entry<String, JsonNode> property : propertiesObject.properties()) {
+                        builder.addProperty(property.getKey(), jsonNodeToJsonSchemaElement(property.getValue()));
+                    }
+                }
+                return builder.build();
+            } else if (nodeType.equals("string")) {
+                if (node.has("enum")) {
+                    JsonEnumSchema.Builder builder = JsonEnumSchema.builder();
+                    if (node.has("description")) {
+                        builder.description(node.get("description").asText());
+                    }
+                    builder.enumValues(toStringArray((ArrayNode) node.get("enum")));
+                    return builder.build();
+                } else {
+                    JsonStringSchema.Builder builder = JsonStringSchema.builder();
+                    if (node.has("description")) {
+                        builder.description(node.get("description").asText());
+                    }
+                    return builder.build();
+                }
+            } else if (nodeType.equals("number")) {
+                JsonNumberSchema.Builder builder = JsonNumberSchema.builder();
                 if (node.has("description")) {
                     builder.description(node.get("description").asText());
                 }
-                builder.enumValues(toStringArray((ArrayNode) node.get("enum")));
+                return builder.build();
+            } else if (nodeType.equals("integer")) {
+                JsonIntegerSchema.Builder builder = JsonIntegerSchema.builder();
+                if (node.has("description")) {
+                    builder.description(node.get("description").asText());
+                }
+                return builder.build();
+            } else if (nodeType.equals("boolean")) {
+                JsonBooleanSchema.Builder builder = JsonBooleanSchema.builder();
+                if (node.has("description")) {
+                    builder.description(node.get("description").asText());
+                }
+                return builder.build();
+            } else if (nodeType.equals("array")) {
+                JsonArraySchema.Builder builder = JsonArraySchema.builder();
+                if (node.has("description")) {
+                    builder.description(node.get("description").asText());
+                }
+                builder.items(jsonNodeToJsonSchemaElement(node.get("items")));
                 return builder.build();
             } else {
-                JsonStringSchema.Builder builder = JsonStringSchema.builder();
-                if (node.has("description")) {
-                    builder.description(node.get("description").asText());
-                }
-                return builder.build();
+                throw new IllegalArgumentException("Unknown element type: " + nodeType);
             }
-        } else if (nodeType.equals("number")) {
-            JsonNumberSchema.Builder builder = JsonNumberSchema.builder();
-            if (node.has("description")) {
-                builder.description(node.get("description").asText());
-            }
-            return builder.build();
-        } else if (nodeType.equals("integer")) {
-            JsonIntegerSchema.Builder builder = JsonIntegerSchema.builder();
-            if (node.has("description")) {
-                builder.description(node.get("description").asText());
-            }
-            return builder.build();
-        } else if (nodeType.equals("boolean")) {
-            JsonBooleanSchema.Builder builder = JsonBooleanSchema.builder();
-            if (node.has("description")) {
-                builder.description(node.get("description").asText());
-            }
-            return builder.build();
-        } else if (nodeType.equals("array")) {
-            JsonArraySchema.Builder builder = JsonArraySchema.builder();
-            if (node.has("description")) {
-                builder.description(node.get("description").asText());
-            }
-            builder.items(jsonNodeToJsonSchemaElement(node.get("items")));
-            return builder.build();
         } else {
-            throw new IllegalArgumentException("Unknown element type: " + nodeType);
+            // this represents an array with multiple allowed types for items
+            JsonTypeArraySchema.Builder builder = JsonTypeArraySchema.builder();
+            String[] types = StreamSupport.stream(node.get("type").spliterator(), false)
+                    .map(JsonNode::asText)
+                    .toArray(String[]::new);
+            builder.types(types);
+            return builder.build();
         }
     }
 
