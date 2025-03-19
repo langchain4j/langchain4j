@@ -32,7 +32,7 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector();
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
         assertThat(injected).isEqualTo(userMessage);
@@ -49,7 +49,7 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector();
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
         assertThat(injected.singleText()).isEqualTo("""
@@ -70,7 +70,7 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector();
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
         assertThat(injected.singleText()).isEqualTo(
@@ -100,7 +100,7 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector(metadataKeysToInclude);
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
         assertThat(injected.singleText()).isEqualTo(
@@ -127,7 +127,7 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector();
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
         assertThat(injected.singleText()).isEqualTo(
@@ -167,7 +167,7 @@ class DefaultContentInjectorTest {
         ContentInjector injector = contentInjectorProvider.apply(metadataKeysToInclude);
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
         assertThat(injected.singleText()).isEqualTo(
@@ -215,7 +215,7 @@ class DefaultContentInjectorTest {
         ContentInjector injector = contentInjectorProvider.apply(promptTemplate);
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
         assertThat(injected.singleText()).isEqualTo(

@@ -8,7 +8,6 @@ import dev.langchain4j.rag.content.aggregator.DefaultContentAggregator;
 import dev.langchain4j.rag.content.injector.ContentInjector;
 import dev.langchain4j.rag.content.injector.DefaultContentInjector;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
@@ -136,16 +135,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             1, SECONDS,
             new SynchronousQueue<>()
         );
-    }
-
-    /**
-     * @deprecated use {@link #augment(AugmentationRequest)} instead.
-     */
-    @Override
-    @Deprecated
-    public UserMessage augment(UserMessage userMessage, Metadata metadata) {
-        AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
-        return (UserMessage) augment(augmentationRequest).chatMessage();
     }
 
     @Override
