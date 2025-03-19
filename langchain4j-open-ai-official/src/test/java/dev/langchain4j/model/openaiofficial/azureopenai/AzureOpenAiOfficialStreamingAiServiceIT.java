@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openaiofficial.azureopenai;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -10,6 +11,8 @@ class AzureOpenAiOfficialStreamingAiServiceIT extends AbstractStreamingAiService
 
     @Override
     protected List<StreamingChatLanguageModel> models() {
-        return InternalAzureOpenAiOfficialTestHelper.chatModelsStreamingNormalAndJsonStrict();
+        return InternalAzureOpenAiOfficialTestHelper.chatModelsStreamingNormalAndJsonStrict().stream()
+                .map(AbstractChatModelAndCapabilities::model)
+                .toList();
     }
 }

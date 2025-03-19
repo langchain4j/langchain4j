@@ -1,12 +1,14 @@
 package dev.langchain4j.model.mistralai.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.mistralai.MistralAiChatModel;
-
-import java.util.List;
-
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
+
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
+import dev.langchain4j.model.mistralai.MistralAiChatModel;
+import java.util.List;
 
 class MistralAiChatModelIT extends AbstractChatModelIT {
 
@@ -19,63 +21,28 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
-        return List.of(
-                MISTRAL_CHAT_MODEL
-        );
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
+        return List.of(ChatModelAndCapabilities.builder()
+                .model(MISTRAL_CHAT_MODEL)
+                .mnemonicName("mixtral_8x22b")
+                .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO check if supported
+                .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
+                .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED) // TODO implement
+                .supportsJsonResponseFormat(NOT_SUPPORTED) // TODO implement
+                .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO implement
+                .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
+                .assertExceptionType(false) // TODO fix
+                .assertResponseId(false) // TODO implement
+                .assertFinishReason(false) // TODO implement
+                .assertResponseModel(false) // TODO implement
+                .build());
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false; // TODO implement
-    }
-
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 }

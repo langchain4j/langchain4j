@@ -1,10 +1,13 @@
 package dev.langchain4j.model.openaiofficial.github;
 
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.openaiofficial.github.InternalGitHubOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
@@ -15,12 +18,13 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class GitHubOpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
         return InternalGitHubOpenAiOfficialTestHelper.chatModelsNormalAndJsonStrict();
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected AbstractChatModelAndCapabilities<ChatLanguageModel> createModelAndCapabilitiesWith(
+            ChatRequestParameters parameters) {
         OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
                 .apiKey(System.getenv("GITHUB_TOKEN"))
                 .isGitHubModels(true)
@@ -29,17 +33,17 @@ class GitHubOpenAiOfficialChatModelIT extends AbstractChatModelIT {
         if (parameters.modelName() == null) {
             openAiChatModelBuilder.modelName(CHAT_MODEL_NAME_ALTERNATE);
         }
-        return openAiChatModelBuilder.build();
+        return ChatModelAndCapabilities.builder()
+                .model(openAiChatModelBuilder.build())
+                .mnemonicName("GITHUB_MODEL")
+                .supportsModelNameParameter(NOT_SUPPORTED)
+                .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED)
+                .build();
     }
 
     @Override
     protected String customModelName() {
         return ChatModel.GPT_4O_2024_11_20.toString();
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false;
     }
 
     @Override

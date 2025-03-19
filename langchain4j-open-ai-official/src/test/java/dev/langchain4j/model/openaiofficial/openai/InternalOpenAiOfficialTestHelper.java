@@ -5,6 +5,9 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
@@ -84,10 +87,13 @@ public class InternalOpenAiOfficialTestHelper {
         }
     }
 
-    static List<ChatLanguageModel> chatModelsNormalAndJsonStrict() {
-        List<ChatLanguageModel> models = new ArrayList<>();
+    static List<AbstractChatModelAndCapabilities<ChatLanguageModel>> chatModelsNormalAndJsonStrict() {
+        List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models = new ArrayList<>();
         if (OPEN_AI_CHAT_MODEL != null) {
-            models.add(OPEN_AI_CHAT_MODEL);
+            models.add(ChatModelAndCapabilities.builder()
+                    .model(OPEN_AI_CHAT_MODEL)
+                    .mnemonicName("OPEN_AI_CHAT_MODEL")
+                    .build());
         }
         if (models.isEmpty()) {
             log.error("Testing normal model & JSON strict model: skipping tests as OpenAI API keys are not set");
@@ -117,10 +123,13 @@ public class InternalOpenAiOfficialTestHelper {
         return models;
     }
 
-    static List<StreamingChatLanguageModel> chatModelsStreamingNormalAndJsonStrict() {
-        List<StreamingChatLanguageModel> models = new ArrayList<>();
+    static List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> chatModelsStreamingNormalAndJsonStrict() {
+        List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models = new ArrayList<>();
         if (OPEN_AI_STREAMING_CHAT_MODEL != null) {
-            models.add(OPEN_AI_STREAMING_CHAT_MODEL);
+            models.add(StreamingChatModelAndCapabilities.builder()
+                    .model(OPEN_AI_STREAMING_CHAT_MODEL)
+                    .mnemonicName("OPEN_AI_STREAMING_CHAT_MODEL")
+                    .build());
         }
         if (models.isEmpty()) {
             log.error("Testing streaming models: skipping tests as OpenAI API keys are not set");

@@ -1,5 +1,15 @@
 package dev.langchain4j.model.chat.common;
 
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.SUPPORTED;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -21,26 +31,15 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.Base64;
+import java.util.List;
+import java.util.Set;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.Base64;
-import java.util.List;
-import java.util.Set;
-
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.SUPPORTED;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
  * Contains all the common tests that every {@link ChatLanguageModel}
@@ -79,7 +78,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected abstract List<AbstractChatModelAndCapabilities<M>> models();
 
-    protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
+    protected abstract ChatResponseAndStreamingMetadata chat(M chatModel, ChatRequest chatRequest);
 
     // MESSAGES
 
@@ -250,7 +249,14 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .modelName(modelName)
                 .maxOutputTokens(1) // to save tokens
                 .build();
-        AbstractChatModelAndCapabilities<M> modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
+        AbstractChatModelAndCapabilities<M> modelAndCapabilities;
+        try {
+            modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
+        } catch (UnsupportedFeatureException e) {
+            // an UnsupportedFeatureException thrown by model instantiation is handled like a NOT_SUPPORTED flag
+            throw new org.opentest4j.TestAbortedException("Test should_respect_modelName_in_default_model_parameters "
+                    + "disabled because ModelNameParameter is NOT_SUPPORTED");
+        }
 
         if (!SUPPORTED.equals(modelAndCapabilities.supportsModelNameParameter()))
             throw new org.opentest4j.TestAbortedException("Test should_respect_modelName_in_default_model_parameters "
@@ -391,12 +397,19 @@ public abstract class AbstractBaseChatModelIT<M> {
         int maxOutputTokens = 5;
         ChatRequestParameters parameters =
                 ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
-        AbstractChatModelAndCapabilities<M> modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
-
+        AbstractChatModelAndCapabilities<M> modelAndCapabilities;
+        try {
+            modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
+        } catch (UnsupportedFeatureException e) {
+            // an UnsupportedFeatureException thrown by model instantiation is handled like a NOT_SUPPORTED flag
+            throw new org.opentest4j.TestAbortedException(
+                    "Test should_respect_maxOutputTokens_in_default_model_parameters "
+                            + "disabled because maxOutputToken is NOT_SUPPORTED");
+        }
         if (!SUPPORTED.equals(modelAndCapabilities.supportsMaxOutputTokensParameter()))
             throw new org.opentest4j.TestAbortedException(
                     "Test should_respect_maxOutputTokens_in_default_model_parameters "
-                            + "disabled because ModelNameParameter is "
+                            + "disabled because maxOutputToken is "
                             + modelAndCapabilities.supportsMaxOutputTokensParameter());
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -514,12 +527,19 @@ public abstract class AbstractBaseChatModelIT<M> {
         List<String> stopSequences = List.of("World", " World");
         ChatRequestParameters parameters =
                 ChatRequestParameters.builder().stopSequences(stopSequences).build();
-        AbstractChatModelAndCapabilities<M> modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
-
+        AbstractChatModelAndCapabilities<M> modelAndCapabilities;
+        try {
+            modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
+        } catch (UnsupportedFeatureException e) {
+            // an UnsupportedFeatureException thrown by model instanciation is handled like a NOT_SUPPORTED flag
+            throw new org.opentest4j.TestAbortedException(
+                    "Test should_respect_stopSequences_in_default_model_parameters "
+                            + "disabled because stopSequence is NOT_SUPPORTED");
+        }
         if (!SUPPORTED.equals(modelAndCapabilities.supportsStopSequencesParameter()))
             throw new org.opentest4j.TestAbortedException(
                     "Test should_respect_stopSequences_in_default_model_parameters "
-                            + "disabled because ModelNameParameter is "
+                            + "disabled because stopSequence is "
                             + modelAndCapabilities.supportsStopSequencesParameter());
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -595,12 +615,19 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
         assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class);
 
-        AbstractChatModelAndCapabilities<M> modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
-
+        AbstractChatModelAndCapabilities<M> modelAndCapabilities;
+        try {
+            modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
+        } catch (UnsupportedFeatureException e) {
+            // an UnsupportedFeatureException thrown by model instanciation is handled like a NOT_SUPPORTED flag
+            throw new org.opentest4j.TestAbortedException(
+                    "Test should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters "
+                            + "disabled because it is NOT_SUPPORTED");
+        }
         if (!SUPPORTED.equals(modelAndCapabilities.supportsMaxOutputTokensParameter()))
             throw new org.opentest4j.TestAbortedException(
                     "Test should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters "
-                            + "disabled because ModelNameParameter is "
+                            + "disabled because it is "
                             + modelAndCapabilities.supportsMaxOutputTokensParameter());
 
         ChatRequest chatRequest = ChatRequest.builder()

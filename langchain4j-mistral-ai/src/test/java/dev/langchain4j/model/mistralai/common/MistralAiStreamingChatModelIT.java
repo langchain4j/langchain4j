@@ -1,12 +1,14 @@
 package dev.langchain4j.model.mistralai.common;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
-
-import java.util.List;
-
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
+
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
+import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
+import java.util.List;
 
 class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -19,64 +21,30 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
-        return List.of(
-                MISTRAL_STREAMING_CHAT_MODEL
-        );
+    protected List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models() {
+        return List.of(StreamingChatModelAndCapabilities.builder()
+                .model(MISTRAL_STREAMING_CHAT_MODEL)
+                .mnemonicName("mixtral_8x22b")
+                .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO check if supported
+                .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
+                .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED) // TODO implement
+                .supportsJsonResponseFormat(NOT_SUPPORTED) // TODO implement
+                .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO implement
+                .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
+                .assertExceptionType(false) // TODO fix
+                .assertResponseId(false) // TODO implement
+                .assertFinishReason(false) // TODO implement
+                .assertResponseModel(false) // TODO implement
+                .assertThreads(false)
+                .build());
+        // TODO add more model configs, see OpenAiChatModelIT
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 }

@@ -1,15 +1,5 @@
 package dev.langchain4j.model.ollama.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
-import dev.langchain4j.model.ollama.LC4jOllamaContainer;
-import dev.langchain4j.model.ollama.OllamaChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-
-import java.util.List;
-
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.DISABLED;
 import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
@@ -20,6 +10,15 @@ import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2_VISION;
 import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
+
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
+import dev.langchain4j.model.ollama.LC4jOllamaContainer;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import java.util.List;
 
 class OllamaChatModelIT extends AbstractChatModelIT {
 

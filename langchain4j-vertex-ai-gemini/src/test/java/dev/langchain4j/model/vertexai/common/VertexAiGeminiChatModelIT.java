@@ -1,15 +1,14 @@
 package dev.langchain4j.model.vertexai.common;
 
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
+
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
-import org.junit.jupiter.api.AfterEach;
-
 import java.util.List;
-
-import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
+import org.junit.jupiter.api.AfterEach;
 
 class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
 
