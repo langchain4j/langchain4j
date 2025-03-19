@@ -53,9 +53,9 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                         .build(),
                 ChatModelAndCapabilities.builder()
                         .model(defaultModelBuilder()
-                            .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
-                            .strictJsonSchema(true)
-                            .build())
+                                .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+                                .strictJsonSchema(true)
+                                .build())
                         .mnemonicName("openAi chat model with RESPONSE_FORMAT_JSON_SCHEMA capability")
                         .build(),
                 ChatModelAndCapabilities.builder()
