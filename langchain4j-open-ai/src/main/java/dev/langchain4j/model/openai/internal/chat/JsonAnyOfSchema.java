@@ -22,7 +22,7 @@ public class JsonAnyOfSchema extends JsonSchemaElement {
     private final List<JsonSchemaElement> anyOf;
 
     public JsonAnyOfSchema(Builder builder) {
-        super(null);
+        super((String)null);
         this.description = builder.description;
         this.anyOf = builder.anyOf;
     }
