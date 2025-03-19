@@ -61,7 +61,7 @@
         <ai-mocks.version>0.1.10</ai-mocks.version>
         <assertj.version>3.27.3</assertj.version>
         <assertk.version>0.28.1</assertk.version>
-        <awaitility.version>4.3.0</awaitility.version>
+        <awaitility.version>4.2.2</awaitility.version>
         <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
         <azure-ai-openai.version>1.0.0-beta.14</azure-ai-openai.version>
         <azure-sdk.version>1.2.31</azure-sdk.version>
@@ -77,7 +77,7 @@
         <jtokkit.version>1.1.0</jtokkit.version>
         <junit.version>5.11.3</junit.version>
         <kotest.version>5.9.1</kotest.version>
-        <kotlin.version>2.1.10</kotlin.version>
+        <kotlin.version>1.9.25</kotlin.version>
         <kotlinx-coroutines.version>1.9.0</kotlinx-coroutines.version>
         <langchain4j-embeddings.version>${project.version}</langchain4j-embeddings.version>
         <log4j.version>2.24.3</log4j.version>
@@ -586,7 +586,8 @@
                     <version>${dokka.version}</version>
                     <configuration>
                         <jdkVersion>${java.version}</jdkVersion>
-                        <languageVersion>1.9</languageVersion>
+                        <apiVersion>${kotlin.compiler.apiVersion}</apiVersion>
+                        <languageVersion>${kotlin.compiler.languageVersion}</languageVersion>
                         <dokkaPlugins>
                             <plugin>
                                 <groupId>org.jetbrains.dokka</groupId>
