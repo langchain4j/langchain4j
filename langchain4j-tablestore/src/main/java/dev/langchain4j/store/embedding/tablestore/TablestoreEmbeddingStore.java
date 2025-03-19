@@ -28,6 +28,8 @@ import com.alicloud.openservices.tablestore.model.TableMeta;
 import com.alicloud.openservices.tablestore.model.TableOptions;
 import com.alicloud.openservices.tablestore.model.search.CreateSearchIndexRequest;
 import com.alicloud.openservices.tablestore.model.search.DeleteSearchIndexRequest;
+import com.alicloud.openservices.tablestore.model.search.DescribeSearchIndexRequest;
+import com.alicloud.openservices.tablestore.model.search.DescribeSearchIndexResponse;
 import com.alicloud.openservices.tablestore.model.search.FieldSchema;
 import com.alicloud.openservices.tablestore.model.search.FieldType;
 import com.alicloud.openservices.tablestore.model.search.IndexSchema;
@@ -120,11 +122,17 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
             tmpMetaList.add(fieldSchema);
         }
         this.metadataSchemaList = Collections.unmodifiableList(tmpMetaList);
+        init();
     }
 
+    /**
+     * Note: It only needs to be executed once, and the first execution requires
+     *       waiting for table and index initialization
+     */
     public void init() {
         createTableIfNotExist();
         createSearchIndexIfNotExist();
+        checkSchemaDimension();
     }
 
     public SyncClient getClient() {
@@ -267,6 +275,7 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         log.debug("search ([...{}...], {}, {})", request.queryEmbedding().vector().length, request.maxResults(), request.minScore());
+        checkEmbeddings(request.queryEmbedding());
         KnnVectorQuery knnVectorQuery = QueryBuilders.knnVector(embeddingField, request.maxResults(), request.queryEmbedding().vector())
                 .filter(mapFilterToQuery(request.filter()))
                 .build();
@@ -366,6 +375,24 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
         deleteTable();
     }
 
+    private void checkSchemaDimension() {
+        DescribeSearchIndexRequest request = new DescribeSearchIndexRequest();
+        request.setTableName(tableName);
+        request.setIndexName(searchIndexName);
+        DescribeSearchIndexResponse response = client.describeSearchIndex(request);
+        for (FieldSchema schema : response.getSchema().getFieldSchemas()) {
+            if (schema.getFieldName().equals(embeddingField)) {
+                VectorOptions vectorOptions = schema.getVectorOptions();
+                if (vectorOptions == null) {
+                    throw new IllegalArgumentException(String.format("the vector field:%s does not have vector options", embeddingField));
+                }
+                if (vectorOptions.getDimension() != vectorDimension) {
+                    throw new IllegalArgumentException(String.format("the vector field:%s has dimension:%d, but the `TablestoreEmbeddingStore` embedding dimension is:%d", embeddingField, vectorOptions.getDimension(), vectorDimension));
+                }
+            }
+        }
+    }
+
     private boolean tableExists() {
         ListTableResponse listTableResponse = client.listTable();
         return listTableResponse.getTableNames().contains(tableName);
@@ -404,8 +431,19 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
         return listSearchIndexResponse.getIndexInfos();
     }
 
-    protected void innerAdd(String id, Embedding embedding, TextSegment textSegment) {
+    private void checkEmbeddings(Embedding embedding) {
         ValidationUtils.ensureNotNull(embedding, "embedding");
+        if (embedding.dimension() != vectorDimension) {
+            throw new IllegalArgumentException(String.format(
+                    "the embedding dimension is:%d, but the `TablestoreEmbeddingStore` embedding dimension config is:%d",
+                    embedding.dimension(), 
+                    vectorDimension
+            ));
+        }
+    }
+
+    protected void innerAdd(String id, Embedding embedding, TextSegment textSegment) {
+        checkEmbeddings(embedding);
         PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
         primaryKeyBuilder.addPrimaryKeyColumn(this.pkName, PrimaryKeyValue.fromString(id));
         PrimaryKey primaryKey = primaryKeyBuilder.build();
