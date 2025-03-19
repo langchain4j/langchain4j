@@ -28,8 +28,6 @@ import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrateg
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
-import dev.langchain4j.retriever.EmbeddingStoreRetriever;
-import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -510,27 +508,6 @@ class AiServicesWithRagIT {
         // then
         assertThat(answer).containsIgnoringCase("dog");
     }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_legacy_retriever(ChatLanguageModel model) {
-
-        // given
-        Retriever<TextSegment> legacyRetriever =
-                EmbeddingStoreRetriever.from(embeddingStore, embeddingModel, 1);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .retriever(legacyRetriever)
-                .build();
-
-        // when
-        String answer = assistant.answer("Can I cancel my booking?");
-
-        // then
-        assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
-    }
-
 
     interface AssistantReturningResult {
 
