@@ -152,9 +152,13 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     public AugmentationResult augment(AugmentationRequest augmentationRequest) {
 
         ChatMessage chatMessage = augmentationRequest.chatMessage();
-        Metadata metadata = augmentationRequest.metadata();
-
-        Query originalQuery = Query.from(chatMessage.text(), metadata);
+        String queryText;
+        if (chatMessage instanceof UserMessage userMessage) {
+            queryText = userMessage.singleText();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
+        Query originalQuery = Query.from(queryText, augmentationRequest.metadata());
 
         Collection<Query> queries = queryTransformer.transform(originalQuery);
         logQueries(originalQuery, queries);
@@ -318,9 +322,13 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
     private static void log(ChatMessage augmentedChatMessage) {
         if (log.isTraceEnabled()) {
-            log.trace("Augmented chat message: {}",
-                escapeNewlines(augmentedChatMessage.text())
-            );
+            if (augmentedChatMessage instanceof UserMessage userMessage) {
+                log.trace("Augmented chat message: {}",
+                        escapeNewlines(userMessage.singleText())
+                );
+            } else {
+                throw new IllegalArgumentException("Unsupported message type: " + augmentedChatMessage.type());
+            }
         }
     }
 

@@ -52,7 +52,7 @@ class DefaultContentInjectorTest {
         UserMessage injected = injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo("""
+        assertThat(injected.singleText()).isEqualTo("""
                 Tell me about bananas.
                 
                 Answer using the following information:
@@ -73,7 +73,7 @@ class DefaultContentInjectorTest {
         UserMessage injected = injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         
@@ -103,7 +103,7 @@ class DefaultContentInjectorTest {
         UserMessage injected = injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         
@@ -130,7 +130,7 @@ class DefaultContentInjectorTest {
         UserMessage injected = injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         
@@ -170,7 +170,7 @@ class DefaultContentInjectorTest {
         UserMessage injected = injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         
@@ -218,7 +218,7 @@ class DefaultContentInjectorTest {
         UserMessage injected = injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         Bananas are awesome!
