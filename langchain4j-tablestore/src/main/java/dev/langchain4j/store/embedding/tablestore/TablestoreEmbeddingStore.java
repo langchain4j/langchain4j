@@ -58,9 +58,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -68,8 +65,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final Logger log = LoggerFactory.getLogger(getClass());
@@ -90,16 +87,33 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final String DEFAULT_VECTOR_FIELD_NAME = "default_embedding";
     private static final VectorMetricType DEFAULT_VECTOR_METRIC_TYPE = VectorMetricType.COSINE;
 
-
     public TablestoreEmbeddingStore(SyncClient client, int vectorDimension) {
         this(client, vectorDimension, Collections.emptyList());
     }
 
     public TablestoreEmbeddingStore(SyncClient client, int vectorDimension, List<FieldSchema> metadataSchemaList) {
-        this(client, DEFAULT_TABLE_NAME, DEFAULT_INDEX_NAME, DEFAULT_TABLE_PK_NAME, DEFAULT_TEXT_FIELD_NAME, DEFAULT_VECTOR_FIELD_NAME, vectorDimension, DEFAULT_VECTOR_METRIC_TYPE, metadataSchemaList);
+        this(
+                client,
+                DEFAULT_TABLE_NAME,
+                DEFAULT_INDEX_NAME,
+                DEFAULT_TABLE_PK_NAME,
+                DEFAULT_TEXT_FIELD_NAME,
+                DEFAULT_VECTOR_FIELD_NAME,
+                vectorDimension,
+                DEFAULT_VECTOR_METRIC_TYPE,
+                metadataSchemaList);
     }
 
-    public TablestoreEmbeddingStore(SyncClient client, String tableName, String searchIndexName, String pkName, String textField, String embeddingField, int vectorDimension, VectorMetricType vectorMetricType, List<FieldSchema> metadataSchemaList) {
+    public TablestoreEmbeddingStore(
+            SyncClient client,
+            String tableName,
+            String searchIndexName,
+            String pkName,
+            String textField,
+            String embeddingField,
+            int vectorDimension,
+            VectorMetricType vectorMetricType,
+            List<FieldSchema> metadataSchemaList) {
         this.client = ValidationUtils.ensureNotNull(client, "client");
         this.tableName = ValidationUtils.ensureNotBlank(tableName, "tableName");
         this.searchIndexName = ValidationUtils.ensureNotBlank(searchIndexName, "searchIndexName");
@@ -110,14 +124,19 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.vectorMetricType = ValidationUtils.ensureNotNull(vectorMetricType, "vectorMetricType");
         ValidationUtils.ensureNotNull(metadataSchemaList, "metadataSchemaList");
         List<FieldSchema> tmpMetaList = new ArrayList<>();
-        tmpMetaList.add(new FieldSchema(textField, FieldType.TEXT).setIndex(true).setAnalyzer(FieldSchema.Analyzer.MaxWord));
-        tmpMetaList.add(new FieldSchema(embeddingField, FieldType.VECTOR).setIndex(true).setVectorOptions(new VectorOptions(VectorDataType.FLOAT_32, vectorDimension, vectorMetricType)));
+        tmpMetaList.add(
+                new FieldSchema(textField, FieldType.TEXT).setIndex(true).setAnalyzer(FieldSchema.Analyzer.MaxWord));
+        tmpMetaList.add(new FieldSchema(embeddingField, FieldType.VECTOR)
+                .setIndex(true)
+                .setVectorOptions(new VectorOptions(VectorDataType.FLOAT_32, vectorDimension, vectorMetricType)));
         for (FieldSchema fieldSchema : metadataSchemaList) {
             if (fieldSchema.getFieldName().equals(textField)) {
-                throw Exceptions.illegalArgument("the custom meta data field name matches the system text field:{}", textField);
+                throw Exceptions.illegalArgument(
+                        "the custom meta data field name matches the system text field:{}", textField);
             }
             if (fieldSchema.getFieldName().equals(embeddingField)) {
-                throw Exceptions.illegalArgument("the custom meta data field name matches the system embedding field:{}", embeddingField);
+                throw Exceptions.illegalArgument(
+                        "the custom meta data field name matches the system embedding field:{}", embeddingField);
             }
             tmpMetaList.add(fieldSchema);
         }
@@ -198,7 +217,10 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (embedded != null) {
-            ValidationUtils.ensureEq(embeddings.size(), embedded.size(), "the size of embeddings should be the same as the size of embedded");
+            ValidationUtils.ensureEq(
+                    embeddings.size(),
+                    embedded.size(),
+                    "the size of embeddings should be the same as the size of embedded");
         }
         List<Exception> exceptions = new ArrayList<>();
         for (int i = 0; i < embeddings.size(); i++) {
@@ -214,7 +236,8 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
         }
         if (!exceptions.isEmpty()) {
-            IllegalStateException exception = new IllegalStateException("Add all embeddings with error, failed:" + exceptions.size());
+            IllegalStateException exception =
+                    new IllegalStateException("Add all embeddings with error, failed:" + exceptions.size());
             for (Exception e : exceptions) {
                 exception.addSuppressed(e);
             }
@@ -224,7 +247,7 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void remove(String id) {
-        ensureNotBlank(id, "id");
+        ValidationUtils.ensureNotBlank(id, "id");
         innerDelete(id);
     }
 
@@ -243,7 +266,8 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
         }
         if (!exceptions.isEmpty()) {
-            IllegalStateException exception = new IllegalStateException("remove all embeddings with error, failed:" + exceptions.size());
+            IllegalStateException exception =
+                    new IllegalStateException("remove all embeddings with error, failed:" + exceptions.size());
             for (Exception e : exceptions) {
                 exception.addSuppressed(e);
             }
@@ -259,7 +283,10 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
         forEachAllData(Collections.emptyList(), (row -> {
             Metadata metadata = rowToMetadata(row);
             if (filter.test(metadata)) {
-                remove(row.getPrimaryKey().getPrimaryKeyColumn(pkName).getValue().asString());
+                remove(row.getPrimaryKey()
+                        .getPrimaryKeyColumn(pkName)
+                        .getValue()
+                        .asString());
             }
         }));
     }
@@ -268,15 +295,23 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll() {
         log.debug("remove all");
         forEachAllData(Collections.emptyList(), (row) -> {
-            this.innerDelete(row.getPrimaryKey().getPrimaryKeyColumn(pkName).getValue().asString());
+            this.innerDelete(
+                    row.getPrimaryKey().getPrimaryKeyColumn(pkName).getValue().asString());
         });
     }
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-        log.debug("search ([...{}...], {}, {})", request.queryEmbedding().vector().length, request.maxResults(), request.minScore());
+        log.debug(
+                "search ([...{}...], {}, {})",
+                request.queryEmbedding().vector().length,
+                request.maxResults(),
+                request.minScore());
         checkEmbeddings(request.queryEmbedding());
-        KnnVectorQuery knnVectorQuery = QueryBuilders.knnVector(embeddingField, request.maxResults(), request.queryEmbedding().vector())
+        KnnVectorQuery knnVectorQuery = QueryBuilders.knnVector(
+                        embeddingField,
+                        request.maxResults(),
+                        request.queryEmbedding().vector())
                 .filter(mapFilterToQuery(request.filter()))
                 .build();
         SearchQuery searchQuery = SearchQuery.newBuilder()
@@ -301,7 +336,8 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
         return TablestoreMetadataFilterMapper.map(filter);
     }
 
-    private EmbeddingSearchResult<TextSegment> searchResponseToEmbeddingSearchResult(EmbeddingSearchRequest request, SearchResponse response) {
+    private EmbeddingSearchResult<TextSegment> searchResponseToEmbeddingSearchResult(
+            EmbeddingSearchRequest request, SearchResponse response) {
         List<SearchHit> searchHits = response.getSearchHits();
         List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>(searchHits.size());
         for (SearchHit hit : searchHits) {
@@ -318,7 +354,8 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             float[] embedding = null;
             if (row.getLatestColumn(embeddingField) != null) {
-                String embeddingString = row.getLatestColumn(embeddingField).getValue().asString();
+                String embeddingString =
+                        row.getLatestColumn(embeddingField).getValue().asString();
                 embedding = TablestoreUtils.parseEmbeddingString(embeddingString);
             }
 
@@ -333,8 +370,7 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
                     score,
                     row.getPrimaryKey().getPrimaryKeyColumn(pkName).getValue().asString(),
                     new Embedding(embedding),
-                    textSegment
-            );
+                    textSegment);
             matches.add(match);
         }
         return new EmbeddingSearchResult<>(matches);
@@ -384,10 +420,13 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
             if (schema.getFieldName().equals(embeddingField)) {
                 VectorOptions vectorOptions = schema.getVectorOptions();
                 if (vectorOptions == null) {
-                    throw new IllegalArgumentException(String.format("the vector field:%s does not have vector options", embeddingField));
+                    throw new IllegalArgumentException(
+                            String.format("the vector field:%s does not have vector options", embeddingField));
                 }
                 if (vectorOptions.getDimension() != vectorDimension) {
-                    throw new IllegalArgumentException(String.format("the vector field:%s has dimension:%d, but the `TablestoreEmbeddingStore` embedding dimension is:%d", embeddingField, vectorOptions.getDimension(), vectorDimension));
+                    throw new IllegalArgumentException(String.format(
+                            "the vector field:%s has dimension:%d, but the `TablestoreEmbeddingStore` embedding dimension is:%d",
+                            embeddingField, vectorOptions.getDimension(), vectorDimension));
                 }
             }
         }
@@ -436,9 +475,7 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (embedding.dimension() != vectorDimension) {
             throw new IllegalArgumentException(String.format(
                     "the embedding dimension is:%d, but the `TablestoreEmbeddingStore` embedding dimension config is:%d",
-                    embedding.dimension(), 
-                    vectorDimension
-            ));
+                    embedding.dimension(), vectorDimension));
         }
     }
 
@@ -462,10 +499,14 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
                     String key = entry.getKey();
                     Object value = entry.getValue();
                     if (this.textField.equals(key)) {
-                        throw Exceptions.illegalArgument("there is a metadata(%s,%s) that is consistent with the name of the text field:%s", key, value, this.textField);
+                        throw Exceptions.illegalArgument(
+                                "there is a metadata(%s,%s) that is consistent with the name of the text field:%s",
+                                key, value, this.textField);
                     }
                     if (this.embeddingField.equals(key)) {
-                        throw Exceptions.illegalArgument("there is a metadata(%s,%s) that is consistent with the name of the vector field:%s", key, value, this.embeddingField);
+                        throw Exceptions.illegalArgument(
+                                "there is a metadata(%s,%s) that is consistent with the name of the vector field:%s",
+                                key, value, this.embeddingField);
                     }
                     if (value instanceof Float) {
                         rowPutChange.addColumn(new Column(key, ColumnValue.fromDouble((Float) value)));
@@ -480,10 +521,18 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
         try {
             client.putRow(new PutRowRequest(rowPutChange));
             if (log.isDebugEnabled()) {
-                log.debug("add id:{}, textSegment:{}, embedding:{}", id, textSegment, TablestoreUtils.maxLogOrNull(embedding.toString()));
+                log.debug(
+                        "add id:{}, textSegment:{}, embedding:{}",
+                        id,
+                        textSegment,
+                        TablestoreUtils.maxLogOrNull(embedding.toString()));
             }
         } catch (Exception e) {
-            throw new RuntimeException(String.format("add embedding data failed, id:%s, textSegment:%s,embedding:%s", id, textSegment, embedding), e);
+            throw new RuntimeException(
+                    String.format(
+                            "add embedding data failed, id:%s, textSegment:%s,embedding:%s",
+                            id, textSegment, embedding),
+                    e);
         }
     }
 
@@ -548,10 +597,13 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
                     metadata.put(column.getName(), column.getValue().asDouble());
                     break;
                 default:
-                    log.warn("unsupported columnType:{}, key:{}, value:{}", columnType, column.getName(), column.getValue());
+                    log.warn(
+                            "unsupported columnType:{}, key:{}, value:{}",
+                            columnType,
+                            column.getName(),
+                            column.getValue());
             }
         }
         return metadata;
     }
-
 }
