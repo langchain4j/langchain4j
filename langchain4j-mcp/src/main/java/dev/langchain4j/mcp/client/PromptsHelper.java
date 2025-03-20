@@ -32,8 +32,8 @@ class PromptsHelper {
         }
     }
 
-    static MgpGetPromptResult parsePromptContents(JsonNode mcpMessage) {
+    static McpGetPromptResult parsePromptContents(JsonNode mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
-        return OBJECT_MAPPER.convertValue(mcpMessage.get("result"), MgpGetPromptResult.class);
+        return OBJECT_MAPPER.convertValue(mcpMessage.get("result"), McpGetPromptResult.class);
     }
 }

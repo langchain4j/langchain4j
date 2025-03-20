@@ -197,7 +197,7 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
-    public MgpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
+    public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
         long operationId = idGenerator.getAndIncrement();
         McpGetPromptRequest operation = new McpGetPromptRequest(operationId, name, arguments);
         long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();

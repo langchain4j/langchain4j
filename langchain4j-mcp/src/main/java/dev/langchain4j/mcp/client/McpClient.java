@@ -46,5 +46,5 @@ public interface McpClient extends AutoCloseable {
     /**
      * Render the contents of a prompt.
      */
-    MgpGetPromptResult getPrompt(String name, Map<String, Object> arguments);
+    McpGetPromptResult getPrompt(String name, Map<String, Object> arguments);
 }

@@ -15,7 +15,7 @@ import dev.langchain4j.mcp.client.McpPromptMessage;
 import dev.langchain4j.mcp.client.McpResourceContents;
 import dev.langchain4j.mcp.client.McpRole;
 import dev.langchain4j.mcp.client.McpTextContent;
-import dev.langchain4j.mcp.client.MgpGetPromptResult;
+import dev.langchain4j.mcp.client.McpGetPromptResult;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -60,7 +60,7 @@ public abstract class McpPromptsTestBase {
 
     @Test
     void getBasicPrompt() {
-        MgpGetPromptResult prompt = mcpClient.getPrompt("basic", Map.of());
+        McpGetPromptResult prompt = mcpClient.getPrompt("basic", Map.of());
         assertThat(prompt.description()).isEqualTo(null);
         assertThat(prompt.messages()).hasSize(1);
         McpPromptMessage message = prompt.messages().get(0);
@@ -70,7 +70,7 @@ public abstract class McpPromptsTestBase {
 
     @Test
     void getMultiPrompt() {
-        MgpGetPromptResult prompt = mcpClient.getPrompt("multi", Map.of());
+        McpGetPromptResult prompt = mcpClient.getPrompt("multi", Map.of());
         assertThat(prompt.description()).isEqualTo(null);
         assertThat(prompt.messages()).hasSize(2);
 
@@ -87,7 +87,7 @@ public abstract class McpPromptsTestBase {
 
     @Test
     void getImagePrompt() {
-        MgpGetPromptResult prompt = mcpClient.getPrompt("image", Map.of());
+        McpGetPromptResult prompt = mcpClient.getPrompt("image", Map.of());
         assertThat(prompt.description()).isEqualTo(null);
         assertThat(prompt.messages()).hasSize(1);
         McpPromptMessage message = prompt.messages().get(0);
@@ -99,7 +99,7 @@ public abstract class McpPromptsTestBase {
 
     @Test
     void getParametrizedPrompt() {
-        MgpGetPromptResult prompt = mcpClient.getPrompt("parametrized", Map.of("name", "Bob"));
+        McpGetPromptResult prompt = mcpClient.getPrompt("parametrized", Map.of("name", "Bob"));
         assertThat(prompt.description()).isEqualTo(null);
         assertThat(prompt.messages()).hasSize(1);
         McpPromptMessage message = prompt.messages().get(0);
@@ -116,7 +116,7 @@ public abstract class McpPromptsTestBase {
 
     @Test
     void getPromptWithEmbeddedBinaryResource() {
-        MgpGetPromptResult prompt = mcpClient.getPrompt("embeddedBinaryResource", Map.of());
+        McpGetPromptResult prompt = mcpClient.getPrompt("embeddedBinaryResource", Map.of());
         McpPromptMessage message = prompt.messages().get(0);
         assertThat(message.role()).isEqualTo(McpRole.USER);
         assertThat(message.content().type()).isEqualTo(McpPromptContent.Type.RESOURCE);

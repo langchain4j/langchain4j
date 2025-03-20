@@ -25,7 +25,7 @@ public class PromptContentConversionTest {
                 {"jsonrpc":"2.0","id":111,"result":{"messages":[{"role":"user","content":{"text":"Hello","type":"text"}}]}}
                 """;
         JsonNode responseJsonNode = DefaultMcpClient.OBJECT_MAPPER.readTree(response);
-        MgpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
+        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
 
         ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
         assertThat(chatMessage).isInstanceOf(UserMessage.class);
@@ -40,7 +40,7 @@ public class PromptContentConversionTest {
                 {"jsonrpc":"2.0","id":123,"result":{"messages":[{"role":"assistant","content":{"text":"Hello","type":"text"}}]}}
                 """;
         JsonNode responseJsonNode = DefaultMcpClient.OBJECT_MAPPER.readTree(response);
-        MgpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
+        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
 
         ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
         assertThat(chatMessage).isInstanceOf(AiMessage.class);
@@ -55,7 +55,7 @@ public class PromptContentConversionTest {
                 {"jsonrpc":"2.0","id":1,"result":{"messages":[{"role":"user","content":{"data":"aaa","mimeType":"image/png","type":"image"}}]}}
                 """;
         JsonNode responseJsonNode = DefaultMcpClient.OBJECT_MAPPER.readTree(response);
-        MgpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
+        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
 
         ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
         assertThat(chatMessage).isInstanceOf(UserMessage.class);
