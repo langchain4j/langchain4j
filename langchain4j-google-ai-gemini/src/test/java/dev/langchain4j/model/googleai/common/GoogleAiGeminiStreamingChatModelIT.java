@@ -30,10 +30,11 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO check if supported
                 .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
                 .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO fix
+                .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
+                .supportsDefaultRequestParameters(NOT_SUPPORTED) // TODO implement
                 .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
                 .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
                 .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
-                .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
                 .assertExceptionType(false) // TODO fix
                 .assertResponseId(false) // TODO implement
                 .assertFinishReason(false) // TODO implement

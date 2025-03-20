@@ -203,14 +203,15 @@ public abstract class AbstractBaseChatModelIT<M> {
                         .isExactlyInstanceOf(UnsupportedFeatureException.class)
                         .hasMessageContaining("modelName")
                         .hasMessageContaining("not support");
-
-            AbstractThrowableAssert<?, ?> throwableAssertCreateModelWith =
-                    assertThatThrownBy(() -> createModelAndCapabilitiesWith(parameters));
-            if (modelCapabilities.assertExceptionType())
-                throwableAssertCreateModelWith
-                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                        .hasMessageContaining("modelName")
-                        .hasMessageContaining("not support");
+            if (SUPPORTED.equals(modelCapabilities.supportsDefaultRequestParameters())) {
+                AbstractThrowableAssert<?, ?> throwableAssertCreateModelWith =
+                        assertThatThrownBy(() -> createModelAndCapabilitiesWith(parameters));
+                if (modelCapabilities.assertExceptionType())
+                    throwableAssertCreateModelWith
+                            .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                            .hasMessageContaining("modelName")
+                            .hasMessageContaining("not support");
+            }
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
                     + " because modelCapabilities.supportsModelNameParameter is "
@@ -506,13 +507,15 @@ public abstract class AbstractBaseChatModelIT<M> {
                         .hasMessageContaining("stopSequences")
                         .hasMessageContaining("not support");
 
-            AbstractThrowableAssert<?, ?> throwableAssertCreateModelWith =
-                    assertThatThrownBy(() -> createModelAndCapabilitiesWith(parameters));
-            if (modelCapabilities.assertExceptionType())
-                throwableAssertCreateModelWith
-                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                        .hasMessageContaining("stopSequences")
-                        .hasMessageContaining("not support");
+            if (SUPPORTED.equals(modelCapabilities.supportsDefaultRequestParameters())) {
+                AbstractThrowableAssert<?, ?> throwableAssertCreateModelWith =
+                        assertThatThrownBy(() -> createModelAndCapabilitiesWith(parameters));
+                if (modelCapabilities.assertExceptionType())
+                    throwableAssertCreateModelWith
+                            .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                            .hasMessageContaining("stopSequences")
+                            .hasMessageContaining("not support");
+            }
         } else
             throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
                     + " because modelCapabilities.supportsStopSequencesParameter is "
