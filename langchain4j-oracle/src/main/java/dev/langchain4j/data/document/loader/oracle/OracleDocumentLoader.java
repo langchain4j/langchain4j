@@ -20,6 +20,11 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+/**
+ * Load documents
+ *
+ * Use dbms_vector_chain.utl_to_text to load documents
+ */
 public class OracleDocumentLoader {
 
     private final Connection conn;
@@ -28,6 +33,11 @@ public class OracleDocumentLoader {
         this.conn = conn;
     }
 
+    /**
+     * load documents
+     *
+     * @param pref   JSON Preference specifying the file, directory, or table
+     */
     public List<Document> loadDocuments(String pref) throws JsonProcessingException, IOException, SQLException {
         List<Document> documents = new ArrayList<>();
 
@@ -77,6 +87,9 @@ public class OracleDocumentLoader {
         return documents;
     }
 
+    /**
+     * load documents from a file
+     */
     private Document loadDocument(String filename, String pref) throws IOException, SQLException {
         Document document = null;
 
@@ -114,6 +127,9 @@ public class OracleDocumentLoader {
         return document;
     }
 
+    /**
+     * load documents from a table
+     */
     private List<Document> loadDocuments(String owner, String table, String column, String pref) throws SQLException {
         List<Document> documents = new ArrayList<>();
 
@@ -141,6 +157,9 @@ public class OracleDocumentLoader {
         return documents;
     }
 
+    /**
+     * get metadata if available
+     */
     private static Metadata getMetadata(String html) {
         Metadata metadata = new Metadata();
 

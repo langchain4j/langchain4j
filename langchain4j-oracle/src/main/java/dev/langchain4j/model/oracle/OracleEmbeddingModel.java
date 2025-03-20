@@ -19,6 +19,11 @@ import java.util.ArrayList;
 import java.util.List;
 import oracle.jdbc.OracleConnection;
 
+/**
+ * Embed documents
+ *
+ * Use dbms_vector_chain.utl_to_embeddings to get embeddings
+ */
 public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final Connection conn;
@@ -46,6 +51,9 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
         return this.batching;
     }
 
+    /**
+     * load an ONNX model
+     */
     static boolean loadOnnxModel(Connection conn, String dir, String onnxFile, String modelName) throws SQLException {
         boolean result = false;
 
@@ -65,6 +73,9 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
         return result;
     }
 
+    /**
+     * get embeddings for a list of text segments
+     */
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
@@ -76,6 +87,9 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
     }
 
+    /**
+     * get embeddings for a list of strings
+     */
     private Response<List<Embedding>> embedTexts(List<String> inputs) throws SQLException, JsonProcessingException {
         List<Embedding> embeddings = new ArrayList<>();
 

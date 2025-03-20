@@ -2,6 +2,12 @@ package dev.langchain4j.data.document.splitter.oracle;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * Encapsulate chunks
+ *
+ * dbms_vector_chain.utl_to_chunks returns chunks in the following format:
+ * {"chunk_id": id, "chunk_offset": offset, "chunk_length": length, "chunk_data": "content"}
+ */
 public class Chunk {
 
     private int chunk_id;

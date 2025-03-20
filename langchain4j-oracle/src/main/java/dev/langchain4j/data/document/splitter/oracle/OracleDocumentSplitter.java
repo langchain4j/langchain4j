@@ -13,6 +13,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Split documents
+ *
+ * Use dbms_vector_chain.utl_to_chunks to split documents
+ */
 public class OracleDocumentSplitter implements DocumentSplitter {
 
     private static final String INDEX = "index";
@@ -25,6 +30,9 @@ public class OracleDocumentSplitter implements DocumentSplitter {
         this.pref = pref;
     }
 
+    /**
+     * Split a single document
+     */
     @Override
     public List<TextSegment> split(Document document) {
         List<TextSegment> segments = new ArrayList<>();
@@ -42,16 +50,16 @@ public class OracleDocumentSplitter implements DocumentSplitter {
         return segments;
     }
 
+    /**
+     * Split a list of documents
+     */
     @Override
     public List<TextSegment> splitAll(List<Document> list) {
         return DocumentSplitter.super.splitAll(list);
     }
 
     /**
-     * Splits the provided text into parts. Implementation API.
-     *
-     * @param content The text to be split.
-     * @return An array of parts.
+     * Split the provided text into parts
      */
     public String[] split(String content) throws SQLException, JsonProcessingException {
 

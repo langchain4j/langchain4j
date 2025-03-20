@@ -7,6 +7,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * Summarize documents
+ *
+ * Use dbms_vector_chain.utl_to_summary to summarize documents
+ */
 public class OracleSummaryLanguageModel implements LanguageModel {
 
     private final Connection conn;
@@ -25,8 +30,13 @@ public class OracleSummaryLanguageModel implements LanguageModel {
         this.proxy = proxy;
     }
 
+    /**
+     * generate summary
+     *
+     * @param input    text to summarize
+     */
     @Override
-    public Response<String> generate(String prompt) {
+    public Response<String> generate(String input) {
 
         String text = "";
 
@@ -42,7 +52,7 @@ public class OracleSummaryLanguageModel implements LanguageModel {
             String query = "select dbms_vector_chain.utl_to_summary(?, json(?)) data from dual";
 
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
-                stmt.setObject(1, prompt);
+                stmt.setObject(1, input);
                 stmt.setObject(2, pref);
 
                 try (ResultSet rs = stmt.executeQuery()) {
