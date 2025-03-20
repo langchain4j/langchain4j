@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
 
 class Neo4jEmbeddingUtils {
@@ -71,7 +70,7 @@ class Neo4jEmbeddingUtils {
         if (embedded != null) {
             TextSegment segment = embedded.get(idx);
             properties.put(store.getTextProperty(), segment.text());
-            Map<String, String> metadata = toStringValueMap(segment.metadata().toMap());
+            Map<String, Object> metadata = segment.metadata().toMap();
             metadata.forEach((k, v) -> properties.put(store.getMetadataPrefix() + k, Values.value(v)));
         }
 
