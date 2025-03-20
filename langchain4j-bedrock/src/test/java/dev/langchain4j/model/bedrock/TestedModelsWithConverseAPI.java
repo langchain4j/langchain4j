@@ -8,9 +8,6 @@ public final class TestedModelsWithConverseAPI {
 
     // JsonResponseFormat and JsonResponseFormatWithSchema are not yet supported by Bedrock ConverseAPI
 
-    // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
-    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
-
     // AWS_NOVA_MICRO doesn't support image as input parameters
     // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
     public static final ChatModelAndCapabilities AWS_NOVA_MICRO = ChatModelAndCapabilities.builder()
@@ -20,7 +17,6 @@ public final class TestedModelsWithConverseAPI {
             .mnemonicName("amazon nova micro")
             .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
             .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
-            .supportsToolChoiceRequired(NOT_SUPPORTED)
             .supportsJsonResponseFormat(NOT_SUPPORTED)
             .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
@@ -31,7 +27,6 @@ public final class TestedModelsWithConverseAPI {
                     .modelId("us.amazon.nova-lite-v1:0")
                     .build())
             .mnemonicName("amazon nova lite")
-            .supportsToolChoiceRequired(NOT_SUPPORTED)
             .supportsJsonResponseFormat(NOT_SUPPORTED)
             .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
@@ -40,14 +35,11 @@ public final class TestedModelsWithConverseAPI {
     public static final ChatModelAndCapabilities AWS_NOVA_PRO = ChatModelAndCapabilities.builder()
             .model(BedrockChatModel.builder().modelId("us.amazon.nova-pro-v1:0").build())
             .mnemonicName("amazon nova pro")
-            .supportsToolChoiceRequired(NOT_SUPPORTED)
             .supportsJsonResponseFormat(NOT_SUPPORTED)
             .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
             .assertExceptionType(false)
             .build();
 
-    // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
-    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
     public static final ChatModelAndCapabilities CLAUDE_3_HAIKU = ChatModelAndCapabilities.builder()
             .model(BedrockChatModel.builder()
                     .modelId("anthropic.claude-3-haiku-20240307-v1:0")
@@ -58,8 +50,6 @@ public final class TestedModelsWithConverseAPI {
             .assertExceptionType(false)
             .build();
 
-    // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
-    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
     // MISTRAL_LARGE doesn't support image as input parameters
     // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
     public static final ChatModelAndCapabilities MISTRAL_LARGE = ChatModelAndCapabilities.builder()
@@ -87,6 +77,7 @@ public final class TestedModelsWithConverseAPI {
 
     // COHERE_COMMAND_R_PLUS doesn't support image as input parameters
     // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
+    // COHERE_COMMAND_R_PLUS doesn't support required tool
     public static final ChatModelAndCapabilities COHERE_COMMAND_R_PLUS = ChatModelAndCapabilities.builder()
             .model(BedrockChatModel.builder()
                     .modelId("cohere.command-r-plus-v1:0")
@@ -100,8 +91,9 @@ public final class TestedModelsWithConverseAPI {
             .assertExceptionType(false)
             .build();
 
-    // AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, AI_JAMBA_1_5_MINI, MISTRAL_LARGE doesn't support image as input parameters
+    // AI_JAMBA_1_5_MINI doesn't support image as input parameters
     // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
+    // AI_JAMBA_1_5_MINI doesn't support required tool
     public static final ChatModelAndCapabilities AI_JAMBA_1_5_MINI = ChatModelAndCapabilities.builder()
             .model(BedrockChatModel.builder()
                     .modelId("ai21.jamba-1-5-mini-v1:0")
