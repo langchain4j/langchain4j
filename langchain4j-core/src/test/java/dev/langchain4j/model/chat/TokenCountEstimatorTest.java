@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
@@ -11,11 +10,13 @@ import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 class TokenCountEstimatorTest implements WithAssertions {
+
     public static class WhitespaceSplitTokenCountEstimator implements TokenCountEstimator {
+
         @Override
         public int estimateTokenCount(List<ChatMessage> messages) {
             return messages.stream()
-                    .mapToInt(message -> message.text().split("\\s+").length)
+                    .mapToInt(message -> ((UserMessage) message).singleText().split("\\s+").length)
                     .sum();
         }
     }
@@ -37,7 +38,7 @@ class TokenCountEstimatorTest implements WithAssertions {
         {
             List<ChatMessage> messages = new ArrayList<>();
             messages.add(new UserMessage("Hello, world!"));
-            messages.add(new AiMessage("How are you?"));
+            messages.add(new UserMessage("How are you?"));
 
             assertThat(estimator.estimateTokenCount(messages)).isEqualTo(5);
         }

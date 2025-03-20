@@ -8,7 +8,6 @@ import dev.langchain4j.rag.content.aggregator.DefaultContentAggregator;
 import dev.langchain4j.rag.content.injector.ContentInjector;
 import dev.langchain4j.rag.content.injector.DefaultContentInjector;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
@@ -138,23 +137,17 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         );
     }
 
-    /**
-     * @deprecated use {@link #augment(AugmentationRequest)} instead.
-     */
-    @Override
-    @Deprecated
-    public UserMessage augment(UserMessage userMessage, Metadata metadata) {
-        AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
-        return (UserMessage) augment(augmentationRequest).chatMessage();
-    }
-
     @Override
     public AugmentationResult augment(AugmentationRequest augmentationRequest) {
 
         ChatMessage chatMessage = augmentationRequest.chatMessage();
-        Metadata metadata = augmentationRequest.metadata();
-
-        Query originalQuery = Query.from(chatMessage.text(), metadata);
+        String queryText;
+        if (chatMessage instanceof UserMessage userMessage) {
+            queryText = userMessage.singleText();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
+        Query originalQuery = Query.from(queryText, augmentationRequest.metadata());
 
         Collection<Query> queries = queryTransformer.transform(originalQuery);
         logQueries(originalQuery, queries);
@@ -318,9 +311,13 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
     private static void log(ChatMessage augmentedChatMessage) {
         if (log.isTraceEnabled()) {
-            log.trace("Augmented chat message: {}",
-                escapeNewlines(augmentedChatMessage.text())
-            );
+            if (augmentedChatMessage instanceof UserMessage userMessage) {
+                log.trace("Augmented chat message: {}",
+                        escapeNewlines(userMessage.singleText())
+                );
+            } else {
+                throw new IllegalArgumentException("Unsupported message type: " + augmentedChatMessage.type());
+            }
         }
     }
 
