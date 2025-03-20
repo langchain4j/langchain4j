@@ -9,6 +9,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import org.slf4j.LoggerFactory
+import kotlin.coroutines.CoroutineContext
 
 private val logger = LoggerFactory.getLogger(StreamingChatLanguageModel::class.java)
 
@@ -81,6 +82,7 @@ public sealed interface StreamingChatLanguageModelReply {
  * @author Konstantin Pavlov
  */
 public fun StreamingChatLanguageModel.chatFlow(
+    coroutineContext: CoroutineContext = defaultCoroutineContext(),
     block: ChatRequestBuilder.() -> Unit
 ): Flow<StreamingChatLanguageModelReply> =
     callbackFlow {
