@@ -1,5 +1,8 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -8,15 +11,9 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * This chat memory operates as a sliding window of {@link #maxMessages} messages.
@@ -35,58 +32,19 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * <p>
  * The state of chat memory is stored in {@link ChatMemoryStore} ({@link InMemoryChatMemoryStore} is used by default).
  */
-public class MessageWindowChatMemory implements ChatMemory {
+public final class MessageWindowChatMemory extends AbstractWindowChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(MessageWindowChatMemory.class);
 
-    private final Object id;
     private final Integer maxMessages;
-    private final ChatMemoryStore store;
 
     private MessageWindowChatMemory(Builder builder) {
-        this.id = ensureNotNull(builder.id, "id");
+        super(ensureNotNull(builder.id, "id"), ensureNotNull(builder.store, "store"));
         this.maxMessages = ensureGreaterThanZero(builder.maxMessages, "maxMessages");
-        this.store = ensureNotNull(builder.store, "store");
     }
 
     @Override
-    public Object id() {
-        return id;
-    }
-
-    @Override
-    public void add(ChatMessage message) {
-        List<ChatMessage> messages = messages();
-        if (message instanceof SystemMessage) {
-            Optional<SystemMessage> systemMessage = findSystemMessage(messages);
-            if (systemMessage.isPresent()) {
-                if (systemMessage.get().equals(message)) {
-                    return; // do not add the same system message
-                } else {
-                    messages.remove(systemMessage.get()); // need to replace existing system message
-                }
-            }
-        }
-        messages.add(message);
-        ensureCapacity(messages, maxMessages);
-        store.updateMessages(id, messages);
-    }
-
-    private static Optional<SystemMessage> findSystemMessage(List<ChatMessage> messages) {
-        return messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> (SystemMessage) message)
-                .findAny();
-    }
-
-    @Override
-    public List<ChatMessage> messages() {
-        List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
-        ensureCapacity(messages, maxMessages);
-        return messages;
-    }
-
-    private static void ensureCapacity(List<ChatMessage> messages, int maxMessages) {
+    protected void ensureCapacity(List<ChatMessage> messages) {
         while (messages.size() > maxMessages) {
 
             int messageToEvictIndex = 0;
@@ -97,7 +55,7 @@ public class MessageWindowChatMemory implements ChatMemory {
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
             log.trace("Evicting the following message to comply with the capacity requirement: {}", evictedMessage);
 
-            if (evictedMessage instanceof AiMessage && ((AiMessage) evictedMessage).hasToolExecutionRequests()) {
+            if (evictedMessage instanceof AiMessage evictedAiMessage && evictedAiMessage.hasToolExecutionRequests()) {
                 while (messages.size() > messageToEvictIndex
                         && messages.get(messageToEvictIndex) instanceof ToolExecutionResultMessage) {
                     // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding AiMessage,
@@ -107,11 +65,6 @@ public class MessageWindowChatMemory implements ChatMemory {
                 }
             }
         }
-    }
-
-    @Override
-    public void clear() {
-        store.deleteMessages(id);
     }
 
     public static Builder builder() {
