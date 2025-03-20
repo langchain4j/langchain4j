@@ -103,8 +103,8 @@ suspend fun ChatLanguageModel.chat(
  */
 @Experimental
 suspend fun ChatLanguageModel.chat(
-    block: ChatRequestBuilder.() -> Unit,
-    coroutineContext: CoroutineContext = defaultCoroutineContext()
+    coroutineContext: CoroutineContext = defaultCoroutineContext(),
+    block: ChatRequestBuilder.() -> Unit
 ): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = chatRequest(block))
 
 @Experimental
