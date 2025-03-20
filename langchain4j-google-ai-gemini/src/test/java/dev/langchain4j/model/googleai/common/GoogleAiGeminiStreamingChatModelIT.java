@@ -39,7 +39,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .assertResponseId(false) // TODO implement
                 .assertFinishReason(false) // TODO implement
                 .assertResponseModel(false) // TODO implement
-                .assertThreads(false)
+                .assertThreads(false) // TODO fix
                 .build());
         // TODO add more model configs, see OpenAiChatModelIT
     }

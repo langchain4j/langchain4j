@@ -53,19 +53,21 @@ class OllamaChatModelIT extends AbstractChatModelIT {
                     .temperature(0.0)
                     .build())
             .mnemonicName("ollama_chat_model_with_tools")
-            .supportsSingleImageInputAsPublicURL(DISABLED) // no exception thrown, image is just silently ignored
+            .supportsSingleImageInputAsPublicURL(
+                    DISABLED) // Ollama supports only base64-encoded images -  no exception thrown, image is just
+            // silently ignored
             .supportsSingleImageInputAsBase64EncodedString(
                     DISABLED) // no exception thrown, image is just silently ignored
-            .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
-            .supportsModelNameParameter(NOT_SUPPORTED)
-            .supportsStopSequencesParameter(NOT_SUPPORTED)
-            .supportsToolChoiceRequired(NOT_SUPPORTED)
+            .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+            .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+            .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+            .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO check if Ollama supports this
             .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
-            .supportsToolsAndJsonResponseFormatWithSchema(DISABLED)
+            .supportsToolsAndJsonResponseFormatWithSchema(DISABLED) // TODO fix
             .assertExceptionType(false)
-            .assertResponseId(false)
-            .assertFinishReason(false)
-            .assertResponseModel(false)
+            .assertResponseId(false) // TODO implement
+            .assertFinishReason(false) // TODO implement
+            .assertResponseModel(false) // TODO implement
             .build();
 
     static final ChatModelAndCapabilities OLLAMA_CHAT_MODEL_WITH_VISION = ChatModelAndCapabilities.builder()
@@ -75,17 +77,19 @@ class OllamaChatModelIT extends AbstractChatModelIT {
                     .temperature(0.0)
                     .build())
             .mnemonicName("ollama_chat_model_with_vision")
-            .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
-            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+            .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
             .supportsTools(NOT_SUPPORTED)
-            .supportsMultipleImageInputsAsBase64EncodedStrings(NOT_SUPPORTED)
-            .supportsMultipleImageInputsAsPublicURLs(NOT_SUPPORTED)
-            .supportsStopSequencesParameter(NOT_SUPPORTED)
+            .supportsMultipleImageInputsAsBase64EncodedStrings(
+                    NOT_SUPPORTED) // vision model only supports a single image per message
+            .supportsMultipleImageInputsAsPublicURLs(
+                    NOT_SUPPORTED) // vision model only supports a single image per message
+            .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
             .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
             .assertExceptionType(false)
-            .assertResponseId(false)
-            .assertFinishReason(false)
-            .assertResponseModel(false)
+            .assertResponseId(false) // TODO implement
+            .assertFinishReason(false) // TODO implement
+            .assertResponseModel(false) // TODO implement
             .build();
 
     static final ChatModelAndCapabilities OPEN_AI_CHAT_MODEL_WITH_TOOLS = ChatModelAndCapabilities.builder()
@@ -96,16 +100,16 @@ class OllamaChatModelIT extends AbstractChatModelIT {
                     .temperature(0.0)
                     .build())
             .mnemonicName("open_ai_chat_model_with_tools")
-            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // Ollama supports only base64-encoded images
             .supportsSingleImageInputAsBase64EncodedString(
                     DISABLED) // no exception thrown, image is just silently ignored
-            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
             .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
-            .supportsToolsAndJsonResponseFormatWithSchema(DISABLED)
+            .supportsToolsAndJsonResponseFormatWithSchema(DISABLED) // TODO fix
             .assertExceptionType(false)
-            .assertResponseId(false)
-            .assertFinishReason(false)
-            .assertResponseModel(false)
+            .assertResponseId(false) // TODO implement
+            .assertFinishReason(false) // TODO implement
+            .assertResponseModel(false) // TODO implement
             .build();
 
     static final ChatModelAndCapabilities OPEN_AI_CHAT_MODEL_WITH_VISION = ChatModelAndCapabilities.builder()
@@ -116,15 +120,16 @@ class OllamaChatModelIT extends AbstractChatModelIT {
                     .temperature(0.0)
                     .build())
             .mnemonicName("open_ai_chat_model_with_vision")
-            .supportsModelNameParameter(NOT_SUPPORTED)
+            .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
             .supportsTools(NOT_SUPPORTED)
-            .supportsMultipleImageInputsAsBase64EncodedStrings(NOT_SUPPORTED)
-            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // getting invalid image input from model
+            .supportsMultipleImageInputsAsBase64EncodedStrings(
+                    NOT_SUPPORTED) // vision model only supports a single image per message
+            .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // Ollama supports only base64-encoded images
             .supportsCommonParametersWrappedInIntegrationSpecificClass(DISABLED) // to be implemented
             .assertExceptionType(false)
-            .assertResponseId(false)
-            .assertFinishReason(false)
-            .assertResponseModel(false)
+            .assertResponseId(false) // TODO implement
+            .assertFinishReason(false) // TODO implement
+            .assertResponseModel(false) // TODO implement
             .build();
 
     @Override

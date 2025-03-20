@@ -31,7 +31,7 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
                         .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
                         .supportsJsonResponseFormat(NOT_SUPPORTED) // TODO implement
-                        .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
+                        .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO implement
                         .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED)
                         .assertExceptionType(false)
                         .assertResponseId(false) // TODO implement

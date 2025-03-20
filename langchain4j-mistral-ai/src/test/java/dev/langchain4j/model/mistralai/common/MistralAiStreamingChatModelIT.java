@@ -25,7 +25,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return List.of(StreamingChatModelAndCapabilities.builder()
                 .model(MISTRAL_STREAMING_CHAT_MODEL)
                 .mnemonicName("mixtral_8x22b")
-                .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO check if supported
+                .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO implement
                 .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
                 .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
                 .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
@@ -34,7 +34,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .supportsJsonResponseFormat(NOT_SUPPORTED) // TODO implement
                 .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO implement
                 .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
-                .assertExceptionType(false) // TODO fix
+                .assertExceptionType(false)
                 .assertResponseId(false) // TODO implement
                 .assertFinishReason(false) // TODO implement
                 .assertResponseModel(false) // TODO implement

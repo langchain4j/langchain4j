@@ -37,32 +37,32 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         .mnemonicName("azure open ai chat model")
                         .supportsSingleImageInputAsBase64EncodedString(
                                 NOT_SUPPORTED) // Azure OpenAI does not support base64-encoded images
-                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED)
-                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
-                        .supportsModelNameParameter(NOT_SUPPORTED)
-                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
-                        .supportsStopSequencesParameter(NOT_SUPPORTED)
+                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED) // TODO implement
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED) // TODO implement
+                        .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
                         .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
                         .assertExceptionType(false)
-                        .assertResponseId(false)
-                        .assertResponseModel(false)
-                        .assertFinishReason(false)
+                        .assertResponseId(false) // TODO implement
+                        .assertResponseModel(false) // TODO implement
+                        .assertFinishReason(false) // TODO implement
                         .build(),
                 StreamingChatModelAndCapabilities.builder()
                         .model(AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA)
                         .mnemonicName("azure open ai chat model with strict schema")
                         .supportsSingleImageInputAsBase64EncodedString(
                                 NOT_SUPPORTED) // Azure OpenAI does not support base64-encoded images
-                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED)
-                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
-                        .supportsModelNameParameter(NOT_SUPPORTED)
-                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
-                        .supportsStopSequencesParameter(NOT_SUPPORTED)
+                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED) // TODO implement
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED) // TODO implement
+                        .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
                         .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
                         .assertExceptionType(false)
-                        .assertResponseId(false)
-                        .assertResponseModel(false)
-                        .assertFinishReason(false)
+                        .assertResponseId(false) // TODO implement
+                        .assertResponseModel(false) // TODO implement
+                        .assertFinishReason(false) // TODO implement
                         .build());
     }
 

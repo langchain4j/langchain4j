@@ -24,18 +24,18 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
                         .modelName("chat-bison@001")
                         .build())
                 .mnemonicName("vertex ai chat model")
-                .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
-                .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
-                .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
-                .supportsModelNameParameter(NOT_SUPPORTED)
-                .supportsStopSequencesParameter(NOT_SUPPORTED)
-                .supportsToolChoiceRequired(NOT_SUPPORTED)
+                .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO check if supported
+                .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED) // TODO check if supported
+                .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO check if supported
                 .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
-                .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED)
+                .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO check if supported
                 .assertExceptionType(false)
-                .assertResponseId(false)
+                .assertResponseId(false) // TODO implement
                 .assertFinishReason(false)
-                .assertResponseModel(false)
+                .assertResponseModel(false) // TODO implement
                 .build());
     }
 

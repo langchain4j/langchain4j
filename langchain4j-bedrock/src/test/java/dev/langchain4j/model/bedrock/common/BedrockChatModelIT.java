@@ -25,17 +25,18 @@ class BedrockChatModelIT extends AbstractChatModelIT {
         return List.of(
                 ChatModelAndCapabilities.builder()
                         .model(BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL)
-                        .supportsDefaultRequestParameters(NOT_SUPPORTED)
-                        .supportsModelNameParameter(NOT_SUPPORTED)
-                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED)
-                        .supportsStopSequencesParameter(NOT_SUPPORTED)
-                        .supportsToolChoiceRequired(NOT_SUPPORTED)
-                        .supportsJsonResponseFormat(NOT_SUPPORTED)
-                        .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED)
-                        .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED)
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED) // TODO implement
+                        .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
+                        .supportsJsonResponseFormat(NOT_SUPPORTED) // TODO check if supported
+                        .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO check if supported
+                        .supportsSingleImageInputAsPublicURL(
+                                NOT_SUPPORTED) // Bedrock supports only Base64-encoded images
                         .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
-                        .assertResponseId(false)
-                        .assertResponseModel(false)
+                        .assertResponseId(false) // TODO implement
+                        .assertResponseModel(false) // TODO implement
                         .assertExceptionType(false)
                         .build()
                 // TODO add more models from other providers
