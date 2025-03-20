@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -169,7 +170,7 @@ class AiServicesWithToolsIT {
         assertThat(messages).hasSize(4);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
@@ -185,7 +186,7 @@ class AiServicesWithToolsIT {
         assertThat(toolExecutionResultMessage.text()).isEqualTo("11.1");
 
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(3).text()).contains("11.1");
+        assertThat(((AiMessage) messages.get(3)).text()).contains("11.1");
 
         verify(spyChatLanguageModel)
                 .chat(ChatRequest.builder()
@@ -238,7 +239,7 @@ class AiServicesWithToolsIT {
         assertThat(messages).hasSize(6);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
@@ -267,7 +268,7 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecutionResultMessage.text()).isEqualTo("22.2");
 
         assertThat(messages.get(5)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(5).text()).contains("11.1", "22.2");
+        assertThat(((AiMessage) messages.get(5)).text()).contains("11.1", "22.2");
 
         verify(spyChatLanguageModel)
                 .chat(ChatRequest.builder()
@@ -326,7 +327,7 @@ class AiServicesWithToolsIT {
         assertThat(messages).hasSize(5);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
@@ -353,7 +354,7 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecutionResultMessage.text()).isEqualTo("22.2");
 
         assertThat(messages.get(4)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(4).text()).contains("11.1", "22.2");
+        assertThat(((AiMessage) messages.get(4)).text()).contains("11.1", "22.2");
 
         verify(spyChatLanguageModel)
                 .chat(ChatRequest.builder()

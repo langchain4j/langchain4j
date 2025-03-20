@@ -15,5 +15,5 @@ class Document {
 
     private float[] vector;
     private String text;
-    private Map<String, String> metadata;
+    private Map<String, Object> metadata;
 }
