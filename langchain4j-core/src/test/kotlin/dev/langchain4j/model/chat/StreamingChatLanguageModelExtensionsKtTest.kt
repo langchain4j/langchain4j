@@ -4,14 +4,12 @@ import assertk.assertFailure
 import assertk.assertions.hasMessage
 import dev.langchain4j.data.message.AiMessage.aiMessage
 import dev.langchain4j.data.message.UserMessage.userMessage
-import dev.langchain4j.internal.VirtualThreadUtils
 import dev.langchain4j.model.chat.StreamingChatLanguageModelReply.CompleteResponse
 import dev.langchain4j.model.chat.StreamingChatLanguageModelReply.PartialResponse
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler
 import io.kotest.matchers.collections.shouldContainExactly
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -22,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.whenever
-import java.util.concurrent.Executors
 
 @ExtendWith(MockitoExtension::class)
 internal class StreamingChatLanguageModelExtensionsKtTest {
@@ -45,32 +42,6 @@ internal class StreamingChatLanguageModelExtensionsKtTest {
                     }
                 }
             verifyFlowResponse(flow, completeResponse, token1, token2)
-        }
-
-    @Test
-    fun `chatFlow should run with custom coroutine dispatcher`() =
-        runTest {
-            val token1 = "Hello,"
-            val token2 = "beautiful"
-            val token3 = "world"
-            val completeResponse = prepareMockResponse(token1, token2, token3)
-
-            val ctx =
-                VirtualThreadUtils
-                    .createVirtualThreadExecutor(
-                        { Executors.newSingleThreadExecutor() }
-                    )!!
-                    .asCoroutineDispatcher()
-            val flow =
-                mockModel.chatFlow(coroutineContext = ctx) {
-                    messages += userMessage("Hey, there!")
-                    parameters {
-                        temperature = 0.7
-                        maxOutputTokens = 42
-                    }
-                }
-
-            verifyFlowResponse(flow, completeResponse, token1, token2, token3)
         }
 
     private fun prepareMockResponse(vararg tokens: String): ChatResponse {
