@@ -384,7 +384,7 @@ class AiServicesWithChatMemoryIT {
 
         verify(chatLanguageModel, times(4)).supportedCapabilities();
 
-        chatWithMemory.getChatMemory(secondMemoryId).clear();
+        chatWithMemory.getChatMemory(secondMemoryId).evict();
 
         // clear removes the chat memory, so now it is null
         assertThat(chatWithMemory.getChatMemory(secondMemoryId)).isNull();

@@ -12,7 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * This storage mechanism is transient and does not persist data across application restarts.
  */
-@Deprecated(forRemoval = true)
 public class InMemoryChatMemoryStore implements ChatMemoryStore {
     private final Map<Object, List<ChatMessage>> messagesByMemoryId = new ConcurrentHashMap<>();
 

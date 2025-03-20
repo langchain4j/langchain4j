@@ -38,4 +38,9 @@ public interface ChatMemory {
      * Clears the chat memory.
      */
     void clear();
+
+    /**
+     * Evicts the chat memory form the memory store.
+     */
+    void evict();
 }

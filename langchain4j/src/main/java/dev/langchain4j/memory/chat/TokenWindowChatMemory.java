@@ -128,6 +128,10 @@ public class TokenWindowChatMemory implements ChatMemory, RemovalAwareChatMemory
     @Override
     public void clear() {
         store.deleteMessages(id);
+    }
+
+    @Override
+    public void evict() {
         if (memoryRemover != null) {
             memoryRemover.accept(id);
         }

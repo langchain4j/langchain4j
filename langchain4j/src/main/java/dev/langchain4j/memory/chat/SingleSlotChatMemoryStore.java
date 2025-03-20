@@ -40,7 +40,8 @@ class SingleSlotChatMemoryStore implements ChatMemoryStore {
 
     private void checkMemoryId(Object memoryId) {
         if (this.memoryId != memoryId) {
-            throw new IllegalStateException();
+            throw new IllegalStateException("This chat memory has id: " + this.memoryId +
+                    " but an operation has been requested on a memory with id: " + memoryId);
         }
     }
 }

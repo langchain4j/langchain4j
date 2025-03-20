@@ -114,6 +114,10 @@ public class MessageWindowChatMemory implements ChatMemory, RemovalAwareChatMemo
     @Override
     public void clear() {
         store.deleteMessages(id);
+    }
+
+    @Override
+    public void evict() {
         if (memoryRemover != null) {
             memoryRemover.accept(id);
         }
