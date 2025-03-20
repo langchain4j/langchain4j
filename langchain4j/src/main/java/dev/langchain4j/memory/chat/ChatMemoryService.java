@@ -5,6 +5,7 @@ import dev.langchain4j.memory.ChatMemory;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -17,7 +18,7 @@ public class ChatMemoryService {
     private ChatMemoryProvider chatMemoryProvider;
 
     public ChatMemoryService(ChatMemoryProvider chatMemoryProvider) {
-        this.chatMemories = Collections.synchronizedMap(new WeakHashMap<>());
+        this.chatMemories = new ConcurrentHashMap<>();
         this.chatMemoryProvider = ensureNotNull(chatMemoryProvider, "chatMemoryProvider");
     }
 
@@ -25,11 +26,12 @@ public class ChatMemoryService {
         defaultChatMemory = ensureNotNull(chatMemory, "chatMemory");
     }
 
-    public ChatMemory chatMemory(Object memoryId) {
-        if (memoryId == DEFAULT) {
-            return defaultChatMemory;
-        }
-        return chatMemories.computeIfAbsent(memoryId, ignored -> createChatMemory(memoryId));
+    public ChatMemory getOrCreateChatMemory(Object memoryId) {
+        return memoryId == DEFAULT ? defaultChatMemory : chatMemories.computeIfAbsent(memoryId, ignored -> createChatMemory(memoryId));
+    }
+
+    public ChatMemory getChatMemory(Object memoryId) {
+        return memoryId == DEFAULT ? defaultChatMemory : chatMemories.get(memoryId);
     }
 
     private ChatMemory createChatMemory(Object memoryId) {

@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.ChatMemoryAccess;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -242,7 +243,7 @@ class AiServicesWithChatMemoryIT {
     }
 
 
-    interface ChatWithSeparateMemoryForEachUser {
+    interface ChatWithSeparateMemoryForEachUser extends ChatMemoryAccess {
 
         String chat(@MemoryId int memoryId, @UserMessage String userMessage);
     }
@@ -382,6 +383,16 @@ class AiServicesWithChatMemoryIT {
                         .build());
 
         verify(chatLanguageModel, times(4)).supportedCapabilities();
+
+        chatWithMemory.getChatMemory(secondMemoryId).clear();
+
+        // clear removes the chat memory, so now it is null
+        assertThat(chatWithMemory.getChatMemory(secondMemoryId)).isNull();
+
+        // the memory has been cleared so it cannot remember the name of the user
+        String responseToSecondUserAfterMemoryClean = chatWithMemory.chat(secondMemoryId, secondMessageFromSecondUser);
+        assertThat(responseToSecondUserAfterMemoryClean).doesNotContain("Francine");
+        verify(chatLanguageModel).chat(chatRequest(secondMessageFromSecondUser));
 
         ChatMemoryProvider anotherChatMemoryProvider = memoryId ->
                 MessageWindowChatMemory.builder().id(memoryId).maxMessages(10).build();

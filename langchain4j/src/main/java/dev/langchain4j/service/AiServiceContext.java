@@ -38,10 +38,6 @@ public class AiServiceContext {
         return chatMemoryService != null;
     }
 
-    public ChatMemory chatMemory(Object memoryId) {
-        return chatMemoryService.chatMemory(memoryId);
-    }
-
     public void initChatMemories(ChatMemory chatMemory) {
         chatMemoryService = new ChatMemoryService(chatMemory);
     }
