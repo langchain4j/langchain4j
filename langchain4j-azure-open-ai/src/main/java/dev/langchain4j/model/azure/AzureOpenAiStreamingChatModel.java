@@ -4,8 +4,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createModelListenerRequest;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createModelListenerResponse;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerRequest;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerResponse;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupAsyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
@@ -39,9 +39,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -533,10 +531,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -553,7 +551,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     private void asyncCall(
-            ToolSpecification toolThatMustBeExecuted,
+            ToolSpecification toolThatMustBeExecuted, // TODO not used
             StreamingResponseHandler<AiMessage> handler,
             ChatCompletionsOptions options,
             AzureOpenAiStreamingResponseBuilder responseBuilder,
@@ -572,7 +570,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 },
                 throwable -> {
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                            throwable, requestContext.request(), null, provider(), requestContext.attributes());
+                            throwable, requestContext.chatRequest(), provider(), requestContext.attributes());
 
                     listeners.forEach(listener -> {
                         try {
@@ -586,10 +584,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 },
                 () -> {
                     Response<AiMessage> response = responseBuilder.build(tokenizer);
-                    ChatModelResponse modelListenerResponse =
-                            createModelListenerResponse(responseId.get(), options.getModel(), response);
+                    ChatResponse listenerResponse =
+                            createListenerResponse(responseId.get(), options.getModel(), response);
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                            modelListenerResponse, requestContext.request(), provider(), requestContext.attributes());
+                            listenerResponse, requestContext.chatRequest(), provider(), requestContext.attributes());
                     listeners.forEach(listener -> {
                         try {
                             listener.onResponse(responseContext);
@@ -619,10 +617,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 }
             });
             Response<AiMessage> response = responseBuilder.build(tokenizer);
-            ChatModelResponse modelListenerResponse =
-                    createModelListenerResponse(responseId.get(), options.getModel(), response);
+            ChatResponse listenerResponse =
+                    createListenerResponse(responseId.get(), options.getModel(), response);
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse, requestContext.request(), provider(), requestContext.attributes());
+                    listenerResponse, requestContext.chatRequest(), provider(), requestContext.attributes());
             listeners.forEach(listener -> {
                 try {
                     listener.onResponse(responseContext);
@@ -635,7 +633,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         } catch (Exception exception) {
 
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    exception, requestContext.request(), null, provider(), requestContext.attributes());
+                    exception, requestContext.chatRequest(), provider(), requestContext.attributes());
 
             listeners.forEach(listener -> {
                 try {

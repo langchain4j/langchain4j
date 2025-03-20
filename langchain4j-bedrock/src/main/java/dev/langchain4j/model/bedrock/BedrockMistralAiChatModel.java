@@ -6,10 +6,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 
 import java.nio.charset.Charset;
@@ -73,9 +73,9 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, messages, Collections.emptyList());
+        ChatRequest listenerRequest = createListenerRequest(invokeModelRequest, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -91,14 +91,14 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
         try {
             Response<AiMessage> responseMessage = toAiMessage(result);
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+            ChatResponse listenerResponse = createListenerResponse(
                     null,
                     null,
                     responseMessage
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
+                    listenerResponse,
+                    listenerRequest,
                     provider(),
                     attributes
             );
@@ -115,7 +115,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
         } catch (RuntimeException e) {
             listenerErrorResponse(
                     e,
-                    modelListenerRequest,
+                    listenerRequest,
                     provider(),
                     attributes
             );
