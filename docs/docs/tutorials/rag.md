@@ -571,7 +571,7 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
 
     // adding a name of the Document to each TextSegment to improve the quality of search
     .textSegmentTransformer(textSegment -> TextSegment.from(
-            textSegment.metadata("file_name") + "\n" + textSegment.text(),
+            textSegment.metadata().getString("file_name") + "\n" + textSegment.text(),
             textSegment.metadata()
     ))
 
