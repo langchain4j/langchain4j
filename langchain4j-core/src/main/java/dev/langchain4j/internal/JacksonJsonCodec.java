@@ -1,5 +1,13 @@
 package dev.langchain4j.internal;
 
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -10,27 +18,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
-import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
-
 class JacksonJsonCodec implements Json.JsonCodec {
 
-    private static final ObjectMapper OBJECT_MAPPER = createObjectMapper();
+    private final ObjectMapper objectMapper;
 
     private static ObjectMapper createObjectMapper() {
 
-        SimpleModule module = new SimpleModule();
+        SimpleModule module = new SimpleModule("langchain4j-module");
 
         module.addSerializer(LocalDate.class, new StdSerializer<>(LocalDate.class) {
             @Override
@@ -79,7 +79,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         module.addSerializer(LocalDateTime.class, new StdSerializer<>(LocalDateTime.class) {
             @Override
-            public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
+                    throws IOException {
                 gen.writeString(value.format(ISO_LOCAL_DATE_TIME));
             }
         });
@@ -107,14 +108,24 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         return new ObjectMapper()
                 .setVisibility(FIELD, ANY)
+                .findAndRegisterModules()
                 .registerModule(module)
-                .enable(INDENT_OUTPUT);
+                .enable(INDENT_OUTPUT)
+                .enable(FAIL_ON_UNKNOWN_PROPERTIES); // To prevent issues caused by LLM hallucinations
+    }
+
+    public JacksonJsonCodec(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    public JacksonJsonCodec() {
+        this(createObjectMapper());
     }
 
     @Override
     public String toJson(Object o) {
         try {
-            return OBJECT_MAPPER.writeValueAsString(o);
+            return objectMapper.writeValueAsString(o);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -123,7 +134,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
     @Override
     public <T> T fromJson(String json, Class<T> type) {
         try {
-            return OBJECT_MAPPER.readValue(json, type);
+            return objectMapper.readValue(json, type);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -132,9 +143,18 @@ class JacksonJsonCodec implements Json.JsonCodec {
     @Override
     public <T> T fromJson(String json, Type type) {
         try {
-            return OBJECT_MAPPER.readValue(json, OBJECT_MAPPER.constructType(type));
+            return objectMapper.readValue(json, objectMapper.constructType(type));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Returns the ObjectMapper instance used for JSON processing.
+     *
+     * @return the ObjectMapper instance.
+     */
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
     }
 }
