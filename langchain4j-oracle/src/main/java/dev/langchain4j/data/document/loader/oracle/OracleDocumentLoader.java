@@ -32,9 +32,12 @@ public class OracleDocumentLoader {
 
     private final Connection conn;
 
-    final String COLUMN_TEXT = "text";
-    final String COLUMN_METADATA = "metadata";
+    private final String COLUMN_TEXT = "text";
+    private final String COLUMN_METADATA = "metadata";
 
+    /**
+     * create a document loader
+     */
     public OracleDocumentLoader(Connection conn) {
         this.conn = conn;
     }
@@ -56,8 +59,9 @@ public class OracleDocumentLoader {
             if (doc != null) {
                 documents.add(doc);
             }
-        } else if (loaderPref.getDir() != null && !loaderPref.getDir().equals("null")) {
-            String dir = loaderPref.getDir();
+        } else if (loaderPref.getDirectory() != null
+                && !loaderPref.getDirectory().equals("null")) {
+            String dir = loaderPref.getDirectory();
             Path root = Paths.get(dir);
             Files.walk(root).forEach(path -> {
                 if (path.toFile().isFile()) {
@@ -101,7 +105,7 @@ public class OracleDocumentLoader {
 
         byte[] bytes = Files.readAllBytes(Paths.get(filename));
 
-        // this uses a blob to pass the input
+        // this uses a blob for the input
         // run utl_to_text twice to get both the plain text and HTML output
         // the HTML Output is needed for the metadata
         String query = "select dbms_vector_chain.utl_to_text(?, json(?)) text, "
@@ -140,7 +144,7 @@ public class OracleDocumentLoader {
     private List<Document> loadDocuments(String owner, String table, String column, String pref) throws SQLException {
         List<Document> documents = new ArrayList<>();
 
-        // this uses a table and column to pass the input
+        // this uses a table for the input
         // run utl_to_text twice to get both the plain text and HTML output
         // the HTML Output is needed for the metadata
         String query = String.format(
