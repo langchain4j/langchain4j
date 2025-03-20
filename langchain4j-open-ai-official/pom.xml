@@ -45,6 +45,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-identity</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
@@ -92,6 +98,7 @@
             <artifactId>tinylog-impl</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.tinylog</groupId>
             <artifactId>slf4j-tinylog</artifactId>
