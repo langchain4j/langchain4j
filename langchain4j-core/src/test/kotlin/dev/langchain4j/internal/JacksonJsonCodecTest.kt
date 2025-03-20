@@ -2,6 +2,7 @@ package dev.langchain4j.internal
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.kotest.assertions.json.shouldEqualSpecifiedJson
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeSameInstanceAs
@@ -49,7 +50,7 @@ internal class JacksonJsonCodecTest {
     fun `Should serialize Kotlin data classes`() {
         val jsonString = subject.toJson(ServiceResponse("ok", true))
         // language=json
-        jsonString shouldBe
+        jsonString shouldEqualSpecifiedJson
             """
             {
               "status" : "ok",
