@@ -92,6 +92,14 @@ public abstract class AbstractBaseChatModelIT<M> {
         return models();
     }
 
+    protected String catImageUrl() {
+        return CAT_IMAGE_URL;
+    }
+
+    protected String diceImageUrl() {
+        return DICE_IMAGE_URL;
+    }
+
     protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
 
 
@@ -1019,7 +1027,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_single_image_as_base64_encoded_string(M model) {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see?"),
                 ImageContent.from(base64Data, "image/png")
@@ -1055,8 +1063,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see on these images?"),
-                ImageContent.from(encoder.encodeToString(readBytes(CAT_IMAGE_URL)), "image/png"),
-                ImageContent.from(encoder.encodeToString(readBytes(DICE_IMAGE_URL)), "image/png")
+                ImageContent.from(encoder.encodeToString(readBytes(catImageUrl())), "image/png"),
+                ImageContent.from(encoder.encodeToString(readBytes(diceImageUrl())), "image/png")
         );
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -1088,7 +1096,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(M model) {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see?"),
                 ImageContent.from(base64Data, "image/png")
@@ -1117,7 +1125,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see?"),
-                ImageContent.from(CAT_IMAGE_URL)
+                ImageContent.from(catImageUrl())
         );
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
@@ -1148,8 +1156,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see on these images?"),
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL)
+                ImageContent.from(catImageUrl()),
+                ImageContent.from(diceImageUrl())
         );
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
@@ -1182,7 +1190,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see?"),
-                ImageContent.from(CAT_IMAGE_URL)
+                ImageContent.from(catImageUrl())
         );
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
