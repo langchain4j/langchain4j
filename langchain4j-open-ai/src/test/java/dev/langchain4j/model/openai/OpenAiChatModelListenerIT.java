@@ -36,6 +36,7 @@ class OpenAiChatModelListenerIT extends ChatModelListenerIT {
     @Override
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey("banana")
                 .listeners(singletonList(listener))
                 .build();
