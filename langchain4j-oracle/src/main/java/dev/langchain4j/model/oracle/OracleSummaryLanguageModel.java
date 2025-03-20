@@ -6,12 +6,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class OracleSummaryLanguageModel implements LanguageModel {
-
-    private static final Logger log = LoggerFactory.getLogger(OracleSummaryLanguageModel.class);
 
     private final Connection conn;
     private final String pref;
@@ -55,9 +51,8 @@ public class OracleSummaryLanguageModel implements LanguageModel {
                     }
                 }
             }
-        } catch (SQLException e) {
-            String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-            log.warn("Failed to summarize '{}': {}", pref, message);
+        } catch (SQLException ex) {
+            throw new RuntimeException("cannot get summary", ex);
         }
 
         return Response.from(text);

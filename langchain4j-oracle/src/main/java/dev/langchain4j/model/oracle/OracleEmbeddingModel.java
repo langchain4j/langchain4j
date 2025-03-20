@@ -18,12 +18,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import oracle.jdbc.OracleConnection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
-
-    private static final Logger log = LoggerFactory.getLogger(OracleEmbeddingModel.class);
 
     private final Connection conn;
     private final String pref;
@@ -73,50 +69,29 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
 
-        return embedTexts(texts);
+        try {
+            return embedTexts(texts);
+        } catch (SQLException | JsonProcessingException ex) {
+            throw new RuntimeException("cannot get embedding", ex);
+        }
     }
 
-    private Response<List<Embedding>> embedTexts(List<String> inputs) {
+    private Response<List<Embedding>> embedTexts(List<String> inputs) throws SQLException, JsonProcessingException {
         List<Embedding> embeddings = new ArrayList<>();
 
-        try {
-            if (proxy != null && !proxy.isEmpty()) {
-                String query = "begin utl_http.set_proxy(?); end;";
-                try (PreparedStatement stmt = conn.prepareStatement(query)) {
-                    stmt.setObject(1, proxy);
-                    stmt.execute();
-                }
+        if (proxy != null && !proxy.isEmpty()) {
+            String query = "begin utl_http.set_proxy(?); end;";
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setObject(1, proxy);
+                stmt.execute();
             }
+        }
 
-            if (!batching) {
-                for (String input : inputs) {
-                    String query =
-                            "select t.column_value as data from dbms_vector_chain.utl_to_embeddings(?, json(?)) t";
-                    try (PreparedStatement stmt = conn.prepareStatement(query)) {
-                        stmt.setObject(1, input);
-                        stmt.setObject(2, pref);
-                        try (ResultSet rs = stmt.executeQuery()) {
-                            while (rs.next()) {
-                                String text = rs.getString("data");
-
-                                ObjectMapper mapper = new ObjectMapper();
-                                dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
-                                        mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
-                                Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.getVector()));
-                                embeddings.add(embedding);
-                            }
-                        }
-                    }
-                }
-            } else {
-                // createOracleArray needs to passed a Clob array since vector_array_t is a table of clob
-                // if a String array is passed, will get ORA-17059: Failed to convert to internal representation
-                List<Object> elements = toClobList(conn, inputs);
-                Array arr = ((OracleConnection) conn).createOracleArray("SYS.VECTOR_ARRAY_T", elements.toArray());
-
+        if (!batching) {
+            for (String input : inputs) {
                 String query = "select t.column_value as data from dbms_vector_chain.utl_to_embeddings(?, json(?)) t";
                 try (PreparedStatement stmt = conn.prepareStatement(query)) {
-                    stmt.setObject(1, arr);
+                    stmt.setObject(1, input);
                     stmt.setObject(2, pref);
                     try (ResultSet rs = stmt.executeQuery()) {
                         while (rs.next()) {
@@ -131,9 +106,28 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
                     }
                 }
             }
-        } catch (SQLException | JsonProcessingException e) {
-            String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-            log.warn("Failed to summarize '{}': {}", pref, message);
+        } else {
+            // createOracleArray needs to passed a Clob array since vector_array_t is a table of clob
+            // if a String array is passed, will get ORA-17059: Failed to convert to internal representation
+            List<Object> elements = toClobList(conn, inputs);
+            Array arr = ((OracleConnection) conn).createOracleArray("SYS.VECTOR_ARRAY_T", elements.toArray());
+
+            String query = "select t.column_value as data from dbms_vector_chain.utl_to_embeddings(?, json(?)) t";
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setObject(1, arr);
+                stmt.setObject(2, pref);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String text = rs.getString("data");
+
+                        ObjectMapper mapper = new ObjectMapper();
+                        dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
+                                mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
+                        Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.getVector()));
+                        embeddings.add(embedding);
+                    }
+                }
+            }
         }
 
         return Response.from(embeddings);

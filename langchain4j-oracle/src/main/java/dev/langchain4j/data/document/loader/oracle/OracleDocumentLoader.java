@@ -1,7 +1,6 @@
 package dev.langchain4j.data.document.loader.oracle;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -20,12 +19,8 @@ import java.util.List;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class OracleDocumentLoader {
-
-    private static final Logger log = LoggerFactory.getLogger(OracleDocumentLoader.class);
 
     private final Connection conn;
 
@@ -37,41 +32,36 @@ public class OracleDocumentLoader {
         List<Document> documents = new ArrayList<>();
 
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode rootNode = mapper.readTree(pref);
-        JsonNode fileNode = rootNode.path("file");
-        JsonNode dirNode = rootNode.path("dir");
-        JsonNode ownerNode = rootNode.path("owner");
-        JsonNode tableNode = rootNode.path("tablename");
-        JsonNode colNode = rootNode.path("colname");
+        LoaderPreference loaderPref = mapper.readValue(pref, LoaderPreference.class);
 
-        if (fileNode.textValue() != null && !fileNode.textValue().equals("null")) {
-            String filename = fileNode.textValue();
+        if (loaderPref.getFile() != null && !loaderPref.getFile().equals("null")) {
+            String filename = loaderPref.getFile();
             Document doc = loadDocument(filename, pref);
             if (doc != null) {
                 documents.add(doc);
             }
-        } else if (dirNode.textValue() != null && !dirNode.textValue().equals("null")) {
-            String dir = dirNode.textValue();
+        } else if (loaderPref.getDir() != null && !loaderPref.getDir().equals("null")) {
+            String dir = loaderPref.getDir();
             Path root = Paths.get(dir);
             Files.walk(root).forEach(path -> {
                 if (path.toFile().isFile()) {
                     Document doc = null;
                     try {
                         doc = loadDocument(path.toFile().toString(), pref);
-                    } catch (IOException | SQLException e) {
-                        String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-                        log.warn("Failed to summarize '{}': {}", pref, message);
-                    }
-                    if (doc != null) {
-                        documents.add(doc);
+                        if (doc != null) {
+                            documents.add(doc);
+                        }
+                    } catch (IOException | SQLException ex) {
+                        throw new RuntimeException("cannot load document", ex);
                     }
                 }
             });
-        } else if (colNode.textValue() != null && !colNode.textValue().equals("null")) {
-            String column = colNode.textValue();
+        } else if (loaderPref.getColumnName() != null
+                && !loaderPref.getColumnName().equals("null")) {
+            String column = loaderPref.getColumnName();
 
-            String table = tableNode.textValue();
-            String owner = ownerNode.textValue();
+            String table = loaderPref.getTableName();
+            String owner = loaderPref.getOwner();
             if (table == null || table.equals("null")) {
                 throw new InvalidParameterException("Missing table in preference");
             }
@@ -92,8 +82,11 @@ public class OracleDocumentLoader {
 
         byte[] bytes = Files.readAllBytes(Paths.get(filename));
 
-        String query =
-                "select dbms_vector_chain.utl_to_text(?, json(?)) text, dbms_vector_chain.utl_to_text(?, json('{\"plaintext\": \"false\"}')) metadata from dual";
+        // run utl_to_text twice to get both the plain text and HTML output
+        // the HTML Output is needed for the metadata
+        String query = "select dbms_vector_chain.utl_to_text(?, json(?)) text, "
+                + "dbms_vector_chain.utl_to_text(?, json('{\"plaintext\": \"false\"}')) metadata "
+                + "from dual";
 
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             Blob blob = conn.createBlob();
@@ -124,8 +117,12 @@ public class OracleDocumentLoader {
     private List<Document> loadDocuments(String owner, String table, String column, String pref) throws SQLException {
         List<Document> documents = new ArrayList<>();
 
+        // run utl_to_text twice to get both the plain text and HTML output
+        // the HTML Output is needed for the metadata
         String query = String.format(
-                "select dbms_vector_chain.utl_to_text(t.%s, json(?)) text, dbms_vector_chain.utl_to_text(t.%s, json('{\"plaintext\": \"false\"}')) metadata from %s.%s t",
+                "select dbms_vector_chain.utl_to_text(t.%s, json(?)) text, "
+                        + "dbms_vector_chain.utl_to_text(t.%s, json('{\"plaintext\": \"false\"}')) metadata "
+                        + "from %s.%s t",
                 column, column, owner, table);
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setObject(1, pref);

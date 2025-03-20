@@ -12,12 +12,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class OracleDocumentSplitter implements DocumentSplitter {
-
-    private static final Logger log = LoggerFactory.getLogger(OracleDocumentSplitter.class);
 
     private static final String INDEX = "index";
 
@@ -39,10 +35,10 @@ public class OracleDocumentSplitter implements DocumentSplitter {
                 segments.add(createSegment(part, document, index));
                 index++;
             }
-        } catch (SQLException | JsonProcessingException e) {
-            String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-            log.warn("Failed to summarize '{}': {}", pref, message);
+        } catch (SQLException | JsonProcessingException ex) {
+            throw new RuntimeException("cannot split document", ex);
         }
+
         return segments;
     }
 
