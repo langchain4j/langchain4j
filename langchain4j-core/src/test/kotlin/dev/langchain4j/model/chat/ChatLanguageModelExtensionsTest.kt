@@ -4,8 +4,11 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import dev.langchain4j.data.message.UserMessage.userMessage
+import dev.langchain4j.internal.VirtualThreadUtils
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
+import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -14,6 +17,7 @@ import org.mockito.Captor
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.whenever
+import java.util.concurrent.Executors
 
 @ExtendWith(MockitoExtension::class)
 internal class ChatLanguageModelExtensionsTest {
@@ -39,7 +43,25 @@ internal class ChatLanguageModelExtensionsTest {
 
             val response = chatLanguageModel.chatAsync(chatRequest)
 
-            assertThat(response).isEqualTo(chatResponse)
+            response shouldBe chatResponse
+        }
+
+    @Test
+    fun `chatAsync with custom dispatcher`() =
+        runTest {
+            whenever(chatLanguageModel.chat(chatRequest)).thenReturn(chatResponse)
+
+            // some custom coroutine context
+            val ctx =
+                VirtualThreadUtils
+                    .createVirtualThreadExecutor { Executors.newSingleThreadExecutor() }!!
+                    .asCoroutineDispatcher()
+
+            // when
+            val response = chatLanguageModel.chatAsync(request = chatRequest, coroutineContext = ctx)
+
+            // then
+            response shouldBe chatResponse
         }
 
     @Test
@@ -67,6 +89,6 @@ internal class ChatLanguageModelExtensionsTest {
                 }
 
             assertThat(chatRequestCaptor.value.messages()).containsExactly(userMessage)
-            assertThat(response).isEqualTo(chatResponse)
+            response shouldBe chatResponse
         }
 }
