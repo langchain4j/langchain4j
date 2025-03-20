@@ -77,11 +77,7 @@ class OpenAiChatModelErrorsTest {
         // given
         final var question = "Simulate timeout";
         MOCK.completion(req -> req.userMessageContains(question)).respondsError(res -> {
-            try {
-                Thread.sleep(TIMEOUT.plusMillis(100).toMillis());
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            res.delayMillis(TIMEOUT.plusMillis(100).toMillis());
             res.setHttpStatus(HttpStatusCode.Companion.getNoContent());
             res.setBody("");
         });
