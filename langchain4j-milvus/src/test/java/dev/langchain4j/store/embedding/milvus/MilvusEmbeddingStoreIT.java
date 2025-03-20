@@ -16,7 +16,6 @@ import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.ConnectParam;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
@@ -161,7 +160,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .search(EmbeddingSearchRequest.builder()
                         .queryEmbedding(firstEmbedding)
                         .maxResults(10)
-                        .minScore(0d)  // search all records
+                        .minScore(0d) // search all records
                         .build())
                 .matches();
         assertThat(matches).hasSize(2);
@@ -179,7 +178,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .search(EmbeddingSearchRequest.builder()
                         .queryEmbedding(firstEmbedding)
                         .maxResults(10)
-                        .minScore(0d)  // search all records
+                        .minScore(0d) // search all records
                         .build())
                 .matches();
         // total results should still be 2
