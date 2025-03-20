@@ -33,7 +33,7 @@ import kotlin.coroutines.CoroutineContext
  */
 @Experimental
 @JvmOverloads
-suspend fun ChatLanguageModel.chatAsync(
+public suspend fun ChatLanguageModel.chatAsync(
     request: ChatRequest,
     coroutineContext: CoroutineContext = defaultCoroutineContext()
 ): ChatResponse {
@@ -71,7 +71,7 @@ suspend fun ChatLanguageModel.chatAsync(
  */
 @Experimental
 @JvmOverloads
-suspend fun ChatLanguageModel.chat(
+public suspend fun ChatLanguageModel.chat(
     requestBuilder: ChatRequest.Builder,
     coroutineContext: CoroutineContext = defaultCoroutineContext()
 ): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = requestBuilder.build())
@@ -102,13 +102,13 @@ suspend fun ChatLanguageModel.chat(
  * @author Konstantin Pavlov
  */
 @Experimental
-suspend fun ChatLanguageModel.chat(
+public suspend fun ChatLanguageModel.chat(
     coroutineContext: CoroutineContext = defaultCoroutineContext(),
     block: ChatRequestBuilder.() -> Unit
 ): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = chatRequest(block))
 
 @Experimental
-suspend fun ChatLanguageModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse =
+public suspend fun ChatLanguageModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse =
     chatAsync(coroutineContext = defaultCoroutineContext(), request = chatRequest(block))
 
 /**
@@ -121,4 +121,4 @@ suspend fun ChatLanguageModel.chat(block: ChatRequestBuilder.() -> Unit): ChatRe
  * @return A [CoroutineContext] appropriate for executing background tasks,
  *         defaulting to a virtual thread dispatcher when available or [Dispatchers.IO] otherwise.
  */
-fun defaultCoroutineContext(): CoroutineContext = Dispatchers.IO
+internal fun defaultCoroutineContext(): CoroutineContext = Dispatchers.IO

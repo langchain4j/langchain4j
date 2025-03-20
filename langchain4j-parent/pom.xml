@@ -553,8 +553,9 @@
                         <jvmTarget>${java.version}</jvmTarget>
                         <javaParameters>true</javaParameters>
                         <args>
-                            <arg>-Xjsr305=strict</arg>
+                            <arg>-Xexplicit-api=strict</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
+                            <arg>-Xjsr305=strict</arg>
                             <arg>-Xtype-enhancement-improvements-strict-mode</arg>
                         </args>
                     </configuration>
