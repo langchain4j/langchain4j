@@ -14,6 +14,7 @@ import io.milvus.param.collection.*;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
+import io.milvus.param.dml.UpsertParam;
 import io.milvus.param.index.CreateIndexParam;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
@@ -100,6 +101,12 @@ class CollectionOperationsExecutor {
     static void insert(MilvusServiceClient milvusClient, String collectionName, List<InsertParam.Field> fields) {
         InsertParam request = buildInsertRequest(collectionName, fields);
         R<MutationResult> response = milvusClient.insert(request);
+        checkResponseNotFailed(response);
+    }
+
+    static void upsert(MilvusServiceClient milvusClient, String collectionName, List<InsertParam.Field> fields) {
+        UpsertParam request = buildUpsertRequest(collectionName, fields);
+        R<MutationResult> response = milvusClient.upsert(request);
         checkResponseNotFailed(response);
     }
 

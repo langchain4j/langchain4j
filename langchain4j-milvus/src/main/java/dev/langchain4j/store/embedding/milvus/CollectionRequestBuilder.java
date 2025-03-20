@@ -11,6 +11,7 @@ import io.milvus.param.dml.DeleteParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
+import io.milvus.param.dml.UpsertParam;
 
 import java.util.List;
 
@@ -42,6 +43,13 @@ class CollectionRequestBuilder {
 
     static InsertParam buildInsertRequest(String collectionName, List<InsertParam.Field> fields) {
         return InsertParam.newBuilder()
+                .withCollectionName(collectionName)
+                .withFields(fields)
+                .build();
+    }
+
+    static UpsertParam buildUpsertRequest(String collectionName, List<InsertParam.Field> fields) {
+        return UpsertParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withFields(fields)
                 .build();

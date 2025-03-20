@@ -15,6 +15,8 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.ConnectParam;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
@@ -124,6 +126,63 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                         .maxResults(10)
                         .build())
                 .matches();
+        assertThat(matches).hasSize(2);
+        assertThat(matches.get(0).embedding()).isNull();
+        assertThat(matches.get(1).embedding()).isNull();
+    }
+
+    @Test
+    void should_update_records_when_ids_exist() {
+        ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
+                .withHost(milvus.getHost())
+                .withUri(milvus.getEndpoint())
+                .withPort(milvus.getMappedPort(19530))
+                .withAuthorization("", "");
+
+        MilvusServiceClient milvusServiceClient = new MilvusServiceClient(connectBuilder.build());
+
+        EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
+                .milvusClient(milvusServiceClient)
+                .collectionName(COLLECTION_NAME)
+                .consistencyLevel(STRONG)
+                .dimension(384)
+                .retrieveEmbeddingsOnSearch(false)
+                .idFieldName("id_field")
+                .textFieldName("text_field")
+                .metadataFieldName("metadata_field")
+                .vectorFieldName("vector_field")
+                .build();
+
+        Embedding firstEmbedding = embeddingModel.embed("hello").content();
+        Embedding secondEmbedding = embeddingModel.embed("hi").content();
+        embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
+
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(firstEmbedding)
+                        .maxResults(10)
+                        .minScore(0d)  // search all records
+                        .build())
+                .matches();
+        assertThat(matches).hasSize(2);
+        assertThat(matches.get(0).embedding()).isNull();
+        assertThat(matches.get(1).embedding()).isNull();
+
+        Embedding thirdEmbedding = embeddingModel.embed("hey").content();
+        Embedding forthEmbedding = embeddingModel.embed("hiya").content();
+        embeddingStore.addAll(
+                matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList()),
+                asList(thirdEmbedding, forthEmbedding),
+                null);
+
+        matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(firstEmbedding)
+                        .maxResults(10)
+                        .minScore(0d)  // search all records
+                        .build())
+                .matches();
+        // total results should still be 2
         assertThat(matches).hasSize(2);
         assertThat(matches.get(0).embedding()).isNull();
         assertThat(matches.get(1).embedding()).isNull();

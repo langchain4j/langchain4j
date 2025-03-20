@@ -33,6 +33,7 @@ import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecuto
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.insert;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.loadCollectionInMemory;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.removeForVector;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.upsert;
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.buildSearchRequest;
 import static dev.langchain4j.store.embedding.milvus.Generator.generateRandomIds;
 import static dev.langchain4j.store.embedding.milvus.Mapper.toEmbeddingMatches;
@@ -45,7 +46,6 @@ import static io.milvus.common.clientenum.ConsistencyLevelEnum.EVENTUALLY;
 import static io.milvus.param.IndexType.FLAT;
 import static io.milvus.param.MetricType.COSINE;
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -169,25 +169,36 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         CollectionOperationsExecutor.dropCollection(this.milvusClient, collectionName);
     }
 
+    @Override
     public String add(Embedding embedding) {
         String id = Utils.randomUUID();
-        add(id, embedding);
+        insertInternal(id, embedding, null);
         return id;
     }
 
+    @Override
     public void add(String id, Embedding embedding) {
-        addInternal(id, embedding, null);
+        upsertInternal(id, embedding, null);
     }
 
+    @Override
     public String add(Embedding embedding, TextSegment textSegment) {
         String id = Utils.randomUUID();
-        addInternal(id, embedding, textSegment);
+        insertInternal(id, embedding, textSegment);
         return id;
     }
 
+    @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = generateRandomIds(embeddings.size());
-        addAll(ids, embeddings, null);
+        insertAll(ids, embeddings, null);
+        return ids;
+    }
+
+    @Override
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+        final List<String> ids = generateIds(embeddings.size());
+        insertAll(ids, embeddings, embedded);
         return ids;
     }
 
@@ -222,17 +233,24 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new EmbeddingSearchResult<>(result);
     }
 
-    private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
-        addAll(
+    private void insertInternal(String id, Embedding embedding, TextSegment textSegment) {
+        insertAll(
                 singletonList(id),
                 singletonList(embedding),
                 textSegment == null ? null : singletonList(textSegment)
         );
     }
 
-    @Override
-    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+    private void upsertInternal(String id, Embedding embedding, TextSegment textSegment) {
+        upsertAll(
+                singletonList(id),
+                singletonList(embedding),
+                textSegment == null ? null : singletonList(textSegment)
+        );
+    }
+
+    private void insertAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             return;
         }
         List<InsertParam.Field> fields = new ArrayList<>();
@@ -245,6 +263,27 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (autoFlushOnInsert) {
             flush(this.milvusClient, this.collectionName);
         }
+    }
+
+    private void upsertAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+            return;
+        }
+        List<InsertParam.Field> fields = new ArrayList<>();
+        fields.add(new InsertParam.Field(fieldDefinition.getIdFieldName(), ids));
+        fields.add(new InsertParam.Field(fieldDefinition.getTextFieldName(), toScalars(textSegments, ids.size())));
+        fields.add(new InsertParam.Field(fieldDefinition.getMetadataFieldName(), toMetadataJsons(textSegments, ids.size())));
+        fields.add(new InsertParam.Field(fieldDefinition.getVectorFieldName(), toVectors(embeddings)));
+
+        upsert(this.milvusClient, this.collectionName, fields);
+        if (autoFlushOnInsert) {
+            flush(this.milvusClient, this.collectionName);
+        }
+    }
+
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+        upsertAll(ids, embeddings, textSegments);
     }
 
     /**
