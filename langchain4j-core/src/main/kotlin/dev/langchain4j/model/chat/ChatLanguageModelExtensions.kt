@@ -5,7 +5,9 @@ import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.request.ChatRequestBuilder
 import dev.langchain4j.model.chat.request.chatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Asynchronously processes a chat request using the language model within
@@ -15,10 +17,12 @@ import kotlinx.coroutines.coroutineScope
  * Example usage:
  * ```kotlin
  * val response = model.chatAsync(ChatRequest(messages))
+ * val response2 = model.chatAsync(request = chatRequest, coroutineContext = Dispatchers.IO)
  * ```
  *
  * @param request The chat request containing messages and optional parameters
  *    for the model.
+ * @param coroutineContext processes a chat request in provided [CoroutineContext]
  * @return [ChatResponse] containing the model's response and any additional
  *    metadata.
  * @throws Exception if the chat request fails or is interrupted.
@@ -28,9 +32,13 @@ import kotlinx.coroutines.coroutineScope
  * @author Konstantin Pavlov
  */
 @Experimental
-suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
+@JvmOverloads
+public suspend fun ChatLanguageModel.chatAsync(
+    request: ChatRequest,
+    coroutineContext: CoroutineContext = defaultCoroutineContext()
+): ChatResponse {
     val model = this
-    return coroutineScope { model.chat(request) }
+    return withContext(coroutineContext) { model.chat(request) }
 }
 
 /**
@@ -50,6 +58,7 @@ suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
  *
  * @param requestBuilder The builder instance configured with desired chat
  *    request parameters.
+ * @param coroutineContext processes a chat request in provided [CoroutineContext]
  * @return [ChatResponse] containing the model's response and any additional
  *    metadata.
  * @throws Exception if the chat request fails, is interrupted, or the builder
@@ -61,8 +70,11 @@ suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
  * @author Konstantin Pavlov
  */
 @Experimental
-suspend fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatResponse =
-    chatAsync(requestBuilder.build())
+@JvmOverloads
+public suspend fun ChatLanguageModel.chat(
+    requestBuilder: ChatRequest.Builder,
+    coroutineContext: CoroutineContext = defaultCoroutineContext()
+): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = requestBuilder.build())
 
 /**
  * Asynchronously processes a chat request by configuring a [ChatRequest]
@@ -83,10 +95,30 @@ suspend fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatRes
  *
  * @param block A lambda with receiver on [ChatRequestBuilder] used to
  *    configure the messages and parameters for the chat request.
+ * @param coroutineContext processes a chat request in provided [CoroutineContext]
  * @return A [ChatResponse] containing the response from the model and any
  *    associated metadata.
  * @throws Exception if the chat request fails or encounters an error during execution.
  * @author Konstantin Pavlov
  */
 @Experimental
-suspend fun ChatLanguageModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse = chatAsync(chatRequest(block))
+public suspend fun ChatLanguageModel.chat(
+    coroutineContext: CoroutineContext = defaultCoroutineContext(),
+    block: ChatRequestBuilder.() -> Unit
+): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = chatRequest(block))
+
+@Experimental
+public suspend fun ChatLanguageModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse =
+    chatAsync(coroutineContext = defaultCoroutineContext(), request = chatRequest(block))
+
+/**
+ * Provides the default [CoroutineContext] for executing asynchronous operations.
+ *
+ * This method attempts to create a coroutine dispatcher backed by a virtual thread
+ * executor, if virtual threads are available on the current platform (Java 21+).
+ * If virtual threads are not supported, it defaults to using [Dispatchers.IO].
+ *
+ * @return A [CoroutineContext] appropriate for executing background tasks,
+ *         defaulting to a virtual thread dispatcher when available or [Dispatchers.IO] otherwise.
+ */
+internal fun defaultCoroutineContext(): CoroutineContext = Dispatchers.IO
