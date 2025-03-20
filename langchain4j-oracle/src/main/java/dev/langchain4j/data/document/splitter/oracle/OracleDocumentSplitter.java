@@ -27,6 +27,9 @@ public class OracleDocumentSplitter implements DocumentSplitter {
     private final Connection conn;
     private final String pref;
 
+    /**
+     * Create a document splitter
+     */
     public OracleDocumentSplitter(Connection conn, String pref) {
         this.conn = conn;
         this.pref = pref;

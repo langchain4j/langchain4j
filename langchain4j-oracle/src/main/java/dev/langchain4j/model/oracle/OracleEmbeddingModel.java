@@ -33,12 +33,18 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String proxy;
     private boolean batching = true;
 
+    /**
+     * Create an embedding model
+     */
     public OracleEmbeddingModel(Connection conn, String pref) {
         this.conn = conn;
         this.pref = pref;
         this.proxy = "";
     }
 
+    /**
+     * Create an embedding model with a proxy
+     */
     public OracleEmbeddingModel(Connection conn, String pref, String proxy) {
         this.conn = conn;
         this.pref = pref;

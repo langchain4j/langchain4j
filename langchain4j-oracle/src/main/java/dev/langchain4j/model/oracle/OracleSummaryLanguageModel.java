@@ -20,12 +20,18 @@ public class OracleSummaryLanguageModel implements LanguageModel {
     private final String pref;
     private final String proxy;
 
+    /**
+     * Create a summary language model
+     */
     public OracleSummaryLanguageModel(Connection conn, String pref) {
         this.conn = conn;
         this.pref = pref;
         this.proxy = "";
     }
 
+    /**
+     * Create a summary language model with a proxy
+     */
     public OracleSummaryLanguageModel(Connection conn, String pref, String proxy) {
         this.conn = conn;
         this.pref = pref;
