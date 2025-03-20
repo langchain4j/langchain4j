@@ -24,6 +24,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+/**
+ * A JSON codec implementation using Jackson for serialization and deserialization.
+ * Provides methods to convert objects to their JSON representation and parse JSON strings into objects.
+ * Customizes the behavior of the Jackson {@link ObjectMapper} to support serialization and deserialization
+ * of Java 8 date/time types such as {@link LocalDate}, {@link LocalTime}, and {@link LocalDateTime}.
+ */
 class JacksonJsonCodec implements Json.JsonCodec {
 
     private final ObjectMapper objectMapper;
@@ -114,10 +120,22 @@ class JacksonJsonCodec implements Json.JsonCodec {
                 .enable(FAIL_ON_UNKNOWN_PROPERTIES); // To prevent issues caused by LLM hallucinations
     }
 
+    /**
+     * Constructs a JacksonJsonCodec instance with the provided ObjectMapper.
+     *
+     * @param objectMapper the ObjectMapper to use for JSON serialization and deserialization.
+     */
     public JacksonJsonCodec(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Constructs a JacksonJsonCodec instance with a default ObjectMapper.
+     * The default ObjectMapper is configured with custom serializers and deserializers
+     * for Java 8 date/time types such as LocalDate, LocalTime, and LocalDateTime.
+     * It also registers other modules found on the classpath, enables formatted JSON output,
+     * and throws exceptions for unknown properties to improve handling of unexpected input.
+     */
     public JacksonJsonCodec() {
         this(createObjectMapper());
     }
