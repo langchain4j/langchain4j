@@ -53,7 +53,7 @@ public class LoaderPreference {
     }
 
     @JsonProperty("dir")
-    public String getDir() {
+    public String getDirectory() {
         return dir;
     }
 
