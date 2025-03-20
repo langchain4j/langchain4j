@@ -10,7 +10,9 @@ import java.sql.SQLException;
 /**
  * Summarize documents
  *
- * Use dbms_vector_chain.utl_to_summary to summarize documents
+ * Use dbms_vector_chain.utl_to_summary to summarize documents.
+ * You can specify which provider to use such as database
+ * for Oracle Text or a third-party provider via a REST call.
  */
 public class OracleSummaryLanguageModel implements LanguageModel {
 

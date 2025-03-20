@@ -23,11 +23,17 @@ import org.jsoup.select.Elements;
 /**
  * Load documents
  *
- * Use dbms_vector_chain.utl_to_text to load documents
+ * Use dbms_vector_chain.utl_to_text to load documents either from
+ * the file system or the database. The documents can be in any format
+ * supported by the Oracle Text filter including Word, PDF, HTML,
+ * and text files.
  */
 public class OracleDocumentLoader {
 
     private final Connection conn;
+
+    final String COLUMN_TEXT = "text";
+    final String COLUMN_METADATA = "metadata";
 
     public OracleDocumentLoader(Connection conn) {
         this.conn = conn;
@@ -95,6 +101,7 @@ public class OracleDocumentLoader {
 
         byte[] bytes = Files.readAllBytes(Paths.get(filename));
 
+        // this uses a blob to pass the input
         // run utl_to_text twice to get both the plain text and HTML output
         // the HTML Output is needed for the metadata
         String query = "select dbms_vector_chain.utl_to_text(?, json(?)) text, "
@@ -111,8 +118,8 @@ public class OracleDocumentLoader {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    String text = rs.getString("text");
-                    String html = rs.getString("metadata");
+                    String text = rs.getString(COLUMN_TEXT);
+                    String html = rs.getString(COLUMN_METADATA);
 
                     Metadata metadata = getMetadata(html);
                     Path path = Paths.get(filename);
@@ -133,6 +140,7 @@ public class OracleDocumentLoader {
     private List<Document> loadDocuments(String owner, String table, String column, String pref) throws SQLException {
         List<Document> documents = new ArrayList<>();
 
+        // this uses a table and column to pass the input
         // run utl_to_text twice to get both the plain text and HTML output
         // the HTML Output is needed for the metadata
         String query = String.format(
@@ -144,8 +152,8 @@ public class OracleDocumentLoader {
             stmt.setObject(1, pref);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    String text = rs.getString("text");
-                    String html = rs.getString("metadata");
+                    String text = rs.getString(COLUMN_TEXT);
+                    String html = rs.getString(COLUMN_METADATA);
 
                     Metadata metadata = getMetadata(html);
                     Document doc = Document.from(text, metadata);

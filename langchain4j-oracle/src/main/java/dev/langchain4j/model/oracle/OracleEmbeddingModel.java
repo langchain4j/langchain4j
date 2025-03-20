@@ -22,7 +22,9 @@ import oracle.jdbc.OracleConnection;
 /**
  * Embed documents
  *
- * Use dbms_vector_chain.utl_to_embeddings to get embeddings
+ * Use dbms_vector_chain.utl_to_embeddings to get embeddings.
+ * You can specify which provider to use such as an ONNX model
+ * or a third-party provider via a REST call.
  */
 public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
 
@@ -52,7 +54,12 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     /**
-     * load an ONNX model
+     * load an ONNX model into the database
+     *
+     * @param conn      connection
+     * @param dir       directory alias from create directory
+     * @param onnxFile  ONNX file
+     * @param modelName model name
      */
     static boolean loadOnnxModel(Connection conn, String dir, String onnxFile, String modelName) throws SQLException {
         boolean result = false;

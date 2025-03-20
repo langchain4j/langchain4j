@@ -16,7 +16,9 @@ import java.util.List;
 /**
  * Split documents
  *
- * Use dbms_vector_chain.utl_to_chunks to split documents
+ * Use dbms_vector_chain.utl_to_chunks to split documents.
+ * You can specify how to split the content such as by words, characters,
+ * or vocabulary to match a tokenizer in the preference.
  */
 public class OracleDocumentSplitter implements DocumentSplitter {
 
