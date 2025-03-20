@@ -169,6 +169,13 @@
             </dependency>
 
             <dependency>
+                <groupId>io.kotest</groupId>
+                <artifactId>kotest-assertions-core-jvm</artifactId>
+                <version>${kotest.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
                 <groupId>com.willowtreeapps.assertk</groupId>
                 <artifactId>assertk-coroutines-jvm</artifactId>
                 <version>${assertk.version}</version>
@@ -579,6 +586,21 @@
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
                     <version>0.8.12</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-maven-plugin</artifactId>
+                    <version>${kotlin.version}</version>
+                    <extensions>true</extensions>
+                    <configuration combine.self="append">
+                        <jvmTarget>${java.version}</jvmTarget>
+                        <javaParameters>true</javaParameters>
+                        <args>
+                            <arg>-Xjsr305=strict</arg>
+                            <arg>-Xjspecify-annotations=strict</arg>
+                            <arg>-Xtype-enhancement-improvements-strict-mode</arg>
+                        </args>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.jetbrains.dokka</groupId>
