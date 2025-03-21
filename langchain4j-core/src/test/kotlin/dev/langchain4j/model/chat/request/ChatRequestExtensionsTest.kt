@@ -5,10 +5,12 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isCloseTo
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
-import assertk.assertions.isNotEqualTo
 import dev.langchain4j.agent.tool.ToolSpecification
 import dev.langchain4j.data.message.SystemMessage.systemMessage
 import dev.langchain4j.data.message.UserMessage.userMessage
+import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 
@@ -28,12 +30,9 @@ internal class ChatRequestExtensionsTest {
                 parameters = params
             }
 
-        assertThat(result.messages()).containsExactly(
-            systemMessage,
-            userMessage
-        )
-        assertThat(result.parameters()).isEqualTo(params)
-        assertThat(result.parameters().temperature()).isNotEqualTo(0.1)
+        result.messages() shouldContainExactly listOf(systemMessage, userMessage)
+        result.parameters() shouldBe params
+        result.parameters().temperature() shouldNotBe 0.1
     }
 
     @Test
