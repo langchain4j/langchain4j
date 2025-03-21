@@ -2,8 +2,12 @@ package dev.langchain4j.data.document.loader;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.loader.oracle.DirectoryPreference;
+import dev.langchain4j.data.document.loader.oracle.FilePreference;
 import dev.langchain4j.data.document.loader.oracle.OracleDocumentLoader;
+import dev.langchain4j.data.document.loader.oracle.TablePreference;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -37,7 +41,11 @@ public class OracleDocumentLoaderTest {
     @DisplayName("load from file")
     void testFile() {
         try {
-            String pref = "{\"file\": \"" + System.getenv("DEMO_DS_PDF_FILE") + "\"}";
+            ObjectMapper mapper = new ObjectMapper();
+            FilePreference loaderPref = new FilePreference();
+            loaderPref.setFile(System.getenv("DEMO_DS_PDF_FILE"));
+            String pref = mapper.writeValueAsString(loaderPref);
+
             List<Document> docs = loader.loadDocuments(pref);
             assertThat(docs.size()).isEqualTo(1);
             for (Document doc : docs) {
@@ -53,7 +61,11 @@ public class OracleDocumentLoaderTest {
     @DisplayName("load from dir")
     void testDir() {
         try {
-            String pref = "{\"dir\": \"" + System.getenv("DEMO_DS_DIR") + "\"}";
+            ObjectMapper mapper = new ObjectMapper();
+            DirectoryPreference loaderPref = new DirectoryPreference();
+            loaderPref.setDirectory(System.getenv("DEMO_DS_DIR"));
+            String pref = mapper.writeValueAsString(loaderPref);
+
             List<Document> docs = loader.loadDocuments(pref);
             assertThat(docs.size()).isGreaterThan(1);
             for (Document doc : docs) {
@@ -69,8 +81,13 @@ public class OracleDocumentLoaderTest {
     @DisplayName("load from table")
     void testTable() {
         try {
-            String pref = "{\"owner\": \"" + System.getenv("DEMO_DS_OWNER") + "\", \"tablename\": \""
-                    + System.getenv("DEMO_DS_TABLE") + "\", \"colname\": \"" + System.getenv("DEMO_DS_COLUMN") + "\"}";
+            ObjectMapper mapper = new ObjectMapper();
+            TablePreference loaderPref = new TablePreference();
+            loaderPref.setOwner(System.getenv("DEMO_DS_OWNER"));
+            loaderPref.setTableName(System.getenv("DEMO_DS_TABLE"));
+            loaderPref.setColumnName(System.getenv("DEMO_DS_COLUMN"));
+            String pref = mapper.writeValueAsString(loaderPref);
+
             List<Document> docs = loader.loadDocuments(pref);
             assertThat(docs.size()).isGreaterThan(1);
             for (Document doc : docs) {

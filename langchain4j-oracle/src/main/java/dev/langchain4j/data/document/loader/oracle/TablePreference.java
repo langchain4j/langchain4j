@@ -1,35 +1,24 @@
 package dev.langchain4j.data.document.loader.oracle;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Document loader preference
+ * Document loader file preference
  *
- * The preference should be specified in the following format depending on
- * whether a file, directory, or a table of documents is desired
- *
- * for a file:      {"file": "filename"}
- * for a directory: {"dir": "directory name"}
- * for a table:     {"owner": "owner", "tablename": "table name", "colname": "column name"}
+ * To specify a table, dbms_vector_chain.utl_to_text expects the following JSON:
+ * {"owner": "owner", "tablename": "table name", "colname": "column name"}
  */
-public class LoaderPreference {
-
-    private String file;
-    private String dir;
+public class TablePreference {
     private String owner;
     private String tablename;
     private String colname;
 
-    public LoaderPreference() {}
+    public TablePreference() {}
 
-    @JsonProperty("file")
-    public void setFile(String file) {
-        this.file = file;
-    }
-
-    @JsonProperty("dir")
-    public void setDirectory(String dir) {
-        this.dir = dir;
+    @JsonIgnore
+    public boolean isValid() {
+        return owner != null && tablename != null && colname != null;
     }
 
     @JsonProperty("owner")
@@ -45,16 +34,6 @@ public class LoaderPreference {
     @JsonProperty("colname")
     public void setColumnName(String colname) {
         this.colname = colname;
-    }
-
-    @JsonProperty("file")
-    public String getFile() {
-        return file;
-    }
-
-    @JsonProperty("dir")
-    public String getDirectory() {
-        return dir;
     }
 
     @JsonProperty("owner")

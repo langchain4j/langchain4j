@@ -1,6 +1,7 @@
 package dev.langchain4j.data.document.loader.oracle;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -51,17 +52,20 @@ public class OracleDocumentLoader {
         List<Document> documents = new ArrayList<>();
 
         ObjectMapper mapper = new ObjectMapper();
-        LoaderPreference loaderPref = mapper.readValue(pref, LoaderPreference.class);
+        // disable throwing an exception on properties not listed in the class
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        FilePreference filePref = mapper.readValue(pref, FilePreference.class);
+        DirectoryPreference dirPref = mapper.readValue(pref, DirectoryPreference.class);
+        TablePreference tablePref = mapper.readValue(pref, TablePreference.class);
 
-        if (loaderPref.getFile() != null && !loaderPref.getFile().equals("null")) {
-            String filename = loaderPref.getFile();
+        if (filePref.isValid()) {
+            String filename = filePref.getFile();
             Document doc = loadDocument(filename, pref);
             if (doc != null) {
                 documents.add(doc);
             }
-        } else if (loaderPref.getDirectory() != null
-                && !loaderPref.getDirectory().equals("null")) {
-            String dir = loaderPref.getDirectory();
+        } else if (dirPref.isValid()) {
+            String dir = dirPref.getDirectory();
             Path root = Paths.get(dir);
             Files.walk(root).forEach(path -> {
                 if (path.toFile().isFile()) {
@@ -76,22 +80,13 @@ public class OracleDocumentLoader {
                     }
                 }
             });
-        } else if (loaderPref.getColumnName() != null
-                && !loaderPref.getColumnName().equals("null")) {
-            String column = loaderPref.getColumnName();
-
-            String table = loaderPref.getTableName();
-            String owner = loaderPref.getOwner();
-            if (table == null || table.equals("null")) {
-                throw new InvalidParameterException("Missing table in preference");
-            }
-            if (owner == null || owner.equals("null")) {
-                throw new InvalidParameterException("Missing owner in preference");
-            }
-
+        } else if (tablePref.isValid()) {
+            String owner = tablePref.getOwner();
+            String table = tablePref.getTableName();
+            String column = tablePref.getColumnName();
             documents.addAll(loadDocuments(owner, table, column, pref));
         } else {
-            throw new InvalidParameterException("Missing file, dir, or table in preference");
+            throw new InvalidParameterException("Invalid preference");
         }
 
         return documents;
