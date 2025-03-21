@@ -19,7 +19,7 @@ public class JsonReferenceSchema extends JsonSchemaElement {
     private final String reference;
 
     public JsonReferenceSchema(Builder builder) {
-        super(null);
+        super((String)null);
         this.reference = builder.reference;
     }
 

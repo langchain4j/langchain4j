@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.request.json.JsonTypeArraySchema;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -188,5 +189,50 @@ class ToolSpecificationHelperTest {
         assertThat(toolSpecification.description()).isEqualTo("Returns the MCP_TINY_IMAGE");
         JsonObjectSchema parameters = toolSpecification.parameters();
         assertThat(parameters.properties()).isEmpty();
+    }
+
+    @Test
+    void arrayWithMultipleAllowedTypes() throws JsonProcessingException {
+        String text =
+                """
+                        [{
+                          "name": "query",
+                          "description": "Execute a SELECT query",
+                          "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                              "sql": {
+                                "type": "string",
+                                "description": "SQL SELECT query"
+                              },
+                              "params": {
+                                "type": "array",
+                                "items": {
+                                  "type": [
+                                    "string",
+                                    "number",
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "description": "Query parameters (optional)"
+                              }
+                            },
+                            "required": [
+                              "sql"
+                            ]
+                          }
+                        }]
+                        """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+        JsonArraySchema params = (JsonArraySchema) parameters.properties().get("params");
+        assertThat(params.description()).isEqualTo("Query parameters (optional)");
+        assertThat(params.items()).isInstanceOf(JsonTypeArraySchema.class);
+        JsonTypeArraySchema jsonTypeArraySchema = (JsonTypeArraySchema) params.items();
+        assertThat(jsonTypeArraySchema.getTypes()).contains("string", "number", "boolean", "null");
     }
 }
