@@ -265,41 +265,6 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     return new EmbeddingSearchResult<>(matches);
   }
 
-  @Override
-  public List<EmbeddingMatch<TextSegment>> findRelevant(
-      Embedding referenceEmbedding, int maxResults, double minScore) {
-
-    SearchPoints search = SearchPoints.newBuilder()
-        .setCollectionName(collectionName)
-        .addAllVector(referenceEmbedding.vectorAsList())
-        .setWithVectors(WithVectorsSelectorFactory.enable(true))
-        .setWithPayload(enable(true))
-        .setLimit(maxResults)
-        .build();
-
-    List<ScoredPoint> results;
-
-    try {
-      results = client.searchAsync(search).get();
-    } catch (InterruptedException | ExecutionException e) {
-      throw new RuntimeException(e);
-    }
-
-    if (results.isEmpty()) {
-      return emptyList();
-    }
-
-    List<EmbeddingMatch<TextSegment>> matches = results.stream()
-        .map(vector -> toEmbeddingMatch(vector, referenceEmbedding))
-        .filter(match -> match.score() >= minScore)
-        .sorted(comparingDouble(EmbeddingMatch::score))
-        .collect(toList());
-
-    Collections.reverse(matches);
-
-    return matches;
-  }
-
   /** Deletes all points from the Qdrant collection. */
   public void clearStore() {
     try {
