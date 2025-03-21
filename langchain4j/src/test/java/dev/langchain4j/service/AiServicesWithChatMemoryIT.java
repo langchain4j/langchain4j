@@ -384,10 +384,12 @@ class AiServicesWithChatMemoryIT {
 
         verify(chatLanguageModel, times(4)).supportedCapabilities();
 
-        chatWithMemory.getChatMemory(secondMemoryId).evict();
+        assertThat(chatWithMemory.getChatMemory(secondMemoryId)).isNotNull();
+        assertThat(chatWithMemory.evictChatMemory(secondMemoryId)).isTrue();
 
         // clear removes the chat memory, so now it is null
         assertThat(chatWithMemory.getChatMemory(secondMemoryId)).isNull();
+        assertThat(chatWithMemory.evictChatMemory(secondMemoryId)).isFalse();
 
         // the memory has been cleared so it cannot remember the name of the user
         String responseToSecondUserAfterMemoryClean = chatWithMemory.chat(secondMemoryId, secondMessageFromSecondUser);

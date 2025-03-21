@@ -127,7 +127,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
-                            return context.hasChatMemory() ? context.chatMemoryService.getChatMemory(args[0]) : null;
+                            return switch (method.getName()) {
+                                case "getChatMemory" -> context.hasChatMemory() ? context.chatMemoryService.getChatMemory(args[0]) : null;
+                                case "evictChatMemory" -> context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
+                                default -> throw new UnsupportedOperationException("Unknown method on ChatMemoryAccess class : " + method.getName());
+                            };
                         }
 
                         validateParameters(method);

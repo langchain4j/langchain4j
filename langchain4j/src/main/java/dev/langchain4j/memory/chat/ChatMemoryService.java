@@ -27,18 +27,14 @@ public class ChatMemoryService {
     }
 
     public ChatMemory getOrCreateChatMemory(Object memoryId) {
-        return memoryId == DEFAULT ? defaultChatMemory : chatMemories.computeIfAbsent(memoryId, ignored -> createChatMemory(memoryId));
+        return memoryId == DEFAULT ? defaultChatMemory : chatMemories.computeIfAbsent(memoryId, chatMemoryProvider::get);
     }
 
     public ChatMemory getChatMemory(Object memoryId) {
         return memoryId == DEFAULT ? defaultChatMemory : chatMemories.get(memoryId);
     }
 
-    private ChatMemory createChatMemory(Object memoryId) {
-        ChatMemory chatMemory = chatMemoryProvider.get(memoryId);
-        if (chatMemory instanceof RemovalAwareChatMemory rcm) {
-            rcm.onChatMemoryRemove(chatMemories::remove);
-        }
-        return chatMemory;
+    public ChatMemory evictChatMemory(Object memoryId) {
+        return chatMemories.remove(memoryId);
     }
 }

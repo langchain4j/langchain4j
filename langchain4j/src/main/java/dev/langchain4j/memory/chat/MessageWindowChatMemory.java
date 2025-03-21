@@ -35,15 +35,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * <p>
  * The state of chat memory is stored in {@link ChatMemoryStore} ({@link SingleSlotChatMemoryStore} is used by default).
  */
-public class MessageWindowChatMemory implements ChatMemory, RemovalAwareChatMemory {
+public class MessageWindowChatMemory implements ChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(MessageWindowChatMemory.class);
 
     private final Object id;
     private final Integer maxMessages;
     private final ChatMemoryStore store;
-
-    private Consumer<Object> memoryRemover;
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -116,20 +114,8 @@ public class MessageWindowChatMemory implements ChatMemory, RemovalAwareChatMemo
         store.deleteMessages(id);
     }
 
-    @Override
-    public void evict() {
-        if (memoryRemover != null) {
-            memoryRemover.accept(id);
-        }
-    }
-
     public static Builder builder() {
         return new Builder();
-    }
-
-    @Override
-    public void onChatMemoryRemove(final Consumer<Object> remover) {
-        this.memoryRemover = remover;
     }
 
     public static class Builder {

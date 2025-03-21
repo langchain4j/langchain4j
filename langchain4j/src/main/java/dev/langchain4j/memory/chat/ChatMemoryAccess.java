@@ -10,8 +10,16 @@ public interface ChatMemoryAccess {
     /**
      * Returns the {@link ChatMemory} with the given id for this AI service or null if such memory doesn't exist.
      *
-     * @param memoryId The ID of the chat memory.
+     * @param memoryId The id of the chat memory.
      * @return The {@link ChatMemory} with the given memoryId or null if such memory doesn't exist.
      */
     ChatMemory getChatMemory(Object memoryId);
+
+    /**
+     * Evicts the {@link ChatMemory} with the given id.
+     *
+     * @param memoryId The id of the chat memory to be evicted.
+     * @return true if it existed a {@link ChatMemory} with the given id and it was sucessfully evicted, false otherwise.
+     */
+    boolean evictChatMemory(Object memoryId);
 }
