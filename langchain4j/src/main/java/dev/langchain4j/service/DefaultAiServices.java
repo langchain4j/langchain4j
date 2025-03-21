@@ -1,14 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -33,6 +24,7 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
+
 import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
@@ -51,6 +43,16 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_MODE;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
@@ -200,6 +202,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .type(JSON)
                                     .jsonSchema(jsonSchema.get())
                                     .build();
+                        } else if (supportsJsonMode()) {
+                            responseFormat = ResponseFormat.builder().type(JSON).build();
                         }
 
                         ChatRequestParameters parameters = ChatRequestParameters.builder()
@@ -265,6 +269,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                     private boolean supportsJsonSchema() {
                         return context.chatModel != null
                                 && context.chatModel.supportedCapabilities().contains(RESPONSE_FORMAT_JSON_SCHEMA);
+                    }
+
+                    private boolean supportsJsonMode() {
+                        return context.chatModel != null
+                                && context.chatModel.supportedCapabilities().contains(RESPONSE_FORMAT_JSON_MODE);
                     }
 
                     private UserMessage appendOutputFormatInstructions(Type returnType, UserMessage userMessage) {

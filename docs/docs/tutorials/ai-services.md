@@ -408,11 +408,11 @@ Here is how to enable JSON mode:
         .build();
     ```
     See more details [here](/integrations/language-models/open-ai#structured-outputs).
-  - For older models (e.g. gpt-3.5-turbo, gpt-4):
+  - For older models or alternative models that support [JSON mode](https://platform.openai.com/docs/guides/response-format/json-mode) (e.g. gpt-3.5-turbo, gpt-4):
     ```java
     OpenAiChatModel.builder()
         ...
-        .responseFormat("json_object")
+        .supportedCapabilities(RESPONSE_FORMAT_JSON)
         .build();
     ```
 
