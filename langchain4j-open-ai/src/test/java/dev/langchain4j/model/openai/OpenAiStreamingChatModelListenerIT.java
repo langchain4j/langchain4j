@@ -36,6 +36,7 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
     @Override
     protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey("banana")
                 .logRequests(true)
                 .logResponses(true)

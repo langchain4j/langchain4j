@@ -86,6 +86,7 @@ public abstract class ChatModelListenerIT {
 
         AtomicReference<ChatResponse> chatResponseReference = new AtomicReference<>();
         AtomicInteger onResponseInvocations = new AtomicInteger();
+        AtomicReference<ChatLanguageModel> modelReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
@@ -94,7 +95,7 @@ public abstract class ChatModelListenerIT {
                 chatRequestReference.set(requestContext.chatRequest());
                 onRequestInvocations.incrementAndGet();
 
-                assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
+                assertThat(requestContext.modelProvider()).isNotNull().isEqualTo(modelReference.get().provider());
 
                 requestContext.attributes().put("id", "12345");
             }
@@ -106,7 +107,7 @@ public abstract class ChatModelListenerIT {
 
                 assertThat(responseContext.chatRequest()).isEqualTo(chatRequestReference.get());
 
-                assertThat(responseContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
+                assertThat(responseContext.modelProvider()).isNotNull().isEqualTo(modelReference.get().provider());
 
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
@@ -118,6 +119,7 @@ public abstract class ChatModelListenerIT {
         };
 
         ChatLanguageModel model = createModel(listener);
+        modelReference.set(model);
 
         UserMessage userMessage = UserMessage.from("hello");
 
@@ -196,6 +198,7 @@ public abstract class ChatModelListenerIT {
 
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
         AtomicInteger onErrorInvocations = new AtomicInteger();
+        AtomicReference<ChatLanguageModel> modelReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
@@ -204,7 +207,7 @@ public abstract class ChatModelListenerIT {
                 chatRequestReference.set(requestContext.chatRequest());
                 onRequestInvocations.incrementAndGet();
 
-                assertThat(requestContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
+                assertThat(requestContext.modelProvider()).isNotNull().isEqualTo(modelReference.get().provider());
 
                 requestContext.attributes().put("id", "12345");
             }
@@ -221,13 +224,14 @@ public abstract class ChatModelListenerIT {
 
                 assertThat(errorContext.chatRequest()).isEqualTo(chatRequestReference.get());
 
-                assertThat(errorContext.modelProvider()).isNotNull().isNotEqualTo(OTHER);
+                assertThat(errorContext.modelProvider()).isNotNull().isEqualTo(modelReference.get().provider());
 
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
 
         ChatLanguageModel model = createFailingModel(listener);
+        modelReference.set(model);
 
         String userMessage = "this message will fail";
 
