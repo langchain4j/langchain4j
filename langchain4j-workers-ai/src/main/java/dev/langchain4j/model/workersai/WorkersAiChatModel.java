@@ -2,6 +2,9 @@ package dev.langchain4j.model.workersai;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -172,8 +175,23 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLa
      */
     private WorkersAiChatCompletionRequest.Message toMessage(ChatMessage message) {
         return new WorkersAiChatCompletionRequest.Message(
-               WorkersAiChatCompletionRequest.MessageRole.valueOf(message.type().name().toLowerCase()),
-                message.text());
+                WorkersAiChatCompletionRequest.MessageRole.valueOf(message.type().name().toLowerCase()),
+                toText(message)
+        );
+    }
+
+    private static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            return toolExecutionResultMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
     }
 
     /**

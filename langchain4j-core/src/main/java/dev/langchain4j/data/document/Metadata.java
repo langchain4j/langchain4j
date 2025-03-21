@@ -1,19 +1,20 @@
 package dev.langchain4j.data.document;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Exceptions.runtime;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents metadata of a {@link Document} or a {@link TextSegment}.
@@ -68,39 +69,25 @@ public class Metadata {
      *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}
      */
     public Metadata(Map<String, ?> metadata) {
+        validate(metadata);
+        this.metadata = new HashMap<>(metadata);
+    }
+
+    private static void validate(Map<String, ?> metadata) {
         ensureNotNull(metadata, "metadata").forEach((key, value) -> {
             validate(key, value);
             if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
-                throw illegalArgument("The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. " +
-                        "Currently, the supported types are: %s",
-                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
-                );
+                throw illegalArgument(
+                        "The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. "
+                                + "Currently, the supported types are: %s",
+                        key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES);
             }
         });
-        this.metadata = new HashMap<>(metadata);
     }
 
     private static void validate(String key, Object value) {
         ensureNotBlank(key, "The metadata key with the value '" + value + "'");
         ensureNotNull(value, "The metadata value for the key '" + key + "'");
-    }
-
-    /**
-     * Returns the value associated with the given key.
-     *
-     * @param key the key
-     * @return the value associated with the given key, or {@code null} if the key is not present.
-     * @deprecated as of 0.31.0, use {@link #getString(String)}, {@link #getInteger(String)}, {@link #getLong(String)},
-     * {@link #getFloat(String)}, {@link #getDouble(String)} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public String get(String key) {
-        Object value = metadata.get(key);
-        if (value != null) {
-            return value.toString();
-        } else {
-            return null;
-        }
     }
 
     /**
@@ -110,6 +97,7 @@ public class Metadata {
      * @return the {@code String} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not of type String
      */
+    @Nullable
     public String getString(String key) {
         if (!containsKey(key)) {
             return null;
@@ -120,8 +108,10 @@ public class Metadata {
             return string;
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a String.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a String.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -131,6 +121,7 @@ public class Metadata {
      * @return the {@code UUID} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not of type String
      */
+    @Nullable
     public UUID getUUID(String key) {
         if (!containsKey(key)) {
             return null;
@@ -144,8 +135,10 @@ public class Metadata {
             return UUID.fromString(string);
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a UUID.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a UUID.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -164,6 +157,7 @@ public class Metadata {
      * @return the {@link Integer} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
+    @Nullable
     public Integer getInteger(String key) {
         if (!containsKey(key)) {
             return null;
@@ -176,8 +170,10 @@ public class Metadata {
             return number.intValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as an Integer.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as an Integer.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -196,6 +192,7 @@ public class Metadata {
      * @return the {@code Long} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
+    @Nullable
     public Long getLong(String key) {
         if (!containsKey(key)) {
             return null;
@@ -208,8 +205,10 @@ public class Metadata {
             return number.longValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a Long.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a Long.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -228,20 +227,23 @@ public class Metadata {
      * @return the {@code Float} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
+    @Nullable
     public Float getFloat(String key) {
         if (!containsKey(key)) {
             return null;
         }
 
-        Object value = metadata.get(key);
-        if (value instanceof String) {
-            return Float.parseFloat(value.toString());
+        final var value = metadata.get(key);
+        if (value instanceof String str) {
+            return Float.parseFloat(str);
         } else if (value instanceof Number number) {
             return number.floatValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a Float.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a Float.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -260,6 +262,7 @@ public class Metadata {
      * @return the {@code Double} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
+    @Nullable
     public Double getDouble(String key) {
         if (!containsKey(key)) {
             return null;
@@ -272,8 +275,10 @@ public class Metadata {
             return number.doubleValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-            "It cannot be returned as a Double.", key, value, value.getClass().getName());
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a Double.",
+                key, value, value.getClass().getName());
     }
 
     /**
@@ -284,36 +289,6 @@ public class Metadata {
      */
     public boolean containsKey(String key) {
         return metadata.containsKey(key);
-    }
-
-    /**
-     * Adds a key-value pair to the metadata.
-     *
-     * @param key   the key
-     * @param value the value
-     * @return {@code this}
-     * @deprecated as of 0.31.0, use {@link #put(String, String)}, {@link #put(String, int)}, {@link #put(String, long)},
-     * {@link #put(String, float)}, {@link #put(String, double)} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public Metadata add(String key, Object value) {
-        return put(key, value.toString());
-    }
-
-    /**
-     * Adds a key-value pair to the metadata.
-     *
-     * @param key   the key
-     * @param value the value
-     * @return {@code this}
-     * @deprecated as of 0.31.0, use {@link #put(String, String)}, {@link #put(String, int)}, {@link #put(String, long)},
-     * {@link #put(String, float)}, {@link #put(String, double)} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public Metadata add(String key, String value) {
-        validate(key, value);
-        this.metadata.put(key, value);
-        return this;
     }
 
     /**
@@ -394,6 +369,12 @@ public class Metadata {
         return this;
     }
 
+    public Metadata putAll(Map<String, Object> metadata) {
+        validate(metadata);
+        this.metadata.putAll(metadata);
+        return this;
+    }
+
     /**
      * Removes the given key from the metadata.
      *
@@ -412,21 +393,6 @@ public class Metadata {
      */
     public Metadata copy() {
         return new Metadata(metadata);
-    }
-
-    /**
-     * Get a copy of the metadata as a map of key-value pairs.
-     *
-     * @return the metadata as a map of key-value pairs.
-     * @deprecated as of 0.31.0, use {@link #toMap()} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public Map<String, String> asMap() {
-        Map<String, String> map = new HashMap<>();
-        for (Map.Entry<String, Object> entry : metadata.entrySet()) {
-            map.put(entry.getKey(), String.valueOf(entry.getValue()));
-        }
-        return map;
     }
 
     /**
@@ -453,9 +419,7 @@ public class Metadata {
 
     @Override
     public String toString() {
-        return "Metadata {" +
-            " metadata = " + metadata +
-            " }";
+        return "Metadata {" + " metadata = " + metadata + " }";
     }
 
     /**
@@ -467,17 +431,6 @@ public class Metadata {
      */
     public static Metadata from(String key, String value) {
         return new Metadata().put(key, value);
-    }
-
-    /**
-     * @param key   the key
-     * @param value the value
-     * @return a Metadata object
-     * @deprecated Use {@link #from(String, String)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public static Metadata from(String key, Object value) {
-        return new Metadata().add(key, value);
     }
 
     /**
@@ -502,13 +455,26 @@ public class Metadata {
     }
 
     /**
-     * @param key   the key
-     * @param value the value
-     * @return a Metadata object
-     * @deprecated Use {@link #metadata(String, String)} instead
+     * Merges the current Metadata object with another Metadata object.
+     * The two Metadata objects must not have any common keys.
+     *
+     * @param another The Metadata object to be merged with the current Metadata object.
+     * @return A new Metadata object that contains all key-value pairs from both Metadata objects.
+     * @throws IllegalArgumentException if there are common keys between the two Metadata objects.
      */
-    @Deprecated(forRemoval = true)
-    public static Metadata metadata(String key, Object value) {
-        return from(key, value);
+    public Metadata merge(@Nullable Metadata another) {
+        if (another == null || another.metadata.isEmpty()) {
+            return this.copy();
+        }
+        final var thisMap = this.toMap();
+        final var anotherMap = another.toMap();
+        final var commonKeys = new HashSet<>(thisMap.keySet());
+        commonKeys.retainAll(anotherMap.keySet());
+        if (!commonKeys.isEmpty()) {
+            throw illegalArgument("Metadata keys are not unique. Common keys: %s", commonKeys);
+        }
+        final var mergedMap = new HashMap<>(thisMap);
+        mergedMap.putAll(anotherMap);
+        return Metadata.from(mergedMap);
     }
 }

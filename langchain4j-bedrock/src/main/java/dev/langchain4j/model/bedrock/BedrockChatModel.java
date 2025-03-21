@@ -1,10 +1,11 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentToJson;
@@ -28,6 +29,7 @@ import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -119,7 +121,7 @@ public class BedrockChatModel implements ChatLanguageModel {
         ConverseRequest convRequest = buildConverseRequest(
                 request.messages(), request.parameters().toolSpecifications(), request.parameters());
 
-        ConverseResponse response = withRetry(() -> client.converse(convRequest), this.maxRetries);
+        ConverseResponse response = withRetryMappingExceptions(() -> client.converse(convRequest), this.maxRetries);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(response))
@@ -419,6 +421,11 @@ public class BedrockChatModel implements ChatLanguageModel {
         }
 
         throw new IllegalArgumentException("Unknown stop reason: " + stopReason);
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return AMAZON_BEDROCK;
     }
 
     public static Builder builder() {

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static java.util.stream.Collectors.toList;
@@ -260,7 +261,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         MetadataVectorRecord record = new MetadataVectorRecord(id, embedding.vectorAsList());
         if (textSegment != null) {
             record.setBody(textSegment.text());
-            record.setMetadata(textSegment.metadata().asMap());
+            record.setMetadata(toStringValueMap(textSegment.metadata().toMap()));
         }
         embeddingTable.put(record);
         return record.getRowId();
@@ -368,7 +369,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
                 .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")));
         if (metadata != null) {
-            builder.metaData(metadata.asMap());
+            builder.metaData(toStringValueMap(metadata.toMap()));
         }
         return embeddingTable
                 .similaritySearch(builder.build())

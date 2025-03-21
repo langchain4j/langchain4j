@@ -1,13 +1,14 @@
 package dev.langchain4j.model.anthropic.common;
 
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-
 import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-
+@EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicChatModelIT extends AbstractChatModelIT {
 
     static final ChatLanguageModel ANTHROPIC_CHAT_MODEL = AnthropicChatModel.builder()
@@ -20,9 +21,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(
-                ANTHROPIC_CHAT_MODEL
-        );
+        return List.of(ANTHROPIC_CHAT_MODEL);
     }
 
     @Override

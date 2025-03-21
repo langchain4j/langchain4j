@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.0.0-beta2-SNAPSHOT</version>
+    <version>1.0.0-beta3-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -55,43 +55,44 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <azure-ai-openai.version>1.0.0-beta.14</azure-ai-openai.version>
-        <azure-ai-search.version>11.7.3</azure-ai-search.version>
-        <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
-        <azure.storage-common.version>12.28.0</azure.storage-common.version>
-        <azure.identity.version>1.14.2</azure.identity.version>
-        <retrofit.version>2.9.0</retrofit.version>
-        <okhttp.version>4.12.0</okhttp.version>
-        <jtokkit.version>1.1.0</jtokkit.version>
-        <langchain4j-embeddings.version>${project.version}</langchain4j-embeddings.version>
-        <lombok.version>1.18.36</lombok.version>
-        <slf4j-api.version>2.0.16</slf4j-api.version>
-        <gson.version>2.10.1</gson.version>
-        <junit.version>5.11.3</junit.version>
-        <testcontainers.version>1.20.4</testcontainers.version>
-        <bytebuddy.version>1.15.10</bytebuddy.version>
-        <mockito.version>5.14.2</mockito.version>
-        <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
+        <ai-mocks.version>0.1.9</ai-mocks.version>
         <assertj.version>3.27.3</assertj.version>
         <assertk.version>0.28.1</assertk.version>
-        <tinylog.version>2.6.2</tinylog.version>
-        <httpclient5.version>5.2.1</httpclient5.version>
-        <opensearch-java.version>2.9.0</opensearch-java.version>
-        <aws-java-sdk-core.version>1.12.780</aws-java-sdk-core.version>
-        <aws-opensearch.version>2.20.161</aws-opensearch.version>
-        <opensearch-containers.version>2.0.1</opensearch-containers.version>
-        <elastic.version>8.15.3</elastic.version>
-        <jackson.version>2.18.2</jackson.version>
-        <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
-        <github-api.version>1.318</github-api.version>
-        <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
-        <netty.version>4.1.111.Final</netty.version>
         <awaitility.version>4.2.2</awaitility.version>
+        <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
+        <azure-ai-openai.version>1.0.0-beta.14</azure-ai-openai.version>
+        <azure-sdk.version>1.2.31</azure-sdk.version>
+        <bytebuddy.version>1.15.10</bytebuddy.version>
+        <elastic.version>8.15.3</elastic.version>
+        <github-api.version>1.318</github-api.version>
+        <gson.version>2.10.1</gson.version>
+        <httpclient5.version>5.2.1</httpclient5.version>
+        <infinispan.version>15.0.0.Final</infinispan.version>
+        <jackson.version>2.18.2</jackson.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
-        <infinispan.version>15.0.0.Final</infinispan.version>
+        <jtokkit.version>1.1.0</jtokkit.version>
+        <junit.version>5.11.3</junit.version>
+        <kotest.version>5.9.1</kotest.version>
         <kotlin.version>1.9.25</kotlin.version>
-        <kotlinx.version>1.9.0</kotlinx.version>
+        <kotlinx-coroutines.version>1.9.0</kotlinx-coroutines.version>
+        <langchain4j-embeddings.version>${project.version}</langchain4j-embeddings.version>
+        <log4j.version>2.24.3</log4j.version>
+        <logback.version>1.3.14</logback.version>
+        <lombok.version>1.18.36</lombok.version>
+        <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
+        <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
+        <mockito.version>5.14.2</mockito.version>
+        <netty.version>4.1.119.Final</netty.version>
+        <okhttp.version>4.12.0</okhttp.version>
+        <openai-java.version>0.34.1</openai-java.version>
+        <opensearch-containers.version>2.0.1</opensearch-containers.version>
+        <opensearch-java.version>2.9.0</opensearch-java.version>
+        <reactor-bom.version>2024.0.3</reactor-bom.version>
+        <retrofit.version>2.9.0</retrofit.version>
+        <slf4j-api.version>2.0.16</slf4j-api.version>
+        <testcontainers.version>1.20.4</testcontainers.version>
+        <tinylog.version>2.6.2</tinylog.version>
         <wiremock.version>3.10.0</wiremock.version>
     </properties>
 
@@ -99,33 +100,17 @@
         <dependencies>
 
             <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
                 <groupId>com.azure</groupId>
                 <artifactId>azure-ai-openai</artifactId>
                 <version>${azure-ai-openai.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-search-documents</artifactId>
-                <version>${azure-ai-search.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-storage-blob</artifactId>
-                <version>${azure.storage-blob.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-storage-common</artifactId>
-                <version>${azure.storage-common.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-identity</artifactId>
-                <version>${azure.identity.version}</version>
             </dependency>
 
             <dependency>
@@ -169,14 +154,21 @@
             <dependency>
                 <groupId>org.jetbrains.kotlinx</groupId>
                 <artifactId>kotlinx-coroutines-core-jvm</artifactId>
-                <version>${kotlinx.version}</version>
+                <version>${kotlinx-coroutines.version}</version>
                 <optional>true</optional>
             </dependency>
 
             <dependency>
                 <groupId>org.jetbrains.kotlinx</groupId>
-                <artifactId>kotlinx-coroutines-test</artifactId>
-                <version>${kotlinx.version}</version>
+                <artifactId>kotlinx-coroutines-test-jvm</artifactId>
+                <version>${kotlinx-coroutines.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.kotest</groupId>
+                <artifactId>kotest-assertions-core-jvm</artifactId>
+                <version>${kotest.version}</version>
                 <scope>test</scope>
             </dependency>
 
@@ -304,27 +296,15 @@
             </dependency>
 
             <dependency>
+                <groupId>com.openai</groupId>
+                <artifactId>openai-java</artifactId>
+                <version>${openai-java.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.opensearch.client</groupId>
                 <artifactId>opensearch-java</artifactId>
                 <version>${opensearch-java.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>software.amazon.awssdk</groupId>
-                <artifactId>opensearch</artifactId>
-                <version>${aws-opensearch.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.amazonaws</groupId>
-                <artifactId>aws-java-sdk-core</artifactId>
-                <version>${aws-java-sdk-core.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>software.amazon.awssdk</groupId>
-                <artifactId>apache-client</artifactId>
-                <version>${aws-opensearch.version}</version>
             </dependency>
 
             <dependency>
@@ -363,6 +343,14 @@
             </dependency>
 
             <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-sdk-bom</artifactId>
+                <version>${azure-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
                 <groupId>org.awaitility</groupId>
                 <artifactId>awaitility</artifactId>
                 <version>${awaitility.version}</version>
@@ -397,7 +385,7 @@
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
-                <version>1.3.14</version>
+                <version>${logback.version}</version>
             </dependency>
 
             <dependency>
@@ -407,10 +395,31 @@
                 <scope>test</scope>
             </dependency>
 
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.projectreactor</groupId>
+                <artifactId>reactor-bom</artifactId>
+                <version>${reactor-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
@@ -464,7 +473,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.13.0</version>
+                    <version>3.14.0</version>
                     <configuration>
                         <annotationProcessorPaths>
                             <path>
@@ -539,12 +548,14 @@
                     <groupId>org.jetbrains.kotlin</groupId>
                     <artifactId>kotlin-maven-plugin</artifactId>
                     <version>${kotlin.version}</version>
-                    <configuration>
+                    <extensions>true</extensions>
+                    <configuration combine.self="append">
                         <jvmTarget>${java.version}</jvmTarget>
                         <javaParameters>true</javaParameters>
                         <args>
-                            <arg>-Xjsr305=strict</arg>
+                            <arg>-Xexplicit-api=strict</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
+                            <arg>-Xjsr305=strict</arg>
                             <arg>-Xtype-enhancement-improvements-strict-mode</arg>
                         </args>
                     </configuration>
@@ -561,7 +572,7 @@
                 <plugin>
                     <groupId>com.github.ozsie</groupId>
                     <artifactId>detekt-maven-plugin</artifactId>
-                    <version>1.23.7</version>
+                    <version>1.23.8</version>
                 </plugin>
                 <plugin>
                     <groupId>com.simpligility.maven.plugins</groupId>

@@ -308,6 +308,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 String text = contents.stream()
                         .filter(content -> !content.isEmpty())
                         .collect(joining("\n"));
+
                 TokenUsage tokenUsage = new AnthropicTokenUsage(inputTokenCount.get(), outputTokenCount.get(), cacheCreationInputTokens.get(), cacheReadInputTokens.get());
                 FinishReason finishReason = toFinishReason(stopReason);
                 Map<String, Object> metadata = createMetadata();

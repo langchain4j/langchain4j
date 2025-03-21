@@ -1,7 +1,6 @@
 package dev.langchain4j.model.mistralai.internal.mapper;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -80,10 +79,10 @@ public class MistralAiMapper {
                     .build();
         }
 
-        if (message instanceof UserMessage) {
+        if (message instanceof UserMessage userMessage) {
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.USER)
-                    .content(message.text()) // MistralAI support Text Content only as String
+                    .content(userMessage.singleText()) // MistralAI support Text Content only as String
                     .build();
         }
 
@@ -183,12 +182,6 @@ public class MistralAiMapper {
             JsonObjectSchema parameters = toolSpecification.parameters();
             return MistralAiParameters.builder()
                     .properties(toMap(parameters.properties()))
-                    .required(parameters.required())
-                    .build();
-        } else if (toolSpecification.toolParameters() != null) {
-            ToolParameters parameters = toolSpecification.toolParameters();
-            return MistralAiParameters.builder()
-                    .properties(parameters.properties())
                     .required(parameters.required())
                     .build();
         } else {

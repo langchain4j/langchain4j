@@ -6,8 +6,6 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.IntArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -24,7 +22,6 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0125;
@@ -32,7 +29,6 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_110
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0125_PREVIEW;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIEW;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW;
-import static java.util.Collections.singletonList;
 
 /**
  * This class can be used to estimate the cost (in tokens) before calling OpenAI or when using streaming.
@@ -217,77 +213,6 @@ public class OpenAiTokenizer implements Tokenizer {
         return tokenCount;
     }
 
-    @Override
-    public int estimateTokenCountInToolSpecifications(Iterable<ToolSpecification> toolSpecifications) {
-        int tokenCount = 16;
-        for (ToolSpecification toolSpecification : toolSpecifications) {
-            tokenCount += 6;
-            tokenCount += estimateTokenCountInText(toolSpecification.name());
-            if (toolSpecification.description() != null) {
-                tokenCount += 2;
-                tokenCount += estimateTokenCountInText(toolSpecification.description());
-            }
-            tokenCount += estimateTokenCountInToolParameters(toolSpecification.toolParameters());
-        }
-        return tokenCount;
-    }
-
-    private int estimateTokenCountInToolParameters(ToolParameters parameters) {
-        if (parameters == null) {
-            return 0;
-        }
-
-        int tokenCount = 3;
-        Map<String, Map<String, Object>> properties = parameters.properties();
-        if (isOneOfLatestModels()) {
-            tokenCount += properties.size() - 1;
-        }
-        for (String property : properties.keySet()) {
-            if (isOneOfLatestModels()) {
-                tokenCount += 2;
-            } else {
-                tokenCount += 3;
-            }
-            tokenCount += estimateTokenCountInText(property);
-            for (Map.Entry<String, Object> entry : properties.get(property).entrySet()) {
-                if ("type".equals(entry.getKey())) {
-                    if ("array".equals(entry.getValue()) && isOneOfLatestModels()) {
-                        tokenCount += 1;
-                    }
-                    // TODO object
-                } else if ("description".equals(entry.getKey())) {
-                    tokenCount += 2;
-                    tokenCount += estimateTokenCountInText(entry.getValue().toString());
-                    if (isOneOfLatestModels() && parameters.required().contains(property)) {
-                        tokenCount += 1;
-                    }
-                } else if ("enum".equals(entry.getKey())) {
-                    if (isOneOfLatestModels()) {
-                        tokenCount -= 2;
-                    } else {
-                        tokenCount -= 3;
-                    }
-                    for (String enumValue : (List<String>) entry.getValue()) {
-                        tokenCount += 3;
-                        tokenCount += estimateTokenCountInText(enumValue);
-                    }
-                }
-            }
-        }
-        return tokenCount;
-    }
-
-    @Override
-    public int estimateTokenCountInForcefulToolSpecification(ToolSpecification toolSpecification) {
-        int tokenCount = estimateTokenCountInToolSpecifications(singletonList(toolSpecification));
-        tokenCount += 4;
-        tokenCount += estimateTokenCountInText(toolSpecification.name());
-        if (isOneOfLatestModels()) {
-            tokenCount += 3;
-        }
-        return tokenCount;
-    }
-
     public List<Integer> encode(String text) {
         return encoding.orElseThrow(unknownModelException())
                 .encodeOrdinary(text).boxed();
@@ -311,100 +236,6 @@ public class OpenAiTokenizer implements Tokenizer {
 
     private Supplier<IllegalArgumentException> unknownModelException() {
         return () -> illegalArgument("Model '%s' is unknown to jtokkit", modelName);
-    }
-
-    @Override
-    public int estimateTokenCountInToolExecutionRequests(Iterable<ToolExecutionRequest> toolExecutionRequests) {
-
-        int tokenCount = 0;
-
-        int toolsCount = 0;
-        int toolsWithArgumentsCount = 0;
-        int toolsWithoutArgumentsCount = 0;
-
-        int totalArgumentsCount = 0;
-
-        for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-            tokenCount += 4;
-            tokenCount += estimateTokenCountInText(toolExecutionRequest.name());
-            tokenCount += estimateTokenCountInText(toolExecutionRequest.arguments());
-
-            int argumentCount = countArguments(toolExecutionRequest.arguments());
-            if (argumentCount == 0) {
-                toolsWithoutArgumentsCount++;
-            } else {
-                toolsWithArgumentsCount++;
-            }
-            totalArgumentsCount += argumentCount;
-
-            toolsCount++;
-        }
-
-        if (modelName.equals(GPT_3_5_TURBO_1106.toString()) || isOneOfLatestGpt4Models()) {
-            tokenCount += 16;
-            tokenCount += 3 * toolsWithoutArgumentsCount;
-            tokenCount += toolsCount;
-            if (totalArgumentsCount > 0) {
-                tokenCount -= 1;
-                tokenCount -= 2 * totalArgumentsCount;
-                tokenCount += 2 * toolsWithArgumentsCount;
-                tokenCount += toolsCount;
-            }
-        }
-
-        if (modelName.equals(GPT_4_1106_PREVIEW.toString())) {
-            tokenCount += 3;
-            if (toolsCount > 1) {
-                tokenCount += 18;
-                tokenCount += 15 * toolsCount;
-                tokenCount += totalArgumentsCount;
-                tokenCount -= 3 * toolsWithoutArgumentsCount;
-            }
-        }
-
-        return tokenCount;
-    }
-
-    @Override
-    public int estimateTokenCountInForcefulToolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
-
-        if (isOneOfLatestGpt4Models()) {
-            int argumentsCount = countArguments(toolExecutionRequest.arguments());
-            if (argumentsCount == 0) {
-                return 1;
-            } else {
-                return estimateTokenCountInText(toolExecutionRequest.arguments());
-            }
-        }
-
-        int tokenCount = estimateTokenCountInToolExecutionRequests(singletonList(toolExecutionRequest));
-        tokenCount -= 4;
-        tokenCount -= estimateTokenCountInText(toolExecutionRequest.name());
-
-        if (modelName.equals(GPT_3_5_TURBO_1106.toString())) {
-            int argumentsCount = countArguments(toolExecutionRequest.arguments());
-            if (argumentsCount == 0) {
-                return 1;
-            }
-            tokenCount -= 19;
-            tokenCount += 2 * argumentsCount;
-        }
-
-        return tokenCount;
-    }
-
-    static int countArguments(String arguments) {
-        if (isNullOrBlank(arguments)) {
-            return 0;
-        }
-        Map<?, ?> argumentsMap;
-        try {
-            argumentsMap = OBJECT_MAPPER.readValue(arguments, Map.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-
-        return argumentsMap.size();
     }
 
     private boolean isOneOfLatestModels() {

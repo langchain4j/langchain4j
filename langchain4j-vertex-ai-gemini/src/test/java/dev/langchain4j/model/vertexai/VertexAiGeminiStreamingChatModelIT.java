@@ -25,7 +25,6 @@ import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.gson.Gson;
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -35,6 +34,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -317,10 +317,10 @@ class VertexAiGeminiStreamingChatModelIT {
         ToolSpecification weatherToolSpec = ToolSpecification.builder()
                 .name("getWeatherForecast")
                 .description("Get the weather forecast for a location")
-                .addParameter(
-                        "location",
-                        JsonSchemaProperty.STRING,
-                        JsonSchemaProperty.description("the location to get the weather forecast for"))
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location", "the location to get the weather forecast for")
+                        .required("location")
+                        .build())
                 .build();
 
         List<ChatMessage> allMessages = new ArrayList<>();
@@ -571,8 +571,11 @@ class VertexAiGeminiStreamingChatModelIT {
         ToolSpecification adder = ToolSpecification.builder()
                 .description("adds two numbers")
                 .name("add")
-                .addParameter("a", JsonSchemaProperty.INTEGER)
-                .addParameter("b", JsonSchemaProperty.INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("a")
+                        .addIntegerProperty("b")
+                        .required("a", "b")
+                        .build())
                 .build();
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
@@ -609,8 +612,11 @@ class VertexAiGeminiStreamingChatModelIT {
         ToolSpecification adder = ToolSpecification.builder()
                 .description("adds two numbers")
                 .name("add")
-                .addParameter("a", JsonSchemaProperty.INTEGER)
-                .addParameter("b", JsonSchemaProperty.INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("a")
+                        .addIntegerProperty("b")
+                        .required("a", "b")
+                        .build())
                 .build();
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");

@@ -4,11 +4,11 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -32,8 +32,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
@@ -85,7 +86,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 chatRequest.parameters()
         );
 
-        ChatModelRequest chatModelRequest = createChatModelRequest(
+        ChatRequest listenerRequest = createListenerRequest(
                 parameters.modelName(),
                 chatRequest.messages(),
                 parameters.toolSpecifications(),
@@ -93,17 +94,17 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        notifyListenersOnRequest(new ChatModelRequestContext(chatModelRequest, listenerAttributes));
+        notifyListenersOnRequest(new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes));
 
         try {
-            GeminiGenerateContentResponse geminiResponse = withRetry(
+            GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
                 () -> this.geminiService.generateContent(this.modelName, this.apiKey, request),
                 this.maxRetries
             );
 
-            return processResponse(geminiResponse, chatModelRequest, listenerAttributes);
+            return processResponse(geminiResponse, listenerRequest, listenerAttributes);
         } catch (RuntimeException e) {
-            notifyListenersOnError(e, chatModelRequest, listenerAttributes);
+            notifyListenersOnError(e, listenerRequest, provider(), listenerAttributes);
             throw e;
         }
     }
@@ -119,7 +120,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     private ChatResponse processResponse(
         GeminiGenerateContentResponse geminiResponse,
-        ChatModelRequest chatModelRequest,
+        ChatRequest listenerRequest,
         ConcurrentHashMap<Object, Object> listenerAttributes
     ) {
         if (geminiResponse == null) {
@@ -134,12 +135,13 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         TokenUsage tokenUsage = createTokenUsage(tokenCounts);
 
         Response<AiMessage> response = Response.from(aiMessage, tokenUsage, finishReason);
-        notifyListenersOnResponse(response, chatModelRequest, listenerAttributes);
+        notifyListenersOnResponse(response, listenerRequest, provider(), listenerAttributes);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder()
-                        .modelName(chatModelRequest.model()) // TODO take actual model from response or return null?
+                        // TODO take actual modelName from response or return null?
+                        .modelName(listenerRequest.parameters().modelName())
                         .finishReason(finishReason)
                         .tokenUsage(tokenUsage)
                         .build())
@@ -175,6 +177,16 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return GOOGLE_AI_GEMINI;
     }
 
     public static class GoogleAiGeminiChatModelBuilder {
