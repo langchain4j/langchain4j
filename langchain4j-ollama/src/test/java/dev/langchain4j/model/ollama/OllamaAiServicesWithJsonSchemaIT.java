@@ -72,4 +72,19 @@ class OllamaAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
     protected void should_extract_pojo_with_uuid() {
 
     }
+
+    @Test
+    @Disabled("llama 3.1 is cannot do it properly")
+    @Override
+    protected void should_extract_set_of_pojo() {}
+
+    @Test
+    @Disabled("llama 3.1 is cannot do it properly")
+    @Override
+    protected void should_extract_list_of_pojo() {}
+
+    @Test
+    @Disabled("llama 3.1 is cannot do it properly")
+    @Override
+    protected void should_extract_enum() {}
 }

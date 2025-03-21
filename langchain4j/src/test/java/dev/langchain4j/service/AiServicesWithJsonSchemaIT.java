@@ -4,12 +4,16 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumListExtractor.MaritalStatus;
+import dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -25,7 +29,11 @@ import java.util.UUID;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumListExtractor.MaritalStatus.MARRIED;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.CLOUDY;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.RAINY;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.SUNNY;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.WINDY;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
@@ -88,6 +96,359 @@ public abstract class AiServicesWithJsonSchemaIT {
                                             .build())
                                     .build())
                             .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface PojoListExtractor {
+
+        class Person {
+
+            String name;
+            int age;
+            Double height;
+            boolean married;
+        }
+
+        List<Person> extractListOfPojoFrom(String text);
+    }
+
+    @Test
+    protected void should_extract_list_of_pojo() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            PojoListExtractor pojoListExtractor = AiServices.create(PojoListExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and married.";
+
+            // when
+            List<PojoListExtractor.Person> people = pojoListExtractor.extractListOfPojoFrom(text);
+
+            // then
+            assertThat(people.get(0).name).isEqualTo("Klaus");
+            assertThat(people.get(0).age).isEqualTo(37);
+            assertThat(people.get(0).height).isEqualTo(1.78);
+            assertThat(people.get(0).married).isFalse();
+
+            assertThat(people.get(1).name).isEqualTo("Franny");
+            assertThat(people.get(1).age).isEqualTo(35);
+            assertThat(people.get(1).height).isEqualTo(1.65);
+            assertThat(people.get(1).married).isTrue();
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("List_of_Person")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
+                                                    .items(JsonObjectSchema.builder()
+                                                            .addStringProperty("name")
+                                                            .addIntegerProperty("age")
+                                                            .addNumberProperty("height")
+                                                            .addBooleanProperty("married")
+                                                            .required("name", "age", "height", "married")
+                                                            .build())
+                                                    .build())
+                                            .required("items")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface ListOfStringsExtractor {
+        @UserMessage("Extract names of people from the following text: {{it}}")
+        List<String> extractOnlyListOfPeopleNames(String text);
+    }
+
+    @Test
+    protected void should_extract_list_of_strings() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            ListOfStringsExtractor listOfStringsExtractor = AiServices.create(ListOfStringsExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and married.";
+
+            // when
+            List<String> names = listOfStringsExtractor.extractOnlyListOfPeopleNames(text);
+
+            names.forEach(System.out::println);
+
+            // then
+            assertThat(names.size()).isEqualTo(2);
+            assertThat(names.get(0)).contains("Klaus");
+            assertThat(names.get(1)).contains("Franny");
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage("Extract names of people from the following text: " + text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("List_of_String")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
+                                                    .items(JsonStringSchema.builder()
+                                                            .build())
+                                                    .build())
+                                            .required("items")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface IntExtractor {
+        @UserMessage("Extract number of people from the following text: {{it}}")
+        int extractNumberOfPeople(String text);
+    }
+
+    @Test
+    protected void should_extract_number_int() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            IntExtractor intExtractor = AiServices.create(IntExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and married.";
+
+            // when
+            int numberOfPeople = intExtractor.extractNumberOfPeople(text);
+
+            // then
+            assertThat(numberOfPeople).isEqualTo(2);
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage("Extract number of people from the following text: " + text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Integer")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("Integer", JsonIntegerSchema.builder()
+                                                    .build())
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+
+    interface DoubleExtractor {
+        @UserMessage("Extract temperature in Munich from the following text: {{it}}")
+        double extractTemperatureInMunich(String text);
+    }
+
+    @Test
+    protected void should_extract_number_double() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            DoubleExtractor doubleExtractor = AiServices.create(DoubleExtractor.class, model);
+
+            String text = "The average temperature of the coldest month is of -0.5 °C";
+
+            // when
+            double temperatureInMunich = doubleExtractor.extractTemperatureInMunich(text);
+
+            // then
+            assertThat(temperatureInMunich).isEqualTo(-0.5);
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage("Extract temperature in Munich from the following text: " + text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Double")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("Double", JsonNumberSchema.builder()
+                                                    .build())
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface SetOfStringsExtractor {
+        @UserMessage("Extract names of people from the following text: {{it}}")
+        Set<String> extractOnlySetOfPeopleNames(String text);
+    }
+
+    @Test
+    protected void should_extract_set_of_strings() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            SetOfStringsExtractor setOfStringsExtractor = AiServices.create(SetOfStringsExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and married.";
+
+            // when
+            Set<String> names = setOfStringsExtractor.extractOnlySetOfPeopleNames(text);
+
+            names.forEach(System.out::println);
+
+            // then
+            assertThat(names.size()).isEqualTo(2);
+            assertThat(names).contains("Klaus");
+            assertThat(names).contains("Franny");
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage("Extract names of people from the following text: " + text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Set_of_String")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
+                                                    .items(JsonStringSchema.builder()
+                                                            .build())
+                                                    .build())
+                                            .required("items")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface BooleanExtractor {
+        @UserMessage("Extract if the person from the following text is a man: {{it}}")
+        Boolean isPersonAMan(String text);
+    }
+
+    @Test
+    protected void should_extract_boolean() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            BooleanExtractor booleanExtractor = AiServices.create(BooleanExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. ";
+
+            // when
+            boolean isAMan = booleanExtractor.isPersonAMan(text);
+
+            // then
+            assertThat(isAMan).isTrue();
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage("Extract if the person from the following text is a man: " + text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Boolean")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("boolean", JsonBooleanSchema.builder().build())
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface PojoSetExtractor {
+
+        class Person {
+
+            String name;
+            int age;
+            Double height;
+            boolean married;
+        }
+
+        Set<Person> extractSetOfPojoFrom(String text);
+    }
+
+    @Test
+    protected void should_extract_set_of_pojo() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            PojoSetExtractor pojoSetExtractor = AiServices.create(PojoSetExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and married.";
+
+            // when
+            Set<PojoSetExtractor.Person> people = pojoSetExtractor.extractSetOfPojoFrom(text);
+
+            // then
+            assertThat(people).hasSize(2);
+
+            assertThat(people).anyMatch(person ->
+                    person.name.equals("Klaus") &&
+                            person.age == 37 &&
+                            person.height.equals(1.78) &&
+                            !person.married
+            );
+
+            assertThat(people).anyMatch(person ->
+                    person.name.equals("Franny") &&
+                            person.age == 35 &&
+                            person.height.equals(1.65) &&
+                            person.married
+            );
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Set_of_Person")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
+                                                    .items(JsonObjectSchema.builder()
+                                                            .addStringProperty("name")
+                                                            .addIntegerProperty("age")
+                                                            .addNumberProperty("height")
+                                                            .addBooleanProperty("married")
+                                                            .required("name", "age", "height", "married")
+                                                            .build())
+                                                    .build())
+                                            .required("items")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -192,7 +553,7 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.maritalStatus).isEqualTo(SINGLE);
+            assertThat(person.maritalStatus).isEqualTo(PersonExtractor3.MaritalStatus.SINGLE);
 
             verify(model)
                     .chat(ChatRequest.builder()
@@ -975,7 +1336,7 @@ public abstract class AiServicesWithJsonSchemaIT {
 
     @Test
     @EnabledIf("supportsRecursion")
-    void should_extract_pojo_with_recursion() {
+    protected void should_extract_pojo_with_recursion() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -1096,5 +1457,154 @@ public abstract class AiServicesWithJsonSchemaIT {
 
     protected boolean supportsRecursion() {
         return false;
+    }
+
+
+    // Enums
+
+    interface EnumExtractor {
+
+        enum MaritalStatus {
+
+            SINGLE, MARRIED
+        }
+
+        MaritalStatus extractEnumFrom(String text);
+    }
+
+    @Test
+    protected void should_extract_enum() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            EnumExtractor enumExtractor = AiServices.create(EnumExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single.";
+
+            // when
+            EnumExtractor.MaritalStatus maritalStatus = enumExtractor.extractEnumFrom(text);
+
+            // then
+            assertThat(maritalStatus).isEqualTo(EnumExtractor.MaritalStatus.SINGLE);
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("MaritalStatus")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addEnumProperty("value", List.of("SINGLE", "MARRIED"))
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface EnumListExtractor {
+
+        enum MaritalStatus {
+
+            SINGLE, MARRIED
+        }
+
+        List<MaritalStatus> extractListOfEnumsFrom(String text);
+    }
+
+    @Test
+    protected void should_extract_list_of_enums() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            EnumListExtractor enumListExtractor = AiServices.create(EnumListExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and married." +
+                    "Staniel is 33 years old, 1.70m height and married.";
+
+            // when
+            List<MaritalStatus> maritalStatuses = enumListExtractor.extractListOfEnumsFrom(text);
+
+            // then
+            assertThat(maritalStatuses).containsExactly(MaritalStatus.SINGLE, MARRIED, MARRIED);
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("List_of_MaritalStatus")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
+                                                    .items(JsonEnumSchema.builder()
+                                                            .enumValues("SINGLE", "MARRIED")
+                                                            .build())
+                                                    .build())
+                                            .required("items")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface EnumSetExtractor {
+
+        enum WeatherCharacteristic {
+
+            SUNNY, RAINY, CLOUDY, WINDY
+        }
+
+        Set<WeatherCharacteristic> extractSetOfEnumsFrom(String text);
+    }
+
+    @Test
+    protected void should_extract_set_of_enums() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            EnumSetExtractor enumSetExtractor = AiServices.create(EnumSetExtractor.class, model);
+
+            String text = "The weather in Berlin was sunny and windy." +
+                    " Paris experienced rainy and cloudy weather." +
+                    " New York had cloudy and windy weather.";
+
+            // when
+            Set<WeatherCharacteristic> weatherCharacteristics = enumSetExtractor.extractSetOfEnumsFrom(text);
+
+            // then
+            assertThat(weatherCharacteristics).containsExactlyInAnyOrder(SUNNY, WINDY, RAINY, CLOUDY);
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Set_of_WeatherCharacteristic")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
+                                                    .items(JsonEnumSchema.builder()
+                                                            .enumValues("SUNNY", "RAINY", "CLOUDY", "WINDY")
+                                                            .build())
+                                                    .build())
+                                            .required("items")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
     }
 }
