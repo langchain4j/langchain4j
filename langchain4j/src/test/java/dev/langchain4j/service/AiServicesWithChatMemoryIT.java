@@ -391,7 +391,7 @@ class AiServicesWithChatMemoryIT {
         assertThat(chatWithMemory.getChatMemory(secondMemoryId)).isNull();
         assertThat(chatWithMemory.evictChatMemory(secondMemoryId)).isFalse();
 
-        // the memory has been cleared so it cannot remember the name of the user
+        // the memory has been evicted (and also lost, as it is not persistent), so it cannot remember the name of the user
         String responseToSecondUserAfterMemoryClean = chatWithMemory.chat(secondMemoryId, secondMessageFromSecondUser);
         assertThat(responseToSecondUserAfterMemoryClean).doesNotContain("Francine");
         verify(chatLanguageModel).chat(chatRequest(secondMessageFromSecondUser));
