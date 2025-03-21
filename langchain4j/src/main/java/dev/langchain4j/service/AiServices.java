@@ -26,7 +26,6 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -135,7 +134,6 @@ public abstract class AiServices<T> {
 
     protected final AiServiceContext context;
 
-    private boolean retrieverSet = false;
     private boolean contentRetrieverSet = false;
     private boolean retrievalAugmentorSet = false;
 
@@ -363,29 +361,6 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * @param retriever The retriever to be used by the AI Service.
-     * @return builder
-     * @deprecated Use {@link #contentRetriever(ContentRetriever)}
-     * (e.g. {@link EmbeddingStoreContentRetriever}) instead.
-     * <br>
-     * Configures a retriever that will be invoked on every method call to fetch relevant information
-     * related to the current user message from an underlying source (e.g., embedding store).
-     * This relevant information is automatically injected into the message sent to the LLM.
-     */
-    @Deprecated(forRemoval = true)
-    public AiServices<T> retriever(Retriever<TextSegment> retriever) {
-        if (contentRetrieverSet || retrievalAugmentorSet) {
-            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
-        }
-        if (retriever != null) {
-            AiServices<T> withContentRetriever = contentRetriever(retriever.toContentRetriever());
-            retrieverSet = true;
-            return withContentRetriever;
-        }
-        return this;
-    }
-
-    /**
      * Configures a content retriever to be invoked on every method call for retrieving relevant content
      * related to the user's message from an underlying data source
      * (e.g., an embedding store in the case of an {@link EmbeddingStoreContentRetriever}).
@@ -399,7 +374,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> contentRetriever(ContentRetriever contentRetriever) {
-        if (retrieverSet || retrievalAugmentorSet) {
+        if (retrievalAugmentorSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         contentRetrieverSet = true;
@@ -416,7 +391,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
-        if (retrieverSet || contentRetrieverSet) {
+        if (contentRetrieverSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         retrievalAugmentorSet = true;

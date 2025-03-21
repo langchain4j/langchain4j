@@ -5,13 +5,15 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.output.Response;
-import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-@SuppressWarnings("deprecation")
+import java.util.List;
+
 class ModerationModelTest implements WithAssertions {
+
     public static class FlagEverythingModel implements ModerationModel {
+
         @Override
         public Response<Moderation> moderate(String text) {
             return Response.from(Moderation.flagged(text));
@@ -19,7 +21,7 @@ class ModerationModelTest implements WithAssertions {
 
         @Override
         public Response<Moderation> moderate(List<ChatMessage> messages) {
-            return Response.from(Moderation.flagged(messages.get(0).text()));
+            return Response.from(Moderation.flagged(((UserMessage) messages.get(0)).singleText()));
         }
     }
 

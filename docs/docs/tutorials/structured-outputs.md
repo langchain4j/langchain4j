@@ -153,7 +153,7 @@ Map<String, JsonSchemaElement> properties = Map.of(
 );
 
 JsonSchemaElement rootElement = JsonObjectSchema.builder()
-        .properties(properties)
+        .addProperties(properties)
         .required("city") // required properties should be specified explicitly
         .build();
 ```

@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
 
 /**
  * Implementation of {@link EmbeddingStore} using AstraDB.
@@ -222,7 +223,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         JsonDocument record = new JsonDocument().id(id).vector(embedding.vector());
         if (textSegment != null) {
             record.put(KEY_ATTRIBUTES_BLOB, textSegment.text());
-            textSegment.metadata().asMap().forEach(record::put);
+            toStringValueMap(textSegment.metadata().toMap()).forEach(record::put);
         }
         return record;
     }
