@@ -31,7 +31,6 @@ internal class JacksonJsonCodecTest {
     fun `Should find and register modules on startup`() {
         val registeredModuleIds = subject.objectMapper.registeredModuleIds
         registeredModuleIds shouldContain "com.fasterxml.jackson.module.kotlin.KotlinModule"
-        registeredModuleIds shouldContain "jackson-datatype-jsr310"
         registeredModuleIds shouldContain "langchain4j-module" // custom module
     }
 

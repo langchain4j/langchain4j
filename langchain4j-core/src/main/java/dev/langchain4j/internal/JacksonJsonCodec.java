@@ -2,7 +2,6 @@ package dev.langchain4j.internal;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -112,12 +111,13 @@ class JacksonJsonCodec implements Json.JsonCodec {
             }
         });
 
+        // FAIL_ON_UNKNOWN_PROPERTIES is enabled by default
+        // to prevent issues caused by LLM hallucinations
         return new ObjectMapper()
                 .setVisibility(FIELD, ANY)
                 .findAndRegisterModules()
                 .registerModule(module)
-                .enable(INDENT_OUTPUT)
-                .enable(FAIL_ON_UNKNOWN_PROPERTIES); // To prevent issues caused by LLM hallucinations
+                .enable(INDENT_OUTPUT);
     }
 
     /**
