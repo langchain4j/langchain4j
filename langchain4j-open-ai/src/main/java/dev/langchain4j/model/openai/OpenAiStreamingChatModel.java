@@ -106,6 +106,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .metadata(getOrDefault(builder.metadata, () -> copyIfNotNull(openAiParameters.metadata())))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
+                .customParameters(openAiParameters.customParameters())
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
@@ -147,7 +148,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         client.chatCompletion(openAiRequest)
                 .onPartialResponse(partialResponse -> {
                     openAiResponseBuilder.append(partialResponse);
-                    handle(partialResponse, handler);
+                    handle(partialResponse.response(), handler);
                 })
                 .onComplete(() -> {
                     ChatResponse chatResponse = openAiResponseBuilder.build();

@@ -72,7 +72,8 @@ public class OpenAiImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
         GenerateImagesRequest request = requestBuilder(prompt).build();
 
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries).execute();
+        GenerateImagesResponse response =
+                withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries).execute().response();
 
         return Response.from(fromImageData(response.data().get(0)));
     }
@@ -81,7 +82,8 @@ public class OpenAiImageModel implements ImageModel {
     public Response<List<Image>> generate(String prompt, int n) {
         GenerateImagesRequest request = requestBuilder(prompt).n(n).build();
 
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries).execute();
+        GenerateImagesResponse response =
+                withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries).execute().response();
 
         return Response.from(
                 response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList())

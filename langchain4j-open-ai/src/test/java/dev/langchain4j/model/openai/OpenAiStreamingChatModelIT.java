@@ -11,6 +11,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
@@ -27,6 +28,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
@@ -663,8 +665,7 @@ class OpenAiStreamingChatModelIT {
             }
         };
 
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .apiKey("does not matter")
+        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
                 .tokenizer(tokenizer)
                 .build();
 
@@ -673,6 +674,46 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(tokenCount).isEqualTo(42);
+    }
+
+    @Test
+    void should_set_custom_parameters_and_get_raw_response() throws JsonProcessingException {
+
+        // given
+        String city = "Munich";
+
+        Map<String, Object> customParameters = Map.of("web_search_options", Map.of("user_location", Map.of(
+                "type", "approximate",
+                "approximate", Map.of("city", city)
+        )));
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Where can I buy good coffee?"))
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .modelName("gpt-4o-mini-search-preview")
+                        .customParameters(customParameters)
+                        .build())
+                .build();
+
+        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .maxTokens(20) // to save tokens
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+        ChatResponse chatResponse = handler.get();
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains(city);
+
+        List<ServerSentEvent> rawEvents = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawEvents();
+        assertThat(rawEvents.stream().filter(event -> event.data().contains("url_citation"))).isNotEmpty();
     }
 
     private static void assertTokenUsage(TokenUsage tokenUsage) {

@@ -2,9 +2,9 @@ package dev.langchain4j.model.openai.internal;
 
 import java.util.function.Consumer;
 
-public interface SyncOrAsync<ResponseContent> {
+public interface SyncOrAsync<Response> {
 
-    ResponseContent execute();
+    ResponseAndAttributes<Response> execute();
 
-    AsyncResponseHandling onResponse(Consumer<ResponseContent> responseHandler);
+    AsyncResponseHandling onResponse(Consumer<ResponseAndAttributes<Response>> responseHandler);
 }
