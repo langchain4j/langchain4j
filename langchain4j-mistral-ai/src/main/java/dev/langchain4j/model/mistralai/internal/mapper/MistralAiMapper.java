@@ -79,10 +79,10 @@ public class MistralAiMapper {
                     .build();
         }
 
-        if (message instanceof UserMessage) {
+        if (message instanceof UserMessage userMessage) {
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.USER)
-                    .content(message.text()) // MistralAI support Text Content only as String
+                    .content(userMessage.singleText()) // MistralAI support Text Content only as String
                     .build();
         }
 
