@@ -6,6 +6,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.Test;
@@ -97,7 +98,11 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
         InMemoryEmbeddingStore<TextSegment> merged = InMemoryEmbeddingStore.merge(store1, store2);
 
         // then
-        List<EmbeddingMatch<TextSegment>> matches = merged.findRelevant(embedding1, 100);
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding1)
+                .maxResults(100)
+                .build();
+        List<EmbeddingMatch<TextSegment>> matches = merged.search(searchRequest).matches();
         assertThat(matches).hasSize(2);
 
         assertThat(matches.get(0).embeddingId()).isEqualTo("1");
