@@ -1,11 +1,15 @@
 package dev.langchain4j.model.openaiofficial.azureopenai;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 
 import com.openai.models.ChatModel;
 import com.openai.models.images.ImageGenerateParams;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
@@ -138,16 +142,41 @@ public class InternalAzureOpenAiOfficialTestHelper {
         }
     }
 
-    static List<ChatLanguageModel> chatModelsNormalAndJsonStrict() {
-        List<ChatLanguageModel> models = new ArrayList<>();
+    static List<AbstractChatModelAndCapabilities<ChatLanguageModel>> chatModelsNormalAndJsonStrict() {
+        List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models = new ArrayList<>();
         if (AZURE_OPEN_AI_CHAT_MODEL != null) {
-            models.add(AZURE_OPEN_AI_CHAT_MODEL);
+            models.add(ChatModelAndCapabilities.builder()
+                    .model(AZURE_OPEN_AI_CHAT_MODEL)
+                    .mnemonicName("AZURE_OPEN_AI_CHAT_MODEL")
+                    .supportsModelNameParameter(NOT_SUPPORTED)
+                    .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED)
+                    .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+                    .build());
         }
         if (AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS != null) {
-            models.add(AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS);
+            models.add(ChatModelAndCapabilities.builder()
+                    .model(AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS)
+                    .mnemonicName("AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS")
+                    .supportsModelNameParameter(NOT_SUPPORTED)
+                    .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED)
+                    .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+                    .build());
         }
         if (AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA != null) {
-            models.add(AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA);
+            models.add(ChatModelAndCapabilities.builder()
+                    .model(AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA)
+                    .mnemonicName("AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA")
+                    .supportsModelNameParameter(NOT_SUPPORTED)
+                    .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+                    .build());
+        }
+        if (AZURE_OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA != null) {
+            models.add(ChatModelAndCapabilities.builder()
+                    .model(AZURE_OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA)
+                    .mnemonicName("AZURE_OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA")
+                    .supportsModelNameParameter(NOT_SUPPORTED)
+                    .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+                    .build());
         }
         if (models.isEmpty()) {
             log.error("Testing normal model & JSON strict model: skipping tests as Azure OpenAI keys are not set");
@@ -183,13 +212,23 @@ public class InternalAzureOpenAiOfficialTestHelper {
         return models;
     }
 
-    static List<StreamingChatLanguageModel> chatModelsStreamingNormalAndJsonStrict() {
-        List<StreamingChatLanguageModel> models = new ArrayList<>();
+    static List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> chatModelsStreamingNormalAndJsonStrict() {
+        List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models = new ArrayList<>();
         if (AZURE_OPEN_AI_STREAMING_CHAT_MODEL != null) {
-            models.add(AZURE_OPEN_AI_STREAMING_CHAT_MODEL);
+            models.add(StreamingChatModelAndCapabilities.builder()
+                    .model(AZURE_OPEN_AI_STREAMING_CHAT_MODEL)
+                    .mnemonicName("AZURE_OPEN_AI_STREAMING_CHAT_MODEL")
+                    .supportsModelNameParameter(NOT_SUPPORTED)
+                    .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+                    .build());
         }
         if (AZURE_OPEN_AI_STREAMING_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA != null) {
-            models.add(AZURE_OPEN_AI_STREAMING_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA);
+            models.add(StreamingChatModelAndCapabilities.builder()
+                    .model(AZURE_OPEN_AI_STREAMING_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA)
+                    .mnemonicName("AZURE_OPEN_AI_STREAMING_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA")
+                    .supportsModelNameParameter(NOT_SUPPORTED)
+                    .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+                    .build());
         }
         if (models.isEmpty()) {
             log.error("Testing streaming models: skipping tests as Azure OpenAI keys are not set");

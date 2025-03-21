@@ -1,5 +1,15 @@
 package dev.langchain4j.model.chat.common;
 
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.SUPPORTED;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -16,32 +26,20 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.Base64;
+import java.util.List;
+import java.util.Set;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledIf;
-import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.Base64;
-import java.util.List;
-import java.util.Set;
-
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
  * Contains all the common tests that every {@link ChatLanguageModel}
@@ -57,14 +55,14 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
-    static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
+    static final String CAT_IMAGE_URL =
+            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    static final String DICE_IMAGE_URL =
+            "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
             .name("getWeather")
-            .parameters(JsonObjectSchema.builder()
-                    .addStringProperty("city")
-                    .build())
+            .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
             .build();
 
     static final ResponseFormat RESPONSE_FORMAT = ResponseFormat.builder()
@@ -78,28 +76,15 @@ public abstract class AbstractBaseChatModelIT<M> {
                     .build())
             .build();
 
-    protected abstract List<M> models();
+    protected abstract List<AbstractChatModelAndCapabilities<M>> models();
 
-    protected List<M> modelsSupportingTools() {
-        return models();
-    }
-
-    protected List<M> modelsSupportingStructuredOutputs() { // TODO distinguish between JSON mode and JSON schema?
-        return models();
-    }
-
-    protected List<M> modelsSupportingImageInputs() {
-        return models();
-    }
-
-    protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
-
+    protected abstract ChatResponseAndStreamingMetadata chat(M chatModel, ChatRequest chatRequest);
 
     // MESSAGES
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_respect_user_message(M model) {
+    protected void should_respect_user_message(AbstractChatModelAndCapabilities<M> modelCapabilities) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -107,7 +92,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata =
+                chat(modelCapabilities.model(), chatRequest);
         ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
         // then
@@ -116,25 +102,25 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
-        if (assertResponseId()) {
+        if (modelCapabilities.assertResponseId()) {
             assertThat(chatResponseMetadata.id()).isNotBlank();
         }
-        if (assertResponseModel()) {
+        if (modelCapabilities.assertResponseModel()) {
             assertThat(chatResponseMetadata.modelName()).isNotBlank();
         }
-        if (assertTokenUsage()) {
+        if (modelCapabilities.assertTokenUsage()) {
             assertTokenUsage(chatResponseMetadata);
         }
-        if (assertFinishReason()) {
+        if (modelCapabilities.assertFinishReason()) {
             assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
         }
 
-        if (model instanceof StreamingChatLanguageModel) {
+        if (modelCapabilities.model() instanceof StreamingChatLanguageModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(1);
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
-            if (assertThreads()) {
+            if (modelCapabilities.assertThreads()) {
                 Set<Thread> threads = streamingMetadata.threads();
                 assertThat(threads).hasSize(1);
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
@@ -144,19 +130,18 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_respect_system_message(M model) {
+    protected void should_respect_system_message(AbstractChatModelAndCapabilities<M> modelCapabilities) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
                 // TODO .addSystemMessage, .addUserMessage?
                 .messages(
                         SystemMessage.from("Translate messages from user into German"),
-                        UserMessage.from("Translate: 'I love you'")
-                )
+                        UserMessage.from("Translate: 'I love you'"))
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(modelCapabilities.model(), chatRequest).chatResponse();
 
         // then
         assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("liebe");
@@ -171,41 +156,77 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    @EnabledIf("supportsModelNameParameter")
-    protected void should_respect_modelName_in_chat_request(M model) {
+    protected void should_respect_model_name_parameter(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsModelNameParameter())) {
+            // Test positive case
+            String modelName = customModelName();
+            ensureModelNameIsDifferentFromDefault(modelName, modelCapabilities);
+            ChatRequestParameters parameters = ChatRequestParameters.builder()
+                    .modelName(modelName)
+                    .maxOutputTokens(1)
+                    .build();
 
-        // given
-        String modelName = customModelName();
-        ensureModelNameIsDifferentFromDefault(modelName, model);
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Tell me a story"))
+                    .parameters(parameters)
+                    .build();
 
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .modelName(modelName)
-                .maxOutputTokens(1) // to save tokens
-                .build();
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
+            assertThat(chatResponse.aiMessage().text()).isNotBlank();
+            assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsModelNameParameter is "
+                    + modelCapabilities.supportsModelNameParameter());
+    }
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a story"))
-                .parameters(parameters)
-                .build();
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_modelName_is_not_supported(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsModelNameParameter())) {
+            // Test negative case
+            String modelName = "dummy";
+            ChatRequestParameters parameters =
+                    ChatRequestParameters.builder().modelName(modelName).build();
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Tell me a story"))
+                    .parameters(parameters)
+                    .build();
 
-        // then
-        assertThat(chatResponse.aiMessage().text()).isNotBlank();
-
-        assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType())
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("modelName")
+                        .hasMessageContaining("not support");
+            if (SUPPORTED.equals(modelCapabilities.supportsDefaultRequestParameters())) {
+                AbstractThrowableAssert<?, ?> throwableAssertCreateModelWith =
+                        assertThatThrownBy(() -> createModelAndCapabilitiesWith(parameters));
+                if (modelCapabilities.assertExceptionType())
+                    throwableAssertCreateModelWith
+                            .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                            .hasMessageContaining("modelName")
+                            .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsModelNameParameter is "
+                    + modelCapabilities.supportsModelNameParameter());
     }
 
     protected String customModelName() {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
-    private void ensureModelNameIsDifferentFromDefault(String modelName, M model) {
+    private void ensureModelNameIsDifferentFromDefault(
+            String modelName, AbstractChatModelAndCapabilities<M> modelAndCapabilities) {
         // TODO slight optimization: check model.parameters().modelName() instead?
-        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a story"));
-        if (supportsMaxOutputTokensParameter()) {
+        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder().messages(UserMessage.from("Tell me a story"));
+        if (!SUPPORTED.equals(modelAndCapabilities.supportsMaxOutputTokensParameter())) {
             ChatRequestParameters parameters = ChatRequestParameters.builder()
                     .maxOutputTokens(1) // to save tokens
                     .build();
@@ -213,13 +234,14 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
         ChatRequest chatRequest = chatRequestBuilder.build();
 
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+        ChatResponse chatResponse =
+                chat(modelAndCapabilities.model(), chatRequest).chatResponse();
 
         assertThat(chatResponse.metadata().modelName()).isNotEqualTo(modelName);
     }
 
     @Test
-    @EnabledIf("supportsModelNameParameter")
+    @DisabledIf("disableParametersInDefaultModelTests")
     protected void should_respect_modelName_in_default_model_parameters() {
 
         // given
@@ -228,117 +250,176 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .modelName(modelName)
                 .maxOutputTokens(1) // to save tokens
                 .build();
-        M model = createModelWith(parameters);
+        AbstractChatModelAndCapabilities<M> modelAndCapabilities;
+        try {
+            modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
+        } catch (UnsupportedFeatureException e) {
+            // an UnsupportedFeatureException thrown by model instantiation is handled like a NOT_SUPPORTED flag
+            throw new org.opentest4j.TestAbortedException("Test should_respect_modelName_in_default_model_parameters "
+                    + "disabled because ModelNameParameter is NOT_SUPPORTED");
+        }
+
+        if (!SUPPORTED.equals(modelAndCapabilities.supportsModelNameParameter()))
+            throw new org.opentest4j.TestAbortedException("Test should_respect_modelName_in_default_model_parameters "
+                    + "disabled because ModelNameParameter is " + modelAndCapabilities.supportsModelNameParameter());
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"))
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+        ChatResponse chatResponse =
+                chat(modelAndCapabilities.model(), chatRequest).chatResponse();
 
         // then
         assertThat(chatResponse.aiMessage().text()).isNotBlank();
 
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
-
-    protected M createModelWith(ChatRequestParameters parameters) {
+    /**
+     * This method is intended to be overridden by subclasses to provide specific implementation
+     * for creating a chat model with given parameters.
+     *
+     * @param parameters The chat request parameters used to configure the model
+     * @return An AbstractChatModelAndCapabilities instance configured with the given parameters
+     * @throws RuntimeException if the method is not implemented by the subclass
+     * @see OpenAiChatModelIT for an example implementation
+     */
+    protected AbstractChatModelAndCapabilities<M> createModelAndCapabilitiesWith(ChatRequestParameters parameters) {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    @DisabledIf("supportsModelNameParameter")
-    protected void should_fail_if_modelName_is_not_supported(M model) {
-
-        // given
-        String modelName = "dummy";
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .modelName(modelName)
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a story"))
-                .parameters(parameters)
-                .build();
-
-        // when-then
-        assertThatThrownBy(() -> chat(model, chatRequest))
-                .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("modelName")
-                .hasMessageContaining("not support");
-
-        if (supportsDefaultRequestParameters()) {
-            assertThatThrownBy(() -> createModelWith(parameters))
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("modelName")
-                    .hasMessageContaining("not support");
-        }
+    /**
+     * Determines whether testing parameters in default model constructor should be skipped.
+     * By default, this method returns false, meaning that you should implement a
+     * createModelAndCapabilitiesWith(...) in your inheritor
+     *
+     * @return false by default, indicating that parameter tests are enabled
+     */
+    protected boolean disableParametersInDefaultModelTests() {
+        return false;
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    @EnabledIf("supportsMaxOutputTokensParameter")
-    protected void should_respect_maxOutputTokens_in_chat_request(M model) {
+    protected void should_respect_maxOutputTokens_in_chat_request(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsMaxOutputTokensParameter())) {
+            // given
+            int maxOutputTokens = 5;
+            ChatRequestParameters parameters = ChatRequestParameters.builder()
+                    .maxOutputTokens(maxOutputTokens)
+                    .build();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Tell me a long story"))
+                    .parameters(parameters)
+                    .build();
 
-        // given
-        int maxOutputTokens = 5;
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story"))
-                .parameters(parameters)
-                .build();
+            // when
+            ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata =
+                    chat(modelCapabilities.model(), chatRequest);
+            ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
-        // when
-        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
-        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).isNotBlank();
+            assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
-        }
-
-        if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
-            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
-            assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
-            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
-            if (assertThreads()) {
-                Set<Thread> threads = streamingMetadata.threads();
-                assertThat(threads).hasSize(1);
-                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
             }
-        }
+
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
+            }
+
+            if (modelCapabilities.model() instanceof StreamingChatLanguageModel) {
+                StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+                assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+                assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
+                assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+                if (modelCapabilities.assertThreads()) {
+                    Set<Thread> threads = streamingMetadata.threads();
+                    assertThat(threads).hasSize(1);
+                    assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+                }
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsMaxOutputTokensParameter is "
+                    + modelCapabilities.supportsMaxOutputTokensParameter());
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsMaxOutputTokensParameter())) {
+            // given
+            int maxOutputTokens = 5;
+            ChatRequestParameters parameters = ChatRequestParameters.builder()
+                    .maxOutputTokens(maxOutputTokens)
+                    .build();
+
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Tell me a long story"))
+                    .parameters(parameters)
+                    .build();
+
+            // when-then
+            final AbstractThrowableAssert<?, ? extends Throwable> abstractThrowableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType())
+                abstractThrowableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("maxOutputTokens")
+                        .hasMessageContaining("not support");
+            if (SUPPORTED.equals(modelCapabilities.supportsDefaultRequestParameters())) {
+                final AbstractThrowableAssert<?, ? extends Throwable> abstractThrowableAssert1 =
+                        assertThatThrownBy(() -> createModelAndCapabilitiesWith(parameters));
+                if (modelCapabilities.assertExceptionType())
+                    abstractThrowableAssert1
+                            .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                            .hasMessageContaining("maxOutputTokens")
+                            .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsMaxOutputTokensParameter is "
+                    + modelCapabilities.supportsMaxOutputTokensParameter());
     }
 
     @Test
-    @EnabledIf("supportsMaxOutputTokensParameter")
+    @DisabledIf("disableParametersInDefaultModelTests")
     protected void should_respect_maxOutputTokens_in_default_model_parameters() {
 
         // given
         int maxOutputTokens = 5;
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
-        M model = createModelWith(parameters);
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        AbstractChatModelAndCapabilities<M> modelAndCapabilities;
+        try {
+            modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
+        } catch (UnsupportedFeatureException e) {
+            // an UnsupportedFeatureException thrown by model instantiation is handled like a NOT_SUPPORTED flag
+            throw new org.opentest4j.TestAbortedException(
+                    "Test should_respect_maxOutputTokens_in_default_model_parameters "
+                            + "disabled because maxOutputToken is NOT_SUPPORTED");
+        }
+        if (!SUPPORTED.equals(modelAndCapabilities.supportsMaxOutputTokensParameter()))
+            throw new org.opentest4j.TestAbortedException(
+                    "Test should_respect_maxOutputTokens_in_default_model_parameters "
+                            + "disabled because maxOutputToken is "
+                            + modelAndCapabilities.supportsMaxOutputTokensParameter());
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a long story"))
                 .build();
 
         // when
-        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata =
+                chat(modelAndCapabilities.model(), chatRequest);
         ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
         // then
@@ -346,20 +427,20 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        if (assertTokenUsage()) {
+        if (modelAndCapabilities.assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
         }
 
-        if (assertFinishReason()) {
+        if (modelAndCapabilities.assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
         }
 
-        if (model instanceof StreamingChatLanguageModel) {
+        if (modelAndCapabilities.model() instanceof StreamingChatLanguageModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
-            if (assertThreads()) {
+            if (modelAndCapabilities.assertThreads()) {
                 Set<Thread> threads = streamingMetadata.threads();
                 assertThat(threads).hasSize(1);
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
@@ -369,78 +450,100 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    @DisabledIf("supportsMaxOutputTokensParameter")
-    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(M model) {
+    protected void should_respect_stopSequences_in_chat_request(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsStopSequencesParameter())) {
+            // Test positive case
+            List<String> stopSequences = List.of("World", " World");
+            ChatRequestParameters parameters =
+                    ChatRequestParameters.builder().stopSequences(stopSequences).build();
 
-        // given
-        int maxOutputTokens = 5;
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Say 'Hello World'"))
+                    .parameters(parameters)
+                    .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story"))
-                .parameters(parameters)
-                .build();
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        // when-then
-        assertThatThrownBy(() -> chat(model, chatRequest))
-                .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("maxOutputTokens")
-                .hasMessageContaining("not support");
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).containsIgnoringCase("Hello");
+            assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
+            assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        if (supportsDefaultRequestParameters()) {
-            assertThatThrownBy(() -> createModelWith(parameters))
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("maxOutputTokens")
-                    .hasMessageContaining("not support");
-        }
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
+            }
+
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsStopSequencesParameter is "
+                    + modelCapabilities.supportsStopSequencesParameter());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    @EnabledIf("supportsStopSequencesParameter")
-    protected void should_respect_stopSequences_in_chat_request(M model) {
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsStopSequencesParameter())) {
+            // Test negative case
+            List<String> stopSequences = List.of("World");
+            ChatRequestParameters parameters =
+                    ChatRequestParameters.builder().stopSequences(stopSequences).build();
 
-        // given
-        List<String> stopSequences = List.of("World", " World");
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .stopSequences(stopSequences)
-                .build();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Say 'Hello World'"))
+                    .parameters(parameters)
+                    .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Say 'Hello World'"))
-                .parameters(parameters)
-                .build();
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType())
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("stopSequences")
+                        .hasMessageContaining("not support");
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Hello");
-        assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
-        }
+            if (SUPPORTED.equals(modelCapabilities.supportsDefaultRequestParameters())) {
+                AbstractThrowableAssert<?, ?> throwableAssertCreateModelWith =
+                        assertThatThrownBy(() -> createModelAndCapabilitiesWith(parameters));
+                if (modelCapabilities.assertExceptionType())
+                    throwableAssertCreateModelWith
+                            .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                            .hasMessageContaining("stopSequences")
+                            .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsStopSequencesParameter is "
+                    + modelCapabilities.supportsStopSequencesParameter());
     }
 
     @Test
-    @EnabledIf("supportsStopSequencesParameter")
+    @DisabledIf("disableParametersInDefaultModelTests")
     protected void should_respect_stopSequences_in_default_model_parameters() {
 
         // given
         List<String> stopSequences = List.of("World", " World");
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .stopSequences(stopSequences)
-                .build();
-        M model = createModelWith(parameters);
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().stopSequences(stopSequences).build();
+        AbstractChatModelAndCapabilities<M> modelAndCapabilities;
+        try {
+            modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
+        } catch (UnsupportedFeatureException e) {
+            // an UnsupportedFeatureException thrown by model instanciation is handled like a NOT_SUPPORTED flag
+            throw new org.opentest4j.TestAbortedException(
+                    "Test should_respect_stopSequences_in_default_model_parameters "
+                            + "disabled because stopSequence is NOT_SUPPORTED");
+        }
+        if (!SUPPORTED.equals(modelAndCapabilities.supportsStopSequencesParameter()))
+            throw new org.opentest4j.TestAbortedException(
+                    "Test should_respect_stopSequences_in_default_model_parameters "
+                            + "disabled because stopSequence is "
+                            + modelAndCapabilities.supportsStopSequencesParameter());
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Hello World'"))
@@ -448,7 +551,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+        ChatResponse chatResponse =
+                chat(modelAndCapabilities.model(), chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -456,81 +560,57 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        if (assertTokenUsage()) {
+        if (modelAndCapabilities.assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata());
         }
 
-        if (assertFinishReason()) {
+        if (modelAndCapabilities.assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    @DisabledIf("supportsStopSequencesParameter")
-    protected void should_fail_if_stopSequences_parameter_is_not_supported(M model) {
+    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsCommonParametersWrappedInIntegrationSpecificClass())) {
+            // given
+            // TODO test more/all common params?
+            int maxOutputTokens = 5;
+            ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
+            assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class);
 
-        // given
-        List<String> stopSequences = List.of("World");
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .stopSequences(stopSequences)
-                .build();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .parameters(parameters)
+                    .messages(UserMessage.from("Tell me a long story"))
+                    .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Say 'Hello World'"))
-                .parameters(parameters)
-                .build();
+            // when
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        // when-then
-        assertThatThrownBy(() -> chat(model, chatRequest))
-                .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("stopSequences")
-                .hasMessageContaining("not support");
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).isNotBlank();
+            assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        if (supportsDefaultRequestParameters()) {
-            assertThatThrownBy(() -> createModelWith(parameters))
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("stopSequences")
-                    .hasMessageContaining("not support");
-        }
-    }
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
+            }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    @EnabledIf("supportsMaxOutputTokensParameter")
-    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(M model) {
-
-        // given
-        // TODO test more/all common params?
-        int maxOutputTokens = 5;
-        ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
-        assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class);
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(parameters)
-                .messages(UserMessage.from("Tell me a long story"))
-                .build();
-
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
-        }
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsCommonParametersWrappedInIntegrationSpecificClass is "
+                    + modelCapabilities.supportsCommonParametersWrappedInIntegrationSpecificClass());
     }
 
     @Test
-    @EnabledIf("supportsMaxOutputTokensParameter")
-    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+    @DisabledIf("disableParametersInDefaultModelTests")
+    protected void
+            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
 
         // given
         // TODO test more/all common params?
@@ -538,7 +618,20 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
         assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class);
 
-        M model = createModelWith(parameters);
+        AbstractChatModelAndCapabilities<M> modelAndCapabilities;
+        try {
+            modelAndCapabilities = createModelAndCapabilitiesWith(parameters);
+        } catch (UnsupportedFeatureException e) {
+            // an UnsupportedFeatureException thrown by model instanciation is handled like a NOT_SUPPORTED flag
+            throw new org.opentest4j.TestAbortedException(
+                    "Test should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters "
+                            + "disabled because it is NOT_SUPPORTED");
+        }
+        if (!SUPPORTED.equals(modelAndCapabilities.supportsMaxOutputTokensParameter()))
+            throw new org.opentest4j.TestAbortedException(
+                    "Test should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters "
+                            + "disabled because it is "
+                            + modelAndCapabilities.supportsMaxOutputTokensParameter());
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
@@ -546,18 +639,19 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+        ChatResponse chatResponse =
+                chat(modelAndCapabilities.model(), chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        if (assertTokenUsage()) {
+        if (modelAndCapabilities.assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
         }
 
-        if (assertFinishReason()) {
+        if (modelAndCapabilities.assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
         }
     }
@@ -571,222 +665,247 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO test default tools
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingTools")
-    @EnabledIf("supportsTools")
-    protected void should_execute_a_tool_then_answer(M model) {
+    @MethodSource("models")
+    protected void should_execute_a_tool_then_answer(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsTools())) {
+            // given
+            UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
 
-        // given
-        UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(userMessage)
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL)
+                            .build())
+                    .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL)
-                        .build())
-                .build();
+            // when
+            ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata =
+                    chat(modelCapabilities.model(), chatRequest);
+            ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
-        // when
-        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
-        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+            ToolExecutionRequest toolExecutionRequest =
+                    aiMessage.toolExecutionRequests().get(0);
+            assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
+            assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
-        }
-
-        if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
-            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
-            if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
-                assertThat(aiMessage.text()).isNull();
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
             }
-            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
-            if (assertThreads()) {
-                Set<Thread> threads = streamingMetadata.threads();
-                assertThat(threads).hasSize(1);
-                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
             }
-        }
 
-        // given
-        ChatRequest chatRequest2 = ChatRequest.builder()
-                .messages(
-                        userMessage,
-                        aiMessage,
-                        ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
-                )
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL)
-                        .build())
-                .build();
-
-        // when
-        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata2 = chat(model, chatRequest2);
-        ChatResponse chatResponse2 = chatResponseAndStreamingMetadata2.chatResponse();
-
-        // then
-        AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).contains("sun");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull(); // TODO make it empty
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse2.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
-        }
-
-        if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
-            assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
-            if (assertTimesOnPartialResponseWasCalled()) {
-                assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            if (modelCapabilities.model() instanceof StreamingChatLanguageModel) {
+                StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+                assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+                if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
+                    assertThat(aiMessage.text()).isNull();
+                }
+                assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+                if (modelCapabilities.assertThreads()) {
+                    Set<Thread> threads = streamingMetadata.threads();
+                    assertThat(threads).hasSize(1);
+                    assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+                }
             }
-            assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
-            if (assertThreads()) {
-                Set<Thread> threads = streamingMetadata2.threads();
-                assertThat(threads).hasSize(1);
-                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+
+            // given
+            ChatRequest chatRequest2 = ChatRequest.builder()
+                    .messages(userMessage, aiMessage, ToolExecutionResultMessage.from(toolExecutionRequest, "sunny"))
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL)
+                            .build())
+                    .build();
+
+            // when
+            ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata2 =
+                    chat(modelCapabilities.model(), chatRequest2);
+            ChatResponse chatResponse2 = chatResponseAndStreamingMetadata2.chatResponse();
+
+            // then
+            AiMessage aiMessage2 = chatResponse2.aiMessage();
+            assertThat(aiMessage2.text()).contains("sun");
+            assertThat(aiMessage2.toolExecutionRequests()).isNull(); // TODO make it empty
+
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse2.metadata());
             }
-        }
+
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
+            }
+
+            if (modelCapabilities.model() instanceof StreamingChatLanguageModel) {
+                StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
+                assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
+                if (modelCapabilities.assertTimesOnPartialResponseWasCalled()) {
+                    assertThat(streamingMetadata2.timesOnPartialResponseWasCalled())
+                            .isGreaterThan(1);
+                }
+                assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled())
+                        .isEqualTo(1);
+                if (modelCapabilities.assertThreads()) {
+                    Set<Thread> threads = streamingMetadata2.threads();
+                    assertThat(threads).hasSize(1);
+                    assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+                }
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsTools is " + modelCapabilities.supportsTools());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    @DisabledIf("supportsTools")
-    protected void should_fail_if_tools_are_not_supported(M model) {
+    protected void should_fail_if_tools_are_not_supported(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED.equals(modelCapabilities.supportsTools())) {
+            // given
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("What is the weather in Munich?"))
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL)
+                            .build())
+                    .build();
 
-        // given
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the weather in Munich?"))
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL)
-                        .build())
-                .build();
-
-        // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
-        if (assertExceptionType()) {
-            throwableAssert
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("tool")
-                    .hasMessageContaining("not support");
-
-        }
+            // when-then
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType()) {
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("tool")
+                        .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsTools is " + modelCapabilities.supportsTools());
     }
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingTools")
-    @EnabledIf("supportsToolChoiceRequiredWithMultipleTools")
-    protected void should_force_LLM_to_execute_any_tool(M model) {
+    @MethodSource("models")
+    protected void should_force_LLM_to_execute_any_tool(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsToolChoiceRequiredWithMultipleTools())) {
+            // given
+            ToolSpecification calculatorTool = ToolSpecification.builder()
+                    .name("add_two_numbers")
+                    .parameters(JsonObjectSchema.builder()
+                            .addIntegerProperty("a")
+                            .addIntegerProperty("b")
+                            .build())
+                    .build();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("I live in Munich"))
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL, calculatorTool)
+                            .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
+                            .build())
+                    .build();
 
-        // given
-        ToolSpecification calculatorTool = ToolSpecification.builder()
-                .name("add_two_numbers")
-                .parameters(JsonObjectSchema.builder()
-                        .addIntegerProperty("a")
-                        .addIntegerProperty("b")
-                        .build())
-                .build();
+            // when
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("I live in Munich"))
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL, calculatorTool)
-                        .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
-                        .build())
-                .build();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+            ToolExecutionRequest toolExecutionRequest =
+                    aiMessage.toolExecutionRequests().get(0);
+            assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
+            assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
+            }
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
-        }
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsToolChoiceRequiredWithMultipleTools is "
+                    + modelCapabilities.supportsToolChoiceRequiredWithMultipleTools());
     }
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingTools")
-    @EnabledIf("supportsToolChoiceRequiredWithSingleTool")
-    protected void should_force_LLM_to_execute_specific_tool(M model) {
+    @MethodSource("models")
+    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsToolChoiceRequiredWithMultipleTools())) {
 
-        // given
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("I live in Munich"))
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL)
-                        .toolChoice(REQUIRED) // this will FORCE the LLM to execute weatherTool
-                        .build())
-                .build();
-
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
-        }
+            // given
+            ToolSpecification calculatorTool = ToolSpecification.builder()
+                    .name("add_two_numbers")
+                    .parameters(JsonObjectSchema.builder()
+                            .addIntegerProperty("a")
+                            .addIntegerProperty("b")
+                            .build())
+                    .build();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("I live in Munich"))
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL, calculatorTool)
+                            .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
+                            .build())
+                    .build();
+            // when-then
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType()) {
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("ToolChoice.REQUIRED")
+                        .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsToolChoiceRequiredWithMultipleTools is "
+                    + modelCapabilities.supportsToolChoiceRequiredWithMultipleTools());
     }
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingTools")
-    @DisabledIf("supportsToolChoiceRequired")
-    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(M model) {
+    @MethodSource("models")
+    protected void should_force_LLM_to_execute_specific_tool(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsToolChoiceRequiredWithSingleTool())) {
+            // given
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("I live in Munich"))
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL)
+                            .toolChoice(REQUIRED) // this will FORCE the LLM to execute weatherTool
+                            .build())
+                    .build();
 
-        // given
-        ToolChoice toolChoice = REQUIRED;
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("I live in Munich"))
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL)
-                        .toolChoice(toolChoice)
-                        .build())
-                .build();
+            // when
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
-        if (assertExceptionType()) {
-            throwableAssert
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("ToolChoice.REQUIRED")
-                    .hasMessageContaining("not support");
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        }
+            ToolExecutionRequest toolExecutionRequest =
+                    aiMessage.toolExecutionRequests().get(0);
+            assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
+            assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
+            }
+
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsToolChoiceRequiredWithSingleTool is "
+                    + modelCapabilities.supportsToolChoiceRequiredWithSingleTool());
     }
 
     // RESPONSE FORMAT
@@ -794,496 +913,438 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO test default response format
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingStructuredOutputs")
-    @EnabledIf("supportsJsonResponseFormat")
-    protected void should_respect_JSON_response_format(M model) {
+    @MethodSource("models")
+    protected void should_respect_JSON_response_format(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsJsonResponseFormat())) {
+            // given
+            ResponseFormat responseFormat = ResponseFormat.JSON;
 
-        // given
-        ResponseFormat responseFormat = ResponseFormat.JSON;
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("What is the capital of Germany? "
+                            + "Answer with a JSON object containing a single 'city' field"))
+                    .parameters(ChatRequestParameters.builder()
+                            .responseFormat(responseFormat)
+                            .build())
+                    .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany? " +
-                        "Answer with a JSON object containing a single 'city' field"))
-                .parameters(ChatRequestParameters.builder()
-                        .responseFormat(responseFormat)
-                        .build())
-                .build();
+            // when
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
+            assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
+            }
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
-        }
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsJsonResponseFormat is "
+                    + modelCapabilities.supportsJsonResponseFormat());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    @DisabledIf("supportsJsonResponseFormat")
-    protected void should_fail_if_JSON_response_format_is_not_supported(M model) {
+    protected void should_fail_if_JSON_response_format_is_not_supported(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsJsonResponseFormat())) {
+            // Test negative case
+            ResponseFormat responseFormat = ResponseFormat.JSON;
 
-        // given
-        ResponseFormat responseFormat = ResponseFormat.JSON;
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("What is the capital of Germany? "
+                            + "Answer with a JSON object containing a single 'city' field"))
+                    .parameters(ChatRequestParameters.builder()
+                            .responseFormat(responseFormat)
+                            .build())
+                    .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany? " +
-                        "Answer with a JSON object containing a single 'city' field"))
-                .parameters(ChatRequestParameters.builder()
-                        .responseFormat(responseFormat)
-                        .build())
-                .build();
-
-        // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
-        if (assertExceptionType()) {
-            throwableAssert
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("JSON response format")
-                    .hasMessageContaining("not support");
-
-        }
-    }
-
-    @ParameterizedTest
-    @MethodSource("modelsSupportingStructuredOutputs")
-    @EnabledIf("supportsJsonResponseFormatWithSchema")
-    protected void should_respect_JSON_response_format_with_schema(M model) {
-
-        // given
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
-                .parameters(ChatRequestParameters.builder()
-                        .responseFormat(RESPONSE_FORMAT)
-                        .build())
-                .build();
-
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
-        }
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType())
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("JSON response format")
+                        .hasMessageContaining("not support");
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsJsonResponseFormat is "
+                    + modelCapabilities.supportsJsonResponseFormat());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    @DisabledIf("supportsJsonResponseFormatWithSchema")
-    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(M model) {
+    protected void should_respect_JSON_response_format_with_schema(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsJsonResponseFormatWithSchema())) {
+            // given
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("What is the capital of Germany?"))
+                    .parameters(ChatRequestParameters.builder()
+                            .responseFormat(RESPONSE_FORMAT)
+                            .build())
+                    .build();
 
-        // given
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
-                .parameters(ChatRequestParameters.builder()
-                        .responseFormat(RESPONSE_FORMAT)
-                        .build())
-                .build();
+            // when
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
-        if (assertExceptionType()) {
-            throwableAssert
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("JSON response format")
-                    .hasMessageContaining("not support");
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
+            assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        }
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
+            }
+
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsJsonResponseFormatWithSchema is "
+                    + modelCapabilities.supportsJsonResponseFormatWithSchema());
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsJsonResponseFormatWithSchema())) {
+            // given
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("What is the capital of Germany?"))
+                    .parameters(ChatRequestParameters.builder()
+                            .responseFormat(RESPONSE_FORMAT)
+                            .build())
+                    .build();
+
+            // when-then
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType()) {
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("JSON response format")
+                        .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsJsonResponseFormatWithSchema is "
+                    + modelCapabilities.supportsJsonResponseFormatWithSchema());
+    }
     // TOOLS + RESPONSE FORMAT
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingTools")
-    @EnabledIf("supportsToolsAndJsonResponseFormatWithSchema")
-    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(M model) {
+    @MethodSource("models")
+    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsToolsAndJsonResponseFormatWithSchema())) {
+            // given
+            UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
 
-        // given
-        UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
+            ResponseFormat responseFormat = ResponseFormat.builder()
+                    .type(ResponseFormatType.JSON)
+                    .jsonSchema(JsonSchema.builder()
+                            .name("weather")
+                            .rootElement(JsonObjectSchema.builder()
+                                    .addEnumProperty("weather", List.of("sunny", "rainy"))
+                                    .build())
+                            .build())
+                    .build();
 
-        ResponseFormat responseFormat = ResponseFormat.builder()
-                .type(ResponseFormatType.JSON)
-                .jsonSchema(JsonSchema.builder()
-                        .name("weather")
-                        .rootElement(JsonObjectSchema.builder()
-                                .addEnumProperty("weather", List.of("sunny", "rainy"))
-                                .build())
-                        .build())
-                .build();
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(userMessage)
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL)
+                            .responseFormat(responseFormat)
+                            .build())
+                    .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL)
-                        .responseFormat(responseFormat)
-                        .build())
-                .build();
+            // when
+            ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata =
+                    chat(modelCapabilities.model(), chatRequest);
+            ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
-        // when
-        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
-        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+            ToolExecutionRequest toolExecutionRequest =
+                    aiMessage.toolExecutionRequests().get(0);
+            assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
+            assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
-        }
-
-        if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
-            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
-            if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
-                assertThat(aiMessage.text()).isNull();
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
             }
-            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
-            if (assertThreads()) {
-                Set<Thread> threads = streamingMetadata.threads();
-                assertThat(threads).hasSize(1);
-                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
             }
-        }
 
-        // given
-        ChatRequest chatRequest2 = ChatRequest.builder()
-                .messages(
-                        userMessage,
-                        aiMessage,
-                        ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
-                )
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL)
-                        .responseFormat(responseFormat)
-                        .build())
-                .build();
-
-        // when
-        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata2 = chat(model, chatRequest2);
-        ChatResponse chatResponse2 = chatResponseAndStreamingMetadata2.chatResponse();
-
-        // then
-        AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).isEqualToIgnoringWhitespace("{\"weather\":\"sunny\"}");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull(); // TODO make it empty
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse2.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
-        }
-
-        if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
-            assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
-            assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
-            assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
-            if (assertThreads()) {
-                Set<Thread> threads = streamingMetadata2.threads();
-                assertThat(threads).hasSize(1);
-                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            if (modelCapabilities.model() instanceof StreamingChatLanguageModel) {
+                StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+                assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+                if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
+                    assertThat(aiMessage.text()).isNull();
+                }
+                assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+                if (modelCapabilities.assertThreads()) {
+                    Set<Thread> threads = streamingMetadata.threads();
+                    assertThat(threads).hasSize(1);
+                    assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+                }
             }
-        }
+
+            // given
+            ChatRequest chatRequest2 = ChatRequest.builder()
+                    .messages(userMessage, aiMessage, ToolExecutionResultMessage.from(toolExecutionRequest, "sunny"))
+                    .parameters(ChatRequestParameters.builder()
+                            .toolSpecifications(WEATHER_TOOL)
+                            .responseFormat(responseFormat)
+                            .build())
+                    .build();
+
+            // when
+            ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata2 =
+                    chat(modelCapabilities.model(), chatRequest2);
+            ChatResponse chatResponse2 = chatResponseAndStreamingMetadata2.chatResponse();
+
+            // then
+            AiMessage aiMessage2 = chatResponse2.aiMessage();
+            assertThat(aiMessage2.text()).isEqualToIgnoringWhitespace("{\"weather\":\"sunny\"}");
+            assertThat(aiMessage2.toolExecutionRequests()).isNull(); // TODO make it empty
+
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse2.metadata());
+            }
+
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
+            }
+
+            if (modelCapabilities.model() instanceof StreamingChatLanguageModel) {
+                StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
+                assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
+                assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+                assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled())
+                        .isEqualTo(1);
+                if (modelCapabilities.assertThreads()) {
+                    Set<Thread> threads = streamingMetadata2.threads();
+                    assertThat(threads).hasSize(1);
+                    assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+                }
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsToolsAndJsonResponseFormatWithSchema is "
+                    + modelCapabilities.supportsToolsAndJsonResponseFormatWithSchema());
     }
 
     // MULTI MODALITY: IMAGES: BASE64
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    @EnabledIf("supportsSingleImageInputAsBase64EncodedString")
-    protected void should_accept_single_image_as_base64_encoded_string(M model) {
+    @MethodSource("models")
+    protected void should_accept_single_image_as_base64_encoded_string(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsSingleImageInputAsBase64EncodedString())) {
+            // given
+            String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+            UserMessage userMessage =
+                    UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(userMessage).build();
 
-        // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
-                ImageContent.from(base64Data, "image/png")
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+            // when
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).containsIgnoringCase("cat");
+            assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
+            }
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
-        }
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsSingleImageInputAsBase64EncodedString is "
+                    + modelCapabilities.supportsSingleImageInputAsBase64EncodedString());
     }
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
-    protected void should_accept_multiple_images_as_base64_encoded_strings(M model) {
+    @MethodSource("models")
+    protected void should_accept_multiple_images_as_base64_encoded_strings(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsMultipleImageInputsAsBase64EncodedStrings())) {
+            // given
+            Base64.Encoder encoder = Base64.getEncoder();
 
-        // given
-        Base64.Encoder encoder = Base64.getEncoder();
+            UserMessage userMessage = UserMessage.from(
+                    TextContent.from("What do you see on these images?"),
+                    ImageContent.from(encoder.encodeToString(readBytes(CAT_IMAGE_URL)), "image/png"),
+                    ImageContent.from(encoder.encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"));
 
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see on these images?"),
-                ImageContent.from(encoder.encodeToString(readBytes(CAT_IMAGE_URL)), "image/png"),
-                ImageContent.from(encoder.encodeToString(readBytes(DICE_IMAGE_URL)), "image/png")
-        );
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(userMessage).build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+            // when
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+            assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
+            }
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
-        }
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsMultipleImageInputsAsBase64EncodedStrings is "
+                    + modelCapabilities.supportsMultipleImageInputsAsBase64EncodedStrings());
     }
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    @DisabledIf("supportsSingleImageInputAsBase64EncodedString")
-    protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(M model) {
+    @MethodSource("models")
+    protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsSingleImageInputAsBase64EncodedString())) {
+            // given
+            String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+            UserMessage userMessage =
+                    UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(userMessage).build();
 
-        // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
-                ImageContent.from(base64Data, "image/png")
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
-
-        // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
-        if (assertExceptionType()) {
-            throwableAssert
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("image")
-                    .hasMessageContaining("not support");
-        }
+            // when-then
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType()) {
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("image")
+                        .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsSingleImageInputAsBase64EncodedString is "
+                    + modelCapabilities.supportsSingleImageInputAsBase64EncodedString());
     }
 
     // MULTI MODALITY: IMAGES: PUBLIC URL
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    @EnabledIf("supportsSingleImageInputAsPublicURL")
-    protected void should_accept_single_image_as_public_URL(M model) {
+    @MethodSource("models")
+    protected void should_accept_single_image_as_public_URL(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsSingleImageInputAsPublicURL())) {
+            // given
+            UserMessage userMessage =
+                    UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(CAT_IMAGE_URL));
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(userMessage).build();
 
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
-                ImageContent.from(CAT_IMAGE_URL)
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+            // when
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).containsIgnoringCase("cat");
+            assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
+            }
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
-        }
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsSingleImageInputAsPublicURL is "
+                    + modelCapabilities.supportsSingleImageInputAsPublicURL());
     }
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
-    protected void should_accept_multiple_images_as_public_URLs(M model) {
+    @MethodSource("models")
+    protected void should_accept_multiple_images_as_public_URLs(AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (SUPPORTED.equals(modelCapabilities.supportsMultipleImageInputsAsPublicURLs())) {
+            // given
+            UserMessage userMessage = UserMessage.from(
+                    TextContent.from("What do you see on these images?"),
+                    ImageContent.from(CAT_IMAGE_URL),
+                    ImageContent.from(DICE_IMAGE_URL));
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(userMessage).build();
 
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see on these images?"),
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL)
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+            // when
+            ChatResponse chatResponse =
+                    chat(modelCapabilities.model(), chatRequest).chatResponse();
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+            assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+            if (modelCapabilities.assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata());
+            }
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata());
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
-        }
+            if (modelCapabilities.assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsMultipleImageInputsAsPublicURLs is "
+                    + modelCapabilities.supportsMultipleImageInputsAsPublicURLs());
     }
 
     @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    @DisabledIf("supportsSingleImageInputAsPublicURL")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(M model) {
+    @MethodSource("models")
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(
+            AbstractChatModelAndCapabilities<M> modelCapabilities) {
+        if (AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED.equals(
+                modelCapabilities.supportsSingleImageInputAsPublicURL())) {
+            // given
+            UserMessage userMessage =
+                    UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(CAT_IMAGE_URL));
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(userMessage).build();
 
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
-                ImageContent.from(CAT_IMAGE_URL)
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
-
-        // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
-        if (assertExceptionType()) {
-            throwableAssert
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("image")
-                    .hasMessageContaining("not support");
-        }
-    }
-
-    protected boolean supportsDefaultRequestParameters() {
-        return true;
-    }
-
-    protected boolean supportsModelNameParameter() {
-        return true;
-    }
-
-    protected boolean supportsMaxOutputTokensParameter() {
-        return true;
-    }
-
-    protected boolean supportsStopSequencesParameter() {
-        return true;
-    }
-
-    protected boolean supportsTools() {
-        return true;
-    }
-
-    protected boolean supportsToolChoiceRequired() {
-        return true;
-    }
-
-    protected boolean supportsToolChoiceRequiredWithSingleTool() {
-        return supportsToolChoiceRequired();
-    }
-
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return supportsToolChoiceRequired();
-    }
-
-    protected boolean supportsJsonResponseFormat() {
-        return true;
-    }
-
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return true;
-    }
-
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return supportsTools() && supportsJsonResponseFormatWithSchema();
-    }
-
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return true;
-    }
-
-    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
-        return supportsSingleImageInputAsBase64EncodedString();
-    }
-
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return true;
-    }
-
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return supportsSingleImageInputAsPublicURL();
-    }
-
-    protected boolean assertResponseId() {
-        return true;
-    }
-
-    protected boolean assertResponseModel() {
-        return true;
-    }
-
-    protected boolean assertTokenUsage() {
-        return true;
-    }
-
-    protected boolean assertFinishReason() {
-        return true;
-    }
-
-    protected boolean assertThreads() {
-        return true;
-    }
-
-    protected boolean assertExceptionType() {
-        return true;
-    }
-
-    protected boolean assertTimesOnPartialResponseWasCalled() {
-        return true;
+            // when-then
+            AbstractThrowableAssert<?, ?> throwableAssert =
+                    assertThatThrownBy(() -> chat(modelCapabilities.model(), chatRequest));
+            if (modelCapabilities.assertExceptionType()) {
+                throwableAssert
+                        .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                        .hasMessageContaining("image")
+                        .hasMessageContaining("not support");
+            }
+        } else
+            throw new org.opentest4j.TestAbortedException("Test disabled for " + modelCapabilities
+                    + " because modelCapabilities.supportsSingleImageInputAsPublicURL is "
+                    + modelCapabilities.supportsSingleImageInputAsPublicURL());
     }
 
     static void assertTokenUsage(ChatResponseMetadata chatResponseMetadata) {

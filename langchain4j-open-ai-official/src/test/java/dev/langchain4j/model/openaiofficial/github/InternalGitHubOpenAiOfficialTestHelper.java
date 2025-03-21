@@ -1,7 +1,11 @@
 package dev.langchain4j.model.openaiofficial.github;
 
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
+
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,10 +41,14 @@ public class InternalGitHubOpenAiOfficialTestHelper {
         }
     }
 
-    static List<ChatLanguageModel> chatModelsNormalAndJsonStrict() {
-        List<ChatLanguageModel> models = new ArrayList<>();
+    static List<AbstractChatModelAndCapabilities<ChatLanguageModel>> chatModelsNormalAndJsonStrict() {
+        List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models = new ArrayList<>();
         if (GITHUB_MODELS_CHAT_MODEL != null) {
-            models.add(GITHUB_MODELS_CHAT_MODEL);
+            models.add(ChatModelAndCapabilities.builder()
+                    .model(GITHUB_MODELS_CHAT_MODEL)
+                    .mnemonicName("GITHUB_MODELS_CHAT_MODEL")
+                    .supportsModelNameParameter(NOT_SUPPORTED)
+                    .build());
         }
         if (models.isEmpty()) {
             log.error("Testing normal model & JSON strict model: skipping tests as GitHub Models keys are not set");

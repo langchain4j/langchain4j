@@ -1,10 +1,13 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
@@ -15,12 +18,13 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models() {
         return InternalOpenAiOfficialTestHelper.chatModelsStreamingNormalAndJsonStrict();
     }
 
     @Override
-    protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected AbstractChatModelAndCapabilities<StreamingChatLanguageModel> createModelAndCapabilitiesWith(
+            ChatRequestParameters parameters) {
         OpenAiOfficialStreamingChatModel.Builder openAiChatModelBuilder = OpenAiOfficialStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .defaultRequestParameters(parameters);
@@ -28,7 +32,13 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
         if (parameters.modelName() == null) {
             openAiChatModelBuilder.modelName(CHAT_MODEL_NAME_ALTERNATE);
         }
-        return openAiChatModelBuilder.build();
+        return StreamingChatModelAndCapabilities.builder()
+                .model(openAiChatModelBuilder.build())
+                .mnemonicName("OPENAI_DEFAULT_MODEL")
+                .supportsModelNameParameter(NOT_SUPPORTED)
+                .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED)
+                .supportsSingleImageInputAsBase64EncodedString(NOT_SUPPORTED)
+                .build();
     }
 
     @Override

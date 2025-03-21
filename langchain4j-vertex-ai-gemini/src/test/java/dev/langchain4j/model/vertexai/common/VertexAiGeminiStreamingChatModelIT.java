@@ -1,11 +1,14 @@
 package dev.langchain4j.model.vertexai.common;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
-import org.junit.jupiter.api.AfterEach;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
 
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
+import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 
 class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -17,66 +20,32 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                     .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models() {
         return List.of(
-                VERTEX_AI_GEMINI_STREAMING_CHAT_MODEL
+                StreamingChatModelAndCapabilities.builder()
+                        .model(VERTEX_AI_GEMINI_STREAMING_CHAT_MODEL)
+                        .mnemonicName("vertex ai gemini chat model")
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
+                        .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
+                        .supportsJsonResponseFormat(NOT_SUPPORTED) // TODO implement
+                        .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO implement
+                        .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED)
+                        .assertExceptionType(false)
+                        .assertResponseId(false) // TODO implement
+                        .assertFinishReason(false) // TODO implement
+                        .assertResponseModel(false) // TODO implement
+                        .assertThreads(false) // TODO what to do with it?
+                        .build()
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertThreads() {
-        return false; // TODO what to do with it?
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 
     @AfterEach

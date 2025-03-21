@@ -1,98 +1,74 @@
 package dev.langchain4j.model.azure.common;
 
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
+
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 
 class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL = AzureOpenAiStreamingChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-4o-mini")
-            .logRequestsAndResponses(true)
-            .build();
+    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL =
+            AzureOpenAiStreamingChatModel.builder()
+                    .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .deploymentName("gpt-4o-mini")
+                    .logRequestsAndResponses(true)
+                    .build();
 
-    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA = AzureOpenAiStreamingChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-4o-mini")
-            .logRequestsAndResponses(true)
-            .strictJsonSchema(true)
-            .build();
+    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA =
+            AzureOpenAiStreamingChatModel.builder()
+                    .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .deploymentName("gpt-4o-mini")
+                    .logRequestsAndResponses(true)
+                    .strictJsonSchema(true)
+                    .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models() {
         return List.of(
-                AZURE_OPEN_AI_STREAMING_CHAT_MODEL,
-                AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA
-        );
+                StreamingChatModelAndCapabilities.builder()
+                        .model(AZURE_OPEN_AI_STREAMING_CHAT_MODEL)
+                        .mnemonicName("azure open ai chat model")
+                        .supportsSingleImageInputAsBase64EncodedString(
+                                NOT_SUPPORTED) // Azure OpenAI does not support base64-encoded images
+                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED) // TODO implement
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED) // TODO implement
+                        .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
+                        .assertExceptionType(false)
+                        .assertResponseId(false) // TODO implement
+                        .assertResponseModel(false) // TODO implement
+                        .assertFinishReason(false) // TODO implement
+                        .build(),
+                StreamingChatModelAndCapabilities.builder()
+                        .model(AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA)
+                        .mnemonicName("azure open ai chat model with strict schema")
+                        .supportsSingleImageInputAsBase64EncodedString(
+                                NOT_SUPPORTED) // Azure OpenAI does not support base64-encoded images
+                        .supportsToolChoiceRequiredWithMultipleTools(NOT_SUPPORTED) // TODO implement
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED) // TODO implement
+                        .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
+                        .assertExceptionType(false)
+                        .assertResponseId(false) // TODO implement
+                        .assertResponseModel(false) // TODO implement
+                        .assertFinishReason(false) // TODO implement
+                        .build());
     }
 
     @Override
-    @Disabled
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_single_image_as_public_URL(StreamingChatLanguageModel model) {
-        // TODO fix
-    }
-
-    @Override
-    @Disabled
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_public_URLs(StreamingChatLanguageModel model) {
-        // TODO fix
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // Azure OpenAI does not support base64-encoded images
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 
     @AfterEach

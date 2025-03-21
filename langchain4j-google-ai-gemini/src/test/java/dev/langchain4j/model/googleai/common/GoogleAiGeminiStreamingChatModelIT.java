@@ -1,30 +1,47 @@
 package dev.langchain4j.model.googleai.common;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
+
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingChatModelAndCapabilities;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
 
 class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
-    static final StreamingChatLanguageModel GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL = GoogleAiGeminiStreamingChatModel.builder()
-            .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-            .modelName("gemini-1.5-flash-8b")
-            .build();
+    static final StreamingChatLanguageModel GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL =
+            GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                    .modelName("gemini-1.5-flash-8b")
+                    .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
-        return List.of(
-                GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL
-                // TODO add more model configs, see OpenAiChatModelIT
-        );
+    protected List<AbstractChatModelAndCapabilities<StreamingChatLanguageModel>> models() {
+        return List.of(StreamingChatModelAndCapabilities.builder()
+                .model(GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL)
+                .mnemonicName("google ai gemini chat model")
+                .supportsSingleImageInputAsPublicURL(NOT_SUPPORTED) // TODO check if supported
+                .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
+                .supportsToolsAndJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO fix
+                .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
+                .supportsDefaultRequestParameters(NOT_SUPPORTED) // TODO implement
+                .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                .assertExceptionType(false) // TODO fix
+                .assertResponseId(false) // TODO implement
+                .assertFinishReason(false) // TODO implement
+                .assertResponseModel(false) // TODO implement
+                .assertThreads(false) // TODO fix
+                .build());
+        // TODO add more model configs, see OpenAiChatModelIT
     }
 
     @Override
@@ -33,19 +50,30 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
-        return GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    protected AbstractChatModelAndCapabilities<StreamingChatLanguageModel> createModelAndCapabilitiesWith(
+            ChatRequestParameters parameters) {
+        return StreamingChatModelAndCapabilities.builder()
+                .model(GoogleAiGeminiStreamingChatModel.builder()
+                        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
 
-                // TODO re-implement, support .defaultRequestParameters(ChatRequestParameters)
-                .modelName(getOrDefault(parameters.modelName(), "gemini-1.5-flash-8b"))
-                .temperature(parameters.temperature())
-                .topP(parameters.topP())
-                .topK(parameters.topK())
-                .maxOutputTokens(parameters.maxOutputTokens())
-                .stopSequences(parameters.stopSequences())
-                .responseFormat(parameters.responseFormat())
-
+                        // TODO re-implement, support .defaultRequestParameters(ChatRequestParameters)
+                        .modelName(getOrDefault(parameters.modelName(), "gemini-1.5-flash-8b"))
+                        .temperature(parameters.temperature())
+                        .topP(parameters.topP())
+                        .topK(parameters.topK())
+                        .maxOutputTokens(parameters.maxOutputTokens())
+                        .stopSequences(parameters.stopSequences())
+                        .responseFormat(parameters.responseFormat())
+                        .build())
+                .supportsToolChoiceRequired(NOT_SUPPORTED)
+                .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                .assertResponseId(false)
+                .assertResponseModel(false)
+                .assertFinishReason(false)
+                .assertExceptionType(false)
+                .assertThreads(false)
                 .build();
     }
 
@@ -54,64 +82,5 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return ChatRequestParameters.builder() // TODO return Gemini-specific params
                 .maxOutputTokens(maxOutputTokens)
                 .build();
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return false; // TODO fix
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // TODO check if supported
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertThreads() {
-        return false; // TODO fix
-    }
-
-    @Override
-    protected boolean assertExceptionType() {
-        return false; // TODO fix
     }
 }

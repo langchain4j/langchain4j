@@ -1,13 +1,15 @@
 package dev.langchain4j.model.bedrock.common;
 
-import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-
-import java.util.List;
-
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1;
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
+import static dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities.SupportStatus.NOT_SUPPORTED;
+
+import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelAndCapabilities;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.common.ChatModelAndCapabilities;
+import java.util.List;
 
 class BedrockChatModelIT extends AbstractChatModelIT {
 
@@ -19,66 +21,36 @@ class BedrockChatModelIT extends AbstractChatModelIT {
                     .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<AbstractChatModelAndCapabilities<ChatLanguageModel>> models() {
         return List.of(
-                BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL
+                ChatModelAndCapabilities.builder()
+                        .model(BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL)
+                        .supportsDefaultRequestParameters(NOT_SUPPORTED) // TODO implement
+                        .supportsModelNameParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsMaxOutputTokensParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsStopSequencesParameter(NOT_SUPPORTED) // TODO implement
+                        .supportsToolChoiceRequired(NOT_SUPPORTED) // TODO implement
+                        .supportsJsonResponseFormat(NOT_SUPPORTED) // TODO check if supported
+                        .supportsJsonResponseFormatWithSchema(NOT_SUPPORTED) // TODO check if supported
+                        .supportsSingleImageInputAsPublicURL(
+                                NOT_SUPPORTED) // Bedrock supports only Base64-encoded images
+                        .supportsCommonParametersWrappedInIntegrationSpecificClass(NOT_SUPPORTED)
+                        .assertResponseId(false) // TODO implement
+                        .assertResponseModel(false) // TODO implement
+                        .assertExceptionType(false)
+                        .build()
                 // TODO add more models from other providers
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
+    }
+
+    @Override
+    protected boolean disableParametersInDefaultModelTests() {
+        return true; // TODO implement
     }
 
     @Override
     protected String customModelName() {
         return AnthropicClaude3HaikuV1.getValue();
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO check if supported
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO check if supported
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // Bedrock supports only Base64-encoded images
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
     }
 }
