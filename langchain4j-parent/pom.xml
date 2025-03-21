@@ -83,7 +83,7 @@
         <log4j.version>2.24.3</log4j.version>
         <logback.version>1.3.14</logback.version>
         <lombok.version>1.18.36</lombok.version>
-        <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
+        <milvus-sdk-java.version>2.5.6</milvus-sdk-java.version>
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
         <mockito.version>5.14.2</mockito.version>
         <netty.version>4.1.119.Final</netty.version>
