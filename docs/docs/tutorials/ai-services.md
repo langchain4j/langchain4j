@@ -582,6 +582,23 @@ String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
 ```
 In this scenario, two distinct instances of `ChatMemory` will be provided by `ChatMemoryProvider`, one for each memory ID.
 
+When using `ChatMemory` in this way it's also important to evict the memory of a no longer needed conversations in order to avoid memory leaks. To make the chat memories internally used by an AI service accessible it's enough that the interface defining it extends the `ChatMemoryAccess` one.
+```java
+
+interface Assistant extends ChatMemoryAccess {
+    String chat(@MemoryId int memoryId, @UserMessage String message);
+}
+```
+This makes it possible to both access the `ChatMemory` instance of a single conversation and to get rid of it when the conversation is terminated.
+
+```java
+String answerToKlaus = assistant.chat(1, "Hello, my name is Klaus");
+String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
+
+List<ChatMessage> messagesWithKlaus = assistant.getChatMemory(1).messages();
+boolean chatMemoryWithFrancineEvicted = assistant.evictChatMemory(2);
+```
+
 :::note
 Please note that if an AI Service method does not have a parameter annotated with `@MemoryId`,
 the value of `memoryId` in `ChatMemoryProvider` will default to a string `"default"`.
