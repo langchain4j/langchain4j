@@ -23,6 +23,7 @@
 
     <properties>
         <skipVertexAiGeminiITs>false</skipVertexAiGeminiITs>
+        <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 
     <dependencyManagement>
@@ -77,17 +78,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.tinylog</groupId>
-            <artifactId>tinylog-impl</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.tinylog</groupId>
-            <artifactId>slf4j-tinylog</artifactId>
-            <scope>test</scope>
-        </dependency>
-
         <!-- Retry flaky tests -->
         <dependency>
             <groupId>org.junit-pioneer</groupId>
@@ -121,13 +111,6 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
                     <skipTests>${skipVertexAiGeminiITs}</skipTests>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <parameters>true</parameters>
                 </configuration>
             </plugin>
         </plugins>

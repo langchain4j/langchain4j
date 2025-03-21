@@ -48,14 +48,17 @@
 
     <properties>
         <java.version>17</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
         <kotlin.code.style>official</kotlin.code.style>
         <kotlin.compiler.jvmTarget>${java.version}</kotlin.compiler.jvmTarget>
-        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <kotlin.compiler.languageVersion>1.9</kotlin.compiler.languageVersion>
+        <kotlin.compiler.apiVersion>1.9</kotlin.compiler.apiVersion>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <ai-mocks.version>0.1.9</ai-mocks.version>
+        <dokka.version>2.0.0</dokka.version>
+        <ai-mocks.version>0.1.10</ai-mocks.version>
         <assertj.version>3.27.3</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.2.2</awaitility.version>
@@ -93,7 +96,7 @@
         <slf4j-api.version>2.0.16</slf4j-api.version>
         <testcontainers.version>1.20.4</testcontainers.version>
         <tinylog.version>2.6.2</tinylog.version>
-        <wiremock.version>3.10.0</wiremock.version>
+        <wiremock.version>3.12.1</wiremock.version>
     </properties>
 
     <dependencyManagement>
@@ -169,6 +172,20 @@
                 <groupId>io.kotest</groupId>
                 <artifactId>kotest-assertions-core-jvm</artifactId>
                 <version>${kotest.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.willowtreeapps.assertk</groupId>
+                <artifactId>assertk-coroutines-jvm</artifactId>
+                <version>${assertk.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.willowtreeapps.assertk</groupId>
+                <artifactId>assertk</artifactId>
+                <version>${assertk.version}</version>
                 <scope>test</scope>
             </dependency>
 
@@ -268,13 +285,6 @@
                 <version>${assertj.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>com.willowtreeapps.assertk</groupId>
-                <artifactId>assertk-coroutines-jvm</artifactId>
-                <version>${assertk.version}</version>
-                <scope>test</scope>
             </dependency>
 
             <dependency>
@@ -390,7 +400,7 @@
 
             <dependency>
                 <groupId>org.wiremock</groupId>
-                <artifactId>wiremock</artifactId>
+                <artifactId>wiremock-standalone</artifactId>
                 <version>${wiremock.version}</version>
                 <scope>test</scope>
             </dependency>
@@ -421,6 +431,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
@@ -432,8 +447,51 @@
         </dependency>
         <dependency>
             <groupId>org.wiremock</groupId>
-            <artifactId>wiremock</artifactId>
+            <artifactId>wiremock-standalone</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.tinylog</groupId>
+            <artifactId>tinylog-impl</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.tinylog</groupId>
+            <artifactId>slf4j-tinylog</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Kotlin test dependencies -->
+        <dependency>
+            <groupId>com.willowtreeapps.assertk</groupId>
+            <artifactId>assertk</artifactId>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.willowtreeapps.assertk</groupId>
+            <artifactId>assertk-coroutines-jvm</artifactId>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility-kotlin</artifactId>
+            <version>${awaitility.version}</version>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlinx</groupId>
+            <artifactId>kotlinx-coroutines-test-jvm</artifactId>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.kotest</groupId>
+            <artifactId>kotest-assertions-core-jvm</artifactId>
+            <version>${kotest.version}</version>
+            <scope>test</scope>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 
@@ -469,21 +527,6 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-resources-plugin</artifactId>
                     <version>3.3.1</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.14.0</version>
-                    <configuration>
-                        <annotationProcessorPaths>
-                            <path>
-                                <!-- todo: Remove when Lombok is eliminated everywhere https://github.com/langchain4j/langchain4j/issues/1636 -->
-                                <groupId>org.projectlombok</groupId>
-                                <artifactId>lombok</artifactId>
-                                <version>${lombok.version}</version>
-                            </path>
-                        </annotationProcessorPaths>
-                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -553,9 +596,8 @@
                         <jvmTarget>${java.version}</jvmTarget>
                         <javaParameters>true</javaParameters>
                         <args>
-                            <arg>-Xexplicit-api=strict</arg>
-                            <arg>-Xjspecify-annotations=strict</arg>
                             <arg>-Xjsr305=strict</arg>
+                            <arg>-Xjspecify-annotations=strict</arg>
                             <arg>-Xtype-enhancement-improvements-strict-mode</arg>
                         </args>
                     </configuration>
@@ -563,10 +605,18 @@
                 <plugin>
                     <groupId>org.jetbrains.dokka</groupId>
                     <artifactId>dokka-maven-plugin</artifactId>
-                    <version>2.0.0</version>
+                    <version>${dokka.version}</version>
                     <configuration>
                         <jdkVersion>${java.version}</jdkVersion>
-                        <languageVersion>2.0</languageVersion>
+                        <apiVersion>${kotlin.compiler.apiVersion}</apiVersion>
+                        <languageVersion>${kotlin.compiler.languageVersion}</languageVersion>
+                        <dokkaPlugins>
+                            <plugin>
+                                <groupId>org.jetbrains.dokka</groupId>
+                                <artifactId>kotlin-as-java-plugin</artifactId>
+                                <version>${dokka.version}</version>
+                            </plugin>
+                        </dokkaPlugins>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -584,6 +634,89 @@
         </pluginManagement>
 
         <plugins>
+
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <jvmTarget>${java.version}</jvmTarget>
+                    <javaParameters>true</javaParameters>
+                    <args>
+                        <arg>-Werror</arg>
+                        <arg>-Xjspecify-annotations=strict</arg>
+                        <arg>-Xjsr305=strict</arg>
+                        <arg>-Xtype-enhancement-improvements-strict-mode</arg>
+                    </args>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
+                                <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                            </sourceDirs>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/test/kotlin</sourceDir>
+                                <sourceDir>${project.basedir}/src/test/java</sourceDir>
+                            </sourceDirs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <!-- todo: Remove when Lombok is eliminated everywhere https://github.com/langchain4j/langchain4j/issues/1636 -->
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+                <executions>
+                    <!-- Replacing default-compile as it is treated specially by Maven -->
+                    <execution>
+                        <id>default-compile</id>
+                        <phase>none</phase>
+                    </execution>
+                    <!-- Replacing default-testCompile as it is treated specially by Maven -->
+                    <execution>
+                        <id>default-testCompile</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>java-compile</id>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <phase>compile</phase>
+                    </execution>
+                    <execution>
+                        <id>java-test-compile</id>
+                        <goals>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <phase>test-compile</phase>
+                    </execution>
+                </executions>
+            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -814,6 +947,25 @@
                                 <goals>
                                     <goal>compliance</goal>
                                 </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>kotlin</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.ozsie</groupId>
+                        <artifactId>detekt-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                                <phase>verify</phase>
                             </execution>
                         </executions>
                     </plugin>
