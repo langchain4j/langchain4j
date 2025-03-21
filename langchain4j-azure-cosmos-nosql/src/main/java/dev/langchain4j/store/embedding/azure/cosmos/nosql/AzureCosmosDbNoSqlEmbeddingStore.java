@@ -3,13 +3,18 @@ package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
-import com.azure.cosmos.models.*;
+import com.azure.cosmos.models.CosmosBulkOperations;
+import com.azure.cosmos.models.CosmosContainerProperties;
+import com.azure.cosmos.models.CosmosItemOperation;
+import com.azure.cosmos.models.CosmosQueryRequestOptions;
+import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
+import com.azure.cosmos.models.CosmosVectorIndexSpec;
+import com.azure.cosmos.models.PartitionKey;
 import com.azure.cosmos.util.CosmosPagedIterable;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,10 +22,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.azure.cosmos.nosql.MappingUtils.toNoSqlDbDocument;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 /**
@@ -41,7 +47,6 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
     private final CosmosDatabase database;
     private final CosmosContainer container;
 
-    @Builder
     public AzureCosmosDbNoSqlEmbeddingStore(CosmosClient cosmosClient,
                                             String databaseName,
                                             String containerName,
@@ -82,6 +87,10 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
         this.container = this.database.getContainer(this.containerName);
 
         this.embeddingKey = this.cosmosVectorEmbeddingPolicy.getVectorEmbeddings().get(0).getPath().substring(1);
+    }
+
+    public static AzureCosmosDbNoSqlEmbeddingStoreBuilder builder() {
+        return new AzureCosmosDbNoSqlEmbeddingStoreBuilder();
     }
 
     @Override
@@ -154,5 +163,55 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
         }
 
         this.container.executeBulkOperations(operations);
+    }
+
+    public static class AzureCosmosDbNoSqlEmbeddingStoreBuilder {
+        private CosmosClient cosmosClient;
+        private String databaseName;
+        private String containerName;
+        private CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy;
+        private List<CosmosVectorIndexSpec> cosmosVectorIndexes;
+        private CosmosContainerProperties containerProperties;
+
+        AzureCosmosDbNoSqlEmbeddingStoreBuilder() {
+        }
+
+        public AzureCosmosDbNoSqlEmbeddingStoreBuilder cosmosClient(CosmosClient cosmosClient) {
+            this.cosmosClient = cosmosClient;
+            return this;
+        }
+
+        public AzureCosmosDbNoSqlEmbeddingStoreBuilder databaseName(String databaseName) {
+            this.databaseName = databaseName;
+            return this;
+        }
+
+        public AzureCosmosDbNoSqlEmbeddingStoreBuilder containerName(String containerName) {
+            this.containerName = containerName;
+            return this;
+        }
+
+        public AzureCosmosDbNoSqlEmbeddingStoreBuilder cosmosVectorEmbeddingPolicy(CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy) {
+            this.cosmosVectorEmbeddingPolicy = cosmosVectorEmbeddingPolicy;
+            return this;
+        }
+
+        public AzureCosmosDbNoSqlEmbeddingStoreBuilder cosmosVectorIndexes(List<CosmosVectorIndexSpec> cosmosVectorIndexes) {
+            this.cosmosVectorIndexes = cosmosVectorIndexes;
+            return this;
+        }
+
+        public AzureCosmosDbNoSqlEmbeddingStoreBuilder containerProperties(CosmosContainerProperties containerProperties) {
+            this.containerProperties = containerProperties;
+            return this;
+        }
+
+        public AzureCosmosDbNoSqlEmbeddingStore build() {
+            return new AzureCosmosDbNoSqlEmbeddingStore(this.cosmosClient, this.databaseName, this.containerName, this.cosmosVectorEmbeddingPolicy, this.cosmosVectorIndexes, this.containerProperties);
+        }
+
+        public String toString() {
+            return "AzureCosmosDbNoSqlEmbeddingStore.AzureCosmosDbNoSqlEmbeddingStoreBuilder(cosmosClient=" + this.cosmosClient + ", databaseName=" + this.databaseName + ", containerName=" + this.containerName + ", cosmosVectorEmbeddingPolicy=" + this.cosmosVectorEmbeddingPolicy + ", cosmosVectorIndexes=" + this.cosmosVectorIndexes + ", containerProperties=" + this.containerProperties + ")";
+        }
     }
 }
