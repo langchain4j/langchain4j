@@ -16,6 +16,10 @@ class ToolExecutionRequestUtil {
 
     private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
 
+    private static final Pattern LEADING_TRAILING_QUOTE_PATTERN = Pattern.compile("^\"|\"$");
+
+    private static final Pattern ESCAPED_QUOTE_PATTERN = Pattern.compile("\\\\\"");
+
     private ToolExecutionRequestUtil() {
     }
 
@@ -44,7 +48,8 @@ class ToolExecutionRequestUtil {
      * @return map
      */
     static Map<String, Object> argumentsAsMap(String arguments) {
-        return Json.fromJson(removeTrailingComma(arguments), MAP_TYPE);
+        String normalizeArguments = normalizeJsonString(arguments);
+        return Json.fromJson(removeTrailingComma(normalizeArguments), MAP_TYPE);
     }
 
     /**
@@ -60,4 +65,23 @@ class ToolExecutionRequestUtil {
         Matcher matcher = TRAILING_COMMA_PATTERN.matcher(json);
         return matcher.replaceAll("$1");
     }
+
+    /**
+     * Normalizes a JSON string by removing leading and trailing quotes and unescaping internal double quotes.
+     *
+     * @param arguments the raw JSON string
+     * @return the normalized JSON string
+     */
+    static String normalizeJsonString(String arguments) {
+        if (arguments == null || arguments.isEmpty()) {
+            return arguments;
+        }
+
+        Matcher leadingTrailingMatcher = LEADING_TRAILING_QUOTE_PATTERN.matcher(arguments);
+        String normalizedJson = leadingTrailingMatcher.replaceAll("");
+
+        Matcher escapedQuoteMatcher = ESCAPED_QUOTE_PATTERN.matcher(normalizedJson);
+        return escapedQuoteMatcher.replaceAll("\"");
+    }
+
 }
