@@ -5,9 +5,9 @@ import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.dtsx.astra.sdk.cassio.AnnQuery;
 import com.dtsx.astra.sdk.cassio.AnnResult;
 import com.dtsx.astra.sdk.cassio.CassIO;
+import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
 import com.dtsx.astra.sdk.cassio.MetadataVectorRecord;
 import com.dtsx.astra.sdk.cassio.MetadataVectorTable;
-import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
 import com.dtsx.astra.sdk.utils.AstraEnvironment;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -16,7 +16,6 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import lombok.Getter;
 import lombok.NonNull;
 
 import java.net.InetSocketAddress;
@@ -45,18 +44,14 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Cassandra question.
      */
-    @Getter
     protected CqlSession cassandraSession;
 
     /**
      * Embedding Store.
      *
-     * @param session
-     *      cassandra Session
-     * @param tableName
-     *      table name
-     * @param dimension
-     *      dimension
+     * @param session   cassandra Session
+     * @param tableName table name
+     * @param dimension dimension
      */
     public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension) {
         this(session, tableName, dimension, CassandraSimilarityMetric.COSINE);
@@ -65,14 +60,10 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Embedding Store.
      *
-     * @param session
-     *      cassandra Session
-     * @param tableName
-     *      table name
-     * @param dimension
-     *      dimension
-     * @param metric
-     *      metric
+     * @param session   cassandra Session
+     * @param tableName table name
+     * @param dimension dimension
+     * @param metric    metric
      */
     public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension, CassandraSimilarityMetric metric) {
         this.cassandraSession = session;
@@ -92,6 +83,10 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public void clear() {
         embeddingTable.clear();
+    }
+
+    public CqlSession getCassandraSession() {
+        return this.cassandraSession;
     }
 
     public static class Builder {
@@ -162,7 +157,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 builder.withAuthCredentials(userName, password);
             }
             contactPoints.forEach(cp -> builder.addContactPoint(new InetSocketAddress(cp, port)));
-            return new CassandraEmbeddingStore(builder.build(),table, dimension, metric);
+            return new CassandraEmbeddingStore(builder.build(), table, dimension, metric);
         }
     }
 
