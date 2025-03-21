@@ -19,7 +19,7 @@ public interface ChatMemoryAccess {
      * Evicts the {@link ChatMemory} with the given id.
      *
      * @param memoryId The id of the chat memory to be evicted.
-     * @return true if it existed a {@link ChatMemory} with the given id and it was sucessfully evicted, false otherwise.
+     * @return true if {@link ChatMemory} with the given id existed, and it was successfully evicted, false otherwise.
      */
     boolean evictChatMemory(Object memoryId);
 }
