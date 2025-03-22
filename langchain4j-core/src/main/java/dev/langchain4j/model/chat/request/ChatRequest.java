@@ -1,16 +1,15 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 @Experimental
 public class ChatRequest {
@@ -33,8 +32,7 @@ public class ChatRequest {
 
         if (builder.responseFormat != null) {
             if (builder.parameters != null) {
-                throw new IllegalArgumentException(
-                        "Cannot set both 'parameters' and 'responseFormat' on ChatRequest");
+                throw new IllegalArgumentException("Cannot set both 'parameters' and 'responseFormat' on ChatRequest");
             }
             parametersBuilder.responseFormat(builder.responseFormat);
         }
@@ -70,8 +68,7 @@ public class ChatRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ChatRequest that = (ChatRequest) o;
-        return Objects.equals(this.messages, that.messages)
-                && Objects.equals(this.parameters, that.parameters);
+        return Objects.equals(this.messages, that.messages) && Objects.equals(this.parameters, that.parameters);
     }
 
     @Override
@@ -81,10 +78,14 @@ public class ChatRequest {
 
     @Override
     public String toString() {
-        return "ChatRequest {" +
-                " messages = " + messages +
-                ", parameters = " + parameters +
-                " }";
+        return "ChatRequest {" + " messages = " + messages + ", parameters = " + parameters + " }";
+    }
+
+    /**
+     * Transforms this instance to a {@link Builder} with all of the same field values
+     */
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     public static Builder builder() {
@@ -97,6 +98,15 @@ public class ChatRequest {
         private ChatRequestParameters parameters;
         private List<ToolSpecification> toolSpecifications;
         private ResponseFormat responseFormat;
+
+        public Builder() {}
+
+        public Builder(ChatRequest chatRequest) {
+            this.messages = chatRequest.messages;
+            this.parameters = chatRequest.parameters;
+            this.toolSpecifications = chatRequest.toolSpecifications();
+            this.responseFormat = chatRequest.responseFormat();
+        }
 
         public Builder messages(List<ChatMessage> messages) {
             this.messages = messages;
