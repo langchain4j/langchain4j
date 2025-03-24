@@ -21,5 +21,13 @@ public enum Capability {
      * @see ResponseFormat
      * @see JsonSchema
      */
-    RESPONSE_FORMAT_JSON_SCHEMA
+    RESPONSE_FORMAT_JSON_SCHEMA,
+
+    /**
+     * Indicates whether {@link ChatLanguageModel} or {@link StreamingChatLanguageModel}
+     * supports responding in JSON format, but without the ability to specify the JSON schema.
+     *
+     * @see ResponseFormat
+     */
+    RESPONSE_FORMAT_JSON
 }
