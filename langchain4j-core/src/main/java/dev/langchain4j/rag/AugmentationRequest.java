@@ -1,8 +1,6 @@
 package dev.langchain4j.rag;
 
-
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.query.Metadata;
 
@@ -15,7 +13,7 @@ public class AugmentationRequest {
 
     /**
      * The chat message to be augmented.
-     * Currently, it is a {@link UserMessage}, but soon it could also be a {@link SystemMessage}.
+     * Currently, only {@link UserMessage} is supported.
      */
     private final ChatMessage chatMessage;
 

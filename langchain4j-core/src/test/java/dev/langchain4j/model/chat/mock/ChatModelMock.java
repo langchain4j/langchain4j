@@ -89,11 +89,11 @@ public class ChatModelMock implements ChatLanguageModel {
         }
 
         ChatMessage message = messages.get(0);
-        if (!(message instanceof UserMessage)) {
-            throw runtime("Expected exactly UserMessage, got: " + message);
+        if (message instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else {
+            throw runtime("Expected UserMessage, got: " + message);
         }
-
-        return message.text();
     }
 
     public static ChatModelMock thatAlwaysResponds(String response) {

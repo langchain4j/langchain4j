@@ -5,7 +5,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Builder;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -31,7 +30,6 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxSegmentsPerBatch;
     private final Integer maxRetries;
 
-    @Builder
     public NomicEmbeddingModel(
             String baseUrl,
             String apiKey,
@@ -54,6 +52,10 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.taskType = taskType;
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 500);
         this.maxRetries = getOrDefault(maxRetries, 3);
+    }
+
+    public static NomicEmbeddingModelBuilder builder() {
+        return new NomicEmbeddingModelBuilder();
     }
 
     @Override
@@ -100,5 +102,73 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
             return response.getUsage().getTotalTokens();
         }
         return 0;
+    }
+
+    public static class NomicEmbeddingModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private String modelName;
+        private String taskType;
+        private Integer maxSegmentsPerBatch;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        NomicEmbeddingModelBuilder() {
+        }
+
+        public NomicEmbeddingModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public NomicEmbeddingModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public NomicEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public NomicEmbeddingModelBuilder taskType(String taskType) {
+            this.taskType = taskType;
+            return this;
+        }
+
+        public NomicEmbeddingModelBuilder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
+            this.maxSegmentsPerBatch = maxSegmentsPerBatch;
+            return this;
+        }
+
+        public NomicEmbeddingModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public NomicEmbeddingModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public NomicEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public NomicEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public NomicEmbeddingModel build() {
+            return new NomicEmbeddingModel(this.baseUrl, this.apiKey, this.modelName, this.taskType, this.maxSegmentsPerBatch, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "NomicEmbeddingModel.NomicEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", taskType=" + this.taskType + ", maxSegmentsPerBatch=" + this.maxSegmentsPerBatch + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+        }
     }
 }

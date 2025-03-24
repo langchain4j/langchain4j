@@ -5,6 +5,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 
+import static dev.langchain4j.internal.Utils.toStringValueMap;
+
 class MappingUtils {
 
     private MappingUtils() throws InstantiationException {
@@ -15,7 +17,7 @@ class MappingUtils {
         if (textSegment == null) {
             return new AzureCosmosDbMongoVCoreDocument(id, embedding.vectorAsList(), null, null);
         }
-        return new AzureCosmosDbMongoVCoreDocument(id, embedding.vectorAsList(), textSegment.text(), textSegment.metadata().asMap());
+        return new AzureCosmosDbMongoVCoreDocument(id, embedding.vectorAsList(), textSegment.text(), toStringValueMap(textSegment.metadata().toMap()));
     }
 
     static EmbeddingMatch<TextSegment> toEmbeddingMatch(AzureCosmosDbMongoVCoreMatchedDocument matchedDocument) {

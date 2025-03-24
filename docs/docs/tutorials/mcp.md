@@ -101,13 +101,29 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
 
 To obtain a list of [MCP resources](https://modelcontextprotocol.io/docs/concepts/resources) 
 on the server, use `client.listResources()`, or `client.listResourceTemplates()` in case of resource templates.
-This will return a list of `ResourceRef` objects (or `ResourceTemplateRef` respectively). These
+This will return a list of `McpResource` objects (or `McpResourceTemplate` respectively). These
 contain the metadata of the resource, most importantly the URI.
 
 To obtain the actual contents of the resource, use `client.readResource(uri)`, supplying the URI of the resource.
-This returns a list of `ResourceContents` objects (there may be more resource contents on a single URI, for 
-example if the URI represents a directory). Each `ResourceContents` object represents either a binary blob or a
-string. For a binary blob, use `resourceContents.asBlob()` to access the actual data, for text, use `resourceContents.asText()`.
+This returns a `McpReadResourceResult`, which contains a  list of `McpResourceContents` objects (there may be more resource contents on a single URI, for 
+example if the URI represents a directory). Each `McpResourceContents` object represents either a 
+binary blob (`McpBlobResourceContents`) or text (`McpTextResourceContents`).
+
+## Prompts
+
+To obtain a list of [MCP prompts](https://modelcontextprotocol.io/docs/concepts/prompts)
+from the server, use `client.listPrompts()`. This method returns a List of `McpPrompt`s. A `McpPrompt`
+contains information about the name and arguments of the prompt.
+
+To render the actual contents of a prompt, use `client.getPrompt(name, arguments)`. A rendered prompt can contain one to many
+messages and these are represented as `McpPromptMessage` objects. Each `McpPromptMessage` contains the role of the message (`user`, `assistant`,...)
+and the actual content of the message. The supported message content types at the moment
+are: `McpTextContent`, `McpImageContent`, and `McpEmbeddedResource`. 
+
+You can use `McpPromptMessage.toChatMessage()` to convert it into a generic `dev.langchain4j.data.message.ChatMessage`
+from the LangChain4j core API. This is not possible in all cases though. For example, it will throw an
+exception if the prompt message's `role` is `assistant` and it contains content other than text. Converting
+messages with binary blob content to a `ChatMessage` is unsupported regardless of the role.
 
 ## Using the GitHub MCP server through Docker
 
