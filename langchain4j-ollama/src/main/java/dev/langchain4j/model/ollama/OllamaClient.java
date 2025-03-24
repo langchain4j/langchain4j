@@ -10,9 +10,9 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -28,7 +28,7 @@ import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createModelListenerRequest;
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createListenerRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenResponse;
@@ -136,12 +136,17 @@ class OllamaClient {
         });
     }
 
-    public void streamingChat(ChatRequest request, StreamingResponseHandler<AiMessage> handler,
-                              List<ChatModelListener> listeners, List<ChatMessage> messages) {
+    public void streamingChat(
+            ChatRequest request,
+            StreamingResponseHandler<AiMessage> handler,
+            List<ChatModelListener> listeners,
+            ModelProvider modelProvider,
+            List<ChatMessage> messages) {
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, new ArrayList<>());
+        dev.langchain4j.model.chat.request.ChatRequest listenerRequest =
+                createListenerRequest(request, messages, new ArrayList<>());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        onListenRequest(listeners, modelListenerRequest, attributes);
+        onListenRequest(listeners, listenerRequest, modelProvider, attributes);
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -164,14 +169,14 @@ class OllamaClient {
 
                 if (TRUE.equals(chatResponse.getDone())) {
                     Response<AiMessage> response = responseBuilder.build();
-                    onListenResponse(listeners, response, modelListenerRequest, attributes);
+                    onListenResponse(listeners, response, listenerRequest, modelProvider, attributes);
                     handler.onComplete(response);
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), attributes);
+                onListenError(listeners, throwable, listenerRequest, modelProvider, attributes);
                 handler.onError(throwable);
             }
         });

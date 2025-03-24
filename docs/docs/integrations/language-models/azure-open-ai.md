@@ -5,8 +5,16 @@ sidebar_position: 3
 # Azure OpenAI
 
 :::note
-If you are using Quarkus, please refer to the
-[Quarkus LangChain4j documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/openai.html#_azure_openai).
+
+This is the documentation for the `Azure OpenAI` integration, that uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+
+LangChain4j provides 4 different integrations with OpenAI for using chat models, and this is #3 :
+
+- [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
+- [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
+- [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
+
 :::
 
 Azure OpenAI provides language models from OpenAI (`gpt-4`, `gpt-4o`, etc.) hosted on Azure, using the [Azure OpenAI Java SDK](https://learn.microsoft.com/en-us/java/api/overview/azure/ai-openai-readme).
@@ -25,7 +33,7 @@ The `langchain4j-azure-open-ai` library is availlable on Maven Central.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta2</version>
 </dependency>
 ```
 
@@ -37,7 +45,7 @@ A Spring Boot starter is available to configure the `langchain4j-azure-open-ai` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta2</version>
 </dependency>
 ```
 
@@ -105,7 +113,7 @@ class ChatLanguageModelController {
 
     @GetMapping("/model")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.generate(message);
+        return chatLanguageModel.chat(message);
     }
 }
 ```

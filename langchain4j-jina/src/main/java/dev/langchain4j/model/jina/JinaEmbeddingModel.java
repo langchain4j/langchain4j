@@ -1,7 +1,8 @@
 package dev.langchain4j.model.jina;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -25,24 +26,11 @@ import lombok.Builder;
 public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final String DEFAULT_BASE_URL = "https://api.jina.ai/";
-    private static final String DEFAULT_MODEL = "jina-embeddings-v2-base-en";
 
     private final JinaClient client;
     private final String modelName;
     private final Integer maxRetries;
     private final Boolean lateChunking;
-
-    @Deprecated
-    public JinaEmbeddingModel(
-            String baseUrl,
-            String apiKey,
-            String modelName,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses) {
-        this(baseUrl, apiKey, modelName, timeout, maxRetries, false, logRequests, logResponses);
-    }
 
     @Builder
     public JinaEmbeddingModel(
@@ -61,19 +49,9 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, DEFAULT_MODEL);
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.lateChunking = getOrDefault(lateChunking, false);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static JinaEmbeddingModel withApiKey(String apiKey) {
-        return JinaEmbeddingModel.builder().apiKey(apiKey).build();
     }
 
     @Override
@@ -85,7 +63,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .input(textSegments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
-        JinaEmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
+        JinaEmbeddingResponse response = withRetryMappingExceptions(() -> client.embed(request), maxRetries);
 
         List<Embedding> embeddings = response.data.stream()
                 .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))

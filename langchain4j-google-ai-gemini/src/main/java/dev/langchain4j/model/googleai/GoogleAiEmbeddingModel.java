@@ -15,7 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -66,7 +66,7 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
     public Response<Embedding> embed(TextSegment textSegment) {
         GoogleAiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
 
-        GoogleAiEmbeddingResponse geminiResponse = withRetry(() -> this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
+        GoogleAiEmbeddingResponse geminiResponse = withRetryMappingExceptions(() -> this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
 
         if (geminiResponse != null) {
             return Response.from(Embedding.from(geminiResponse.getEmbedding().getValues()));
@@ -99,7 +99,7 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
             GoogleAiBatchEmbeddingRequest batchEmbeddingRequest = new GoogleAiBatchEmbeddingRequest();
             batchEmbeddingRequest.setRequests(embeddingRequests.subList(startIndex, lastIndex));
 
-            GoogleAiBatchEmbeddingResponse geminiResponse = withRetry(() -> this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
+            GoogleAiBatchEmbeddingResponse geminiResponse = withRetryMappingExceptions(() -> this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
 
             if (geminiResponse != null) {
                 allEmbeddings.addAll(geminiResponse.getEmbeddings().stream()

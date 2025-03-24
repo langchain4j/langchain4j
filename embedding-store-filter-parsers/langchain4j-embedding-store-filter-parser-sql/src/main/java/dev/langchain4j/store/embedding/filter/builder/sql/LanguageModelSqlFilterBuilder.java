@@ -2,12 +2,11 @@ package dev.langchain4j.store.embedding.filter.builder.sql;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -132,9 +131,9 @@ public class LanguageModelSqlFilterBuilder {
 
         Prompt prompt = createPrompt(query);
 
-        Response<AiMessage> response = chatLanguageModel.generate(prompt.toUserMessage());
+        ChatResponse response = chatLanguageModel.chat(prompt.toUserMessage());
 
-        String generatedSql = response.content().text();
+        String generatedSql = response.aiMessage().text();
 
         String cleanedSql = clean(generatedSql);
         log.trace("Cleaned SQL: '{}'", cleanedSql);

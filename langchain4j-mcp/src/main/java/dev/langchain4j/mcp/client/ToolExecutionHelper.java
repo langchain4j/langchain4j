@@ -20,7 +20,15 @@ class ToolExecutionHelper {
         if (result.has("result")) {
             JsonNode resultNode = result.get("result");
             if (resultNode.has("content")) {
-                return extractSuccessfulResult((ArrayNode) resultNode.get("content"));
+                String content = extractSuccessfulResult((ArrayNode) resultNode.get("content"));
+                boolean isError = false;
+                if (resultNode.has("isError")) {
+                    isError = resultNode.get("isError").asBoolean();
+                }
+                if (isError) {
+                    content = String.format(EXECUTION_ERROR_MESSAGE + ". The tool returned: %s", content);
+                }
+                return content;
             } else {
                 log.warn("Result does not contain 'content' element: {}", result);
                 return EXECUTION_ERROR_MESSAGE;
@@ -56,6 +64,6 @@ class ToolExecutionHelper {
             errorCode = errorNode.get("code").asInt();
         }
         log.warn("Result contains an error: {}, code: {}", errorMessage, errorCode);
-        return EXECUTION_ERROR_MESSAGE;
+        return String.format(EXECUTION_ERROR_MESSAGE + ". Message: %s. Code: %s", errorMessage, errorCode);
     }
 }

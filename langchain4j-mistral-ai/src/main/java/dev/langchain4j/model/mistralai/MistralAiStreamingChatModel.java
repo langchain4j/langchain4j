@@ -2,7 +2,10 @@ package dev.langchain4j.model.mistralai;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ModelProvider.MISTRAL_AI;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toMistralAiTools;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -11,13 +14,24 @@ import static java.util.Collections.singletonList;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolChoiceName;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiStreamingChatModelBuilderFactory;
+import dev.langchain4j.model.output.Response;
+
 import java.time.Duration;
 import java.util.List;
 
@@ -75,7 +89,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralAiChatModelName.OPEN_MISTRAL_7B.toString());
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
         this.topP = topP;
         this.maxTokens = maxTokens;
@@ -84,54 +98,70 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
         this.responseFormat = responseFormat;
     }
 
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static MistralAiStreamingChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
+    @Override
+    public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidator.validate(parameters.responseFormat());
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .build())
+                        .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            generate(chatRequest.messages(), legacyHandler);
+        } else {
+            if (parameters.toolChoice() == REQUIRED) {
+                if (toolSpecifications.size() != 1) {
+                    throw new UnsupportedFeatureException(
+                            String.format("%s.%s is currently supported only when there is a single tool",
+                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                }
+                generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
+            } else {
+                generate(chatRequest.messages(), toolSpecifications, legacyHandler);
+            }
+        }
     }
 
-    /**
-     * Generates streamed token response based on the given list of messages and tool specifications.
-     *
-     * @param messages the list of chat messages
-     * @param toolSpecifications the list of tool specifications. tool_choice is set to AUTO.
-     * @param handler  the response handler for processing the generated chat chunk responses
-     */
-    @Override
-    public void generate(
+    private void generate(
             List<ChatMessage> messages,
             List<ToolSpecification> toolSpecifications,
             StreamingResponseHandler<AiMessage> handler) {
         generate(messages, toolSpecifications, null, handler);
     }
 
-    /**
-     * Generates streamed token response based on the given list of messages and tool specification.
-     *
-     * @param messages the list of chat messages
-     * @param toolSpecification the tool specification. tool_choice is set to ANY.
-     * @param handler  the response handler for processing the generated chat chunk responses
-     */
-    @Override
-    public void generate(
+    private void generate(
             List<ChatMessage> messages,
             ToolSpecification toolSpecification,
             StreamingResponseHandler<AiMessage> handler) {
         generate(messages, null, toolSpecification, handler);
     }
 
-    /**
-     * Generates streamed token response based on the given list of messages.
-     *
-     * @param messages the list of chat messages
-     * @param handler  the response handler for processing the generated chat chunk responses
-     */
-    @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, null, null, handler);
     }
 
@@ -168,6 +198,11 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
         MistralAiChatCompletionRequest request = requestBuilder.build();
 
         client.streamingChatCompletion(request, handler);
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return MISTRAL_AI;
     }
 
     public static MistralAiStreamingChatModelBuilder builder() {

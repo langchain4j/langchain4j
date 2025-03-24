@@ -84,7 +84,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
                 .temperature(0.0)
                 .numPredict(1)
                 .build();
-        model.generate("Tell a joke");
+        model.chat("Tell a joke");
 
         // when
         Response<List<RunningOllamaModel>> response = ollamaModels.runningModels();

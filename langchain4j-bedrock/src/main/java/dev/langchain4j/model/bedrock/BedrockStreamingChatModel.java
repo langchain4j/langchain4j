@@ -1,13 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
@@ -73,7 +74,8 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             converseResponseBuilder.append(chunk);
                             final ChatResponse completeResponse =
                                     chatResponseFrom(converseResponseBuilder.build(), converseStreamRequest.modelId());
-                            ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
+                            ListenersUtil.onResponse(
+                                    completeResponse, finalChatRequest, this.provider(), attributes, listeners);
                             handler.onCompleteResponse(completeResponse);
                         })
                         .onMessageStart(converseResponseBuilder::append)
@@ -81,11 +83,11 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         .build())
                 .onError(error -> {
                     handler.onError(error);
-                    ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+                    ListenersUtil.onError(error, finalChatRequest, this.provider(), attributes, listeners);
                 })
                 .build();
 
-        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, this.provider(), attributes, listeners);
         this.client.converseStream(converseStreamRequest, built).join();
     }
 
@@ -116,41 +118,6 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         };
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-        chat(chatRequest, convertHandler(handler));
-    }
-
-    @Override
-    public void generate(
-            List<ChatMessage> messages,
-            List<ToolSpecification> toolSpecifications,
-            StreamingResponseHandler<AiMessage> handler) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(toolSpecifications)
-                        .build())
-                .build();
-        chat(chatRequest, convertHandler(handler));
-    }
-
-    @Override
-    public void generate(
-            List<ChatMessage> messages,
-            ToolSpecification toolSpecification,
-            StreamingResponseHandler<AiMessage> handler) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(toolSpecification)
-                        .toolChoice(REQUIRED)
-                        .build())
-                .build();
-        chat(chatRequest, convertHandler(handler));
-    }
-
     private ConverseStreamRequest buildConverseStreamRequest(
             List<ChatMessage> messages, List<ToolSpecification> toolSpecs, ChatRequestParameters parameters) {
         final String model =
@@ -178,6 +145,11 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         .modelName(modelId)
                         .build())
                 .build();
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return AMAZON_BEDROCK;
     }
 
     public static Builder builder() {

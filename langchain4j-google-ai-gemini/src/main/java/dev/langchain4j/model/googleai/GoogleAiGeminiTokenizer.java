@@ -53,7 +53,6 @@ public class GoogleAiGeminiTokenizer implements Tokenizer {
         return estimateTokenCountInMessages(singletonList(message));
     }
 
-    @Override
     public int estimateTokenCountInToolExecutionRequests(Iterable<ToolExecutionRequest> toolExecutionRequests) {
         List<ToolExecutionRequest> allToolRequests = new LinkedList<>();
         toolExecutionRequests.forEach(allToolRequests::add);
@@ -74,7 +73,6 @@ public class GoogleAiGeminiTokenizer implements Tokenizer {
         return estimateTokenCount(countTokensRequest);
     }
 
-    @Override
     public int estimateTokenCountInToolSpecifications(Iterable<ToolSpecification> toolSpecifications) {
         List<ToolSpecification> allTools = new LinkedList<>();
         toolSpecifications.forEach(allTools::add);

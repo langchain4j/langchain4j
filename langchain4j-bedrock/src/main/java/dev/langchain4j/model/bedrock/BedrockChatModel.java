@@ -1,21 +1,20 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.Collections.emptyList;
+import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.output.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,40 +45,13 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
     }
 
     @Override
-    public Response<AiMessage> generate(final List<ChatMessage> messages) {
-        return generate(messages, emptyList());
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, List.of(toolSpecification));
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(toolSpecifications)
-                        .build())
-                .build();
-
-        final ChatResponse chatResponse = this.chat(chatRequest);
-        return Response.from(
-                chatResponse.aiMessage(),
-                chatResponse.tokenUsage(),
-                chatResponse.finishReason(),
-                Map.of("id", chatResponse.metadata().id()));
-    }
-
-    @Override
     public ChatResponse chat(ChatRequest request) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ConverseRequest convRequest = buildConverseRequest(
                 request.messages(), request.parameters().toolSpecifications(), request.parameters());
         try {
-            ListenersUtil.onRequest(request, attributes, listeners);
-            ConverseResponse response = withRetry(() -> client.converse(convRequest), this.maxRetries);
+            ListenersUtil.onRequest(request, this.provider(), attributes, listeners);
+            ConverseResponse response = withRetryMappingExceptions(() -> client.converse(convRequest), this.maxRetries);
 
             final ChatResponse chatResponse = ChatResponse.builder()
                     .aiMessage(aiMessageFrom(response))
@@ -91,11 +63,11 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
                             .build())
                     .build();
 
-            ListenersUtil.onResponse(chatResponse, request, attributes, listeners);
+            ListenersUtil.onResponse(chatResponse, request, this.provider(), attributes, listeners);
             return chatResponse;
 
         } catch (Exception e) {
-            ListenersUtil.onError(e, request, attributes, listeners);
+            ListenersUtil.onError(e, request, this.provider(), attributes, listeners);
             throw e;
         }
     }
@@ -115,6 +87,11 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
                 .toolConfig(extractToolConfigurationFrom(toolSpecs, parameters))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(parameters))
                 .build();
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return AMAZON_BEDROCK;
     }
 
     public static Builder builder() {

@@ -3,11 +3,10 @@ package dev.langchain4j.model.azure.common;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
 
 class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
@@ -30,10 +29,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(
-                AZURE_OPEN_AI_CHAT_MODEL,
-                AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
-        );
+        return List.of(AZURE_OPEN_AI_CHAT_MODEL, AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA);
     }
 
     @Override
@@ -73,7 +69,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceRequired() {
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 
@@ -92,6 +88,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
+    @Override
     protected boolean assertFinishReason() {
         return false; // TODO implement
     }

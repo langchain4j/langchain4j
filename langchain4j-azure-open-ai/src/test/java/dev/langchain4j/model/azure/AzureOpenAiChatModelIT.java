@@ -9,7 +9,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -18,6 +17,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -25,7 +25,6 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
@@ -35,16 +34,12 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonSchemaElementFrom;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -69,9 +64,9 @@ class AzureOpenAiChatModelIT {
 
         UserMessage userMessage = userMessage("hello, how are you?");
 
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
@@ -99,9 +94,9 @@ class AzureOpenAiChatModelIT {
 
         UserMessage userMessage = userMessage("hello, how are you?");
 
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
@@ -115,7 +110,7 @@ class AzureOpenAiChatModelIT {
     @CsvSource({
             "gpt-4o,        gpt-4o"
     })
-    void should_call_function_with_argument(String deploymentName, String gptVersion) {
+    void should_execute_tool_forcefully_then_answer(String deploymentName, String gptVersion) {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -133,12 +128,24 @@ class AzureOpenAiChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
                 .description("Get the current weather")
-                .parameters(getToolParameters())
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location", "The city and state, e.g. San Francisco, CA")
+                        .addEnumProperty("unit", List.of("celsius", "fahrenheit"))
+                        .required("location", "unit")
+                        .build())
                 .build();
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecification);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(toolSpecification)
+                        .toolChoice(REQUIRED)
+                        .build())
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         assertThat(response.finishReason()).isEqualTo(STOP);
 
@@ -165,10 +172,10 @@ class AzureOpenAiChatModelIT {
         chatMessages.add(aiMessage);
         chatMessages.add(toolExecutionResultMessage);
 
-        Response<AiMessage> response2 = model.generate(chatMessages);
+        ChatResponse response2 = model.chat(chatMessages);
 
-        assertThat(response2.content().text()).isNotBlank();
-        assertThat(response2.content().text()).contains("t-shirt");
+        assertThat(response2.aiMessage().text()).isNotBlank();
+        assertThat(response2.aiMessage().text()).contains("t-shirt");
         assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
@@ -195,9 +202,14 @@ class AzureOpenAiChatModelIT {
                 .description("Get the current date and time")
                 .build();
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), noArgToolSpec);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(noArgToolSpec)
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
@@ -210,7 +222,7 @@ class AzureOpenAiChatModelIT {
     @CsvSource({
             "gpt-4o,        gpt-4o"
     })
-    void should_call_three_functions_in_parallel(String deploymentName, String gptVersion) throws Exception {
+    void should_call_three_functions_in_parallel(String deploymentName, String gptVersion) {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -226,24 +238,38 @@ class AzureOpenAiChatModelIT {
                 ToolSpecification.builder()
                         .name("sum")
                         .description("returns a sum of two numbers")
-                        .addParameter("first", INTEGER)
-                        .addParameter("second", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("first")
+                                .addIntegerProperty("second")
+                                .required("first", "second")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("square")
                         .description("returns the square of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("cube")
                         .description("returns the cube of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build()
         );
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecifications);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(userMessage);
@@ -267,8 +293,8 @@ class AzureOpenAiChatModelIT {
             messages.add(toolExecutionResultMessage);
         }
 
-        Response<AiMessage> response2 = model.generate(messages);
-        AiMessage aiMessage2 = response2.content();
+        ChatResponse response2 = model.chat(messages);
+        AiMessage aiMessage2 = response2.aiMessage();
 
         // then
         assertThat(aiMessage2.text()).contains("4", "16", "512");
@@ -300,9 +326,9 @@ class AzureOpenAiChatModelIT {
         SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
         UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
 
-        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+        ChatResponse response = model.chat(systemMessage, userMessage);
 
-        assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
+        assertThat(response.aiMessage().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
@@ -327,9 +353,9 @@ class AzureOpenAiChatModelIT {
         SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
         UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
 
-        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+        ChatResponse response = model.chat(systemMessage, userMessage);
 
-        assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
+        assertThat(response.aiMessage().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
@@ -358,31 +384,10 @@ class AzureOpenAiChatModelIT {
         UserMessage userMessage = userMessage("Hi");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
-    }
-
-    private static ToolParameters getToolParameters() {
-        Map<String, Map<String, Object>> properties = new HashMap<>();
-
-        Map<String, Object> location = new HashMap<>();
-        location.put("type", "string");
-        location.put("description", "The city and state, e.g. San Francisco, CA");
-        properties.put("location", location);
-
-        Map<String, Object> unit = new HashMap<>();
-        unit.put("type", "string");
-        unit.put("enum", Arrays.asList("celsius", "fahrenheit"));
-        properties.put("unit", unit);
-
-        List<String> required = Arrays.asList("location", "unit");
-
-        return ToolParameters.builder()
-                .properties(properties)
-                .required(required)
-                .build();
+        assertThat(response.aiMessage().text()).isNotBlank();
     }
 
     // This is the method we offer to OpenAI to be used as a function_call.
@@ -466,7 +471,7 @@ class AzureOpenAiChatModelIT {
                 2. A rectangle with a width of 10 and a height of 20
                 """);
 
-        ChatRequest chatRequest = ChatRequest.builder()
+        ChatRequest request = ChatRequest.builder()
                 .messages(userMessage)
                 .responseFormat(responseFormat)
                 .build();
@@ -480,7 +485,7 @@ class AzureOpenAiChatModelIT {
                 .build();
 
         // when
-        ChatResponse chatResponse = model.chat(chatRequest);
+        ChatResponse chatResponse = model.chat(request);
 
         // then
         Shapes shapes = new ObjectMapper().readValue(chatResponse.aiMessage().text(), Shapes.class);

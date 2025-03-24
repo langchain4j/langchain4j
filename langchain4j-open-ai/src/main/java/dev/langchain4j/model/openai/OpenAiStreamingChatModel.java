@@ -1,9 +1,8 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -30,10 +29,9 @@ import java.util.Map;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -131,41 +129,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .build();
-        chat(chatRequest, convertHandler(handler));
-    }
-
-    @Override
-    public void generate(List<ChatMessage> messages,
-                         List<ToolSpecification> toolSpecifications,
-                         StreamingResponseHandler<AiMessage> handler) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(toolSpecifications)
-                        .build())
-                .build();
-        chat(chatRequest, convertHandler(handler));
-    }
-
-    @Override
-    public void generate(List<ChatMessage> messages,
-                         ToolSpecification toolSpecification,
-                         StreamingResponseHandler<AiMessage> handler) {
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(toolSpecification)
-                        .toolChoice(REQUIRED)
-                        .build())
-                .build();
-        chat(chatRequest, convertHandler(handler));
-    }
-
-    @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
@@ -224,6 +187,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     @Override
     public List<ChatModelListener> listeners() {
         return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return OPEN_AI;
     }
 
     @Override
