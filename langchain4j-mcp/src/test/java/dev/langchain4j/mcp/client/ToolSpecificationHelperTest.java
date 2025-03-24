@@ -6,14 +6,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import dev.langchain4j.model.chat.request.json.JsonTypeArraySchema;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -212,7 +213,8 @@ class ToolSpecificationHelperTest {
                                     "string",
                                     "number",
                                     "boolean",
-                                    "null"
+                                    "null",
+                                    "integer"
                                   ]
                                 },
                                 "description": "Query parameters (optional)"
@@ -231,8 +233,12 @@ class ToolSpecificationHelperTest {
         JsonObjectSchema parameters = toolSpecification.parameters();
         JsonArraySchema params = (JsonArraySchema) parameters.properties().get("params");
         assertThat(params.description()).isEqualTo("Query parameters (optional)");
-        assertThat(params.items()).isInstanceOf(JsonTypeArraySchema.class);
-        JsonTypeArraySchema jsonTypeArraySchema = (JsonTypeArraySchema) params.items();
-        assertThat(jsonTypeArraySchema.getTypes()).contains("string", "number", "boolean", "null");
+        assertThat(params.items()).isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) params.items();
+        assertThat(anyOf.anyOf().get(0)).isInstanceOf(JsonStringSchema.class);
+        assertThat(anyOf.anyOf().get(1)).isInstanceOf(JsonNumberSchema.class);
+        assertThat(anyOf.anyOf().get(2)).isInstanceOf(JsonBooleanSchema.class);
+        assertThat(anyOf.anyOf().get(3)).isInstanceOf(JsonNullSchema.class);
+        assertThat(anyOf.anyOf().get(4)).isInstanceOf(JsonIntegerSchema.class);
     }
 }

@@ -5,15 +5,16 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import dev.langchain4j.model.chat.request.json.JsonTypeArraySchema;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -113,12 +114,58 @@ class ToolSpecificationHelper {
             }
         } else {
             // this represents an array with multiple allowed types for items
-            JsonTypeArraySchema.Builder builder = JsonTypeArraySchema.builder();
-            String[] types = StreamSupport.stream(node.get("type").spliterator(), false)
-                    .map(JsonNode::asText)
-                    .toArray(String[]::new);
-            builder.types(types);
-            return builder.build();
+            // for example:
+            // "type": "array",
+            //  "items": {
+            //    "type": ["integer", "string", "null"]
+            //  }
+            //
+            // and we transform this into
+            //
+            // "type": "array",
+            // "items": {
+            //   "anyOf": [
+            //       {
+            //           "type": "integer"
+            //       },
+            //       {
+            //           "type": "string"
+            //       },
+            //       {
+            //           "type": "null"
+            //       }
+            //   ]
+            // }
+            JsonAnyOfSchema.Builder anyOf = JsonAnyOfSchema.builder();
+            JsonSchemaElement[] types = StreamSupport.stream(node.get("type").spliterator(), false)
+                    .map(ToolSpecificationHelper::toTypeElement)
+                    .toArray(JsonSchemaElement[]::new);
+            anyOf.anyOf(types);
+            return anyOf.build();
+        }
+    }
+
+    private static JsonSchemaElement toTypeElement(JsonNode node) {
+        if (!node.isTextual()) {
+            throw new IllegalArgumentException(node + " is not a string");
+        }
+        switch (node.textValue()) {
+            case "string":
+                return JsonStringSchema.builder().build();
+            case "number":
+                return JsonNumberSchema.builder().build();
+            case "integer":
+                return JsonIntegerSchema.builder().build();
+            case "boolean":
+                return JsonBooleanSchema.builder().build();
+            case "array":
+                return JsonArraySchema.builder().build();
+            case "object":
+                return JsonObjectSchema.builder().build();
+            case "null":
+                return JsonNullSchema.builder().build();
+            default:
+                throw new IllegalArgumentException("Unsupported type: " + node.textValue());
         }
     }
 
