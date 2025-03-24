@@ -210,8 +210,9 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
             Embedding embedding = embeddings.get(i);
             TextSegment textSegment = embedded == null ? null : embedded.get(i);
             if (textSegment != null) {
-                Set<LangChainMetadata> metadata = textSegment.metadata().asMap().entrySet().stream()
-                      .map(e -> new LangChainMetadata(e.getKey(), e.getValue())).collect(Collectors.toSet());
+                Set<LangChainMetadata> metadata = textSegment.metadata().toMap().entrySet().stream()
+                      .map(e -> new LangChainMetadata(e.getKey(), Objects.toString(e.getValue(), null)))
+                      .collect(Collectors.toSet());
                 elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), textSegment.text(), metadata));
             } else {
                 elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), null, null));
