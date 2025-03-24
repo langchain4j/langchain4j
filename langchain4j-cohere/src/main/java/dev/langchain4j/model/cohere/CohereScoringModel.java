@@ -4,7 +4,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
-import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -29,7 +28,6 @@ public class CohereScoringModel implements ScoringModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    @Builder
     public CohereScoringModel(
             String baseUrl,
             String apiKey,
@@ -61,6 +59,10 @@ public class CohereScoringModel implements ScoringModel {
         return builder().apiKey(apiKey).build();
     }
 
+    public static CohereScoringModelBuilder builder() {
+        return new CohereScoringModelBuilder();
+    }
+
     @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
 
@@ -80,5 +82,67 @@ public class CohereScoringModel implements ScoringModel {
                 .collect(toList());
 
         return Response.from(scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+    }
+
+    public static class CohereScoringModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private String modelName;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Proxy proxy;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        CohereScoringModelBuilder() {
+        }
+
+        public CohereScoringModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public CohereScoringModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public CohereScoringModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public CohereScoringModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public CohereScoringModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public CohereScoringModelBuilder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public CohereScoringModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public CohereScoringModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public CohereScoringModel build() {
+            return new CohereScoringModel(this.baseUrl, this.apiKey, this.modelName, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "CohereScoringModel.CohereScoringModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+        }
     }
 }

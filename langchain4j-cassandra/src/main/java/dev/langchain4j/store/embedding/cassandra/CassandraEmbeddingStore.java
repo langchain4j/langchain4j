@@ -5,18 +5,19 @@ import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.dtsx.astra.sdk.cassio.AnnQuery;
 import com.dtsx.astra.sdk.cassio.AnnResult;
 import com.dtsx.astra.sdk.cassio.CassIO;
+import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
 import com.dtsx.astra.sdk.cassio.MetadataVectorRecord;
 import com.dtsx.astra.sdk.cassio.MetadataVectorTable;
-import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
 import com.dtsx.astra.sdk.utils.AstraEnvironment;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import lombok.Getter;
 import lombok.NonNull;
 
 import java.net.InetSocketAddress;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static java.util.stream.Collectors.toList;
@@ -44,18 +46,14 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Cassandra question.
      */
-    @Getter
     protected CqlSession cassandraSession;
 
     /**
      * Embedding Store.
      *
-     * @param session
-     *      cassandra Session
-     * @param tableName
-     *      table name
-     * @param dimension
-     *      dimension
+     * @param session   cassandra Session
+     * @param tableName table name
+     * @param dimension dimension
      */
     public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension) {
         this(session, tableName, dimension, CassandraSimilarityMetric.COSINE);
@@ -64,14 +62,10 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Embedding Store.
      *
-     * @param session
-     *      cassandra Session
-     * @param tableName
-     *      table name
-     * @param dimension
-     *      dimension
-     * @param metric
-     *      metric
+     * @param session   cassandra Session
+     * @param tableName table name
+     * @param dimension dimension
+     * @param metric    metric
      */
     public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension, CassandraSimilarityMetric metric) {
         this.cassandraSession = session;
@@ -91,6 +85,10 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public void clear() {
         embeddingTable.clear();
+    }
+
+    public CqlSession getCassandraSession() {
+        return this.cassandraSession;
     }
 
     public static class Builder {
@@ -161,7 +159,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 builder.withAuthCredentials(userName, password);
             }
             contactPoints.forEach(cp -> builder.addContactPoint(new InetSocketAddress(cp, port)));
-            return new CassandraEmbeddingStore(builder.build(),table, dimension, metric);
+            return new CassandraEmbeddingStore(builder.build(), table, dimension, metric);
         }
     }
 
@@ -260,7 +258,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         MetadataVectorRecord record = new MetadataVectorRecord(id, embedding.vectorAsList());
         if (textSegment != null) {
             record.setBody(textSegment.text());
-            record.setMetadata(textSegment.metadata().asMap());
+            record.setMetadata(toStringValueMap(textSegment.metadata().toMap()));
         }
         embeddingTable.put(record);
         return record.getRowId();
@@ -304,14 +302,17 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
-    /**
-     * Search for relevant.
-     *
-     * @param embedding  current embeddings
-     * @param maxResults max number of result
-     * @param minScore   threshold
-     * @return list of matching elements
-     */
+    @Override
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        if (request.filter() != null) {
+            throw new UnsupportedOperationException("EmbeddingSearchRequest.Filter is not supported yet.");
+        }
+
+        List<EmbeddingMatch<TextSegment>> matches =
+                findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
+        return new EmbeddingSearchResult<>(matches);
+    }
+
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding embedding, int maxResults, double minScore) {
         return embeddingTable
                 .similaritySearch(AnnQuery.builder()
@@ -368,7 +369,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
                 .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")));
         if (metadata != null) {
-            builder.metaData(metadata.asMap());
+            builder.metaData(toStringValueMap(metadata.toMap()));
         }
         return embeddingTable
                 .similaritySearch(builder.build())

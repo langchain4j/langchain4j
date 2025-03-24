@@ -7,7 +7,6 @@ import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
-import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
@@ -31,7 +30,6 @@ public class JinaScoringModel implements ScoringModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    @Builder
     public JinaScoringModel(String baseUrl,
                             String apiKey,
                             String modelName,
@@ -48,6 +46,10 @@ public class JinaScoringModel implements ScoringModel {
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 3);
+    }
+
+    public static JinaScoringModelBuilder builder() {
+        return new JinaScoringModelBuilder();
     }
 
     @Override
@@ -75,5 +77,61 @@ public class JinaScoringModel implements ScoringModel {
                 response.usage.totalTokens
         );
         return Response.from(scores, tokenUsage);
+    }
+
+    public static class JinaScoringModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private String modelName;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        JinaScoringModelBuilder() {
+        }
+
+        public JinaScoringModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public JinaScoringModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public JinaScoringModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public JinaScoringModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public JinaScoringModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public JinaScoringModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public JinaScoringModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public JinaScoringModel build() {
+            return new JinaScoringModel(this.baseUrl, this.apiKey, this.modelName, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "JinaScoringModel.JinaScoringModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+        }
     }
 }

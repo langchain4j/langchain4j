@@ -489,7 +489,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param retrieveEmbeddingsOnSearch During a similarity search in Milvus (when calling findRelevant()),
+         * @param retrieveEmbeddingsOnSearch During a similarity search in Milvus (when calling search()),
          *                                   the embedding itself is not retrieved.
          *                                   To retrieve the embedding, an additional query is required.
          *                                   Setting this parameter to "true" will ensure that embedding is retrieved.
