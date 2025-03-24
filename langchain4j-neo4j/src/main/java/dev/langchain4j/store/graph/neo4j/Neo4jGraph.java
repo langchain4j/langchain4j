@@ -1,7 +1,5 @@
 package dev.langchain4j.store.graph.neo4j;
 
-import lombok.Builder;
-import lombok.Getter;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Query;
 import org.neo4j.driver.Record;
@@ -45,10 +43,8 @@ public class Neo4jGraph implements AutoCloseable {
 
     private final Driver driver;
 
-    @Getter
     private String schema;
 
-    @Builder
     public Neo4jGraph(final Driver driver) {
 
         this.driver = ensureNotNull(driver, "driver");
@@ -61,6 +57,10 @@ public class Neo4jGraph implements AutoCloseable {
             }
             throw e;
         }
+    }
+
+    public static Neo4jGraphBuilder builder() {
+        return new Neo4jGraphBuilder();
     }
 
     public ResultSummary executeWrite(String queryString) {
@@ -139,5 +139,29 @@ public class Neo4jGraph implements AutoCloseable {
     public void close() {
 
         this.driver.close();
+    }
+
+    public String getSchema() {
+        return this.schema;
+    }
+
+    public static class Neo4jGraphBuilder {
+        private Driver driver;
+
+        Neo4jGraphBuilder() {
+        }
+
+        public Neo4jGraphBuilder driver(Driver driver) {
+            this.driver = driver;
+            return this;
+        }
+
+        public Neo4jGraph build() {
+            return new Neo4jGraph(this.driver);
+        }
+
+        public String toString() {
+            return "Neo4jGraph.Neo4jGraphBuilder(driver=" + this.driver + ")";
+        }
     }
 }

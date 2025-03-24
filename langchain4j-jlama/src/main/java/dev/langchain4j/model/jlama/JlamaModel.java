@@ -9,7 +9,6 @@ import com.github.tjake.jlama.safetensors.prompt.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import lombok.Getter;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,16 +24,12 @@ import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.to
 class JlamaModel {
     private final JlamaModelRegistry registry;
 
-    @Getter
     private final ModelSupport.ModelType modelType;
 
-    @Getter
     private final String modelName;
 
-    @Getter
     private final Optional<String> owner;
 
-    @Getter
     private final String modelId;
 
     private final boolean isLocal;
@@ -65,6 +60,22 @@ class JlamaModel {
                 Optional.empty(),
                 authToken,
                 Optional.empty());
+    }
+
+    public ModelSupport.ModelType getModelType() {
+        return this.modelType;
+    }
+
+    public String getModelName() {
+        return this.modelName;
+    }
+
+    public Optional<String> getOwner() {
+        return this.owner;
+    }
+
+    public String getModelId() {
+        return this.modelId;
     }
 
     public class Loader {
