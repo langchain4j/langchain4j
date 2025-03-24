@@ -43,7 +43,7 @@ class SeleniumDocumentLoaderIT {
 
         assertThat(textDocument.text()).isEqualTo("test content");
         assertThat(document.text()).contains("test\ncontent");
-        assertThat(document.metadata(Document.URL)).isEqualTo(url);
+        assertThat(document.metadata().getString(Document.URL)).isEqualTo(url);
     }
 
     @Test

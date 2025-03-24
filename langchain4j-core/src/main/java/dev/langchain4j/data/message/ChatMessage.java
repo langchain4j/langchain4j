@@ -20,14 +20,4 @@ public interface ChatMessage {
      * @return the type of the message
      */
     ChatMessageType type();
-
-    /**
-     * The text of the message.
-     *
-     * @return the text of the message
-     * @deprecated use accessors of {@link SystemMessage}, {@link UserMessage},
-     * {@link AiMessage} and {@link ToolExecutionResultMessage} instead
-     */
-    @Deprecated(forRemoval = true)
-    String text();
 }

@@ -11,15 +11,11 @@ public class ExampleTestTokenizer implements Tokenizer {
 
     @Override
     public int estimateTokenCountInMessage(ChatMessage message) {
-        return estimateTokenCountInText(message.text());
+        throw new RuntimeException("not implemented");
     }
 
     @Override
     public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
-        int tokenCount = 0;
-        for (ChatMessage message : messages) {
-            tokenCount += estimateTokenCountInMessage(message);
-        }
-        return tokenCount;
+        throw new RuntimeException("not implemented");
     }
 }

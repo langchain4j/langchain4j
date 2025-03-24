@@ -12,7 +12,6 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.parser.sql.SqlFilterParser;
-import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,7 +114,6 @@ public class LanguageModelSqlFilterBuilder {
         this(chatLanguageModel, tableDefinition, DEFAULT_PROMPT_TEMPLATE, new SqlFilterParser());
     }
 
-    @Builder
     private LanguageModelSqlFilterBuilder(ChatLanguageModel chatLanguageModel,
                                           TableDefinition tableDefinition,
                                           PromptTemplate promptTemplate,
@@ -125,6 +123,10 @@ public class LanguageModelSqlFilterBuilder {
         this.createTableStatement = format(tableDefinition);
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.sqlFilterParser = getOrDefault(sqlFilterParser, SqlFilterParser::new);
+    }
+
+    public static LanguageModelSqlFilterBuilderBuilder builder() {
+        return new LanguageModelSqlFilterBuilderBuilder();
     }
 
     public Filter build(Query query) {
@@ -227,5 +229,43 @@ public class LanguageModelSqlFilterBuilder {
         }
         createTableStatement.append(";");
         return createTableStatement.toString();
+    }
+
+    public static class LanguageModelSqlFilterBuilderBuilder {
+        private ChatLanguageModel chatLanguageModel;
+        private TableDefinition tableDefinition;
+        private PromptTemplate promptTemplate;
+        private SqlFilterParser sqlFilterParser;
+
+        LanguageModelSqlFilterBuilderBuilder() {
+        }
+
+        public LanguageModelSqlFilterBuilderBuilder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
+            this.chatLanguageModel = chatLanguageModel;
+            return this;
+        }
+
+        public LanguageModelSqlFilterBuilderBuilder tableDefinition(TableDefinition tableDefinition) {
+            this.tableDefinition = tableDefinition;
+            return this;
+        }
+
+        public LanguageModelSqlFilterBuilderBuilder promptTemplate(PromptTemplate promptTemplate) {
+            this.promptTemplate = promptTemplate;
+            return this;
+        }
+
+        public LanguageModelSqlFilterBuilderBuilder sqlFilterParser(SqlFilterParser sqlFilterParser) {
+            this.sqlFilterParser = sqlFilterParser;
+            return this;
+        }
+
+        public LanguageModelSqlFilterBuilder build() {
+            return new LanguageModelSqlFilterBuilder(this.chatLanguageModel, this.tableDefinition, this.promptTemplate, this.sqlFilterParser);
+        }
+
+        public String toString() {
+            return "LanguageModelSqlFilterBuilder.LanguageModelSqlFilterBuilderBuilder(chatLanguageModel=" + this.chatLanguageModel + ", tableDefinition=" + this.tableDefinition + ", promptTemplate=" + this.promptTemplate + ", sqlFilterParser=" + this.sqlFilterParser + ")";
+        }
     }
 }
