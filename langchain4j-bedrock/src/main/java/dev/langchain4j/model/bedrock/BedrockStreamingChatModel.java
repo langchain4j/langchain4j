@@ -34,7 +34,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamRespon
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
  */
 public class BedrockStreamingChatModel extends AbstractBedrockChatModel implements StreamingChatLanguageModel {
-
     private final BedrockRuntimeAsyncClient client;
 
     public BedrockStreamingChatModel(String modelId) {
@@ -59,41 +58,35 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .parameters(this.defaultRequestParameters.overrideWith(chatRequest.parameters()))
                 .build();
 
-        try {
-            ConverseResponseFromStreamBuilder converseResponseBuilder = ConverseResponseFromStreamBuilder.builder();
-            final ConverseStreamResponseHandler built = ConverseStreamResponseHandler.builder()
-                    .subscriber(ConverseStreamResponseHandler.Visitor.builder()
-                            .onContentBlockStart(converseResponseBuilder::append)
-                            .onContentBlockDelta(chunk -> {
-                                if (chunk.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
-                                    handler.onPartialResponse(chunk.delta().text());
-                                }
-                                converseResponseBuilder.append(chunk);
-                            })
-                            .onContentBlockStop(converseResponseBuilder::append)
-                            .onMetadata(chunk -> {
-                                converseResponseBuilder.append(chunk);
-                                final ChatResponse completeResponse = chatResponseFrom(
-                                        converseResponseBuilder.build(), converseStreamRequest.modelId());
-                                ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
-                                handler.onCompleteResponse(completeResponse);
-                            })
-                            .onMessageStart(converseResponseBuilder::append)
-                            .onMessageStop(converseResponseBuilder::append)
-                            .build())
-                    .onError(error -> {
-                        handler.onError(error);
-                        ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
-                    })
-                    .build();
+        ConverseResponseFromStreamBuilder converseResponseBuilder = ConverseResponseFromStreamBuilder.builder();
+        final ConverseStreamResponseHandler built = ConverseStreamResponseHandler.builder()
+                .subscriber(ConverseStreamResponseHandler.Visitor.builder()
+                        .onContentBlockStart(converseResponseBuilder::append)
+                        .onContentBlockDelta(chunk -> {
+                            if (chunk.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
+                                handler.onPartialResponse(chunk.delta().text());
+                            }
+                            converseResponseBuilder.append(chunk);
+                        })
+                        .onContentBlockStop(converseResponseBuilder::append)
+                        .onMetadata(chunk -> {
+                            converseResponseBuilder.append(chunk);
+                            final ChatResponse completeResponse =
+                                    chatResponseFrom(converseResponseBuilder.build(), converseStreamRequest.modelId());
+                            ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
+                            handler.onCompleteResponse(completeResponse);
+                        })
+                        .onMessageStart(converseResponseBuilder::append)
+                        .onMessageStop(converseResponseBuilder::append)
+                        .build())
+                .onError(error -> {
+                    handler.onError(error);
+                    ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+                })
+                .build();
 
-            ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
-            this.client.converseStream(converseStreamRequest, built).get();
-
-        } catch (Exception e) {
-            handler.onError(e);
-            ListenersUtil.onError(e, finalChatRequest, attributes, listeners);
-        }
+        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        this.client.converseStream(converseStreamRequest, built).join();
     }
 
     public static Response<AiMessage> convertResponse(ChatResponse chatResponse) {

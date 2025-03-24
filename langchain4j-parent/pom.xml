@@ -82,7 +82,7 @@
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <elastic.version>8.15.3</elastic.version>
         <jackson.version>2.18.2</jackson.version>
-        <aws.java.sdk.version>2.30.30</aws.java.sdk.version>
+        <aws.java.sdk.version>2.31.6</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
         <netty.version>4.1.111.Final</netty.version>
