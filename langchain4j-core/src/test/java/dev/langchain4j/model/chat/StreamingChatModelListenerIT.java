@@ -1,5 +1,9 @@
 package dev.langchain4j.model.chat;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -13,16 +17,11 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.assertj.core.data.Percentage;
-import org.junit.jupiter.api.Test;
-
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import org.assertj.core.data.Percentage;
+import org.junit.jupiter.api.Test;
 
 /**
  * Make sure these dependencies are present in the module where this test class is extended:
@@ -95,7 +94,9 @@ public abstract class StreamingChatModelListenerIT {
             public void onRequest(ChatModelRequestContext requestContext) {
                 chatRequestReference.set(requestContext.chatRequest());
                 onRequestInvocations.incrementAndGet();
-                assertThat(requestContext.modelProvider()).isNotNull().isEqualTo(modelReference.get().provider());
+                assertThat(requestContext.modelProvider())
+                        .isNotNull()
+                        .isEqualTo(modelReference.get().provider());
                 requestContext.attributes().put("id", "12345");
             }
 
@@ -104,13 +105,16 @@ public abstract class StreamingChatModelListenerIT {
                 chatResponseReference.set(responseContext.chatResponse());
                 onResponseInvocations.incrementAndGet();
                 assertThat(responseContext.chatRequest()).isEqualTo(chatRequestReference.get());
-                assertThat(responseContext.modelProvider()).isNotNull().isEqualTo(modelReference.get().provider());
+                assertThat(responseContext.modelProvider())
+                        .isNotNull()
+                        .isEqualTo(modelReference.get().provider());
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
             @Override
             public void onError(ChatModelErrorContext errorContext) {
-                fail("onError() must not be called. Exception: " + errorContext.error().getMessage());
+                fail("onError() must not be called. Exception: "
+                        + errorContext.error().getMessage());
             }
         };
 
@@ -119,8 +123,7 @@ public abstract class StreamingChatModelListenerIT {
 
         UserMessage userMessage = UserMessage.from("hello");
 
-        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
-                .messages(userMessage);
+        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder().messages(userMessage);
 
         ToolSpecification toolSpecification = null;
         if (supportsTools()) {
@@ -155,7 +158,6 @@ public abstract class StreamingChatModelListenerIT {
         }
 
         assertThat(onRequestInvocations).hasValue(1);
-
 
         ChatResponse chatResponse = chatResponseReference.get();
         assertThat(chatResponse.aiMessage()).isEqualTo(aiMessage);
@@ -216,7 +218,9 @@ public abstract class StreamingChatModelListenerIT {
             public void onRequest(ChatModelRequestContext requestContext) {
                 chatRequestReference.set(requestContext.chatRequest());
                 onRequestInvocations.incrementAndGet();
-                assertThat(requestContext.modelProvider()).isNotNull().isEqualTo(modelReference.get().provider());
+                assertThat(requestContext.modelProvider())
+                        .isNotNull()
+                        .isEqualTo(modelReference.get().provider());
                 requestContext.attributes().put("id", "12345");
             }
 
@@ -230,7 +234,9 @@ public abstract class StreamingChatModelListenerIT {
                 errorReference.set(errorContext.error());
                 onErrorInvocations.incrementAndGet();
                 assertThat(errorContext.chatRequest()).isEqualTo(chatRequestReference.get());
-                assertThat(errorContext.modelProvider()).isNotNull().isEqualTo(modelReference.get().provider());
+                assertThat(errorContext.modelProvider())
+                        .isNotNull()
+                        .isEqualTo(modelReference.get().provider());
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
