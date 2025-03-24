@@ -5,7 +5,6 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -29,13 +28,6 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithConverseAPIIT {
@@ -99,7 +91,7 @@ class BedrockChatModelWithConverseAPIIT {
                 .messages(userMessage)
                 .toolSpecifications(toolSpecifications)
                 .build();
-        
+
         ChatResponse response = model.chat(request);
 
         AiMessage aiMessage = response.aiMessage();
