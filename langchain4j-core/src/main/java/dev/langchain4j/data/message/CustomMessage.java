@@ -40,11 +40,6 @@ public class CustomMessage implements ChatMessage {
     }
 
     @Override
-    public String text() {
-        throw new UnsupportedOperationException("use attributes() instead");
-    }
-
-    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

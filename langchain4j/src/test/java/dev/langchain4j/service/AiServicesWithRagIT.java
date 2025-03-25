@@ -28,8 +28,6 @@ import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrateg
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
-import dev.langchain4j.retriever.EmbeddingStoreRetriever;
-import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -511,27 +509,6 @@ class AiServicesWithRagIT {
         assertThat(answer).containsIgnoringCase("dog");
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_legacy_retriever(ChatLanguageModel model) {
-
-        // given
-        Retriever<TextSegment> legacyRetriever =
-                EmbeddingStoreRetriever.from(embeddingStore, embeddingModel, 1);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .retriever(legacyRetriever)
-                .build();
-
-        // when
-        String answer = assistant.answer("Can I cancel my booking?");
-
-        // then
-        assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
-    }
-
-
     interface AssistantReturningResult {
 
         Result<String> answer(String query);
@@ -568,8 +545,8 @@ class AiServicesWithRagIT {
                         "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period." +
                         "4.2 If the booking period is less than 17 days, cancellations are not permitted."
         );
-        assertThat(content.textSegment().metadata("index")).isEqualTo("3");
-        assertThat(content.textSegment().metadata("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
+        assertThat(content.textSegment().metadata().getString("index")).isEqualTo("3");
+        assertThat(content.textSegment().metadata().getString("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
     }
 
     private void ingest(String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {

@@ -43,7 +43,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
     public OpenAiEmbeddingModel(OpenAiEmbeddingModelBuilder builder) {
 
-        if ("demo".equals(builder.apiKey)) {
+        if ("demo".equals(builder.apiKey) && !"http://langchain4j.dev/demo/openai/v1".equals(builder.baseUrl)) {
             // TODO remove before releasing 1.0.0
             throw new RuntimeException("""
                     If you wish to continue using the 'demo' key, please specify the base URL explicitly:
