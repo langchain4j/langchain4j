@@ -40,13 +40,6 @@
             <version>${gson.version}</version>
         </dependency>
 
-        <!-- Lombok for @Data and @Builder -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- JUnit 5 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
