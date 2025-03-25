@@ -73,10 +73,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                     parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-            if (v == null && userMessage == null && memoryId == null && userName == null) {
+            // Allow for custom ChatRequestParameters
+            boolean isChatRequestParametersType = ChatRequestParameters.class.isAssignableFrom(parameter.getType());
+            if (v == null
+                    && userMessage == null
+                    && memoryId == null
+                    && userName == null
+                    && !isChatRequestParametersType) {
                 throw illegalConfiguration(
                         "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage "
-                                + "or @UserName or @MemoryId",
+                                + "or @UserName or @MemoryId or be ChatRequestParameters",
                         parameter.getName(), method.getName());
             }
         }
@@ -202,14 +208,19 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                         }
 
-                        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                        // see if method has param annotated with @ChatRequestParams
+                        ChatRequestParameters userParameters = findChatRequestParameters(method, args);
+                        ChatRequestParameters finalParameters = ChatRequestParameters.builder()
                                 .toolSpecifications(toolExecutionContext.toolSpecifications())
                                 .responseFormat(responseFormat)
                                 .build();
+                        if (userParameters != null) {
+                            finalParameters = finalParameters.overrideWith(userParameters);
+                        }
 
                         ChatRequest chatRequest = ChatRequest.builder()
                                 .messages(messages)
-                                .parameters(parameters)
+                                .parameters(finalParameters)
                                 .build();
 
                         ChatResponse chatResponse = context.chatModel.chat(chatRequest);
@@ -218,7 +229,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ToolExecutionResult toolExecutionResult = context.toolService.executeInferenceAndToolsLoop(
                                 chatResponse,
-                                parameters,
+                                finalParameters,
                                 messages,
                                 context.chatModel,
                                 context.hasChatMemory() ? context.chatMemory(memoryId) : null,
@@ -292,6 +303,20 @@ class DefaultAiServices<T> extends AiServices<T> {
                 });
 
         return (T) proxyInstance;
+    }
+
+    private ChatRequestParameters findChatRequestParameters(Method method, Object[] args) {
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            // Check if this parameter is (or inherits from) ChatRequestParameters
+            if (ChatRequestParameters.class.isAssignableFrom(parameters[i].getType())) {
+                // You may also want to guard against null or type mismatches in args[i]
+                if (args[i] != null) {
+                    return (ChatRequestParameters) args[i];
+                }
+            }
+        }
+        return null;
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
