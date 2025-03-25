@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.chat.request.json.CustomSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -9,16 +10,19 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
+
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
 
 class ToolSpecificationsTest implements WithAssertions {
 
@@ -73,7 +77,8 @@ class ToolSpecificationsTest implements WithAssertions {
                 E p25,
                 Person p26,
                 @P(value = "optional", required = false) int p27,
-                @P(value = "required") int p28) {
+                @P(value = "required") int p28,
+                @P(value = "offset date time", jsonSchema = CustomOffsetDateTimeSchema.class) OffsetDateTime offsetDateTime) {
             return 42;
         }
 
@@ -84,6 +89,26 @@ class ToolSpecificationsTest implements WithAssertions {
 
         public int unused(int i) {
             return 42;
+        }
+
+        public record CustomOffsetDateTimeSchema() implements CustomSchemaElement {
+            
+            @Override
+            public Map<String, Object> toMap() {
+                return Map.of(
+                        "description", "a java.time.OffsetDateTime parameter",
+                        "type", "java.time.OffsetDateTime"
+                );
+            }
+
+            @Override
+            public Object coerceArgument(final Object argument, final String parameterName, final Class<?> parameterClass, final Type parameterType) {
+                if (parameterClass == OffsetDateTime.class) {
+                    return OffsetDateTime.parse(String.valueOf(argument));
+                } else {
+                    throw new IllegalArgumentException("argument type does not match the parameter class type");
+                }
+            }
         }
     }
 
@@ -146,7 +171,8 @@ class ToolSpecificationsTest implements WithAssertions {
                 E.class, // 25
                 Person.class,
                 int.class,
-                int.class);
+                int.class,
+                OffsetDateTime.class);
     }
 
     public static <K, V> Map<K, V> mapOf(K k1, V v1) {
@@ -229,7 +255,7 @@ class ToolSpecificationsTest implements WithAssertions {
 
         Map<String, JsonSchemaElement> properties = ts.parameters().properties();
 
-        assertThat(properties).hasSize(29);
+        assertThat(properties).hasSize(30);
         assertThat(properties)
                 .containsEntry(
                         "arg0", JsonStringSchema.builder().description("foo").build())
@@ -286,7 +312,10 @@ class ToolSpecificationsTest implements WithAssertions {
                         JsonIntegerSchema.builder().description("optional").build())
                 .containsEntry(
                         "arg28",
-                        JsonIntegerSchema.builder().description("required").build());
+                        JsonIntegerSchema.builder().description("required").build())
+                .containsEntry(
+                        "arg29",
+                        new Wrapper.CustomOffsetDateTimeSchema());
 
         assertThat(ts.parameters().required())
                 .containsExactly(
@@ -318,9 +347,10 @@ class ToolSpecificationsTest implements WithAssertions {
                         "arg25",
                         "arg26",
                         // "arg27", params with @P(required = false) are optional
-                        "arg28");
+                        "arg28",
+                        "arg29" );
     }
-
+    
     record Customer(String name, Address billingAddress, Address shippingAddress) {}
 
     public static class CustomerRegistration {
@@ -367,4 +397,5 @@ class ToolSpecificationsTest implements WithAssertions {
                         .required("arg0")
                         .build());
     }
+    
 }

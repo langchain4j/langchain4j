@@ -266,6 +266,8 @@ public class JsonSchemaElementHelper {
                     .collect(Collectors.toList());
             properties.put("anyOf", anyOf);
             return properties;
+        } else if (jsonSchemaElement instanceof CustomSchemaElement customSchemaElement) {
+            return customSchemaElement.toMap();
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
         }
