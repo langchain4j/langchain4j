@@ -92,34 +92,8 @@ public class DefaultContentInjector implements ContentInjector {
     }
 
     protected Prompt createPrompt(ChatMessage chatMessage, List<Content> contents) {
-        return createPrompt((UserMessage) chatMessage, contents);
-    }
-
-    /**
-     * @deprecated use {@link #inject(List, ChatMessage)} instead.
-     */
-    @Override
-    @Deprecated
-    public UserMessage inject(List<Content> contents, UserMessage userMessage) {
-
-        if (contents.isEmpty()) {
-            return userMessage;
-        }
-
-        Prompt prompt = createPrompt(userMessage, contents);
-        if (isNotNullOrBlank(userMessage.name())) {
-            return prompt.toUserMessage(userMessage.name());
-        }
-        return prompt.toUserMessage();
-    }
-
-    /**
-     * @deprecated implement/override {@link #createPrompt(ChatMessage, List)} instead.
-     */
-    @Deprecated
-    protected Prompt createPrompt(UserMessage userMessage, List<Content> contents) {
         Map<String, Object> variables = new HashMap<>();
-        variables.put("userMessage", userMessage.singleText());
+        variables.put("userMessage", ((UserMessage) chatMessage).singleText());
         variables.put("contents", format(contents));
         return promptTemplate.apply(variables);
     }

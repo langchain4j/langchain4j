@@ -20,5 +20,9 @@ public enum ClientMethod {
     @JsonProperty("resources/read")
     RESOURCES_READ,
     @JsonProperty("resources/templates/list")
-    RESOURCES_TEMPLATES_LIST
+    RESOURCES_TEMPLATES_LIST,
+    @JsonProperty("prompts/list")
+    PROMPTS_LIST,
+    @JsonProperty("prompts/get")
+    PROMPTS_GET
 }
