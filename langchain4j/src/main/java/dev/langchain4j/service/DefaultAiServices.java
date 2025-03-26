@@ -54,20 +54,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-<<<<<<< HEAD
-import static dev.langchain4j.service.TypeUtils.isResultRawString;
-=======
-import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Exceptions.runtime;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
->>>>>>> e1782916 (refactoring)
 
 class DefaultAiServices<T> extends AiServices<T> {
 
@@ -160,9 +147,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
-                        boolean returnsResult = typeHasRawClass(returnType, Result.class);
-                        boolean returnsResultOfString =
-                                returnsResult && resolveFirstGenericParameterClass(returnType) == String.class;
 
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
@@ -251,7 +235,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatResponse.aiMessage(), toolExecutionResult.tokenUsageAccumulator(), finishReason);
 
                         Object parsedResponse = serviceOutputParser.parse(response, returnType);
-                        if (returnsResult) {
+                        if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
                                     .tokenUsage(toolExecutionResult.tokenUsageAccumulator())
@@ -262,11 +246,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         } else {
                             return parsedResponse;
                         }
-                    }
-
-                    private boolean allToolsReturnRaw(AiMessage aiMessage, Map<String, ToolExecutor> toolExecutors) {
-                        return aiMessage.toolExecutionRequests().stream()
-                                .map(r -> toolExecutors.get(r.name())).allMatch(tExec -> tExec != null && tExec.returnRaw());
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

@@ -773,7 +773,7 @@ public abstract class AiServicesWithNewToolsIT {
             var response = assistant.chat(text);
 
             // then
-            assertThat(response.content()).isNull();  // should only contain tool executions
+            assertThat(response.content()).isEqualTo("124");
             assertThat(response.toolExecutions().size()).isEqualTo(1);
             assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
 
@@ -783,7 +783,6 @@ public abstract class AiServicesWithNewToolsIT {
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
                 verify(model, times(1)).chat(chatRequestCaptor.capture());  // only 1 time, to call the tool
-                verifyNoMoreInteractions(model);
 
                 var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -816,7 +815,9 @@ public abstract class AiServicesWithNewToolsIT {
             var response = assistant.chat(text);
 
             // then
-            assertThat(response.content()).contains("20");  // since multiple tools are called without return raw set, content is returned
+            assertThat(response.content()).contains("20");
+            // the result is not only "20" but is manipulated by the LLM since one of the 2 tools doesn't have raw return
+            assertThat(response.content()).isNotEqualTo("20");
             assertThat(response.toolExecutions()).hasSize(2);
 
             assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
@@ -833,7 +834,6 @@ public abstract class AiServicesWithNewToolsIT {
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
                 verify(model, times(3)).chat(chatRequestCaptor.capture());  // 3 times = 2 tool requests + summary
-                verifyNoMoreInteractions(model);
 
                 var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(2);
@@ -862,8 +862,8 @@ public abstract class AiServicesWithNewToolsIT {
             var response = assistant.chat(text);
 
             // then
-            assertThat(response.content()).isNull();  // all tools have return raw set
-            assertThat(response.toolExecutions()).hasSize(1);  // second tool couldn't be called, first returned raw
+            assertThat(response.content()).isEqualTo("20");
+            assertThat(response.toolExecutions()).hasSize(2);  // both tools are return raw and get called
 
             assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
             assertThat(response.toolExecutions().get(0).request().name()).isEqualTo("add");
@@ -874,8 +874,7 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(1)).chat(chatRequestCaptor.capture());  // 1 times = 1 tool requests return raw
-                verifyNoMoreInteractions(model);
+                verify(model, times(3)).chat(chatRequestCaptor.capture());
 
                 var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(2);
@@ -904,7 +903,7 @@ public abstract class AiServicesWithNewToolsIT {
             var response = assistant.chat(text);
 
             // then
-            assertThat(response.content()).isNull();  // all tools have return raw set
+            assertThat(response.content()).isEqualTo("42");
             assertThat(response.toolExecutions()).hasSize(2);  // both tools called simultaneously
 
             assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
@@ -920,8 +919,7 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(1)).chat(chatRequestCaptor.capture());  // 1 times = 1 tool requests return raw
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
 
                 var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(2);

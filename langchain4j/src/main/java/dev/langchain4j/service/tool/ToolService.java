@@ -16,8 +16,11 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.IllegalConfigurationException;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class ToolService {
 
@@ -129,6 +133,7 @@ public class ToolService {
         int executionsLeft = MAX_SEQUENTIAL_TOOL_EXECUTIONS;
         List<ToolExecution> toolExecutions = new ArrayList<>();
 
+        boolean shouldReturnDirectly  = true;
         while (true) {
 
             if (executionsLeft-- == 0) {
@@ -149,25 +154,7 @@ public class ToolService {
                 break;
             }
 
-            for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
-
-                ToolExecutionResultMessage toolExecutionResultMessage = toolExecutor == null
-                        ? applyToolHallucinationStrategy(toolExecutionRequest)
-                        : ToolExecutionResultMessage.from(
-                                toolExecutionRequest, toolExecutor.execute(toolExecutionRequest, memoryId));
-
-                toolExecutions.add(ToolExecution.builder()
-                        .request(toolExecutionRequest)
-                        .result(toolExecutionResultMessage.text())
-                        .build());
-
-                if (chatMemory != null) {
-                    chatMemory.add(toolExecutionResultMessage);
-                } else {
-                    messages.add(toolExecutionResultMessage);
-                }
-            }
+            shouldReturnDirectly = executeTools(messages, chatMemory, memoryId, toolExecutors, aiMessage, shouldReturnDirectly, toolExecutions);
 
             if (chatMemory != null) {
                 messages = chatMemory.messages();
@@ -184,7 +171,51 @@ public class ToolService {
                     tokenUsageAccumulator, chatResponse.metadata().tokenUsage());
         }
 
-        return new ToolExecutionResult(chatResponse, toolExecutions, tokenUsageAccumulator);
+        return shouldReturnDirectly ?
+                rawToolExecutionResult(chatResponse, toolExecutions, tokenUsageAccumulator) :
+                new ToolExecutionResult(chatResponse, toolExecutions, tokenUsageAccumulator);
+    }
+
+    private boolean executeTools(List<ChatMessage> messages, ChatMemory chatMemory, Object memoryId, Map<String, ToolExecutor> toolExecutors, AiMessage aiMessage, boolean shouldReturnDirectly, List<ToolExecution> toolExecutions) {
+        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+            ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+            shouldReturnDirectly = shouldReturnDirectly && toolExecutor != null && toolExecutor.returnRaw();
+
+            ToolExecutionResultMessage toolExecutionResultMessage = toolExecutor == null
+                    ? applyToolHallucinationStrategy(toolExecutionRequest)
+                    : ToolExecutionResultMessage.from(
+                            toolExecutionRequest, toolExecutor.execute(toolExecutionRequest, memoryId));
+
+            toolExecutions.add(ToolExecution.builder()
+                    .request(toolExecutionRequest)
+                    .result(toolExecutionResultMessage.text())
+                    .build());
+
+            if (chatMemory != null) {
+                chatMemory.add(toolExecutionResultMessage);
+            } else {
+                messages.add(toolExecutionResultMessage);
+            }
+        }
+        return shouldReturnDirectly;
+    }
+
+    private static ToolExecutionResult rawToolExecutionResult(ChatResponse chatResponse, List<ToolExecution> toolExecutions, TokenUsage tokenUsageAccumulator) {
+        AiMessage toolMessage = AiMessage.builder()
+                .text(toolExecutions.get(toolExecutions.size()-1).result())
+                .toolExecutionRequests(toolExecutions.stream().map(ToolExecution::request).toList())
+                .build();
+        ChatResponseMetadata toolResponseMetadata = ChatResponseMetadata.builder()
+                .id(chatResponse.metadata().id())
+                .modelName(chatResponse.metadata().modelName())
+                .tokenUsage(chatResponse.metadata().tokenUsage())
+                .finishReason(FinishReason.STOP)
+                .build();
+        ChatResponse toolresponse = ChatResponse.builder()
+                .aiMessage(toolMessage)
+                .metadata(toolResponseMetadata)
+                .build();
+        return new ToolExecutionResult(toolresponse, toolExecutions, tokenUsageAccumulator);
     }
 
     public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {

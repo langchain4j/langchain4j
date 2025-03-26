@@ -749,6 +749,7 @@ class AiServicesWithToolsIT {
         Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
         assertThat(response.content().text()).contains("2027");
         verify(toolExecutor).execute(any(), any());
+        verify(toolExecutor).returnRaw();
         verifyNoMoreInteractions(toolExecutor);
     }
 
