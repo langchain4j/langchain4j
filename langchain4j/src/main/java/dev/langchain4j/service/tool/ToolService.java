@@ -133,7 +133,7 @@ public class ToolService {
         int executionsLeft = MAX_SEQUENTIAL_TOOL_EXECUTIONS;
         List<ToolExecution> toolExecutions = new ArrayList<>();
 
-        boolean shouldReturnDirectly  = true;
+        boolean shouldReturnDirectly = true;
         while (true) {
 
             if (executionsLeft-- == 0) {
@@ -171,7 +171,7 @@ public class ToolService {
                     tokenUsageAccumulator, chatResponse.metadata().tokenUsage());
         }
 
-        return shouldReturnDirectly ?
+        return shouldReturnDirectly && !toolExecutions.isEmpty() ?
                 rawToolExecutionResult(chatResponse, toolExecutions, tokenUsageAccumulator) :
                 new ToolExecutionResult(chatResponse, toolExecutions, tokenUsageAccumulator);
     }
