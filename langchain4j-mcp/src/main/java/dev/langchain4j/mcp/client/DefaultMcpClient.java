@@ -23,6 +23,7 @@ import dev.langchain4j.mcp.client.protocol.McpListResourceTemplatesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
+import dev.langchain4j.mcp.client.protocol.PingRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
@@ -207,6 +208,22 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = transport.executeOperationWithResponse(operation);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             return PromptsHelper.parsePromptContents(result);
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
+    public void checkHealth() {
+        transport.checkHealth();
+        long operationId = idGenerator.getAndIncrement();
+        PingRequest ping = new PingRequest(operationId);
+        long timeoutMillis = 10000; // TODO: configurable?
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(ping);
+            resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             throw new RuntimeException(e);
         } finally {
