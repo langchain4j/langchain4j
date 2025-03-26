@@ -2,7 +2,7 @@ package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
-import dev.langchain4j.mcp.client.protocol.PingResponse;
+import dev.langchain4j.mcp.client.protocol.McpPingResponse;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -41,7 +41,7 @@ public class McpOperationHandler {
                 if (message.has("method")) {
                     String method = message.get("method").asText();
                     if (method.equals("ping")) {
-                        transport.executeOperationWithoutResponse(new PingResponse(messageId));
+                        transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
                         return;
                     }
                 }
