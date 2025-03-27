@@ -782,7 +782,7 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(1)).chat(chatRequestCaptor.capture());  // only 1 time, to call the tool
+                verify(model, times(2)).chat(chatRequestCaptor.capture());  // 2 times, the model is always called regardless of the tool raw return
 
                 var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
