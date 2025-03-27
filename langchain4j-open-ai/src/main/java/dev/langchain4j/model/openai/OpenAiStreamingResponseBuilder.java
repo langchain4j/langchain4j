@@ -99,6 +99,11 @@ public class OpenAiStreamingResponseBuilder {
             this.contentBuilder.append(content);
         }
 
+        String reasoning_content = delta.reasoning_content();
+        if (!isNullOrEmpty(reasoning_content)) {
+            this.contentBuilder.append(reasoning_content);
+        }
+
         if (delta.functionCall() != null) {
             FunctionCall functionCall = delta.functionCall();
 

@@ -23,6 +23,8 @@ public final class Delta {
     @JsonProperty
     private final String content;
     @JsonProperty
+    private final String reasoning_content;
+    @JsonProperty
     private final List<ToolCall> toolCalls;
     @JsonProperty
     @Deprecated
@@ -33,6 +35,7 @@ public final class Delta {
         this.content = builder.content;
         this.toolCalls = builder.toolCalls;
         this.functionCall = builder.functionCall;
+        this.reasoning_content = builder.reasoning_content;
     }
 
     public Role role() {
@@ -41,6 +44,10 @@ public final class Delta {
 
     public String content() {
         return content;
+    }
+
+    public String reasoning_content() {
+        return reasoning_content;
     }
 
     public List<ToolCall> toolCalls() {
@@ -62,6 +69,7 @@ public final class Delta {
     private boolean equalTo(Delta another) {
         return Objects.equals(role, another.role)
                 && Objects.equals(content, another.content)
+                && Objects.equals(reasoning_content, another.reasoning_content)
                 && Objects.equals(toolCalls, another.toolCalls)
                 && Objects.equals(functionCall, another.functionCall);
     }
@@ -71,6 +79,7 @@ public final class Delta {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(role);
         h += (h << 5) + Objects.hashCode(content);
+        h += (h << 5) + Objects.hashCode(reasoning_content);
         h += (h << 5) + Objects.hashCode(toolCalls);
         h += (h << 5) + Objects.hashCode(functionCall);
         return h;
@@ -81,6 +90,7 @@ public final class Delta {
         return "Delta{"
                 + "role=" + role
                 + ", content=" + content
+                + ", reasoning_content=" + reasoning_content
                 + ", toolCalls=" + toolCalls
                 + ", functionCall=" + functionCall
                 + "}";
@@ -97,6 +107,7 @@ public final class Delta {
 
         private Role role;
         private String content;
+        private String reasoning_content;
         private List<ToolCall> toolCalls;
         @Deprecated
         private FunctionCall functionCall;
@@ -108,6 +119,11 @@ public final class Delta {
 
         public Builder content(String content) {
             this.content = content;
+            return this;
+        }
+
+        public Builder reasoning_content(String reasoning_content) {
+            this.reasoning_content = reasoning_content;
             return this;
         }
 

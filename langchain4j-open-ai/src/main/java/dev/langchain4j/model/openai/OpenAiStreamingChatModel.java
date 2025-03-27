@@ -182,6 +182,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         if (!isNullOrEmpty(content)) {
             handler.onPartialResponse(content);
         }
+
+        String reasoning_content = delta.reasoning_content();
+        if (!isNullOrEmpty(reasoning_content)) {
+            handler.onPartialResponse(reasoning_content);
+        }
     }
 
     @Override
