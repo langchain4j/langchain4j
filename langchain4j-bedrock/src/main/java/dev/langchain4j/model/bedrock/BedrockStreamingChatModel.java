@@ -6,10 +6,8 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -17,7 +15,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -89,33 +86,6 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
         ListenersUtil.onRequest(finalChatRequest, this.provider(), attributes, listeners);
         this.client.converseStream(converseStreamRequest, built).join();
-    }
-
-    public static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
-        return Response.from(
-                chatResponse.aiMessage(),
-                chatResponse.metadata().tokenUsage(),
-                chatResponse.metadata().finishReason());
-    }
-
-    static StreamingChatResponseHandler convertHandler(StreamingResponseHandler<AiMessage> handler) {
-        return new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                handler.onNext(partialResponse);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                handler.onComplete(convertResponse(completeResponse));
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                handler.onError(error);
-            }
-        };
     }
 
     private ConverseStreamRequest buildConverseStreamRequest(

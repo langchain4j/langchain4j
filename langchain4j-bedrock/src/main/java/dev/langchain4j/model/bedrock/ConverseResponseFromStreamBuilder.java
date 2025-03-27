@@ -11,8 +11,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDeltaEve
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStart;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStartEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStopEvent;
-import software.amazon.awssdk.services.bedrockruntime.model.ConverseMetrics;
-import software.amazon.awssdk.services.bedrockruntime.model.ConverseOutput;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamMetadataEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
@@ -21,11 +19,11 @@ import software.amazon.awssdk.services.bedrockruntime.model.MessageStopEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 class ConverseResponseFromStreamBuilder {
-    private ConverseResponse.Builder converseResponseBuilder = ConverseResponse.builder();
+    private final ConverseResponse.Builder converseResponseBuilder = ConverseResponse.builder();
     private Message.Builder messageBuilder = Message.builder();
-    private StringBuilder stringBuilder = new StringBuilder();
+    private final StringBuilder stringBuilder = new StringBuilder();
     private ToolUseBlock.Builder toolUseBlockBuilder = null;
-    private List<ToolUseBlock> toolUseBlocks = new ArrayList<>();
+    private final List<ToolUseBlock> toolUseBlocks = new ArrayList<>();
 
     public static ConverseResponseFromStreamBuilder builder() {
         return new ConverseResponseFromStreamBuilder();
@@ -37,7 +35,7 @@ class ConverseResponseFromStreamBuilder {
                     .toolUseId(contentBlockStartEvent.start().toolUse().toolUseId())
                     .name(contentBlockStartEvent.start().toolUse().name());
         }
-        ;
+
         return this;
     }
 
@@ -61,9 +59,8 @@ class ConverseResponseFromStreamBuilder {
 
     public ConverseResponseFromStreamBuilder append(ConverseStreamMetadataEvent metadataEvent) {
         converseResponseBuilder.usage(metadataEvent.usage());
-        converseResponseBuilder.metrics(ConverseMetrics.builder()
-                .latencyMs(metadataEvent.metrics().latencyMs())
-                .build());
+        converseResponseBuilder.metrics(builder ->
+                builder.latencyMs(metadataEvent.metrics().latencyMs()).build());
         return this;
     }
 
@@ -81,8 +78,8 @@ class ConverseResponseFromStreamBuilder {
             contents.add(ContentBlock.builder().text(stringBuilder.toString()).build());
             contents.addAll(
                     this.toolUseBlocks.stream().map(ContentBlock::fromToolUse).toList());
-            converseResponseBuilder.output(ConverseOutput.builder()
-                    .message(this.messageBuilder.content(contents).build())
+            converseResponseBuilder.output(builder -> builder.message(
+                            this.messageBuilder.content(contents).build())
                     .build());
             this.messageBuilder = null;
         }
