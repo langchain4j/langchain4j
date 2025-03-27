@@ -10,6 +10,8 @@ import dev.langchain4j.data.document.DocumentSource
 import dev.langchain4j.data.document.loadAsync
 import dev.langchain4j.data.document.parser.TextDocumentParser
 import dev.langchain4j.data.document.source.FileSystemSource
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -32,8 +34,10 @@ internal class AsyncDocumentLoaderTest {
     fun `Should load documents asynchronously`() =
         runTest {
             val document = loadAsync(documentSource, parser)
-            assertThat(document.text()).contains("Miles of Smiles Car Rental Services")
-            assertThat(document.metadata()).isNotNull()
+            document.text() shouldContain "Miles of Smiles Car Rental Services"
+            document.metadata() shouldNotBeNull {
+                getString("file_name") shouldContain "miles-of-smiles-terms-of-use.txt"
+            }
         }
 
     @Test

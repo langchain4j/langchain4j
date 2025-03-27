@@ -7,7 +7,7 @@ import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiTextCompletionRequest;
 import dev.langchain4j.model.workersai.client.WorkersAiTextCompletionResponse;
 import dev.langchain4j.model.workersai.spi.WorkersAiLanguageModelBuilderFactory;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 
@@ -17,14 +17,14 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * WorkerAI Language model.
  * <a href="https://developers.cloudflare.com/api/operations/workers-ai-post-run-model">...</a>
  */
-@Slf4j
 public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements LanguageModel {
+
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(WorkersAiLanguageModel.class);
 
     /**
      * Constructor with Builder.
      *
-     * @param builder
-     *      builder.
+     * @param builder builder.
      */
     public WorkersAiLanguageModel(Builder builder) {
         this(builder.accountId, builder.modelName, builder.apiToken);
@@ -33,12 +33,9 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
     /**
      * Constructor with Builder.
      *
-     * @param accountId
-     *      account identifier
-     * @param modelName
-     *      model name
-     * @param apiToken
-     *     api token
+     * @param accountId account identifier
+     * @param modelName model name
+     * @param apiToken  api token
      */
     public WorkersAiLanguageModel(String accountId, String modelName, String apiToken) {
         super(accountId, modelName, apiToken);
@@ -47,8 +44,7 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
     /**
      * Builder access.
      *
-     * @return
-     *      builder instance
+     * @return builder instance
      */
     public static WorkersAiLanguageModel.Builder builder() {
         for (WorkersAiLanguageModelBuilderFactory factory : loadFactories(WorkersAiLanguageModelBuilderFactory.class)) {
@@ -84,10 +80,8 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
         /**
          * Simple constructor.
          *
-         * @param accountId
-         *      account identifier.
-         * @return
-         *      self reference
+         * @param accountId account identifier.
+         * @return self reference
          */
         public Builder accountId(String accountId) {
             this.accountId = accountId;
@@ -126,7 +120,9 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Response<String> generate(String prompt) {
         try {
@@ -143,7 +139,9 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Response<String> generate(Prompt prompt) {
         return generate(prompt.text());
