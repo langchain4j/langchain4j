@@ -10,22 +10,22 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * {"file": "filename"}
  */
 public class FilePreference {
-    private String file;
+    private String filename;
 
     public FilePreference() {}
 
     @JsonIgnore
     public boolean isValid() {
-        return file != null;
+        return filename != null;
     }
 
     @JsonProperty("file")
-    public void setFile(String file) {
-        this.file = file;
+    public void setFilename(String filename) {
+        this.filename = filename;
     }
 
     @JsonProperty("file")
-    public String getFile() {
-        return file;
+    public String getFilename() {
+        return filename;
     }
 }
