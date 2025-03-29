@@ -1,8 +1,8 @@
 package dev.langchain4j.data.document.loader.oracle;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import java.io.IOException;
@@ -24,10 +24,18 @@ import org.jsoup.select.Elements;
 /**
  * Load documents
  *
- * Use dbms_vector_chain.utl_to_text to load documents either from
- * the file system or the database. The documents can be in any format
- * supported by the Oracle Text filter including Word, PDF, HTML,
- * and text files.
+ * Load documents either from the file system or the database. The documents
+ * can be in any format supported by the Oracle Text filter including
+ * Word, PDF, HTML, and text files.
+ *
+ * Use the following preferences
+ *
+ * To specify a file:
+ * {"file": "filename"}
+ * To specify a directory:
+ * {"dir": "directory name"}
+ * To specify a table:
+ * {"owner": "owner", "tablename": "table name", "colname": "column name"}
  */
 public class OracleDocumentLoader {
 
@@ -35,6 +43,9 @@ public class OracleDocumentLoader {
 
     private final String COLUMN_TEXT = "text";
     private final String COLUMN_METADATA = "metadata";
+    private static final String META_TAG = "meta";
+    private static final String META_NAME_ATTR = "name";
+    private static final String META_CONTENT_ATTR = "content";
 
     /**
      * create a document loader
@@ -48,23 +59,32 @@ public class OracleDocumentLoader {
      *
      * @param pref   JSON Preference specifying the file, directory, or table
      */
-    public List<Document> loadDocuments(String pref) throws JsonProcessingException, IOException, SQLException {
+    // public List<Document> loadDocuments(String pref) throws JsonProcessingException, IOException, SQLException {
+    public List<Document> loadDocuments(String pref) throws IOException, SQLException {
         List<Document> documents = new ArrayList<>();
 
         ObjectMapper mapper = new ObjectMapper();
-        // disable throwing an exception on properties not listed in the class
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        FilePreference filePref = mapper.readValue(pref, FilePreference.class);
-        DirectoryPreference dirPref = mapper.readValue(pref, DirectoryPreference.class);
-        TablePreference tablePref = mapper.readValue(pref, TablePreference.class);
+        JsonNode rootNode = mapper.readTree(pref);
 
-        if (filePref.isValid()) {
-            String filename = filePref.getFile();
+        if (rootNode.has("file")) {
+            FilePreference filePref;
+            try {
+                filePref = mapper.readValue(pref, FilePreference.class);
+            } catch (UnrecognizedPropertyException ex) {
+                throw new InvalidParameterException("Invalid file preference: unknown property specified");
+            }
+            String filename = filePref.getFilename();
             Document doc = loadDocument(filename, pref);
             if (doc != null) {
                 documents.add(doc);
             }
-        } else if (dirPref.isValid()) {
+        } else if (rootNode.has("dir")) {
+            DirectoryPreference dirPref;
+            try {
+                dirPref = mapper.readValue(pref, DirectoryPreference.class);
+            } catch (UnrecognizedPropertyException ex) {
+                throw new InvalidParameterException("Invalid directory preference: unknown property specified");
+            }
             String dir = dirPref.getDirectory();
             Path root = Paths.get(dir);
             Files.walk(root).forEach(path -> {
@@ -80,13 +100,22 @@ public class OracleDocumentLoader {
                     }
                 }
             });
-        } else if (tablePref.isValid()) {
+        } else if (rootNode.has("tablename")) {
+            TablePreference tablePref;
+            try {
+                tablePref = mapper.readValue(pref, TablePreference.class);
+            } catch (UnrecognizedPropertyException ex) {
+                throw new InvalidParameterException("Invalid table preference: unknown property specified");
+            }
+            if (!tablePref.isValid()) {
+                throw new InvalidParameterException("Invalid table preference: missing owner, table, or column name");
+            }
             String owner = tablePref.getOwner();
             String table = tablePref.getTableName();
             String column = tablePref.getColumnName();
             documents.addAll(loadDocuments(owner, table, column, pref));
         } else {
-            throw new InvalidParameterException("Invalid preference");
+            throw new InvalidParameterException("Invalid preference: missing filename, directory, or table");
         }
 
         return documents;
@@ -171,13 +200,13 @@ public class OracleDocumentLoader {
         Metadata metadata = new Metadata();
 
         org.jsoup.nodes.Document doc = Jsoup.parse(html);
-        Elements metaTags = doc.getElementsByTag("meta");
+        Elements metaTags = doc.getElementsByTag(META_TAG);
         for (Element metaTag : metaTags) {
-            String name = metaTag.attr("name");
+            String name = metaTag.attr(META_NAME_ATTR);
             if (name.isEmpty()) {
                 continue;
             }
-            String content = metaTag.attr("content");
+            String content = metaTag.attr(META_CONTENT_ATTR);
             metadata.put(name, content);
         }
 
