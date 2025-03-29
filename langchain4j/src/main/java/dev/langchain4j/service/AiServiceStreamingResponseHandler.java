@@ -79,6 +79,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
 
+        if (completeResponse == null) {
+            return;
+        }
+        
         AiMessage aiMessage = completeResponse.aiMessage();
         addToMemory(aiMessage);
 
