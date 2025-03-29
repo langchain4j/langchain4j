@@ -25,6 +25,21 @@ import oracle.jdbc.OracleConnection;
  * Use dbms_vector_chain.utl_to_embeddings to get embeddings.
  * You can specify which provider to use such as an ONNX model
  * or a third-party provider via a REST call.
+ *
+ * Some example preferences
+ *
+ * To use an ONNX model:
+ * {
+ *   "provider": "database",
+ *   "model": "database"
+ * }
+ * To use a third-party provider:
+ * {
+ *   "provider": "ocigenai",
+ *   "credential_name": "OCI_CRED",
+ *   "url": "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/embedText",
+ *   "model": "cohere.embed-english-light-v3.0"
+ * }
  */
 public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
 

@@ -13,6 +13,24 @@ import java.sql.SQLException;
  * Use dbms_vector_chain.utl_to_summary to summarize documents.
  * You can specify which provider to use such as database
  * for Oracle Text or a third-party provider via a REST call.
+ *
+ * Some example preferences
+ *
+ * To use an ONNX model:
+ * {
+ *   "provider": "database",
+ *   "model": "database"
+ * }
+ * To use a third-party provider:
+ * {
+ *   "provider": "ocigenai",
+ *   "credential_name" : "OCI_CRED",
+ *   "url": "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/chat",
+ *   "model" : "cohere.command-r-16k",
+ *   "chatRequest": {
+ *     "maxTokens": 256
+ *   }
+ * }
  */
 public class OracleSummaryLanguageModel implements LanguageModel {
 

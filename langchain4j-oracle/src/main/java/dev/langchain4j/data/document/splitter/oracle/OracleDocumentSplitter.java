@@ -19,6 +19,13 @@ import java.util.List;
  * Use dbms_vector_chain.utl_to_chunks to split documents.
  * You can specify how to split the content such as by words, characters,
  * or vocabulary to match a tokenizer in the preference.
+ *
+ * Some example preferences
+ *
+ * To split by words:
+ * {"by": "words", "max": 100}
+ * To split by characters:
+ * {"by": "characters", "max": 100}
  */
 public class OracleDocumentSplitter implements DocumentSplitter {
 
