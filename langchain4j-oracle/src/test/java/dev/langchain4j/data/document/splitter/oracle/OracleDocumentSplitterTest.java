@@ -18,11 +18,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
 public class OracleDocumentSplitterTest {
-
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(OracleDocumentSplitterTest.class);
 
     Connection conn;
 
@@ -38,69 +35,54 @@ public class OracleDocumentSplitterTest {
 
     @Test
     @DisplayName("split string input by chars")
-    void testByChars() {
+    void testByChars() throws IOException, SQLException {
         String pref = "{\"by\": \"chars\", \"max\": 50}";
         String filename = System.getenv("DEMO_DS_TEXT_FILE");
 
-        try {
-            OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, pref);
+        OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, pref);
 
-            String content = readFile(filename, Charset.forName("UTF-8"));
-            String[] chunks = splitter.split(content);
-            assertThat(chunks.length).isGreaterThan(1);
-        } catch (IOException | SQLException ex) {
-            String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-            log.error(message);
-        }
+        String content = readFile(filename, Charset.forName("UTF-8"));
+        String[] chunks = splitter.split(content);
+        assertThat(chunks.length).isGreaterThan(1);
     }
 
     @Test
     @DisplayName("split string input by words")
-    void testByWords() {
+    void testByWords() throws IOException, SQLException {
         String pref = "{\"by\": \"words\", \"max\": 50}";
         String filename = System.getenv("DEMO_DS_TEXT_FILE");
         ;
 
-        try {
-            OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, pref);
+        OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, pref);
 
-            String content = readFile(filename, Charset.forName("UTF-8"));
-            String[] chunks = splitter.split(content);
-            assertThat(chunks.length).isGreaterThan(1);
-        } catch (IOException | SQLException ex) {
-            String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-            log.error(message);
-        }
+        String content = readFile(filename, Charset.forName("UTF-8"));
+        String[] chunks = splitter.split(content);
+        assertThat(chunks.length).isGreaterThan(1);
     }
 
     @Test
     @DisplayName("split Doc input by chars")
-    void testDocByChars() {
+    void testDocByChars() throws IOException {
         String pref = "{\"by\": \"chars\", \"max\": 50}";
         String filename = System.getenv("DEMO_DS_TEXT_FILE");
 
-        try {
-            OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, pref);
+        OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, pref);
 
-            String content = readFile(filename, Charset.forName("UTF-8"));
+        String content = readFile(filename, Charset.forName("UTF-8"));
 
-            // Create a document with some metadata
-            Metadata metadata = new Metadata();
-            metadata.put("a", 1);
-            metadata.put("b", 2);
-            Document document = Document.from(content, metadata);
+        // Create a document with some metadata
+        Metadata metadata = new Metadata();
+        metadata.put("a", 1);
+        metadata.put("b", 2);
+        Document document = Document.from(content, metadata);
 
-            List<TextSegment> chunks = splitter.split(document);
-            assertThat(chunks.size()).isGreaterThan(1);
+        List<TextSegment> chunks = splitter.split(document);
+        assertThat(chunks.size()).isGreaterThan(1);
 
-            // Check that the metadata was passed
-            TextSegment chunk = chunks.get(0);
-            int a = chunk.metadata().getInteger("a");
-            assertThat(a).isEqualTo(1);
-        } catch (IOException ex) {
-            String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-            log.error(message);
-        }
+        // Check that the metadata was passed
+        TextSegment chunk = chunks.get(0);
+        int a = chunk.metadata().getInteger("a");
+        assertThat(a).isEqualTo(1);
     }
 
     @AfterEach

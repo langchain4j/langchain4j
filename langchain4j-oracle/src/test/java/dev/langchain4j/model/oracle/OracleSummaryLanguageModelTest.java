@@ -15,11 +15,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
 public class OracleSummaryLanguageModelTest {
-
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(OracleSummaryLanguageModelTest.class);
 
     Connection conn;
 
@@ -35,44 +32,34 @@ public class OracleSummaryLanguageModelTest {
 
     @Test
     @DisplayName("summary with provider=database")
-    void testSummaryDatabase() {
-        try {
-            String pref = "{\"provider\": \"database\", \"gLevel\": \"S\"}";
+    void testSummaryDatabase() throws IOException {
+        String pref = "{\"provider\": \"database\", \"gLevel\": \"S\"}";
 
-            OracleSummaryLanguageModel model = new OracleSummaryLanguageModel(conn, pref);
+        OracleSummaryLanguageModel model = new OracleSummaryLanguageModel(conn, pref);
 
-            String filename = System.getenv("DEMO_DS_TEXT_FILE");
-            String content = readFile(filename, Charset.forName("UTF-8"));
-            Response<String> resp = model.generate(content);
-            assertThat(resp.content().length()).isGreaterThan(0);
-        } catch (IOException ex) {
-            String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-            log.error(message);
-        }
+        String filename = System.getenv("DEMO_DS_TEXT_FILE");
+        String content = readFile(filename, Charset.forName("UTF-8"));
+        Response<String> resp = model.generate(content);
+        assertThat(resp.content().length()).isGreaterThan(0);
     }
 
     @Test
     @DisplayName("summary with provider=OCIGenAI")
-    void testSummaryOcigenai() {
-        try {
-            String pref = "{\n"
-                    + "  \"provider\": \"ocigenai\",\n"
-                    + "  \"credential_name\": \"OCI_CRED\",\n"
-                    + "  \"url\": \"https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/chat\",\n"
-                    + "  \"model\": \"cohere.command-r-08-2024\",\n"
-                    + "}";
-            String proxy = System.getenv("DEMO_PROXY");
+    void testSummaryOcigenai() throws IOException {
+        String pref = "{\n"
+                + "  \"provider\": \"ocigenai\",\n"
+                + "  \"credential_name\": \"OCI_CRED\",\n"
+                + "  \"url\": \"https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/chat\",\n"
+                + "  \"model\": \"cohere.command-r-08-2024\",\n"
+                + "}";
+        String proxy = System.getenv("DEMO_PROXY");
 
-            OracleSummaryLanguageModel model = new OracleSummaryLanguageModel(conn, pref, proxy);
+        OracleSummaryLanguageModel model = new OracleSummaryLanguageModel(conn, pref, proxy);
 
-            String filename = System.getenv("DEMO_DS_TEXT_FILE");
-            String content = readFile(filename, Charset.forName("UTF-8"));
-            Response<String> resp = model.generate(content);
-            assertThat(resp.content().length()).isGreaterThan(0);
-        } catch (IOException ex) {
-            String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-            log.error(message);
-        }
+        String filename = System.getenv("DEMO_DS_TEXT_FILE");
+        String content = readFile(filename, Charset.forName("UTF-8"));
+        Response<String> resp = model.generate(content);
+        assertThat(resp.content().length()).isGreaterThan(0);
     }
 
     @AfterEach

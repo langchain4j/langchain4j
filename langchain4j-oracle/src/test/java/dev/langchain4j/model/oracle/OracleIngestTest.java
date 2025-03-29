@@ -21,11 +21,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
 public class OracleIngestTest {
-
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(OracleEmbeddingModelTest.class);
 
     Connection conn;
 
@@ -41,72 +38,66 @@ public class OracleIngestTest {
 
     @Test
     @DisplayName("ingest")
-    void testIngest() {
-        try {
-            String embedderPref =
-                    "{\"provider\": \"database\", \"model\": \"" + System.getenv("DEMO_ONNX_MODEL") + "\"}";
-            String splitterPref = "{\"by\": \"chars\", \"max\": 50}";
+    void testIngest() throws IOException, SQLException {
+        String embedderPref = "{\"provider\": \"database\", \"model\": \"" + System.getenv("DEMO_ONNX_MODEL") + "\"}";
+        String splitterPref = "{\"by\": \"chars\", \"max\": 50}";
 
-            OracleDocumentLoader loader = new OracleDocumentLoader(conn);
-            OracleEmbeddingModel embedder = new OracleEmbeddingModel(conn, embedderPref);
-            OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, splitterPref);
+        OracleDocumentLoader loader = new OracleDocumentLoader(conn);
+        OracleEmbeddingModel embedder = new OracleEmbeddingModel(conn, embedderPref);
+        OracleDocumentSplitter splitter = new OracleDocumentSplitter(conn, splitterPref);
 
-            oracle.jdbc.datasource.OracleDataSource ods = new oracle.jdbc.datasource.impl.OracleDataSource();
-            ods.setURL(System.getenv("ORACLE_JDBC_URL"));
-            ods.setUser(System.getenv("ORACLE_JDBC_USER"));
-            ods.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
+        oracle.jdbc.datasource.OracleDataSource ods = new oracle.jdbc.datasource.impl.OracleDataSource();
+        ods.setURL(System.getenv("ORACLE_JDBC_URL"));
+        ods.setUser(System.getenv("ORACLE_JDBC_USER"));
+        ods.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
 
-            // output table
-            String tableName = "TEST";
-            String idColumn = "ID";
-            String embeddingColumn = "EMBEDDING";
-            String textColumn = "TEXT";
-            String metadataColumn = "METADATA";
+        // output table
+        String tableName = "TEST";
+        String idColumn = "ID";
+        String embeddingColumn = "EMBEDDING";
+        String textColumn = "TEXT";
+        String metadataColumn = "METADATA";
 
-            // The call to build() should create a table with the configured names
-            OracleEmbeddingStore embeddingStore = OracleEmbeddingStore.builder()
-                    .dataSource(ods)
-                    .embeddingTable(EmbeddingTable.builder()
-                            .createOption(CREATE_OR_REPLACE)
-                            .name(tableName)
-                            .idColumn(idColumn)
-                            .embeddingColumn(embeddingColumn)
-                            .textColumn(textColumn)
-                            .metadataColumn(metadataColumn)
-                            .build())
-                    .build();
+        // The call to build() should create a table with the configured names
+        OracleEmbeddingStore embeddingStore = OracleEmbeddingStore.builder()
+                .dataSource(ods)
+                .embeddingTable(EmbeddingTable.builder()
+                        .createOption(CREATE_OR_REPLACE)
+                        .name(tableName)
+                        .idColumn(idColumn)
+                        .embeddingColumn(embeddingColumn)
+                        .textColumn(textColumn)
+                        .metadataColumn(metadataColumn)
+                        .build())
+                .build();
 
-            boolean result = OracleEmbeddingModel.loadOnnxModel(
-                    conn,
-                    System.getenv("DEMO_ONNX_DIR"),
-                    System.getenv("DEMO_ONNX_FILE"),
-                    System.getenv("DEMO_ONNX_MODEL"));
+        boolean result = OracleEmbeddingModel.loadOnnxModel(
+                conn,
+                System.getenv("DEMO_ONNX_DIR"),
+                System.getenv("DEMO_ONNX_FILE"),
+                System.getenv("DEMO_ONNX_MODEL"));
 
-            String loaderPref = "{\"file\": \"" + System.getenv("DEMO_DS_PDF_FILE") + "\"}";
-            List<Document> docs = loader.loadDocuments(loaderPref);
+        String loaderPref = "{\"file\": \"" + System.getenv("DEMO_DS_PDF_FILE") + "\"}";
+        List<Document> docs = loader.loadDocuments(loaderPref);
 
-            EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                    .documentSplitter(splitter)
-                    .embeddingModel(embedder)
-                    .embeddingStore(embeddingStore)
-                    .build();
-            ingestor.ingest(docs);
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(splitter)
+                .embeddingModel(embedder)
+                .embeddingStore(embeddingStore)
+                .build();
+        ingestor.ingest(docs);
 
-            /*
-            // for debugging. ingest output should match
-            System.out.println("# docs=" + docs.size());
-            List<TextSegment> splits = splitter.splitAll(docs);
-            System.out.println("# split=" + splits.size());
-            Response<List<dev.langchain4j.data.embedding.Embedding>> embeddings = embedder.embedAll(splits);
-            System.out.println("# embedded=" + embeddings.content().size());
-            */
+        /*
+        // for debugging. ingest output should match
+        System.out.println("# docs=" + docs.size());
+        List<TextSegment> splits = splitter.splitAll(docs);
+        System.out.println("# split=" + splits.size());
+        Response<List<dev.langchain4j.data.embedding.Embedding>> embeddings = embedder.embedAll(splits);
+        System.out.println("# embedded=" + embeddings.content().size());
+        */
 
-            int count = getCount(tableName);
-            assertThat(count).isGreaterThan(0);
-        } catch (SQLException | IOException ex) {
-            String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-            log.error(message);
-        }
+        int count = getCount(tableName);
+        assertThat(count).isGreaterThan(0);
     }
 
     int getCount(String tableName) throws SQLException {
