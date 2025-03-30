@@ -364,7 +364,7 @@ OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
     .modelName("llama3.1")
     .build();
 
-ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder()
+ChatResponse ollamaChatResponse = ollamaChatModel.chat(ChatRequest.builder()
         .messages(userMessage("Tell me about Canada."))
         .responseFormat(ResponseFormat.builder()
                 .type(ResponseFormatType.JSON)
@@ -382,7 +382,7 @@ ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder()
                 .build())
         .build());
 
-String jsonFormattedResponse = chatResponse.aiMessage().text();
+String jsonFormattedResponse = ollamaChatResponse.aiMessage().text();
 
 /* jsonFormattedResponse value:
 
@@ -436,7 +436,7 @@ List<ChatMessage> messages = List.of(
     ))
 );
 
-ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder().messages(messages).build());
+ChatResponse ollamaChatResponse = ollamaChatModel.chat(ChatRequest.builder().messages(messages).build());
 
-System.out.println(chatResponse.aiMessage().text()); // "Yes" (meaning risk detected by Granite Guardian)
+System.out.println(ollamaChatResponse.aiMessage().text()); // "Yes" (meaning risk detected by Granite Guardian)
 ```

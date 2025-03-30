@@ -1,5 +1,11 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.data.message.ContentType.IMAGE;
+import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -17,7 +23,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
-
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,40 +33,32 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.data.message.ContentType.IMAGE;
-import static dev.langchain4j.data.message.ContentType.TEXT;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
+class InternalOllamaHelper {
 
-class OllamaMessagesUtils {
-
-    private static final Predicate<ChatMessage> isUserMessage =
-            UserMessage.class::isInstance;
+    private static final Predicate<ChatMessage> isUserMessage = UserMessage.class::isInstance;
     private static final Predicate<UserMessage> hasImages =
-            userMessage -> userMessage.contents().stream()
-                    .anyMatch(content -> IMAGE.equals(content.type()));
+            userMessage -> userMessage.contents().stream().anyMatch(content -> IMAGE.equals(content.type()));
 
     static List<Message> toOllamaMessages(List<ChatMessage> messages) {
         return messages.stream()
-                .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message) ?
-                        messagesWithImageSupport((UserMessage) message)
-                        : otherMessages(message)
-                ).collect(Collectors.toList());
+                .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message)
+                        ? messagesWithImageSupport((UserMessage) message)
+                        : otherMessages(message))
+                .collect(Collectors.toList());
     }
 
     static List<Tool> toOllamaTools(List<ToolSpecification> toolSpecifications) {
         if (toolSpecifications == null) {
             return null;
         }
-        return toolSpecifications.stream().map(toolSpecification ->
-                        Tool.builder()
-                                .function(Function.builder()
-                                        .name(toolSpecification.name())
-                                        .description(toolSpecification.description())
-                                        .parameters(toOllamaParameters(toolSpecification))
-                                        .build())
+        return toolSpecifications.stream()
+                .map(toolSpecification -> Tool.builder()
+                        .function(Function.builder()
+                                .name(toolSpecification.name())
+                                .description(toolSpecification.description())
+                                .parameters(toOllamaParameters(toolSpecification))
                                 .build())
+                        .build())
                 .collect(Collectors.toList());
     }
 
@@ -75,11 +75,11 @@ class OllamaMessagesUtils {
     }
 
     static List<ToolExecutionRequest> toToolExecutionRequests(List<ToolCall> toolCalls) {
-        return toolCalls.stream().map(toolCall ->
-                        ToolExecutionRequest.builder()
-                                .name(toolCall.getFunction().getName())
-                                .arguments(toJson(toolCall.getFunction().getArguments()))
-                                .build())
+        return toolCalls.stream()
+                .map(toolCall -> ToolExecutionRequest.builder()
+                        .name(toolCall.getFunction().getName())
+                        .arguments(toJson(toolCall.getFunction().getArguments()))
+                        .build())
                 .toList();
     }
 
@@ -89,13 +89,62 @@ class OllamaMessagesUtils {
         } else if (responseFormat == ResponseFormat.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
-            return toJson(JsonSchemaElementHelper.toMap(responseFormat.jsonSchema().rootElement()));
+            return toJson(
+                    JsonSchemaElementHelper.toMap(responseFormat.jsonSchema().rootElement()));
         }
     }
 
+    static FinishReason toFinishReason(String reason) {
+        if (reason == null) {
+            return null;
+        }
+
+        return switch (reason) {
+            case "stop" -> FinishReason.STOP;
+            case "length" -> FinishReason.LENGTH;
+            default -> FinishReason.OTHER;
+        };
+    }
+
+    static void validate(OllamaChatRequestParameters parameters) {
+        if (parameters.frequencyPenalty() != null) {
+            throw new IllegalArgumentException("'frequencyPenalty' parameter is not suppoerted by Ollama");
+        }
+        if (parameters.presencePenalty() != null) {
+            throw new IllegalArgumentException("'presencePenalty' parameter is not suppoerted by Ollama");
+        }
+        if (parameters.maxOutputTokens() != null) {
+            throw new IllegalArgumentException(
+                    "'maxOutputTokens' parameter is not suppoerted by Ollama, please use 'numPredict' instead");
+        }
+    }
+
+    static AiMessage aiMessageFrom(OllamaChatResponse ollamaChatResponse) {
+        return ollamaChatResponse.getMessage().getToolCalls() != null
+                ? AiMessage.from(
+                        toToolExecutionRequests(ollamaChatResponse.getMessage().getToolCalls()))
+                : AiMessage.from(ollamaChatResponse.getMessage().getContent());
+    }
+
+    static ChatResponseMetadata chatResponseMetadataFrom(OllamaChatResponse ollamaChatResponse) {
+        return chatResponseMetadataFrom(
+                ollamaChatResponse.getModel(),
+                toFinishReason(ollamaChatResponse.getDoneReason()),
+                new TokenUsage(ollamaChatResponse.getPromptEvalCount(), ollamaChatResponse.getEvalCount()));
+    }
+
+    static ChatResponseMetadata chatResponseMetadataFrom(
+            String modelName, FinishReason finishReason, TokenUsage tokenUsage) {
+        return ChatResponseMetadata.builder()
+                .modelName(modelName)
+                .finishReason(finishReason)
+                .tokenUsage(tokenUsage)
+                .build();
+    }
+
     private static Message messagesWithImageSupport(UserMessage userMessage) {
-        Map<ContentType, List<Content>> groupedContents = userMessage.contents().stream()
-                .collect(Collectors.groupingBy(Content::type));
+        Map<ContentType, List<Content>> groupedContents =
+                userMessage.contents().stream().collect(Collectors.groupingBy(Content::type));
 
         if (groupedContents.get(TEXT).size() != 1) {
             throw new RuntimeException("Expecting single text content, but got: " + userMessage.contents());
@@ -127,17 +176,16 @@ class OllamaMessagesUtils {
             toolCalls = Optional.ofNullable(toolExecutionRequests)
                     .map(reqs -> reqs.stream()
                             .map(toolExecutionRequest -> {
-                                TypeReference<HashMap<String, Object>> typeReference = new TypeReference<HashMap<String, Object>>() {
-                                };
+                                TypeReference<HashMap<String, Object>> typeReference =
+                                        new TypeReference<HashMap<String, Object>>() {};
                                 FunctionCall functionCall = FunctionCall.builder()
                                         .name(toolExecutionRequest.name())
                                         .arguments(fromJson(toolExecutionRequest.arguments(), typeReference))
                                         .build();
-                                return ToolCall.builder()
-                                        .function(functionCall).build();
-                            }).collect(Collectors.toList()))
+                                return ToolCall.builder().function(functionCall).build();
+                            })
+                            .collect(Collectors.toList()))
                     .orElse(null);
-
         }
         return Message.builder()
                 .role(toOllamaRole(chatMessage.type()))
@@ -161,17 +209,12 @@ class OllamaMessagesUtils {
     }
 
     private static Role toOllamaRole(ChatMessageType chatMessageType) {
-        switch (chatMessageType) {
-            case SYSTEM:
-                return Role.SYSTEM;
-            case USER:
-                return Role.USER;
-            case AI:
-                return Role.ASSISTANT;
-            case TOOL_EXECUTION_RESULT:
-                return Role.TOOL;
-            default:
-                throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
-        }
+        return switch (chatMessageType) {
+            case SYSTEM -> Role.SYSTEM;
+            case USER -> Role.USER;
+            case AI -> Role.ASSISTANT;
+            case TOOL_EXECUTION_RESULT -> Role.TOOL;
+            default -> throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
+        };
     }
 }

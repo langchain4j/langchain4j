@@ -52,12 +52,12 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     .modelName("gemini-1.5-flash")
     .build();
 
-ChatResponse chatResponse = gemini.chat(ChatRequest.builder()
+ChatResponse ollamaChatResponse = gemini.chat(ChatRequest.builder()
     .messages(UserMessage.from(
         "How many R's are there in the word 'strawberry'?"))
     .build());
 
-String response = chatResponse.aiMessage().text();
+String response = ollamaChatResponse.aiMessage().text();
 ```
 
 ### Configuring
@@ -284,9 +284,9 @@ ChatRequest chatRequest = ChatRequest.builder()
         .responseFormat(responseFormat)
         .build();
 
-ChatResponse chatResponse = gemini.chat(chatRequest);
+ChatResponse ollamaChatResponse = gemini.chat(chatRequest);
 
-System.out.println(chatResponse.aiMessage().text());
+System.out.println(ollamaChatResponse.aiMessage().text());
 ```
 
 ### JSON Mode
