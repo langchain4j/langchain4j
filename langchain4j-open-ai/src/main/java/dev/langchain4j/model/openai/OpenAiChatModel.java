@@ -1,12 +1,9 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -43,10 +40,10 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
 /**
- * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+public class OpenAiChatModel implements ChatLanguageModel {
 
     private final OpenAiClient client;
     private final Integer maxRetries;
@@ -56,8 +53,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final Set<Capability> supportedCapabilities;
     private final Boolean strictJsonSchema;
     private final Boolean strictTools;
-
-    private final Tokenizer tokenizer;
 
     private final List<ChatModelListener> listeners;
 
@@ -127,9 +122,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
-
-        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
-
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
     }
 
@@ -193,11 +185,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         return OPEN_AI;
     }
 
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
-    }
-
     /**
      * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
      * if necessary, other parameters.
@@ -247,7 +234,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
 
@@ -412,11 +398,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         public OpenAiChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        public OpenAiChatModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 
