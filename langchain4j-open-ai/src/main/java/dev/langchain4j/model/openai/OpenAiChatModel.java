@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.Tokenizer;
@@ -25,8 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static dev.langchain4j.internal.ExceptionMapper.mappingException;
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -66,7 +63,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
 
-        if ("demo".equals(builder.apiKey)) {
+        if ("demo".equals(builder.apiKey) && !"http://langchain4j.dev/demo/openai/v1".equals(builder.baseUrl)) {
             // TODO remove before releasing 1.0.0
             throw new RuntimeException("""
                     If you wish to continue using the 'demo' key, please specify the base URL explicitly:
@@ -175,7 +172,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .modelName(openAiResponse.model())
                 .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
                 .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
-                .created(openAiResponse.created().longValue())
+                .created(openAiResponse.created())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
                 .build();
