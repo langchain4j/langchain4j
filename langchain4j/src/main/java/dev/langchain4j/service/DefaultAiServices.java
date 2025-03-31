@@ -179,6 +179,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.toolService.executionContext(memoryId, userMessage);
 
                         if (streaming) {
+                            verifyModerationIfNeeded(moderationFuture);
+
                             TokenStream tokenStream = new AiServiceTokenStream(
                                     messages,
                                     toolExecutionContext.toolSpecifications(),
@@ -186,7 +188,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     augmentationResult != null ? augmentationResult.contents() : null,
                                     context,
                                     memoryId);
-                            // TODO moderation
+
                             if (returnType == TokenStream.class) {
                                 return tokenStream;
                             } else {
