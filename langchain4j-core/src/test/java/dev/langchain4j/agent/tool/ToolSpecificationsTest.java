@@ -78,7 +78,8 @@ class ToolSpecificationsTest implements WithAssertions {
                 Person p26,
                 @P(value = "optional", required = false) int p27,
                 @P(value = "required") int p28,
-                @P(value = "offset date time", jsonSchema = CustomOffsetDateTimeSchema.class) OffsetDateTime offsetDateTime) {
+                @P(value = "offset date time", jsonSchema = CustomOffsetDateTimeSchema.class) 
+                OffsetDateTime offsetDateTime) {
             return 42;
         }
 
