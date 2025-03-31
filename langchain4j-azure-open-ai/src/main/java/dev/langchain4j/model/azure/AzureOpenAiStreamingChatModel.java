@@ -412,7 +412,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             List<ChatModelListener> listeners,
-            Set<Capability> capabilities) { // TODO capabilities!
+            Set<Capability> capabilities) { // TODO capabilities are not used
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
         this.tokenizer = getOrDefault(tokenizer, () -> new AzureOpenAiTokenizer("gpt-3.5-turbo"));
