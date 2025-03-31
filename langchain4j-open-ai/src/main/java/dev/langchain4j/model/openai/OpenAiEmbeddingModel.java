@@ -3,9 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
@@ -31,7 +29,7 @@ import static java.time.Duration.ofSeconds;
 /**
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
  */
-public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
+public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -39,7 +37,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     private final String user;
     private final Integer maxRetries;
     private final Integer maxSegmentsPerBatch;
-    private final Tokenizer tokenizer;
 
     public OpenAiEmbeddingModel(OpenAiEmbeddingModelBuilder builder) {
 
@@ -70,7 +67,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
-        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
     }
 
     @Override
@@ -141,11 +137,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         return Response.from(embeddings, tokenUsageFrom(response.usage()));
     }
 
-    @Override
-    public int estimateTokenCount(String text) {
-        return tokenizer.estimateTokenCountInText(text);
-    }
-
     /**
      * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
      * if necessary, other parameters.
@@ -179,7 +170,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         private Integer maxSegmentsPerBatch;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
 
         public OpenAiEmbeddingModelBuilder() {
@@ -248,11 +238,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
         public OpenAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        public OpenAiEmbeddingModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 

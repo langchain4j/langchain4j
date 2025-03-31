@@ -2,10 +2,8 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -29,12 +27,11 @@ import static java.time.Duration.ofSeconds;
  * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  */
-public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, TokenCountEstimator {
+public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
 
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
-    private final Tokenizer tokenizer;
 
     public OpenAiStreamingLanguageModel(OpenAiStreamingLanguageModelBuilder builder) {
         this.client = OpenAiClient.builder()
@@ -52,7 +49,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .build();
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
-        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
     }
 
     public String modelName() {
@@ -96,11 +92,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .execute();
     }
 
-    @Override
-    public int estimateTokenCount(String prompt) {
-        return tokenizer.estimateTokenCountInText(prompt);
-    }
-
     /**
      * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
      * if necessary, other parameters.
@@ -131,7 +122,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
 
         public OpenAiStreamingLanguageModelBuilder() {
@@ -190,11 +180,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
 
         public OpenAiStreamingLanguageModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        public OpenAiStreamingLanguageModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 
