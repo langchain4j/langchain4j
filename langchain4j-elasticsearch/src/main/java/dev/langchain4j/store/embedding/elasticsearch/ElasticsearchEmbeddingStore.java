@@ -283,7 +283,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
-        log.debug("findRelevant([...{}...], {}, {})", embeddingSearchRequest.queryEmbedding().vector().length,
+        log.debug("search([...{}...], {}, {})", embeddingSearchRequest.queryEmbedding().vector().length,
                 embeddingSearchRequest.maxResults(), embeddingSearchRequest.minScore());
         try {
             SearchResponse<Document> response = configuration.internalSearch(client, indexName, embeddingSearchRequest);

@@ -70,7 +70,7 @@ class Neo4jEmbeddingUtils {
         if (embedded != null) {
             TextSegment segment = embedded.get(idx);
             properties.put(store.getTextProperty(), segment.text());
-            Map<String, String> metadata = segment.metadata().asMap();
+            Map<String, Object> metadata = segment.metadata().toMap();
             metadata.forEach((k, v) -> properties.put(store.getMetadataPrefix() + k, Values.value(v)));
         }
 

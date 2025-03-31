@@ -12,10 +12,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.Getter;
@@ -74,24 +79,21 @@ public abstract class AbstractSharedBedrockChatModel {
      * @return string
      */
     protected String chatMessageToString(ChatMessage message) {
-        switch (message.type()) {
-            case SYSTEM:
-                return message.text();
-            case USER:
-                return humanPrompt + " " + message.text();
-            case AI:
-                return assistantPrompt + " " + message.text();
-            case TOOL_EXECUTION_RESULT:
-                throw new IllegalArgumentException("Tool execution results are not supported for Bedrock models");
+        if (message instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (message instanceof UserMessage userMessage) {
+            return humanPrompt + " " + userMessage.singleText();
+        } else if (message instanceof AiMessage aiMessage) {
+            return assistantPrompt + " " + aiMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + message.type());
         }
-
-        throw new IllegalArgumentException("Unknown message type: " + message.type());
     }
 
     protected String convertMessagesToAwsBody(List<ChatMessage> messages) {
         final String context = messages.stream()
                 .filter(message -> message.type() == ChatMessageType.SYSTEM)
-                .map(ChatMessage::text)
+                .map(message -> ((SystemMessage) message).text())
                 .collect(joining("\n"));
 
         final String userMessages = messages.stream()
@@ -120,7 +122,8 @@ public abstract class AbstractSharedBedrockChatModel {
     }
 
     protected void listenerErrorResponse(Throwable e,
-                                         ChatModelRequest modelListenerRequest,
+                                         ChatRequest listenerRequest,
+                                         ModelProvider modelProvider,
                                          Map<Object, Object> attributes) {
         Throwable error;
         if (e.getCause() instanceof SdkClientException) {
@@ -131,8 +134,8 @@ public abstract class AbstractSharedBedrockChatModel {
 
         ChatModelErrorContext errorContext = new ChatModelErrorContext(
                 error,
-                modelListenerRequest,
-                null,
+                listenerRequest,
+                modelProvider,
                 attributes
         );
 
@@ -146,46 +149,52 @@ public abstract class AbstractSharedBedrockChatModel {
 
     }
 
-    protected ChatModelRequest createModelListenerRequest(InvokeModelRequest invokeModelRequest,
-                                                          List<ChatMessage> messages,
-                                                          List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-                .model(invokeModelRequest.modelId())
-                .temperature(this.temperature)
-                .topP((double) this.topP)
-                .maxTokens(this.maxTokens)
+    protected ChatRequest createListenerRequest(InvokeModelRequest invokeModelRequest,
+                                                     List<ChatMessage> messages,
+                                                     List<ToolSpecification> toolSpecifications) {
+        return ChatRequest.builder()
                 .messages(messages)
-                .toolSpecifications(toolSpecifications)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(invokeModelRequest.modelId())
+                        .temperature(this.temperature)
+                        .topP((double) this.topP)
+                        .maxOutputTokens(this.maxTokens)
+                        .toolSpecifications(toolSpecifications)
+                        .build())
                 .build();
     }
 
-    protected ChatModelRequest createModelListenerRequest(InvokeModelWithResponseStreamRequest invokeModelRequest,
-                                                          List<ChatMessage> messages,
-                                                          List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-                .model(getModelId())
-                .temperature(this.temperature)
-                .topP((double) this.topP)
-                .maxTokens(this.maxTokens)
+    protected ChatRequest createListenerRequest(InvokeModelWithResponseStreamRequest invokeModelRequest,
+                                                List<ChatMessage> messages,
+                                                List<ToolSpecification> toolSpecifications) {
+        return ChatRequest.builder()
                 .messages(messages)
-                .toolSpecifications(toolSpecifications)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(invokeModelRequest.modelId())
+                        .temperature(this.temperature)
+                        .topP((double) this.topP)
+                        .maxOutputTokens(this.maxTokens)
+                        .toolSpecifications(toolSpecifications)
+                        .build())
                 .build();
     }
 
 
-    protected ChatModelResponse createModelListenerResponse(String responseId,
-                                                            String responseModel,
-                                                            Response<AiMessage> response) {
+    protected ChatResponse createListenerResponse(String responseId,
+                                                  String responseModel,
+                                                  Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
 
-        return ChatModelResponse.builder()
-                .id(responseId)
-                .model(responseModel)
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
+        return ChatResponse.builder()
                 .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .id(responseId)
+                        .modelName(responseModel)
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
                 .build();
     }
 

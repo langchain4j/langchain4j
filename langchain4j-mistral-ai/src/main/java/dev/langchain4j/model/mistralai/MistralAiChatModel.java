@@ -1,9 +1,11 @@
 package dev.langchain4j.model.mistralai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ModelProvider.MISTRAL_AI;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -12,6 +14,7 @@ import static java.util.Collections.singletonList;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -92,7 +95,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralAiChatModelName.OPEN_MISTRAL_7B.toString());
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
         this.topP = topP;
         this.maxTokens = maxTokens;
@@ -100,16 +103,6 @@ public class MistralAiChatModel implements ChatLanguageModel {
         this.randomSeed = randomSeed;
         this.responseFormat = responseFormat;
         this.maxRetries = getOrDefault(maxRetries, 3);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static MistralAiChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
     }
 
     @Override
@@ -188,12 +181,17 @@ public class MistralAiChatModel implements ChatLanguageModel {
 
         MistralAiChatCompletionRequest request = requestBuilder.build();
 
-        MistralAiChatCompletionResponse response = withRetry(() -> client.chatCompletion(request), maxRetries);
+        MistralAiChatCompletionResponse response = withRetryMappingExceptions(() -> client.chatCompletion(request), maxRetries);
 
         return Response.from(
                 aiMessageFrom(response),
                 tokenUsageFrom(response.getUsage()),
                 finishReasonFrom(response.getChoices().get(0).getFinishReason()));
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return MISTRAL_AI;
     }
 
     public static MistralAiChatModelBuilder builder() {

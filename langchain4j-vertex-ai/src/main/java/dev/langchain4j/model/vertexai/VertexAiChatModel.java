@@ -8,6 +8,8 @@ import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -23,7 +25,7 @@ import java.util.List;
 
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.data.message.ChatMessageType.*;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.vertexai.Json.toJson;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -120,7 +122,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
             JsonFormat.parser().merge(toJson(vertexAiParameters), parametersBuilder);
             Value parameters = parametersBuilder.build();
 
-            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
+            PredictResponse response = withRetryMappingExceptions(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
             return Response.from(
                     AiMessage.from(extractContent(response)),
@@ -164,14 +166,26 @@ public class VertexAiChatModel implements ChatLanguageModel {
     private static List<VertexAiChatInstance.Message> toVertexMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(chatMessage -> chatMessage.type() == USER || chatMessage.type() == AI)
-                .map(chatMessage -> new VertexAiChatInstance.Message(chatMessage.type().name(), chatMessage.text()))
+                .map(chatMessage -> new VertexAiChatInstance.Message(chatMessage.type().name(), toText(chatMessage)))
                 .collect(toList());
+    }
+
+    private static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
     }
 
     private static String toContext(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(chatMessage -> chatMessage.type() == SYSTEM)
-                .map(ChatMessage::text)
+                .map(VertexAiChatModel::toText)
                 .collect(joining("\n"));
     }
 

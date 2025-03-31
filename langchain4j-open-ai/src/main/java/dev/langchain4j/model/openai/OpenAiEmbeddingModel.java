@@ -3,9 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
@@ -19,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
@@ -31,7 +29,7 @@ import static java.time.Duration.ofSeconds;
 /**
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
  */
-public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
+public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -39,11 +37,10 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     private final String user;
     private final Integer maxRetries;
     private final Integer maxSegmentsPerBatch;
-    private final Tokenizer tokenizer;
 
     public OpenAiEmbeddingModel(OpenAiEmbeddingModelBuilder builder) {
 
-        if ("demo".equals(builder.apiKey)) {
+        if ("demo".equals(builder.apiKey) && !"http://langchain4j.dev/demo/openai/v1".equals(builder.baseUrl)) {
             // TODO remove before releasing 1.0.0
             throw new RuntimeException("""
                     If you wish to continue using the 'demo' key, please specify the base URL explicitly:
@@ -70,7 +67,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
-        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
     }
 
     @Override
@@ -132,18 +128,13 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
                 .user(user)
                 .build();
 
-        EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);
+        EmbeddingResponse response = withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .toList();
 
         return Response.from(embeddings, tokenUsageFrom(response.usage()));
-    }
-
-    @Override
-    public int estimateTokenCount(String text) {
-        return tokenizer.estimateTokenCountInText(text);
     }
 
     /**
@@ -179,7 +170,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         private Integer maxSegmentsPerBatch;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
 
         public OpenAiEmbeddingModelBuilder() {
@@ -248,11 +238,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
         public OpenAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        public OpenAiEmbeddingModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 

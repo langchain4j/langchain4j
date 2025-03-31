@@ -11,11 +11,11 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
@@ -28,7 +28,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -61,8 +60,11 @@ class OpenAiStreamingChatModelIT {
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
             .description("returns a sum of two numbers")
-            .addParameter("first", INTEGER)
-            .addParameter("second", INTEGER)
+            .parameters(JsonObjectSchema.builder()
+                    .addIntegerProperty("first")
+                    .addIntegerProperty("second")
+                    .required("first", "second")
+                    .build())
             .build();
 
     @Test
@@ -625,61 +627,6 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
-    }
-
-    @Test
-    void should_use_default_tokenizer() {
-
-        // when
-        int tokenCount = model.estimateTokenCount("Hello, how are you doing?");
-
-        // then
-        assertThat(tokenCount).isEqualTo(14);
-    }
-
-    @Test
-    void should_use_custom_tokenizer() {
-
-        // given
-
-        Tokenizer tokenizer = new Tokenizer() {
-
-            @Override
-            public int estimateTokenCountInText(String text) {
-                return 42;
-            }
-
-            @Override
-            public int estimateTokenCountInMessage(ChatMessage message) {
-                return 42;
-            }
-
-            @Override
-            public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
-                return 42;
-            }
-
-            @Override
-            public int estimateTokenCountInToolSpecifications(Iterable<ToolSpecification> toolSpecifications) {
-                return 42;
-            }
-
-            @Override
-            public int estimateTokenCountInToolExecutionRequests(Iterable<ToolExecutionRequest> toolExecutionRequests) {
-                return 42;
-            }
-        };
-
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .apiKey("does not matter")
-                .tokenizer(tokenizer)
-                .build();
-
-        // when
-        int tokenCount = model.estimateTokenCount("Hello, how are you doing?");
-
-        // then
-        assertThat(tokenCount).isEqualTo(42);
     }
 
     private static void assertTokenUsage(TokenUsage tokenUsage) {

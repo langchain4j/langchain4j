@@ -1,6 +1,8 @@
 package dev.langchain4j.model.chat.mock;
 
+import static dev.langchain4j.internal.ExceptionMapper.mappingException;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.RetryUtils.retryPolicyBuilder;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.synchronizedList;
@@ -8,6 +10,7 @@ import static java.util.Collections.synchronizedList;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -29,6 +32,9 @@ public class ChatModelMock implements ChatLanguageModel {
     private final Function<ChatRequest, AiMessage> aiMessageGenerator;
     private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
 
+    private static final RetryUtils.RetryPolicy DEFAULT_NO_RETRY_POLICY = retryPolicyBuilder().maxAttempts(1).build();
+    private RetryUtils.RetryPolicy retryPolicy = DEFAULT_NO_RETRY_POLICY;
+
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
         this.exception = null;
@@ -47,6 +53,11 @@ public class ChatModelMock implements ChatLanguageModel {
         this.aiMessageGenerator = ensureNotNull(aiMessageGenerator, "aiMessageGenerator");
     }
 
+    public ChatModelMock withRetryPolicy(RetryUtils.RetryPolicy retryPolicy) {
+        this.retryPolicy = retryPolicy;
+        return this;
+    }
+
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
         requests.add(new ArrayList<>(chatRequest.messages()));
@@ -55,13 +66,16 @@ public class ChatModelMock implements ChatLanguageModel {
             throw exception;
         }
 
-        AiMessage aiMessage =
-                aiMessageGenerator != null ? aiMessageGenerator.apply(chatRequest) : AiMessage.from(staticResponse);
+        AiMessage aiMessage = retryPolicy.withRetry(() -> mappingException(() -> getAiMessage(chatRequest)));
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder().build())
                 .build();
+    }
+
+    private AiMessage getAiMessage(ChatRequest chatRequest) {
+        return aiMessageGenerator != null ? aiMessageGenerator.apply(chatRequest) : AiMessage.from(staticResponse);
     }
 
     public String userMessageText() {
@@ -75,11 +89,11 @@ public class ChatModelMock implements ChatLanguageModel {
         }
 
         ChatMessage message = messages.get(0);
-        if (!(message instanceof UserMessage)) {
-            throw runtime("Expected exactly UserMessage, got: " + message);
+        if (message instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else {
+            throw runtime("Expected UserMessage, got: " + message);
         }
-
-        return message.text();
     }
 
     public static ChatModelMock thatAlwaysResponds(String response) {

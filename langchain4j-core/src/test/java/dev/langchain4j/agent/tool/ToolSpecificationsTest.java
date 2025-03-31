@@ -215,7 +215,6 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(ts.name()).isEqualTo("func_name");
         assertThat(ts.description()).isNull();
         assertThat(ts.parameters()).isNull();
-        assertThat(ts.toolParameters()).isNull();
     }
 
     @Test
@@ -367,6 +366,5 @@ class ToolSpecificationsTest implements WithAssertions {
                                         .build())
                         .required("arg0")
                         .build());
-        assertThat(toolSpecification.toolParameters()).isNull();
     }
 }

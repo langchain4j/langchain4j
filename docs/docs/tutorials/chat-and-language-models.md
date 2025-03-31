@@ -63,11 +63,11 @@ These versions of the `chat` methods take one or multiple `ChatMessage`s as inpu
 The next section will provide more details about chat messages.
 
 If you wish to customize the request (e.g., specify the temperature, tools or JSON schema, etc.),
-you can use the `generate(ChatRequest)` method:
+you can use the `chat(ChatRequest)` method:
 ```java
     ...
     
-    ChatResponse generate(ChatRequest chatRequest);
+    ChatResponse chat(ChatRequest chatRequest);
         
     ...
 ```

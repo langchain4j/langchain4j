@@ -11,7 +11,6 @@ import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumListExtractor.MaritalStatus;
 import dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic;
@@ -962,7 +961,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .jsonSchema(JsonSchema.builder()
                                             .name("Person")
                                             .rootElement(JsonObjectSchema.builder()
-                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                    .addProperties(new LinkedHashMap<>() {
                                                         {
                                                             put("name", new JsonStringSchema());
                                                             put(
@@ -1027,7 +1026,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .jsonSchema(JsonSchema.builder()
                                             .name("Person")
                                             .rootElement(JsonObjectSchema.builder()
-                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                    .addProperties(new LinkedHashMap<>() {
                                                         {
                                                             put("name", new JsonStringSchema());
                                                             put(
@@ -1092,7 +1091,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .jsonSchema(JsonSchema.builder()
                                             .name("Person")
                                             .rootElement(JsonObjectSchema.builder()
-                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                    .addProperties(new LinkedHashMap<>() {
                                                         {
                                                             put("name", new JsonStringSchema());
                                                             put(
@@ -1156,16 +1155,14 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .jsonSchema(JsonSchema.builder()
                                             .name("Person")
                                             .rootElement(JsonObjectSchema.builder()
-                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                    .addProperties(new LinkedHashMap<>() {
                                                         {
                                                             put("name", new JsonStringSchema());
                                                             put(
                                                                     "birthDate",
                                                                     JsonObjectSchema.builder()
-                                                                            .properties(
-                                                                                    new LinkedHashMap<
-                                                                                            String,
-                                                                                            JsonSchemaElement>() {
+                                                                            .addProperties(
+                                                                                    new LinkedHashMap<>() {
                                                                                         {
                                                                                             put(
                                                                                                     "year",
@@ -1183,10 +1180,8 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                             put(
                                                                     "birthTime",
                                                                     JsonObjectSchema.builder()
-                                                                            .properties(
-                                                                                    new LinkedHashMap<
-                                                                                            String,
-                                                                                            JsonSchemaElement>() {
+                                                                            .addProperties(
+                                                                                    new LinkedHashMap<>() {
                                                                                         {
                                                                                             put(
                                                                                                     "hour",
@@ -1208,19 +1203,15 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                             put(
                                                                     "birthDateTime",
                                                                     JsonObjectSchema.builder()
-                                                                            .properties(
-                                                                                    new LinkedHashMap<
-                                                                                            String,
-                                                                                            JsonSchemaElement>() {
+                                                                            .addProperties(
+                                                                                    new LinkedHashMap<>() {
                                                                                         {
                                                                                             put(
                                                                                                     "date",
                                                                                                     JsonObjectSchema
                                                                                                             .builder()
-                                                                                                            .properties(
-                                                                                                                    new LinkedHashMap<
-                                                                                                                            String,
-                                                                                                                            JsonSchemaElement>() {
+                                                                                                            .addProperties(
+                                                                                                                    new LinkedHashMap<>() {
                                                                                                                         {
                                                                                                                             put(
                                                                                                                                     "year",
@@ -1242,10 +1233,8 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                                                                     "time",
                                                                                                     JsonObjectSchema
                                                                                                             .builder()
-                                                                                                            .properties(
-                                                                                                                    new LinkedHashMap<
-                                                                                                                            String,
-                                                                                                                            JsonSchemaElement>() {
+                                                                                                            .addProperties(
+                                                                                                                    new LinkedHashMap<>() {
                                                                                                                         {
                                                                                                                             put(
                                                                                                                                     "hour",
@@ -1320,7 +1309,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .jsonSchema(JsonSchema.builder()
                                             .name("Person")
                                             .rootElement(JsonObjectSchema.builder()
-                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {
+                                                    .addProperties(new LinkedHashMap<>() {
                                                         {
                                                             put("name", new JsonStringSchema());
                                                         }

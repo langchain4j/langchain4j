@@ -1,6 +1,5 @@
 package dev.langchain4j.model.github;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.github.GitHubModelsChatModelName.PHI_3_5_MINI_INSTRUCT;
@@ -10,7 +9,7 @@ import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.azure.ai.inference.models.ChatCompletionsResponseFormatJson;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonObject;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -20,6 +19,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
@@ -121,7 +121,7 @@ class GitHubModelsStreamingChatModelIT {
         StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
-                .responseFormat(new ChatCompletionsResponseFormatJson())
+                .responseFormat(new ChatCompletionsResponseFormatJsonObject())
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -155,8 +155,11 @@ class GitHubModelsStreamingChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
                 .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .required("first", "second")
+                        .build())
                 .build();
 
         ChatRequest request = ChatRequest.builder()
@@ -168,7 +171,8 @@ class GitHubModelsStreamingChatModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                Exception e = new IllegalStateException("onPartialResponse() should never be called when tool is executed");
+                Exception e =
+                        new IllegalStateException("onPartialResponse() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
@@ -261,18 +265,27 @@ class GitHubModelsStreamingChatModelIT {
                 ToolSpecification.builder()
                         .name("sum")
                         .description("returns a sum of two numbers")
-                        .addParameter("first", INTEGER)
-                        .addParameter("second", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("first")
+                                .addIntegerProperty("second")
+                                .required("first", "second")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("square")
                         .description("returns the square of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("cube")
                         .description("returns the cube of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build());
 
         ChatRequest request = ChatRequest.builder()
@@ -284,7 +297,8 @@ class GitHubModelsStreamingChatModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                Exception e = new IllegalStateException("onPartialResponse() should never be called when tool is executed");
+                Exception e =
+                        new IllegalStateException("onPartialResponse() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 

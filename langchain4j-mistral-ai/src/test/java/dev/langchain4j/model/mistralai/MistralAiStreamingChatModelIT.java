@@ -9,16 +9,21 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_MEDIUM_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
+import static dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType.JSON_OBJECT;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -29,7 +34,10 @@ class MistralAiStreamingChatModelIT {
     ToolSpecification retrievePaymentStatus = ToolSpecification.builder()
             .name("retrieve-payment-status")
             .description("Retrieve Payment Status")
-            .addParameter("transactionId", STRING)
+            .parameters(JsonObjectSchema.builder()
+                    .addStringProperty("transactionId")
+                    .required("transactionId")
+                    .build())
             .build();
 
     StreamingChatLanguageModel ministral3b = MistralAiStreamingChatModel.builder()
@@ -42,6 +50,7 @@ class MistralAiStreamingChatModelIT {
 
     StreamingChatLanguageModel defaultModel = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(OPEN_MISTRAL_7B)
             .temperature(0.1)
             .logRequests(true)
             .logResponses(true)
@@ -49,7 +58,7 @@ class MistralAiStreamingChatModelIT {
 
     StreamingChatLanguageModel openMixtral8x22BModel = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8X22B)
+            .modelName(OPEN_MIXTRAL_8X22B)
             .temperature(0.1)
             .logRequests(true)
             .logResponses(true)
@@ -85,6 +94,7 @@ class MistralAiStreamingChatModelIT {
         // given
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(OPEN_MISTRAL_7B)
                 .maxTokens(10)
                 .build();
 
@@ -115,6 +125,7 @@ class MistralAiStreamingChatModelIT {
         // given
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(OPEN_MISTRAL_7B)
                 .safePrompt(true)
                 .temperature(0.0)
                 .build();
@@ -172,7 +183,7 @@ class MistralAiStreamingChatModelIT {
         // given - Mistral Small = Mistral-8X7B
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.1)
                 .build();
 
@@ -201,7 +212,7 @@ class MistralAiStreamingChatModelIT {
         // given - Mistral Small = Mistral-8X7B
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.1)
                 .build();
 
@@ -230,7 +241,7 @@ class MistralAiStreamingChatModelIT {
         // given - Mistral Medium = currently relies on an internal prototype model.
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralAiChatModelName.MISTRAL_MEDIUM_LATEST)
+                .modelName(MISTRAL_MEDIUM_LATEST)
                 .maxTokens(10)
                 .build();
 
@@ -295,7 +306,10 @@ class MistralAiStreamingChatModelIT {
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
                 .description("Retrieve Payment Date")
-                .addParameter("transactionId", STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("transactionId")
+                        .required("transactionId")
+                        .build())
                 .build();
 
         List<ChatMessage> chatMessages = new ArrayList<>();
@@ -357,7 +371,10 @@ class MistralAiStreamingChatModelIT {
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
                 .description("Retrieve Payment Date")
-                .addParameter("transactionId", STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("transactionId")
+                        .required("transactionId")
+                        .build())
                 .build();
 
         List<ChatMessage> chatMessages = new ArrayList<>();
@@ -422,7 +439,10 @@ class MistralAiStreamingChatModelIT {
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
                 .description("Retrieve Payment Date")
-                .addParameter("transactionId", STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("transactionId")
+                        .required("transactionId")
+                        .build())
                 .build();
 
         List<ChatMessage> chatMessages = new ArrayList<>();
@@ -495,9 +515,9 @@ class MistralAiStreamingChatModelIT {
 
         StreamingChatLanguageModel mistralLargeStreamingModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
+                .modelName(MISTRAL_LARGE_LATEST)
                 .temperature(0.1)
-                .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+                .responseFormat(JSON_OBJECT)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -516,7 +536,7 @@ class MistralAiStreamingChatModelIT {
         // given
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0d)
                 .build();
 
