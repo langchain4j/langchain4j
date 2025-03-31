@@ -89,6 +89,10 @@ We also recommend adding the LangChain4j BOM:
 1. Instantiate an [embedding model](https://docs.langchain4j.dev/category/embedding-models).
 2. Instantiate MongoDB Atlas as the embedding store.
 
+You can enable automatic index creation by passing `true` to the
+`createIndex()` method when building the `MongoDbEmbeddingStore`
+instance.
+
 ```java
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -140,12 +144,21 @@ MongoDbEmbeddingStore embeddingStore = MongoDbEmbeddingStore.builder()
 
 ## Store Data in MongoDB
 
+This code demonstrates how to persist your documents to the
+embedding store. The `embed()` method generates embeddings for the `text`
+field value in your documents.
+
 ```java
 ArrayList<Document> docs = new ArrayList<>();
 
 docs.add(new Document()
         .append("text", "Penguins are flightless seabirds that live almost exclusively below the equator. Some island-dwellers can be found in warmer climates.")
-        .append("metadata", new Metadata(Map.of("author", "A"))));
+        .append("metadata", new Metadata(Map.of("website", "Science Direct"))));
+
+docs.add(new Document()
+        .append("text", "Emperor penguins are amazing birds. They not only survive the Antarctic winter, but they breed during the worst weather conditions on earth.")
+        .append("metadata", new Metadata(Map.of("website", "Our Earth"))));
+
 docs.add(...);
 
 System.out.println("Persisting document embeddings...");
@@ -161,6 +174,11 @@ for (Document doc : docs) {
 ```
 
 ## Perform Semantic/Similarity Searches
+
+This code demonstrates how to create a search request that converts your
+query into a vector and returns semantically similar documents. The
+resulting `EmbeddingMatch` instances contain the document contents as
+well as a score that describes how well each result matches your query.
 
 ```java
 String query = "Where do penguins live?";
@@ -185,10 +203,18 @@ for (EmbeddingMatch<TextSegment> embeddingMatch : matches) {
 
 ### Metadata Filtering
 
+You can implement metadata filtering by using the `filter()` method when
+building a `EmbeddingSearchRequest`. The `filter()` method takes a
+parameter that inherits from
+[Filter](https://docs.langchain4j.dev/apidocs/dev/langchain4j/store/embedding/filter/Filter.html).
+
+This code implements metadata filtering for only documents in which the
+value of `website` is one of the listed values.
+
 ```java
 EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
         .queryEmbedding(queryEmbedding)
-        .filter(new IsIn("author", List.of("B", "C")))
+        .filter(new IsIn("website", List.of("Our Earth", "Natural Habitats")))
         .maxResults(3)
         .build();
 ```
