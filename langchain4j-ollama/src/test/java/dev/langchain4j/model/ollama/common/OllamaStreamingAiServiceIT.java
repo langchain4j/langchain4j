@@ -17,14 +17,4 @@ class OllamaStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
                 OPEN_AI_CHAT_MODEL_WITH_TOOLS
         );
     }
-
-    @Override
-    protected boolean assertTokenUsage() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
-    }
 }

@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
@@ -20,6 +21,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
@@ -113,9 +115,12 @@ class InternalOllamaHelper {
         if (parameters.presencePenalty() != null) {
             throw new IllegalArgumentException("'presencePenalty' parameter is not suppoerted by Ollama");
         }
-        if (parameters.maxOutputTokens() != null) {
+        if (parameters.toolChoice() != null) {
+            throw new IllegalArgumentException("'toolChoice' parameter is not suppoerted by Ollama");
+        }
+        if (parameters.maxOutputTokens() != null && parameters.numPredict() != null) {
             throw new IllegalArgumentException(
-                    "'maxOutputTokens' parameter is not suppoerted by Ollama, please use 'numPredict' instead");
+                    "'maxOutputTokens' parameter and 'numPredict' parameter can't be declared at the same time");
         }
     }
 
@@ -131,6 +136,33 @@ class InternalOllamaHelper {
                 ollamaChatResponse.getModel(),
                 toFinishReason(ollamaChatResponse.getDoneReason()),
                 new TokenUsage(ollamaChatResponse.getPromptEvalCount(), ollamaChatResponse.getEvalCount()));
+    }
+
+    static OllamaChatRequest toOllamaChatRequest(ChatRequest chatRequest) {
+        OllamaChatRequestParameters requestParameters = (OllamaChatRequestParameters) chatRequest.parameters();
+        return OllamaChatRequest.builder()
+                .model(requestParameters.modelName())
+                .messages(toOllamaMessages(chatRequest.messages()))
+                .options(Options.builder()
+                        .mirostat(requestParameters.mirostat())
+                        .mirostatEta(requestParameters.mirostatEta())
+                        .mirostatTau(requestParameters.mirostatTau())
+                        .repeatLastN(requestParameters.repeatLastN())
+                        .temperature(requestParameters.temperature())
+                        .topK(requestParameters.topK())
+                        .topP(requestParameters.topP())
+                        .repeatPenalty(requestParameters.repeatPenalty())
+                        .seed(requestParameters.seed())
+                        // numPredict and maxOutputTokens are semantically identical
+                        .numPredict(getOrDefault(requestParameters.maxOutputTokens(), requestParameters.numPredict()))
+                        .numCtx(requestParameters.numCtx())
+                        .stop(requestParameters.stopSequences())
+                        .minP(requestParameters.minP())
+                        .build())
+                .format(toOllamaResponseFormat(requestParameters.responseFormat()))
+                .stream(false)
+                .tools(toOllamaTools(chatRequest.toolSpecifications()))
+                .build();
     }
 
     static ChatResponseMetadata chatResponseMetadataFrom(

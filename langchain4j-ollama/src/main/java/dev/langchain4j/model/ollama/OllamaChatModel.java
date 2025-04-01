@@ -1,13 +1,5 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ModelProvider.OLLAMA;
-import static dev.langchain4j.model.ollama.InternalOllamaHelper.aiMessageFrom;
-import static dev.langchain4j.model.ollama.InternalOllamaHelper.chatResponseMetadataFrom;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.toOllamaChatRequest;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -16,8 +8,18 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
+
 import java.util.List;
 import java.util.Set;
+
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OLLAMA;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.aiMessageFrom;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.chatResponseMetadataFrom;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.validate;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -38,7 +40,7 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatLanguage
     public ChatResponse doChat(ChatRequest chatRequest) {
 
         OllamaChatRequestParameters parameters = (OllamaChatRequestParameters) chatRequest.parameters();
-        InternalOllamaHelper.validate(parameters);
+        validate(parameters);
 
         OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(chatRequest);
         OllamaChatResponse ollamaChatResponse =

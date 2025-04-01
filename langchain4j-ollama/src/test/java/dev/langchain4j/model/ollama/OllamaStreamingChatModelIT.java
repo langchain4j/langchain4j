@@ -1,12 +1,5 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -19,13 +12,18 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
-/**
- * TODO: add more tests about ChatRequest and ChatRequestParameters
- */
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     static final String MODEL_NAME = TINY_DOLPHIN_MODEL;
@@ -221,7 +219,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     void should_return_set_capabilities() {
         OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(TINY_DOLPHIN_MODEL)
+                .modelName(MODEL_NAME)
                 .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                 .build();
 

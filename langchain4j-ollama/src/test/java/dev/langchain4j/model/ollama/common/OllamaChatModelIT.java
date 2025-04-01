@@ -146,26 +146,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequired() {
         return false; // TODO check if Ollama supports this
     }
@@ -192,16 +172,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
         return false; // TODO implement
     }
 }

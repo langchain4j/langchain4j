@@ -6,7 +6,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
-import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;

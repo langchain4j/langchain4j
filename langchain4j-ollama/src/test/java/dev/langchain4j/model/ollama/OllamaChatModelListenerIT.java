@@ -50,9 +50,4 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
     protected boolean assertResponseId() {
         return false;
     }
-
-    @Override
-    protected boolean assertFinishReason() {
-        return false;
-    }
 }
