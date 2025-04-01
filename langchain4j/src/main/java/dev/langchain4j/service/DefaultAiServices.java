@@ -88,6 +88,12 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         performBasicValidation();
 
+        if (!context.hasChatMemory() && ChatMemoryAccess.class.isAssignableFrom(context.aiServiceClass)) {
+            throw illegalConfiguration(
+                    "In order to have a service implementing ChatMemoryAccess, please configure the ChatMemoryProvider on the '%s'.",
+                    context.aiServiceClass.getName());
+        }
+
         for (Method method : context.aiServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
                 throw illegalConfiguration(

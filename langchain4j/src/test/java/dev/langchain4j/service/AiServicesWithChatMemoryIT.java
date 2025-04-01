@@ -31,6 +31,7 @@ import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.ANOTHER_SYSTEM_MESSAGE;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.SYSTEM_MESSAGE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -409,5 +410,13 @@ class AiServicesWithChatMemoryIT {
         assertThat(anotherResponse).doesNotContain("Klaus");
 
         verify(chatLanguageModel).chat(chatRequest("Hi"));
+    }
+
+    @Test
+    void should_throw_if_it_is_a_ChatMemoryAccess_without_memory() {
+        assertThatThrownBy(() ->
+                AiServices.builder(ChatWithSeparateMemoryForEachUser.class).chatLanguageModel(chatLanguageModel).build())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("In order to have a service implementing ChatMemoryAccess, please configure the ChatMemoryProvider");
     }
 }
