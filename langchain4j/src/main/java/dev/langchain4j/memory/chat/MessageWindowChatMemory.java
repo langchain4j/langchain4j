@@ -7,13 +7,13 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -33,7 +33,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * to avoid problems with some LLM providers (such as OpenAI)
  * that prohibit sending orphan {@code ToolExecutionResultMessage}(s) in the request.
  * <p>
- * The state of chat memory is stored in {@link ChatMemoryStore} ({@link InMemoryChatMemoryStore} is used by default).
+ * The state of chat memory is stored in {@link ChatMemoryStore} ({@link SingleSlotChatMemoryStore} is used by default).
  */
 public class MessageWindowChatMemory implements ChatMemory {
 
@@ -46,7 +46,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.maxMessages = ensureGreaterThanZero(builder.maxMessages, "maxMessages");
-        this.store = ensureNotNull(builder.store, "store");
+        this.store = ensureNotNull(builder.store(), "store");
     }
 
     @Override
@@ -120,9 +120,9 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     public static class Builder {
 
-        private Object id = "default";
+        private Object id = ChatMemoryService.DEFAULT;
         private Integer maxMessages;
-        private ChatMemoryStore store = new InMemoryChatMemoryStore();
+        private ChatMemoryStore store;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -146,7 +146,7 @@ public class MessageWindowChatMemory implements ChatMemory {
 
         /**
          * @param store The chat memory store responsible for storing the chat memory state.
-         *              If not provided, an {@link InMemoryChatMemoryStore} will be used.
+         *              If not provided, an {@link SingleSlotChatMemoryStore} will be used.
          * @return builder
          */
         public Builder chatMemoryStore(ChatMemoryStore store) {
@@ -156,6 +156,10 @@ public class MessageWindowChatMemory implements ChatMemory {
 
         public MessageWindowChatMemory build() {
             return new MessageWindowChatMemory(this);
+        }
+
+        public ChatMemoryStore store() {
+            return store != null ? store : new SingleSlotChatMemoryStore(id);
         }
     }
 
