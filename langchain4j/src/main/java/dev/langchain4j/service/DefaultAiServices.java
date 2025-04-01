@@ -14,8 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.ChatMemoryAccess;
-import dev.langchain4j.memory.chat.ChatMemoryService;
+import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -134,8 +133,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
                             return switch (method.getName()) {
-                                case "getChatMemory" -> context.hasChatMemory() ? context.chatMemoryService.getChatMemory(args[0]) : null;
-                                case "evictChatMemory" -> context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
+                                case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
+                                case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
                                 default -> throw new UnsupportedOperationException("Unknown method on ChatMemoryAccess class : " + method.getName());
                             };
                         }

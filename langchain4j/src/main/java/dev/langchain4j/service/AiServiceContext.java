@@ -1,7 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.ChatMemoryService;
+import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;

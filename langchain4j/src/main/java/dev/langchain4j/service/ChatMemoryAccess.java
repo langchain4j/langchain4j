@@ -1,4 +1,4 @@
-package dev.langchain4j.memory.chat;
+package dev.langchain4j.service;
 
 import dev.langchain4j.memory.ChatMemory;
 

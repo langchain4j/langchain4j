@@ -1,10 +1,9 @@
-package dev.langchain4j.memory.chat;
+package dev.langchain4j.service.memory;
 
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 
-import java.util.Collections;
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
