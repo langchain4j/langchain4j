@@ -12,7 +12,7 @@ import java.util.List;
  * Allows for flexibility in terms of where and how chat memory is stored.
  * <br>
  * <br>
- * Currently, the only implementations available are {@link InMemoryChatMemoryStore} and {@link SingleSlotChatMemoryStore}.
+ * Currently, the only implementation available is {@link InMemoryChatMemoryStore}.
  * Over time, out-of-the-box implementations will be added for popular stores like SQL databases, document stores, etc.
  * In the meantime, you can implement this interface to connect to any storage of your choice.
  * <br>
