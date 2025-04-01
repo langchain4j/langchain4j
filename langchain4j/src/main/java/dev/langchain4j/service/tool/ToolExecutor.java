@@ -16,4 +16,12 @@ public interface ToolExecutor {
      * @return The result of the tool execution.
      */
     String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId);
+
+    /**
+     * @return true if the raw result of the tool invocation should be returned directly as it is,
+     * without any further processing from the LLM.
+     */
+    default boolean returnRaw() {
+        return false;
+    }
 }

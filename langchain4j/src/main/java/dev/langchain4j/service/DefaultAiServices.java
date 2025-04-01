@@ -9,6 +9,7 @@ import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -32,6 +33,7 @@ import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.reflect.Array;
@@ -51,6 +53,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 
 class DefaultAiServices<T> extends AiServices<T> {
 

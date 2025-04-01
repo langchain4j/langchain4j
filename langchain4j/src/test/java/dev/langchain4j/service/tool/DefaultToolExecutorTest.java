@@ -284,6 +284,14 @@ class DefaultToolExecutorTest implements WithAssertions {
         }
     }
 
+    private static class TestToolReturnRaw {
+
+        @Tool(returnRaw = true)
+        public int addOne(int num) {
+            return num + 1;
+        }
+    }
+
     @Test
     void should_execute_tool_by_method_name() throws NoSuchMethodException {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
@@ -316,7 +324,33 @@ class DefaultToolExecutorTest implements WithAssertions {
     }
 
     @Test
-    void should_not_execute_tool_with_wrong_execution_request() throws NoSuchMethodException {
+    public void test_get_return_raw_true() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestToolReturnRaw(), request);
+
+        assertThat(toolExecutor.returnRaw()).isTrue();
+    }
+
+    @Test
+    public void test_get_return_raw_false() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestTool(), request);
+
+        assertThat(toolExecutor.returnRaw()).isFalse();
+    }
+
+    @Test
+    public void should_not_execute_tool_with_wrong_execution_request() throws NoSuchMethodException {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("1")
                 .name("unknownMethod")

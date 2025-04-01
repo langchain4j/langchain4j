@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.internal.Json;
@@ -38,6 +39,12 @@ public class DefaultToolExecutor implements ToolExecutor {
         Objects.requireNonNull(toolExecutionRequest, "toolExecutionRequest");
         this.originalMethod = findMethod(object, toolExecutionRequest);
         this.methodToInvoke = this.originalMethod;
+    }
+
+    @Override
+    public boolean returnRaw() {
+        Tool toolAnnotation = originalMethod.getAnnotation(Tool.class);
+        return toolAnnotation != null && toolAnnotation.returnRaw();
     }
 
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
