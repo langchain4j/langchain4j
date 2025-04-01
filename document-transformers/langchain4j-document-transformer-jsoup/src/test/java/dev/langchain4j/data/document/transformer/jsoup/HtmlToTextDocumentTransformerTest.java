@@ -113,7 +113,7 @@ class HtmlToTextDocumentTransformerTest {
         assertThat(transformedDocument.text()).isEqualTo(
                 "Follow the link here <https://example.org/menu1>."
         );
-        assertThat(transformedDocument.metadata().asMap())
+        assertThat(transformedDocument.metadata().toMap())
                 .containsEntry(Document.URL, "https://example.org/page.html")
                 .hasSize(1);
     }
@@ -139,7 +139,7 @@ class HtmlToTextDocumentTransformerTest {
                         " * Item one\n" +
                         " * Item two"
         );
-        assertThat(transformedDocument.metadata().asMap())
+        assertThat(transformedDocument.metadata().toMap())
                 .containsEntry(Document.URL, "https://other.example.org/page.html")
                 .hasSize(1);
     }

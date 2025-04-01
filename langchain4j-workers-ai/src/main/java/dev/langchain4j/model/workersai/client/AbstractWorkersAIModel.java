@@ -1,7 +1,7 @@
 package dev.langchain4j.model.workersai.client;
 
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.ResponseBody;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 
@@ -9,9 +9,9 @@ import java.io.IOException;
  * Abstract class for WorkerAI models as they are all initialized the same way.
  * <a href="https://developers.cloudflare.com/api/operations/workers-ai-post-run-model">...</a>
  */
-@Slf4j
 public abstract class AbstractWorkersAIModel {
 
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(AbstractWorkersAIModel.class);
     /**
      * Account identifier, provided by the WorkerAI platform.
      */

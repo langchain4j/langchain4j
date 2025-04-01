@@ -23,7 +23,7 @@ public class DocumentLoader {
     public static Document load(DocumentSource source, DocumentParser parser) {
         try (InputStream inputStream = source.inputStream()) {
             Document document = parser.parse(inputStream);
-            source.metadata().asMap().forEach((key, value) -> document.metadata().add(key, value));
+            document.metadata().putAll(source.metadata().toMap());
             return document;
         } catch (BlankDocumentException e) {
             throw e;
