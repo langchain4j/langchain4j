@@ -1,7 +1,9 @@
-package dev.langchain4j.model.ollama;
+package dev.langchain4j.model.ollama.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.service.AiServicesWithJsonSchemaIT;
+import dev.langchain4j.model.ollama.LC4jOllamaContainer;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +18,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
-class OllamaAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
+class OllamaAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
     private static final String MODEL = LLAMA_3_1;
     private static LC4jOllamaContainer ollama;
@@ -45,31 +47,30 @@ class OllamaAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
     @Test
     @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_nested_pojo() {
+    protected void should_extract_pojo_with_nested_pojo(ChatLanguageModel model) {
     }
 
     @Test
     @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_list_of_pojos() {
+    protected void should_extract_pojo_with_list_of_pojos(ChatLanguageModel model) {
     }
 
     @Test
     @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_array_of_pojos() {
+    protected void should_extract_pojo_with_array_of_pojos(ChatLanguageModel model) {
     }
 
     @Test
     @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_set_of_pojos() {
+    protected void should_extract_pojo_with_set_of_pojos(ChatLanguageModel model) {
     }
 
     @Test
     @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_uuid() {
-
+    protected void should_extract_pojo_with_uuid(ChatLanguageModel model) {
     }
 }

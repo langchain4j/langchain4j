@@ -1,7 +1,8 @@
-package dev.langchain4j.service;
+package dev.langchain4j.service.common.openai;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
@@ -12,7 +13,7 @@ import static java.util.Collections.singletonList;
 
 // TODO move to langchain4j-open-ai module once cyclic dependency is resolved
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class OpenAiAiServiceWithToolsIT extends AiServicesWithNewToolsIT {
+class OpenAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected List<ChatLanguageModel> models() {

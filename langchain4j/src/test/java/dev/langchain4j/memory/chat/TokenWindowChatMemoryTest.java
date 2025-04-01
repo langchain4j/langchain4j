@@ -5,7 +5,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.TestUtils.aiMessageWithTokens;
 import static dev.langchain4j.internal.TestUtils.systemMessageWithTokens;
 import static dev.langchain4j.internal.TestUtils.userMessageWithTokens;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;

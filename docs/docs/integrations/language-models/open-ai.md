@@ -268,15 +268,9 @@ langchain4j.open-ai.moderation-model.timeout=...
 
 ## Creating `OpenAiTokenizer`
 
-### Plain Java
 ```java
-Tokenizer tokenizer = new OpenAiTokenizer();
-// or
-Tokenizer tokenizer = new OpenAiTokenizer("gpt-4o");
+Tokenizer tokenizer = new OpenAiTokenizer("gpt-4o-mini");
 ```
-
-### Spring Boot
-The `OpenAiTokenizer` bean is created automatically by the Spring Boot starter.
 
 
 ## HTTP Client

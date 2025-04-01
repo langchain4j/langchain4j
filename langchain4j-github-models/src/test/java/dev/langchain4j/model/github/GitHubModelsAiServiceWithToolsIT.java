@@ -1,7 +1,7 @@
 package dev.langchain4j.model.github;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.service.AiServicesWithNewToolsIT;
+import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -11,7 +11,7 @@ import static dev.langchain4j.model.github.GitHubModelsChatModelName.GPT_4_O_MIN
 import static java.util.Collections.singletonList;
 
 @EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
-class GitHubModelsAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
+class GitHubModelsAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected List<ChatLanguageModel> models() {

@@ -9,10 +9,8 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -53,20 +51,18 @@ import static java.util.stream.Collectors.toList;
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
-public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
+public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final int BATCH_SIZE = 16;
 
     private OpenAIClient client;
     private final String deploymentName;
-    private final Tokenizer tokenizer;
     private final Integer dimensions;
 
     private AzureOpenAiEmbeddingModel(OpenAIClient client,
                                       String deploymentName,
-                                      Tokenizer tokenizer,
                                       Integer dimensions) {
-        this(deploymentName, tokenizer, dimensions);
+        this(deploymentName, dimensions);
         this.client = client;
     }
 
@@ -74,7 +70,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      String serviceVersion,
                                      String apiKey,
                                      String deploymentName,
-                                     Tokenizer tokenizer,
                                      Duration timeout,
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
@@ -83,7 +78,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      Integer dimensions,
                                      Map<String, String> customHeaders) {
 
-        this(deploymentName, tokenizer, dimensions);
+        this(deploymentName, dimensions);
         this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
@@ -91,7 +86,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      String serviceVersion,
                                      KeyCredential keyCredential,
                                      String deploymentName,
-                                     Tokenizer tokenizer,
                                      Duration timeout,
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
@@ -100,7 +94,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      Integer dimensions,
                                      Map<String, String> customHeaders) {
 
-        this(deploymentName, tokenizer, dimensions);
+        this(deploymentName, dimensions);
         this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
@@ -108,7 +102,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      String serviceVersion,
                                      TokenCredential tokenCredential,
                                      String deploymentName,
-                                     Tokenizer tokenizer,
                                      Duration timeout,
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
@@ -117,16 +110,14 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      Integer dimensions,
                                      Map<String, String> customHeaders) {
 
-        this(deploymentName, tokenizer, dimensions);
+        this(deploymentName, dimensions);
         this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
     private AzureOpenAiEmbeddingModel(String deploymentName,
-                                      Tokenizer tokenizer,
                                       Integer dimensions) {
 
         this.deploymentName = getOrDefault(deploymentName, TEXT_EMBEDDING_ADA_002.modelName());
-        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
         this.dimensions = dimensions;
     }
 
@@ -173,11 +164,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
         );
     }
 
-    @Override
-    public int estimateTokenCount(String text) {
-        return tokenizer.estimateTokenCountInText(text);
-    }
-
     public static Builder builder() {
         for (AzureOpenAiEmbeddingModelBuilderFactory factory : loadFactories(AzureOpenAiEmbeddingModelBuilderFactory.class)) {
             return factory.get();
@@ -200,7 +186,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
         private String deploymentName;
-        private Tokenizer tokenizer;
         private Duration timeout;
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
@@ -278,11 +263,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
             return this;
         }
 
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
-            return this;
-        }
-
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -337,7 +317,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                             serviceVersion,
                             tokenCredential,
                             deploymentName,
-                            tokenizer,
                             timeout,
                             maxRetries,
                             proxyOptions,
@@ -352,7 +331,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                             serviceVersion,
                             keyCredential,
                             deploymentName,
-                            tokenizer,
                             timeout,
                             maxRetries,
                             proxyOptions,
@@ -367,7 +345,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                         serviceVersion,
                         apiKey,
                         deploymentName,
-                        tokenizer,
                         timeout,
                         maxRetries,
                         proxyOptions,
@@ -380,7 +357,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                 return new AzureOpenAiEmbeddingModel(
                         openAIClient,
                         deploymentName,
-                        tokenizer,
                         dimensions
                 );
             }

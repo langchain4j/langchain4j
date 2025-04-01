@@ -30,9 +30,9 @@ import java.util.Map;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
-import static dev.langchain4j.service.AiServicesWithNewToolsWithDescriptionIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
-import static dev.langchain4j.service.AiServicesWithNewToolsWithDescriptionIT.ToolWithListOfEnumsParameter.Color.GREEN;
-import static dev.langchain4j.service.AiServicesWithNewToolsWithDescriptionIT.ToolWithListOfEnumsParameter.Color.RED;
+import static dev.langchain4j.service.AiServicesWithToolsWithDescriptionIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
+import static dev.langchain4j.service.AiServicesWithToolsWithDescriptionIT.ToolWithListOfEnumsParameter.Color.GREEN;
+import static dev.langchain4j.service.AiServicesWithToolsWithDescriptionIT.ToolWithListOfEnumsParameter.Color.RED;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -45,7 +45,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class AiServicesWithNewToolsWithDescriptionIT {
+class AiServicesWithToolsWithDescriptionIT {
 
     @Captor
     ArgumentCaptor<ChatRequest> chatRequestCaptor;

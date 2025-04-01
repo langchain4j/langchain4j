@@ -1,12 +1,9 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -39,20 +36,16 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
 
 /**
- * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
  * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
+public class OpenAiStreamingChatModel implements StreamingChatLanguageModel {
 
     private final OpenAiClient client;
-
     private final OpenAiChatRequestParameters defaultRequestParameters;
     private final Boolean strictJsonSchema;
     private final Boolean strictTools;
-
-    private final Tokenizer tokenizer;
-
     private final List<ChatModelListener> listeners;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
@@ -109,18 +102,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
-
-        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
-
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
-    }
-
-    /**
-     * @deprecated please use {@link #defaultRequestParameters()} and then {@link ChatRequestParameters#modelName()} instead
-     */
-    @Deprecated(forRemoval = true)
-    public String modelName() {
-        return defaultRequestParameters.modelName();
     }
 
     @Override
@@ -194,21 +176,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         return OPEN_AI;
     }
 
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default values for the model name and temperature will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiStreamingChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
-    }
-
     public static OpenAiStreamingChatModelBuilder builder() {
         for (OpenAiStreamingChatModelBuilderFactory factory : loadFactories(OpenAiStreamingChatModelBuilderFactory.class)) {
             return factory.get();
@@ -246,7 +213,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
 
@@ -397,11 +363,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         public OpenAiStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        public OpenAiStreamingChatModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 

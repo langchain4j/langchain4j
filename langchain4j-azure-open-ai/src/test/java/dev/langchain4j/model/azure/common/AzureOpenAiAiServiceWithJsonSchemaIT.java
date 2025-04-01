@@ -1,7 +1,8 @@
-package dev.langchain4j.model.azure;
+package dev.langchain4j.model.azure.common;
 
+import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.service.AiServicesWithJsonSchemaIT;
+import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import org.junit.jupiter.api.AfterEach;
 
 import java.util.List;
@@ -9,7 +10,7 @@ import java.util.Set;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
-class AzureOpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
+class AzureOpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
     @Override
     protected List<ChatLanguageModel> models() {

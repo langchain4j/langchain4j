@@ -10,7 +10,7 @@ import java.util.List;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 

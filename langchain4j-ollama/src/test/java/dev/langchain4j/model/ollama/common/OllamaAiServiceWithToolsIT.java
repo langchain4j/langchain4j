@@ -1,4 +1,4 @@
-package dev.langchain4j.model.ollama;
+package dev.langchain4j.model.ollama.common;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -12,6 +12,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +32,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructure {
+class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrastructure {
 
     ToolSpecification weatherToolSpecification = ToolSpecification.builder()
             .name("get_current_weather")
@@ -197,30 +199,30 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_pojo_with_primitives() {
+    protected void should_execute_tool_with_pojo_with_primitives(ChatLanguageModel model) {
     }
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_pojo_with_nested_pojo() {
+    protected void should_execute_tool_with_pojo_with_nested_pojo(ChatLanguageModel model) {
     }
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_list_of_strings_parameter() {
+    protected void should_execute_tool_with_list_of_strings_parameter(ChatLanguageModel model) {
     }
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_list_of_POJOs_parameter() {
+    protected void should_execute_tool_with_list_of_POJOs_parameter(ChatLanguageModel model) {
     }
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_collection_of_integers_parameter() {
+    protected void should_execute_tool_with_collection_of_integers_parameter(ChatLanguageModel model) {
     }
 }
