@@ -46,7 +46,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-class BedrockChatModelWithInvokeAPIIT {
+public class BedrockChatModelWithInvokeAPIIT {
 
     private static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
@@ -859,7 +859,7 @@ class BedrockChatModelWithInvokeAPIIT {
         sleepIfNeeded();
     }
 
-    static void sleepIfNeeded() {
+    public static void sleepIfNeeded() {
         try {
             String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_BEDROCK");
             if (ciDelaySeconds != null) {

@@ -1,16 +1,15 @@
-package dev.langchain4j.store.memory.chat;
+package dev.langchain4j.memory.chat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import java.util.Arrays;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-
-class InMemoryChatMemoryStoreTest implements WithAssertions {
+class SingleSlotChatMemoryStoreTest implements WithAssertions {
     @Test
     void test() {
-        InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
+        SingleSlotChatMemoryStore store = new SingleSlotChatMemoryStore("foo");
         assertThat(store.getMessages("foo")).isEmpty();
 
         store.updateMessages("foo", Arrays.asList(new UserMessage("abc def"), new AiMessage("ghi jkl")));
