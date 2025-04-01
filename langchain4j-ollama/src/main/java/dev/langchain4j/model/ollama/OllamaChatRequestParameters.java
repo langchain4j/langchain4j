@@ -1,12 +1,13 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.quoted;
-
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.quoted;
 
 @Experimental
 public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
@@ -20,6 +21,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
     private final Integer seed;
     private final Integer numPredict;
     private final Double minP;
+    private final Long keepAlive;
 
     private OllamaChatRequestParameters(Builder builder) {
         super(builder);
@@ -32,6 +34,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         this.seed = builder.seed;
         this.numPredict = builder.numPredict;
         this.minP = builder.minP;
+        this.keepAlive = builder.keepAlive;
     }
 
     public Integer mirostat() {
@@ -70,6 +73,10 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         return minP;
     }
 
+    public Long keepAlive() {
+        return keepAlive;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -83,7 +90,8 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(repeatPenalty, that.repeatPenalty)
                 && Objects.equals(seed, that.seed)
                 && Objects.equals(numPredict, that.numPredict)
-                && Objects.equals(minP, that.minP);
+                && Objects.equals(minP, that.minP)
+                && Objects.equals(keepAlive, that.keepAlive);
     }
 
     @Override
@@ -98,7 +106,9 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 repeatPenalty,
                 seed,
                 numPredict,
-                minP);
+                minP,
+                keepAlive
+        );
     }
 
     @Override
@@ -149,6 +159,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         private Integer seed;
         private Integer numPredict;
         private Double minP;
+        private Long keepAlive;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -163,6 +174,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 seed(getOrDefault(ollamaChatRequestParameters.seed, seed));
                 numPredict(getOrDefault(ollamaChatRequestParameters.numPredict, numPredict));
                 minP(getOrDefault(ollamaChatRequestParameters.minP, minP));
+                keepAlive(getOrDefault(ollamaChatRequestParameters.keepAlive, keepAlive));
             }
             return this;
         }
@@ -236,6 +248,17 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder minP(Double minP) {
             this.minP = minP;
+            return this;
+        }
+
+        /**
+         * controls how long the model will stay loaded into memory following the request
+         * <p>Default: 5m</p>
+         *
+         * @return builder
+         */
+        public Builder keepAlive(Long keepAlive) {
+            this.keepAlive = keepAlive;
             return this;
         }
 

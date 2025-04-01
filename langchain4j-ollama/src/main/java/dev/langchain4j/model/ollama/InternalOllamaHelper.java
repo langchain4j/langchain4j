@@ -162,6 +162,7 @@ class InternalOllamaHelper {
                 .format(toOllamaResponseFormat(requestParameters.responseFormat()))
                 .stream(false)
                 .tools(toOllamaTools(chatRequest.toolSpecifications()))
+                .keepAlive(requestParameters.keepAlive())
                 .build();
     }
 
