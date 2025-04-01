@@ -75,12 +75,12 @@ ChatModelListener listener = new ChatModelListener() {
 
     @Override
     public void onResponse(ChatModelResponseContext responseContext) {
-        ChatResponse ollamaChatResponse = responseContext.ollamaChatResponse();
+        ChatResponse chatResponse = responseContext.chatResponse();
 
-        AiMessage aiMessage = ollamaChatResponse.aiMessage();
+        AiMessage aiMessage = chatResponse.aiMessage();
         System.out.println(aiMessage);
 
-        ChatResponseMetadata metadata = ollamaChatResponse.metadata();
+        ChatResponseMetadata metadata = chatResponse.metadata();
         System.out.println(metadata.id());
         System.out.println(metadata.modelName());
         System.out.println(metadata.finishReason());

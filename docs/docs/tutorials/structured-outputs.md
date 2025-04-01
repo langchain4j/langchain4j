@@ -106,9 +106,9 @@ ChatLanguageModel chatModel = OllamaChatModel.builder()
         .logResponses(true)
         .build();
 
-ChatResponse ollamaChatResponse = chatModel.chat(chatRequest);
+ChatResponse chatResponse = chatModel.chat(chatRequest);
 
-String output = ollamaChatResponse.aiMessage().text();
+String output = chatResponse.aiMessage().text();
 System.out.println(output); // {"name":"John","age":42,"height":1.75,"married":false}
 
 Person person = new ObjectMapper().readValue(output, Person.class);
@@ -313,9 +313,9 @@ ChatRequest chatRequest = ChatRequest.builder()
         .responseFormat(responseFormat)
         .build();
 
-ChatResponse ollamaChatResponse = model.chat(chatRequest);
+ChatResponse chatResponse = model.chat(chatRequest);
 
-System.out.println(ollamaChatResponse.aiMessage().text()); // {"shapes":[{"radius":5},{"width":10,"height":20}]}
+System.out.println(chatResponse.aiMessage().text()); // {"shapes":[{"radius":5},{"width":10,"height":20}]}
 ```
 
 :::note

@@ -248,7 +248,7 @@ class MyConfiguration {
 
             @Override
             public void onResponse(ChatModelResponseContext responseContext) {
-                log.info("onResponse(): {}", responseContext.ollamaChatResponse());
+                log.info("onResponse(): {}", responseContext.chatResponse());
             }
 
             @Override
