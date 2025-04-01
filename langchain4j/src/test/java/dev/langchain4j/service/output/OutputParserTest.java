@@ -157,9 +157,12 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.formatInstructions()).isEqualTo("integer number");
 
         assertThat(parser.parse("42")).isEqualTo(42);
+        assertThat(parser.parse("42.0")).isEqualTo(42);
         assertThat(parser.parse(" 42 ")).isEqualTo(42);
+        assertThat(parser.parse("0.0")).isEqualTo(0);
 
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("42.0"));
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> parser.parse("42.2"));
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> parser.parse("0.1"));
     }
 
     @Test

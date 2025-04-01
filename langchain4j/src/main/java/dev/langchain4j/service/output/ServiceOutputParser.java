@@ -83,6 +83,17 @@ public class ServiceOutputParser {
     }
 
     private static Object parsePojos(String text, Type returnType) {
+        // If there is no JSON content at all, treat it as "empty"
+        if (text == null || text.trim().isEmpty()) {
+            if (typeHasRawClass(returnType, List.class)) {
+                return new ArrayList<>();
+            } else if (typeHasRawClass(returnType, Set.class)) {
+                return new HashSet<>();
+            }
+            //TODO decide to throw an exception or return null for other types
+            return null;
+        }
+
         if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
             Map<?, ?> map = Json.fromJson(text, Map.class);
 
@@ -98,6 +109,7 @@ public class ServiceOutputParser {
             if (map.containsKey("items")) {
                 items = map.get("items");
             } else {
+                // If "items" is missing, pick the first property
                 items = map.values().iterator().next();
             }
 
@@ -109,8 +121,10 @@ public class ServiceOutputParser {
                 }
             }
 
+            // Recursively parse the items array, e.g. into a List<Pojo>
             return Json.fromJson(Json.toJson(items), returnType);
         } else {
+            // Some other non‐collection type, just hand off to Jackson
             return Json.fromJson(text, returnType);
         }
     }

@@ -19,6 +19,7 @@ import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.service.output.JsonSchemas.isEnum;
@@ -44,10 +45,14 @@ class JsonSchemasTest {
         assertThat(jsonSchemaFrom(String.class)).isEmpty();
         assertThat(jsonSchemaFrom(AiMessage.class)).isEmpty();
         assertThat(jsonSchemaFrom(Response.class)).isEmpty();
-        assertThat(jsonSchemaFrom(Integer.class)).isEmpty();
         assertThat(jsonSchemaFrom(LocalDate.class)).isEmpty();
         assertThat(jsonSchemaFrom(new TypeReference<Result<String>>() {
         }.getType())).isEmpty();
+
+        //TODO separate test?
+        assertThat(jsonSchemaFrom(Integer.class)).isNotEmpty();
+        assertThat(jsonSchemaFrom(Boolean.class)).isNotEmpty();
+        assertThat(jsonSchemaFrom(Double.class)).isNotEmpty();
     }
 
 
@@ -252,16 +257,16 @@ class JsonSchemasTest {
         Method nonEnumOptionalMethod = GenericEnumHolder.class.getDeclaredMethod("getNonEnumOptional");
 
         return Stream.of(
-            Arguments.of(TestEnum.class, true),
-            Arguments.of(enumListMethod.getGenericReturnType(), true),
-            Arguments.of(optionalEnumMethod.getGenericReturnType(), true),
+                Arguments.of(TestEnum.class, true),
+                Arguments.of(enumListMethod.getGenericReturnType(), true),
+                Arguments.of(optionalEnumMethod.getGenericReturnType(), true),
 
-            Arguments.of(String.class, false),
-            Arguments.of(int.class, false),
-            Arguments.of(List.class, false),
-            Arguments.of(Optional.class, false),
-            Arguments.of(nonEnumListMethod.getGenericReturnType(), false),
-            Arguments.of(nonEnumOptionalMethod.getGenericReturnType(), false)
+                Arguments.of(String.class, false),
+                Arguments.of(int.class, false),
+                Arguments.of(List.class, false),
+                Arguments.of(Optional.class, false),
+                Arguments.of(nonEnumListMethod.getGenericReturnType(), false),
+                Arguments.of(nonEnumOptionalMethod.getGenericReturnType(), false)
         );
     }
 

@@ -108,6 +108,9 @@ class JacksonJsonCodec implements Json.JsonCodec {
         return new ObjectMapper()
                 .setVisibility(FIELD, ANY)
                 .registerModule(module)
+                .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true)
+                .configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true) //TODO can be deleted, there is UnquotedEnumPreprocessor class
+                //TODO .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true) - is deprecated and we have UnquotedEnumPreprocessor
                 .enable(INDENT_OUTPUT);
     }
 
@@ -123,7 +126,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
     @Override
     public <T> T fromJson(String json, Class<T> type) {
         try {
-            return OBJECT_MAPPER.readValue(json, type);
+            String preprocessed = UnquotedEnumPreprocessor.quoteUnquotedTokens(json);
+            return OBJECT_MAPPER.readValue(preprocessed, type);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
