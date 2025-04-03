@@ -427,6 +427,27 @@ You can find many examples of supported use cases
 [here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaIT.java)
 and [here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaWithDescriptionsIT.java).
 
+#### Required and Optional
+
+By default, all fields and sub-fields in the generated `JsonSchema` are considered **_optional_**.
+This is because LLMs tend to hallucinate and populate fields with synthetic data when they
+lack sufficient information (e.g., using "John Doe" when then name is missing)".
+
+To make the field required, you can annotate it with `@JsonProperty(required = true)`:
+```java
+record Person(@JsonProperty(required = true) String name, String surname) {
+}
+
+interface PersonExtractor {
+    
+    Person extractPersonFrom(String text);
+}
+```
+
+:::note
+Please note that behaviour is different TODO
+:::
+
 #### Adding Description
 
 If an LLM does not provide the desired output, classes and fields can be annotated with `@Description`
@@ -454,7 +475,6 @@ We are [working](https://github.com/langchain4j/langchain4j/pull/1938) on suppor
   - `enum`s
   - Nested POJOs
   - `List<T>`, `Set<T>` and `T[]`, where `T` is a scalar, an `enum` or a POJO
-- All fields and sub-fields in the generated `JsonSchema` are automatically marked as `required`, there is currently no way to make them optional.
 - When LLM does not support JSON Schema feature, or it is not enabled, or return type is not a POJO,
 AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting).
 - Recursion is currently supported only by OpenAI and Azure OpenAI.
