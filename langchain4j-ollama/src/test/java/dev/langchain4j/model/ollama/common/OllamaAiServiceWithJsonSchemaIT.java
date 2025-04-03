@@ -45,31 +45,43 @@ class OllamaAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT 
     }
 
     @Test
-    @Disabled("llama 3.1 is cannot do it properly")
+    @Disabled("llama 3.1 cannot do it properly")
+    @Override
+    protected void should_extract_pojo_with_missing_data(ChatLanguageModel model) {
+    }
+
+    @Test
+    @Disabled("llama 3.1 cannot do it properly")
     @Override
     protected void should_extract_pojo_with_nested_pojo(ChatLanguageModel model) {
     }
 
     @Test
-    @Disabled("llama 3.1 is cannot do it properly")
+    @Disabled("llama 3.1 cannot do it properly")
     @Override
     protected void should_extract_pojo_with_list_of_pojos(ChatLanguageModel model) {
     }
 
     @Test
-    @Disabled("llama 3.1 is cannot do it properly")
+    @Disabled("llama 3.1 cannot do it properly")
     @Override
     protected void should_extract_pojo_with_array_of_pojos(ChatLanguageModel model) {
     }
 
     @Test
-    @Disabled("llama 3.1 is cannot do it properly")
+    @Disabled("llama 3.1 cannot do it properly")
     @Override
     protected void should_extract_pojo_with_set_of_pojos(ChatLanguageModel model) {
     }
 
     @Test
-    @Disabled("llama 3.1 is cannot do it properly")
+    @Disabled("llama 3.1 cannot do it properly")
+    @Override
+    protected void should_extract_pojo_with_local_date_time_fields(ChatLanguageModel model) {
+    }
+
+    @Test
+    @Disabled("llama 3.1 cannot do it properly")
     @Override
     protected void should_extract_pojo_with_uuid(ChatLanguageModel model) {
     }

@@ -16,6 +16,7 @@ import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Optional;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
@@ -68,8 +69,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
                 if (node.isObject()) {
                     int hour = node.get("hour").asInt();
                     int minute = node.get("minute").asInt();
-                    int second = node.get("second").asInt();
-                    int nano = node.get("nano").asInt();
+                    int second = Optional.ofNullable(node.get("second")).map(JsonNode::asInt).orElse(0);
+                    int nano = Optional.ofNullable(node.get("nano")).map(JsonNode::asInt).orElse(0);
                     return LocalTime.of(hour, minute, second, nano);
                 } else {
                     return LocalTime.parse(node.asText(), ISO_LOCAL_TIME);
@@ -96,8 +97,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
                     JsonNode time = node.get("time");
                     int hour = time.get("hour").asInt();
                     int minute = time.get("minute").asInt();
-                    int second = time.get("second").asInt();
-                    int nano = time.get("nano").asInt();
+                    int second = Optional.ofNullable(node.get("second")).map(JsonNode::asInt).orElse(0);
+                    int nano = Optional.ofNullable(node.get("nano")).map(JsonNode::asInt).orElse(0);
                     return LocalDateTime.of(year, month, day, hour, minute, second, nano);
                 } else {
                     return LocalDateTime.parse(node.asText(), ISO_LOCAL_DATE_TIME);

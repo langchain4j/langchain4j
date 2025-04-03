@@ -257,7 +257,7 @@ Methods without parameters are supported as well.
 By default, all method parameters are considered mandatory/required.
 This means that the LLM will have to produce a value for such a parameter.
 A parameter can be made optional by annotating it with `@P(required = false)`.
-Declaring fields of POJO parameters as optional is not supported yet.
+Declaring fields of POJO parameters as optional is not supported yet. TODO
 
 Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
 are currently supported only by OpenAI.
