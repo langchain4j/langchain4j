@@ -19,6 +19,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
@@ -32,6 +36,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamRespon
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
  */
 public class BedrockStreamingChatModel extends AbstractBedrockChatModel implements StreamingChatLanguageModel {
+    private static final Logger log = LoggerFactory.getLogger(BedrockStreamingChatModel.class);
     private final BedrockRuntimeAsyncClient client;
 
     public BedrockStreamingChatModel(String modelId) {
@@ -85,7 +90,11 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .build();
 
         ListenersUtil.onRequest(finalChatRequest, this.provider(), attributes, listeners);
-        this.client.converseStream(converseStreamRequest, built).join();
+        try {
+            this.client.converseStream(converseStreamRequest, built).get();
+        } catch (ExecutionException | InterruptedException e) {
+            log.error("Can't invoke '{}': {}", modelId, e.getCause().getMessage());
+        }
     }
 
     private ConverseStreamRequest buildConverseStreamRequest(
