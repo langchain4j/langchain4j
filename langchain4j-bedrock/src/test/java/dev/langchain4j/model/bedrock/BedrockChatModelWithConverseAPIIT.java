@@ -6,7 +6,7 @@ import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.slee
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -193,6 +193,6 @@ class BedrockChatModelWithConverseAPIIT {
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when then
-        assertThrows(RuntimeException.class, () -> model.chat(userMessage));
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> model.chat(userMessage));
     }
 }
