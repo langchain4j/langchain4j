@@ -87,7 +87,7 @@ class LanguageModelQueryRouterIT {
         Collection<ContentRetriever> retrievers = router.route(query);
 
         // then
-        assertThat(retrievers).hasSizeBetween(0, 2);
+        assertThat(retrievers).isEmpty();
     }
 
     static Stream<Arguments> models() {

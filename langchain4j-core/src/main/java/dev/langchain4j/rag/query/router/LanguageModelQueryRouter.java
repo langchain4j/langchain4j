@@ -1,10 +1,17 @@
 package dev.langchain4j.rag.query.router;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -15,10 +22,11 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -55,23 +63,20 @@ public class LanguageModelQueryRouter implements QueryRouter {
                     {{options}}
                     User query: {{query}}
                     
-                    It is very important that your answer is in json format with the list of selected options as integer values.
-                    For example:
-                    [1]
-                    [1,2]
-                    [1,2,3,4]
-                    
-                    Do not include any additional information, such as your thought process or extra details.
+                    It is important that your answer contains only numbers from the available options,
+                    or empty if none is suitable.
                     """
     );
 
-    public static final Pattern THINKING_REGEX = Pattern.compile("<think>(.*?)</think>(.*)");
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+            .visibility(FIELD, ANY)
+            .build();
+
     protected final ChatLanguageModel chatLanguageModel;
     protected final PromptTemplate promptTemplate;
     protected final String options;
     protected final Map<Integer, ContentRetriever> idToRetriever;
     protected final FallbackStrategy fallbackStrategy;
-    protected final Gson gson;
 
     public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
                                     Map<ContentRetriever, String> retrieverToDescription) {
@@ -104,7 +109,6 @@ public class LanguageModelQueryRouter implements QueryRouter {
         this.idToRetriever = idToRetriever;
         this.options = optionsBuilder.toString();
         this.fallbackStrategy = getOrDefault(fallbackStrategy, DO_NOT_ROUTE);
-        this.gson = new Gson();
     }
 
     public static LanguageModelQueryRouterBuilder builder() {
@@ -113,14 +117,27 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     @Override
     public Collection<ContentRetriever> route(Query query) {
-        Prompt prompt = createPrompt(query);
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(ChatRequestParameters.builder()
+                        .responseFormat(jsonListOfIntegers())
+                        .build())
+                .messages(new UserMessage(createPrompt(query).text()))
+                .build();
         try {
-            String response = chatLanguageModel.chat(prompt.text());
-            return parse(response);
+            ChatResponse response = chatLanguageModel.chat(chatRequest);
+            return parse(response.aiMessage().text());
         } catch (Exception e) {
             log.warn("Failed to route query '{}'", query.text(), e);
             return fallback(query, e);
         }
+    }
+
+    private JsonSchema jsonListOfIntegers() {
+        return JsonSchema.builder()
+                .rootElement(JsonArraySchema.builder()
+                        .items(JsonIntegerSchema.builder().build())
+                        .build())
+                .build();
     }
 
     protected Collection<ContentRetriever> fallback(Query query, Exception e) {
@@ -144,34 +161,11 @@ public class LanguageModelQueryRouter implements QueryRouter {
         return promptTemplate.apply(variables);
     }
 
-    protected Collection<ContentRetriever> parse(String choices) {
-        String choicesNoThinking = removeThinkingProcess(choices);
-
-        return gson.fromJson(choicesNoThinking, JsonArray.class).asList().stream()
-                .map(JsonElement::getAsInt)
+    protected Collection<ContentRetriever> parse(String choices) throws JsonProcessingException {
+        return OBJECT_MAPPER.readValue(choices, new TypeReference<List<Integer>>() {
+                }).stream()
                 .map(idToRetriever::get)
                 .toList();
-
-    }
-
-    /**
-     * Reasoning models such as deepseek-r1 and gemini will answer back with their thinking process
-     * this looks like <think>thinking process</think> followed by their answer.
-     * <p>
-     * This method removes the thinking process and keeps only the json from the answer.
-     *
-     * @param choices the response from the reasoning model
-     * @return the response without the thinking process.
-     */
-    private String removeThinkingProcess(String choices) {
-        Matcher matcher = THINKING_REGEX.matcher(choices);
-
-        //matcher.group(1) is thinking process
-        if (matcher.find()) {
-            return matcher.group(2);
-        } else {
-            return choices;
-        }
     }
 
     /**

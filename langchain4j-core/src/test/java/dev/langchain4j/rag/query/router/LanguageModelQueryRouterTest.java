@@ -1,6 +1,6 @@
 package dev.langchain4j.rag.query.router;
 
-import com.google.gson.JsonSyntaxException;
+import com.fasterxml.jackson.core.JsonParseException;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -95,6 +95,27 @@ class LanguageModelQueryRouterTest {
 
         // then
         assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
+    }
+
+    @Test
+    void should_not_route_to_any_retriever() {
+
+        // given
+        Query query = Query.from("Which animal is the fluffiest?");
+
+        Map<ContentRetriever, String> retrieverToDescription = new HashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("[]");
+
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).isEmpty();
     }
 
     @Test
@@ -242,7 +263,7 @@ class LanguageModelQueryRouterTest {
 
         // when-then
         assertThatThrownBy(() -> router.route(query))
-                .hasRootCauseExactlyInstanceOf(JsonSyntaxException.class);
+                .hasRootCauseExactlyInstanceOf(JsonParseException.class);
     }
 
     @Test
@@ -266,28 +287,5 @@ class LanguageModelQueryRouterTest {
         assertThatThrownBy(() -> router.route(query))
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Something went wrong");
-    }
-
-    @Test
-    void should_parse_answer_when_thinking_format_is_present() {
-
-        // given
-        Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("<think>Ok I think he's asking me about the sky</think>[1,2]");
-
-        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
-        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
-        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
-
-        QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
-                .retrieverToDescription(retrieverToDescription)
-                .fallbackStrategy(FAIL)
-                .build();
-        // when
-        Collection<ContentRetriever> retrievers = router.route(query);
-
-        //then
-        assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
     }
 }
