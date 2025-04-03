@@ -3,6 +3,7 @@ package dev.langchain4j.service.memory;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,7 +27,13 @@ public class ChatMemoryService {
     }
 
     public ChatMemory getOrCreateChatMemory(Object memoryId) {
-        return memoryId == DEFAULT ? defaultChatMemory : chatMemories.computeIfAbsent(memoryId, chatMemoryProvider::get);
+        if (memoryId == DEFAULT) {
+            if (defaultChatMemory == null) {
+                defaultChatMemory = chatMemoryProvider.get(DEFAULT);
+            }
+            return defaultChatMemory;
+        }
+        return chatMemories.computeIfAbsent(memoryId, chatMemoryProvider::get);
     }
 
     public ChatMemory getChatMemory(Object memoryId) {
@@ -35,5 +42,18 @@ public class ChatMemoryService {
 
     public ChatMemory evictChatMemory(Object memoryId) {
         return chatMemories.remove(memoryId);
+    }
+
+    public void clearAll() {
+        chatMemories.values().forEach(ChatMemory::clear);
+        chatMemories.clear();
+    }
+
+    public Collection<Object> getChatMemoryIDs() {
+        return chatMemories.keySet();
+    }
+
+    public Collection<ChatMemory> getChatMemories() {
+        return chatMemories.values();
     }
 }
