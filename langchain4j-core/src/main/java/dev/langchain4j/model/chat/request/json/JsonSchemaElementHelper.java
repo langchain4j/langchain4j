@@ -33,7 +33,7 @@ public class JsonSchemaElementHelper {
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz,
                                                           Type type,
                                                           String fieldDescription,
-                                                          boolean isRequiredByDefault,
+                                                          boolean areSubFieldsRequiredByDefault,
                                                           Map<Class<?>, VisitedClassMetadata> visited) {
         if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
@@ -64,19 +64,19 @@ public class JsonSchemaElementHelper {
 
         if (clazz.isArray()) {
             return JsonArraySchema.builder()
-                    .items(jsonSchemaElementFrom(clazz.getComponentType(), null, null, isRequiredByDefault, visited))
+                    .items(jsonSchemaElementFrom(clazz.getComponentType(), null, null, areSubFieldsRequiredByDefault, visited))
                     .description(fieldDescription)
                     .build();
         }
 
         if (Collection.class.isAssignableFrom(clazz)) {
             return JsonArraySchema.builder()
-                    .items(jsonSchemaElementFrom(getActualType(type), null, null, isRequiredByDefault, visited))
+                    .items(jsonSchemaElementFrom(getActualType(type), null, null, areSubFieldsRequiredByDefault, visited))
                     .description(fieldDescription)
                     .build();
         }
 
-        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, isRequiredByDefault, visited, false);
+        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
     }
 
     public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(

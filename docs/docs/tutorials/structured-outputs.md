@@ -434,6 +434,17 @@ By default, all fields and sub-fields in the generated `JsonSchema` are consider
 This is because LLMs tend to hallucinate and populate fields with synthetic data when they
 lack sufficient information (e.g., using "John Doe" when then name is missing)".
 
+:::note
+Please note that optional fields with primitive types (e.g., `int`, `boolean`, etc.)
+will be initialized with default values (e.g., `0` for `int`, `false` for `boolean`, etc.)
+if the LLM does not provide a value for them.
+:::
+
+:::note
+Please note that optional `enum` fields can still be populated with hallucinated values
+when strict mode is on (`strictJsonSchema(true)`).
+:::
+
 To make the field required, you can annotate it with `@JsonProperty(required = true)`:
 ```java
 record Person(@JsonProperty(required = true) String name, String surname) {
