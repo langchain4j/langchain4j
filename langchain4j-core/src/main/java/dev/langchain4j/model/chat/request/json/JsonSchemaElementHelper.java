@@ -301,6 +301,8 @@ public class JsonSchemaElementHelper {
                     .collect(Collectors.toList());
             map.put("anyOf", anyOf);
             return map;
+        } else if (jsonSchemaElement instanceof JsonNullSchema) {
+            return Map.of("type", "null");
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
         }

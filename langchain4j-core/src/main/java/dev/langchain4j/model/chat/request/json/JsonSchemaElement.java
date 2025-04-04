@@ -11,6 +11,7 @@ import dev.langchain4j.Experimental;
  * @see JsonEnumSchema
  * @see JsonIntegerSchema
  * @see JsonNumberSchema
+ * @see JsonNullSchema
  * @see JsonObjectSchema
  * @see JsonReferenceSchema
  * @see JsonStringSchema

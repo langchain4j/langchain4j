@@ -130,6 +130,7 @@ with the following subtypes:
 - `JsonArraySchema` - for arrays and collections (e.g., `List`, `Set`).
 - `JsonReferenceSchema` - to support recursion (e.g., `Person` has a `Set<Person> children` field).
 - `JsonAnyOfSchema` - to support polymorphism (e.g., `Shape` can be either `Circle` or `Rectangle`).
+- `JsonNullSchema` - to support nullable type.
 
 #### `JsonObjectSchema`
 
