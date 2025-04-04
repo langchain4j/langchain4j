@@ -1,13 +1,13 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.guardrail.GuardrailService;
+import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.ToolService;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
