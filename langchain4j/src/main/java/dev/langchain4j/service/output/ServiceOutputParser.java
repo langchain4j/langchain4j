@@ -11,6 +11,7 @@ import dev.langchain4j.service.TypeUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -74,10 +75,57 @@ public class ServiceOutputParser {
         }
 
         try {
-            return Json.fromJson(text, returnType);
+            return parsePojos(text, returnType);
         } catch (Exception e) {
             String jsonBlock = extractJsonBlock(text);
-            return Json.fromJson(jsonBlock, returnType);
+            return parsePojos(jsonBlock, returnType);
+        }
+    }
+
+    private static Object parsePojos(String text, Type returnType) {
+        // If there is no JSON content at all, treat it as "empty"
+        if (text == null || text.trim().isEmpty()) {
+            if (typeHasRawClass(returnType, List.class)) {
+                return new ArrayList<>();
+            } else if (typeHasRawClass(returnType, Set.class)) {
+                return new HashSet<>();
+            }
+            //TODO decide to throw an exception or return null for other types
+            return null;
+        }
+
+        if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
+            Map<?, ?> map = Json.fromJson(text, Map.class);
+
+            if (map == null || map.isEmpty()) {
+                if (typeHasRawClass(returnType, List.class)) {
+                    return new ArrayList<>();
+                } else {
+                    return new HashSet<>();
+                }
+            }
+
+            Object items;
+            if (map.containsKey("items")) {
+                items = map.get("items");
+            } else {
+                // If "items" is missing, pick the first property
+                items = map.values().iterator().next();
+            }
+
+            if (items == null) { // TODO extract
+                if (typeHasRawClass(returnType, List.class)) {
+                    return new ArrayList<>();
+                } else {
+                    return new HashSet<>();
+                }
+            }
+
+            // Recursively parse the items array, e.g. into a List<Pojo>
+            return Json.fromJson(Json.toJson(items), returnType);
+        } else {
+            // Some other non‐collection type, just hand off to Jackson
+            return Json.fromJson(text, returnType);
         }
     }
 
@@ -199,31 +247,17 @@ public class ServiceOutputParser {
     }
 
     private static String simpleTypeName(Type type) {
-        switch (type.getTypeName()) {
-            case "java.lang.String":
-                return "string";
-            case "java.lang.Integer":
-            case "int":
-                return "integer";
-            case "java.lang.Boolean":
-            case "boolean":
-                return "boolean";
-            case "java.lang.Float":
-            case "float":
-                return "float";
-            case "java.lang.Double":
-            case "double":
-                return "double";
-            case "java.util.Date":
-            case "java.time.LocalDate":
-                return "date string (2023-12-31)";
-            case "java.time.LocalTime":
-                return "time string (23:59:59)";
-            case "java.time.LocalDateTime":
-                return "date-time string (2023-12-31T23:59:59)";
-            default:
-                return type.getTypeName();
-        }
+        return switch (type.getTypeName()) {
+            case "java.lang.String" -> "string";
+            case "java.lang.Integer", "int" -> "integer";
+            case "java.lang.Boolean", "boolean" -> "boolean";
+            case "java.lang.Float", "float" -> "float";
+            case "java.lang.Double", "double" -> "double";
+            case "java.util.Date", "java.time.LocalDate" -> "date string (2023-12-31)";
+            case "java.time.LocalTime" -> "time string (23:59:59)";
+            case "java.time.LocalDateTime" -> "date-time string (2023-12-31T23:59:59)";
+            default -> type.getTypeName();
+        };
     }
 
     private String extractJsonBlock(String text) {
