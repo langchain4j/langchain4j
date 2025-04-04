@@ -163,7 +163,7 @@ class ToolSpecificationHelper {
             case "object":
                 return JsonObjectSchema.builder().build();
             case "null":
-                return JsonNullSchema.builder().build();
+                return new JsonNullSchema();
             default:
                 throw new IllegalArgumentException("Unsupported type: " + node.textValue());
         }

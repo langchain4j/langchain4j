@@ -65,7 +65,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor1 personExtractor = AiServices.create(PersonExtractor1.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single";
+        String text = "Extract the person's information from the following text: " +
+                "Klaus is 37 years old, 1.78m height and single";
 
         // when
         PersonExtractor1.Person person = personExtractor.extractPersonFrom(text);
@@ -88,12 +89,108 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .addIntegerProperty("age")
                                                 .addNumberProperty("height")
                                                 .addBooleanProperty("married")
-                                                .required("name", "age", "height", "married")
                                                 .build())
                                         .build())
                                 .build())
                         .build());
         verify(model).supportedCapabilities();
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_missing_data(ChatLanguageModel model) {
+
+        interface PersonExtractor {
+
+            enum MaritalStatus {
+                SINGLE,
+                MARRIED
+            }
+
+            record Address(String street) {
+            }
+
+            class Person {
+
+                String name;
+                int age;
+                Double height;
+                boolean married;
+                Map<String, Object> map;
+                List<String> list;
+                String[] array;
+                Address address;
+                MaritalStatus maritalStatus;
+                LocalDate localDate;
+            }
+
+            Person extractPersonFrom(String text);
+        }
+
+        // given
+        ChatLanguageModel spyModel = spy(model);
+
+        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, spyModel);
+
+        String text = "Extract the person's information from the following text. Do not include missing fields! " +
+                "Text: 'Klaus'";
+
+        // when
+        PersonExtractor.Person person = personExtractor.extractPersonFrom(text);
+
+        // then
+        assertThat(person.name).isEqualTo("Klaus");
+        assertThat(person.age).isEqualTo(0);
+        assertThat(person.height).isEqualTo(null);
+        assertThat(person.married).isFalse();
+        assertThat(person.map).isNullOrEmpty();
+        assertThat(person.list).isNullOrEmpty();
+        assertThat(person.array).isNullOrEmpty();
+        assertThat(person.address).isNull();
+        if (!isStrictJsonSchemaEnabled(model)) {
+            // LLMs in strict JSON schema mode return enums for some reason, even if it is optional and no data available
+            assertThat(person.maritalStatus).isNull();
+        }
+        assertThat(person.localDate).isNull();
+
+        verify(spyModel)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("Person")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addStringProperty("name")
+                                                .addIntegerProperty("age")
+                                                .addNumberProperty("height")
+                                                .addBooleanProperty("married")
+                                                .addProperty("map", JsonObjectSchema.builder()
+                                                        .build())
+                                                .addProperty("list", JsonArraySchema.builder()
+                                                        .items(new JsonStringSchema())
+                                                        .build())
+                                                .addProperty("array", JsonArraySchema.builder()
+                                                        .items(new JsonStringSchema())
+                                                        .build())
+                                                .addProperty("address", JsonObjectSchema.builder()
+                                                        .addStringProperty("street")
+                                                        .build())
+                                                .addEnumProperty("maritalStatus", List.of("SINGLE", "MARRIED"))
+                                                .addProperty("localDate", JsonObjectSchema.builder()
+                                                        .addIntegerProperty("year")
+                                                        .addIntegerProperty("month")
+                                                        .addIntegerProperty("day")
+                                                        .build())
+                                                .build())
+                                        .build())
+                                .build())
+                        .build());
+        verify(spyModel).supportedCapabilities();
+    }
+
+    protected boolean isStrictJsonSchemaEnabled(ChatLanguageModel model) {
+        return false;
     }
 
     interface PersonExtractor2 {
@@ -122,7 +219,9 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor2 personExtractor = AiServices.create(PersonExtractor2.class, model);
 
-        String text = "Klaus wants a delivery to Langley Falls, but his company is in New York";
+        String text = "Extract the person's information from the following text. " +
+                "Fill in all the fields where the information is available! " +
+                "Text: 'Klaus wants a delivery to Langley Falls, but billing address should be New York'";
 
         // when
         PersonExtractor2.Person person = personExtractor.extractPersonFrom(text);
@@ -145,15 +244,12 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                         "shippingAddress",
                                                         JsonObjectSchema.builder()
                                                                 .addStringProperty("city")
-                                                                .required("city")
                                                                 .build())
                                                 .addProperty(
                                                         "billingAddress",
                                                         JsonObjectSchema.builder()
                                                                 .addStringProperty("city")
-                                                                .required("city")
                                                                 .build())
-                                                .required("name", "shippingAddress", "billingAddress")
                                                 .build())
                                         .build())
                                 .build())
@@ -186,7 +282,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor3 personExtractor = AiServices.create(PersonExtractor3.class, model);
 
-        String text = "Klaus is single";
+        String text = "Extract the person's information from the following text: Klaus is single";
 
         // when
         PersonExtractor3.Person person = personExtractor.extractPersonFrom(text);
@@ -205,7 +301,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                         .rootElement(JsonObjectSchema.builder()
                                                 .addStringProperty("name")
                                                 .addEnumProperty("maritalStatus", List.of("SINGLE", "MARRIED"))
-                                                .required("name", "maritalStatus")
                                                 .build())
                                         .build())
                                 .build())
@@ -233,7 +328,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor4 personExtractor = AiServices.create(PersonExtractor4.class, model);
 
-        String text = "Klaus likes orange and green";
+        String text = "Extract the person's information from the following text: Klaus likes orange and green";
 
         // when
         PersonExtractor4.Person person = personExtractor.extractPersonFrom(text);
@@ -256,7 +351,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                         JsonArraySchema.builder()
                                                                 .items(new JsonStringSchema())
                                                                 .build())
-                                                .required("name", "favouriteColors")
                                                 .build())
                                         .build())
                                 .build())
@@ -284,7 +378,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor5 personExtractor = AiServices.create(PersonExtractor5.class, model);
 
-        String text = "Klaus likes orange and green";
+        String text = "Extract the person's information from the following text: Klaus likes orange and green";
 
         // when
         PersonExtractor5.Person person = personExtractor.extractPersonFrom(text);
@@ -307,7 +401,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                         JsonArraySchema.builder()
                                                                 .items(new JsonStringSchema())
                                                                 .build())
-                                                .required("name", "favouriteColors")
                                                 .build())
                                         .build())
                                 .build())
@@ -335,7 +428,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor6 personExtractor = AiServices.create(PersonExtractor6.class, model);
 
-        String text = "Klaus likes orange and green";
+        String text = "Extract the person's information from the following text: Klaus likes orange and green";
 
         // when
         PersonExtractor6.Person person = personExtractor.extractPersonFrom(text);
@@ -358,7 +451,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                         JsonArraySchema.builder()
                                                                 .items(new JsonStringSchema())
                                                                 .build())
-                                                .required("name", "favouriteColors")
                                                 .build())
                                         .build())
                                 .build())
@@ -391,7 +483,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor7 personExtractor = AiServices.create(PersonExtractor7.class, model);
 
-        String text = "Klaus has 2 pets: Peanut and Muffin";
+        String text = "Extract the person's information from the following text: Klaus has 2 pets: Peanut and Muffin";
 
         // when
         PersonExtractor7.Person person = personExtractor.extractPersonFrom(text);
@@ -416,10 +508,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                         JsonArraySchema.builder()
                                                                 .items(JsonObjectSchema.builder()
                                                                         .addStringProperty("name")
-                                                                        .required("name")
                                                                         .build())
                                                                 .build())
-                                                .required("name", "pets")
                                                 .build())
                                         .build())
                                 .build())
@@ -452,7 +542,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor8 personExtractor = AiServices.create(PersonExtractor8.class, model);
 
-        String text = "Klaus has 2 pets: Peanut and Muffin";
+        String text = "Extract the person's information from the following text: Klaus has 2 pets: Peanut and Muffin";
 
         // when
         PersonExtractor8.Person person = personExtractor.extractPersonFrom(text);
@@ -477,10 +567,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                         JsonArraySchema.builder()
                                                                 .items(JsonObjectSchema.builder()
                                                                         .addStringProperty("name")
-                                                                        .required("name")
                                                                         .build())
                                                                 .build())
-                                                .required("name", "pets")
                                                 .build())
                                         .build())
                                 .build())
@@ -508,7 +596,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, model);
 
-        String text = "Klaus has 2 pets: Peanut and Muffin";
+        String text = "Extract the person's information from the following text: Klaus has 2 pets: Peanut and Muffin";
 
         // when
         Person person = personExtractor.extractPersonFrom(text);
@@ -533,10 +621,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                         JsonArraySchema.builder()
                                                                 .items(JsonObjectSchema.builder()
                                                                         .addStringProperty("name")
-                                                                        .required("name")
                                                                         .build())
                                                                 .build())
-                                                .required("name", "pets")
                                                 .build())
                                         .build())
                                 .build())
@@ -570,7 +656,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor10 personExtractor = AiServices.create(PersonExtractor10.class, model);
 
-        String text = "Klaus is assigned to groups A and C";
+        String text = "Extract the person's information from the following text: Klaus is assigned to groups A and C";
 
         // when
         PersonExtractor10.Person person = personExtractor.extractPersonFrom(text);
@@ -599,7 +685,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                         .build());
                                                     }
                                                 })
-                                                .required("name", "groups")
                                                 .build())
                                         .build())
                                 .build())
@@ -633,7 +718,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor11 personExtractor = AiServices.create(PersonExtractor11.class, model);
 
-        String text = "Klaus is assigned to groups A and C";
+        String text = "Extract the person's information from the following text: Klaus is assigned to groups A and C";
 
         // when
         PersonExtractor11.Person person = personExtractor.extractPersonFrom(text);
@@ -662,7 +747,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                         .build());
                                                     }
                                                 })
-                                                .required("name", "groups")
                                                 .build())
                                         .build())
                                 .build())
@@ -696,7 +780,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor12 personExtractor = AiServices.create(PersonExtractor12.class, model);
 
-        String text = "Klaus is assigned to groups A and C";
+        String text = "Extract the person's information from the following text: Klaus is assigned to groups A and C";
 
         // when
         PersonExtractor12.Person person = personExtractor.extractPersonFrom(text);
@@ -725,7 +809,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                         .build());
                                                     }
                                                 })
-                                                .required("name", "groups")
                                                 .build())
                                         .build())
                                 .build())
@@ -755,7 +838,9 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor13 personExtractor = AiServices.create(PersonExtractor13.class, model);
 
-        String text = "Klaus was born at 14:43 on 12th of August 1976";
+        String text = "Extract the person's information from the following text." +
+                "Fill in all the fields where the information is available! " +
+                "Text: 'Klaus was born at 14:43 on 12th of August 1976'";
 
         // when
         PersonExtractor13.Person person = personExtractor.extractPersonFrom(text);
@@ -795,7 +880,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                                                 new JsonIntegerSchema());
                                                                                     }
                                                                                 })
-                                                                        .required("year", "month", "day")
                                                                         .build());
                                                         put(
                                                                 "birthTime",
@@ -817,8 +901,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                                                 new JsonIntegerSchema());
                                                                                     }
                                                                                 })
-                                                                        .required(
-                                                                                "hour", "minute", "second", "nano")
                                                                         .build());
                                                         put(
                                                                 "birthDateTime",
@@ -844,10 +926,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                                                                                 new JsonIntegerSchema());
                                                                                                                     }
                                                                                                                 })
-                                                                                                        .required(
-                                                                                                                "year",
-                                                                                                                "month",
-                                                                                                                "day")
                                                                                                         .build());
                                                                                         put(
                                                                                                 "time",
@@ -870,19 +948,12 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                                                                                 new JsonIntegerSchema());
                                                                                                                     }
                                                                                                                 })
-                                                                                                        .required(
-                                                                                                                "hour",
-                                                                                                                "minute",
-                                                                                                                "second",
-                                                                                                                "nano")
                                                                                                         .build());
                                                                                     }
                                                                                 })
-                                                                        .required("date", "time")
                                                                         .build());
                                                     }
                                                 })
-                                                .required("name", "birthDate", "birthTime", "birthDateTime")
                                                 .build())
                                         .build())
                                 .build())
@@ -910,7 +981,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor14 personExtractor = AiServices.create(PersonExtractor14.class, model);
 
-        String text = "Klaus";
+        String text = "Extract the person's information from the following text: Klaus";
 
         // when
         Result<PersonExtractor14.Person> result = personExtractor.extractPersonFrom(text);
@@ -932,7 +1003,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                         put("name", new JsonStringSchema());
                                                     }
                                                 })
-                                                .required("name")
                                                 .build())
                                         .build())
                                 .build())
@@ -961,7 +1031,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor15 personExtractor = AiServices.create(PersonExtractor15.class, model);
 
-        String text = "Francine has 2 children: Steve and Hayley";
+        String text = "Extract the person's information from the following text: " +
+                "Francine has 2 children: Steve and Hayley";
 
         // when
         PersonExtractor15.Person person = personExtractor.extractPersonFrom(text);
@@ -992,7 +1063,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                         .reference(reference)
                                                                         .build())
                                                                 .build())
-                                                .required("name", "children")
                                                 .definitions(Map.of(
                                                         reference,
                                                         JsonObjectSchema.builder()
@@ -1007,7 +1077,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                                                         reference)
                                                                                                 .build())
                                                                                 .build())
-                                                                .required("name", "children")
                                                                 .build()))
                                                 .build())
                                         .build())
@@ -1060,7 +1129,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                         .rootElement(JsonObjectSchema.builder()
                                                 .addStringProperty("id", "String in a UUID format")
                                                 .addStringProperty("name")
-                                                .required("id", "name")
                                                 .build())
                                         .build())
                                 .build())
