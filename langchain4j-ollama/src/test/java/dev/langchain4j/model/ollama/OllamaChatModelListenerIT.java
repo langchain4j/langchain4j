@@ -1,20 +1,36 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
+import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
+import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
-import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollama;
-import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
-import static java.util.Collections.singletonList;
-
 class OllamaChatModelListenerIT extends ChatModelListenerIT {
+
+    private static final String MODEL_NAME = LLAMA_3_1;
+    private static LC4jOllamaContainer ollama;
+
+    static {
+        if (isNullOrEmpty(OLLAMA_BASE_URL)) {
+            String localOllamaImage = localOllamaImage(MODEL_NAME);
+            ollama = new LC4jOllamaContainer(OllamaImage.resolve(OllamaImage.OLLAMA_IMAGE, localOllamaImage))
+                    .withModel(MODEL_NAME);
+            ollama.start();
+            ollama.commitToImage(localOllamaImage);
+        }
+    }
 
     @Override
     protected ChatLanguageModel createModel(ChatModelListener listener) {
         return OllamaChatModel.builder()
-                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
@@ -27,13 +43,13 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected String modelName() {
-        return LLAMA_3_1;
+        return MODEL_NAME;
     }
 
     @Override
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OllamaChatModel.builder()
-                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName("banana")
                 .logRequests(true)
                 .logResponses(true)
@@ -48,11 +64,6 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected boolean assertResponseId() {
-        return false;
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
         return false;
     }
 }
