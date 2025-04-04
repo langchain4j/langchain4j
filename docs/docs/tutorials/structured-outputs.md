@@ -446,7 +446,8 @@ interface PersonExtractor {
 ```
 
 :::note
-Please note that behaviour is different TODO
+Please note that when used with [tools](/tutorials/tools),
+all fields and sub-fields are considered **_required_** by default.
 :::
 
 #### Adding Description

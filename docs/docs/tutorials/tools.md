@@ -278,7 +278,8 @@ void add(User user) {
 ```
 
 :::note
-Please note that behaviour is different TODO
+Please note that when used with [structured outputs](/tutorials/structured-outputs),
+all fields and sub-fields are considered **_optional_** by default.
 :::
 
 Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)

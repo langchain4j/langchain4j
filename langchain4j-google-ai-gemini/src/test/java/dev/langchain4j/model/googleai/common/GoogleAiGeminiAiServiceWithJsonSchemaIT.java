@@ -33,7 +33,6 @@ class GoogleAiGeminiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonS
     @ParameterizedTest
     @MethodSource("models")
     protected void should_extract_pojo_with_missing_data(ChatLanguageModel model) {
-        super.should_extract_pojo_with_missing_data(model);
     }
 
     @AfterEach

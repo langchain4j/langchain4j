@@ -10,8 +10,8 @@ import dev.langchain4j.Experimental;
  * @see JsonBooleanSchema
  * @see JsonEnumSchema
  * @see JsonIntegerSchema
- * @see JsonNumberSchema
  * @see JsonNullSchema
+ * @see JsonNumberSchema
  * @see JsonObjectSchema
  * @see JsonReferenceSchema
  * @see JsonStringSchema

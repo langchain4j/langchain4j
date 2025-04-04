@@ -98,7 +98,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
                     int hour = time.get("hour").asInt();
                     int minute = time.get("minute").asInt();
                     int second = Optional.ofNullable(time.get("second")).map(JsonNode::asInt).orElse(0);
-                    int nano = Optional.ofNullable(node.get("nano")).map(JsonNode::asInt).orElse(0);
+                    int nano = Optional.ofNullable(time.get("nano")).map(JsonNode::asInt).orElse(0);
                     return LocalDateTime.of(year, month, day, hour, minute, second, nano);
                 } else {
                     return LocalDateTime.parse(node.asText(), ISO_LOCAL_DATE_TIME);
