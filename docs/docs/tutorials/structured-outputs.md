@@ -440,6 +440,24 @@ record Person(@Description("person's first and last name, for example: John Doe"
 }
 ```
 
+:::note
+Please note that `@Description` placed on an `enum` value has **_no effect_** and **_is not_** included
+in the generated JSON schema:
+```java
+enum Priority {
+
+    @Description("Critical issues such as payment gateway failures or security breaches.") // this is ignored
+    CRITICAL,
+    
+    @Description("High-priority issues like major feature malfunctions or widespread outages.") // this is ignored
+    HIGH,
+    
+    @Description("Low-priority issues such as minor bugs or cosmetic problems.") // this is ignored
+    LOW
+}
+```
+:::
+
 #### Limitations
 
 When using JSON Schema with AI Services, there are some limitations:
