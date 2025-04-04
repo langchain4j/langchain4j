@@ -53,20 +53,7 @@ public class AiServiceContext {
     }
 
     public GuardrailService guardrailService() {
-        // Double-checked locking to make sure its thread safe
-        var service = this.guardrailService.get();
-
-        if (service == null) {
-            synchronized (GuardrailService.class) {
-                service = this.guardrailService.get();
-
-                if (service == null) {
-                    service = guardrailServiceBuilder.build();
-                    this.guardrailService.set(service);
-                }
-            }
-        }
-
-        return service;
+        return this.guardrailService.updateAndGet(
+                service -> (service != null) ? service : guardrailServiceBuilder.build());
     }
 }
