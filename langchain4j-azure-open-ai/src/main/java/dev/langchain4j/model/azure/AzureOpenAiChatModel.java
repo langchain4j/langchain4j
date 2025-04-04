@@ -33,11 +33,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -85,13 +83,12 @@ import org.slf4j.LoggerFactory;
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
-public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+public class AzureOpenAiChatModel implements ChatLanguageModel {
 
     private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
-    private final Tokenizer tokenizer;
     private final Integer maxTokens;
     private final Double temperature;
     private final Double topP;
@@ -115,7 +112,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     public AzureOpenAiChatModel(
             OpenAIClient client,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -135,7 +131,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -160,7 +155,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             String serviceVersion,
             String apiKey,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -186,7 +180,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -220,7 +213,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             String serviceVersion,
             KeyCredential keyCredential,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -246,7 +238,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -280,7 +271,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             String serviceVersion,
             TokenCredential tokenCredential,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -306,7 +296,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -337,7 +326,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     private AzureOpenAiChatModel(
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -356,7 +344,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             Set<Capability> capabilities) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -516,11 +503,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         return AZURE_OPEN_AI;
     }
 
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
-    }
-
     public static Builder builder() {
         for (AzureOpenAiChatModelBuilderFactory factory : loadFactories(AzureOpenAiChatModelBuilderFactory.class)) {
             return factory.get();
@@ -536,7 +518,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
         private String deploymentName;
-        private Tokenizer tokenizer;
         private Integer maxTokens;
         private Double temperature;
         private Double topP;
@@ -626,11 +607,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
          */
         public Builder deploymentName(String deploymentName) {
             this.deploymentName = deploymentName;
-            return this;
-        }
-
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 
@@ -770,7 +746,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             serviceVersion,
                             tokenCredential,
                             deploymentName,
-                            tokenizer,
                             maxTokens,
                             temperature,
                             topP,
@@ -799,7 +774,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             serviceVersion,
                             keyCredential,
                             deploymentName,
-                            tokenizer,
                             maxTokens,
                             temperature,
                             topP,
@@ -828,7 +802,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                         serviceVersion,
                         apiKey,
                         deploymentName,
-                        tokenizer,
                         maxTokens,
                         temperature,
                         topP,
@@ -855,7 +828,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 return new AzureOpenAiChatModel(
                         openAIClient,
                         deploymentName,
-                        tokenizer,
                         maxTokens,
                         temperature,
                         topP,

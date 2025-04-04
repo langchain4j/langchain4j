@@ -304,15 +304,7 @@ boolean positive = sentimentAnalyzer.isPositive("It's wonderful!");
 ### `Enum` as return type
 ```java
 enum Priority {
-    
-    @Description("Critical issues such as payment gateway failures or security breaches.")
-    CRITICAL,
-    
-    @Description("High-priority issues like major feature malfunctions or widespread outages.")
-    HIGH,
-    
-    @Description("Low-priority issues such as minor bugs or cosmetic problems.")
-    LOW
+    CRITICAL, HIGH, LOW
 }
 
 interface PriorityAnalyzer {
@@ -326,10 +318,6 @@ PriorityAnalyzer priorityAnalyzer = AiServices.create(PriorityAnalyzer.class, mo
 Priority priority = priorityAnalyzer.analyzePriority("The main payment gateway is down, and customers cannot process transactions.");
 // CRITICAL
 ```
-
-:::note
-`@Description` annotation is optional. It's suggested to be used when enum names are not self-explanatory.
-:::
 
 ### POJO as a return type
 ```java
@@ -581,6 +569,23 @@ String answerToKlaus = assistant.chat(1, "Hello, my name is Klaus");
 String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
 ```
 In this scenario, two distinct instances of `ChatMemory` will be provided by `ChatMemoryProvider`, one for each memory ID.
+
+When using `ChatMemory` in this way it's also important to evict the memory of a no longer needed conversations in order to avoid memory leaks. To make the chat memories internally used by an AI service accessible it's enough that the interface defining it extends the `ChatMemoryAccess` one.
+```java
+
+interface Assistant extends ChatMemoryAccess {
+    String chat(@MemoryId int memoryId, @UserMessage String message);
+}
+```
+This makes it possible to both access the `ChatMemory` instance of a single conversation and to get rid of it when the conversation is terminated.
+
+```java
+String answerToKlaus = assistant.chat(1, "Hello, my name is Klaus");
+String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
+
+List<ChatMessage> messagesWithKlaus = assistant.getChatMemory(1).messages();
+boolean chatMemoryWithFrancineEvicted = assistant.evictChatMemory(2);
+```
 
 :::note
 Please note that if an AI Service method does not have a parameter annotated with `@MemoryId`,

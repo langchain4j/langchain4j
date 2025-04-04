@@ -2,12 +2,10 @@ package dev.langchain4j.model.googleai;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -20,7 +18,6 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -37,12 +34,9 @@ import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
-import static java.time.Duration.ofSeconds;
 
 @Experimental
-public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatLanguageModel, TokenCountEstimator {
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiGeminiChatModel.class);
-    private final GoogleAiGeminiTokenizer geminiTokenizer;
+public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatLanguageModel {
 
     public GoogleAiGeminiChatModel(
             String apiKey, String modelName,
@@ -60,14 +54,6 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
                 listeners, maxRetries);
-
-        this.geminiTokenizer = GoogleAiGeminiTokenizer.builder()
-                .modelName(this.modelName)
-                .apiKey(this.apiKey)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
-                .maxRetries(this.maxRetries)
-                .logRequestsAndResponses(getOrDefault(logRequestsAndResponses, false))
-                .build();
     }
 
     public static GoogleAiGeminiChatModelBuilder builder() {
@@ -164,11 +150,6 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 tokenCounts.getCandidatesTokenCount(),
                 tokenCounts.getTotalTokenCount()
         );
-    }
-
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return geminiTokenizer.estimateTokenCountInMessages(messages);
     }
 
     @Override
@@ -306,10 +287,6 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModel build() {
             return new GoogleAiGeminiChatModel(this.apiKey, this.modelName, this.maxRetries, this.temperature, this.topK, this.topP, this.maxOutputTokens, this.timeout, this.responseFormat, this.stopSequences, this.toolConfig, this.allowCodeExecution, this.includeCodeExecutionOutput, this.logRequestsAndResponses, this.safetySettings, this.listeners);
-        }
-
-        public String toString() {
-            return "GoogleAiGeminiChatModel.GoogleAiGeminiChatModelBuilder(apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", maxRetries=" + this.maxRetries + ", temperature=" + this.temperature + ", topK=" + this.topK + ", topP=" + this.topP + ", maxOutputTokens=" + this.maxOutputTokens + ", timeout=" + this.timeout + ", responseFormat=" + this.responseFormat + ", stopSequences=" + this.stopSequences + ", toolConfig=" + this.toolConfig + ", allowCodeExecution=" + this.allowCodeExecution + ", includeCodeExecutionOutput=" + this.includeCodeExecutionOutput + ", logRequestsAndResponses=" + this.logRequestsAndResponses + ", safetySettings=" + this.safetySettings + ", listeners=" + this.listeners + ")";
         }
     }
 }
