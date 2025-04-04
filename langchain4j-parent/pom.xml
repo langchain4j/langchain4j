@@ -71,7 +71,7 @@
         <gson.version>2.10.1</gson.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
-        <jackson.version>2.18.2</jackson.version>
+        <jackson.version>2.18.3</jackson.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
         <jtokkit.version>1.1.0</jtokkit.version>
