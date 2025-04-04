@@ -1,17 +1,5 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
-
-import java.util.List;
-import java.util.Set;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OLLAMA;
@@ -20,6 +8,17 @@ import static dev.langchain4j.model.ollama.InternalOllamaHelper.chatResponseMeta
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.Capability;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
+import java.util.List;
+import java.util.Set;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -42,7 +41,7 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatLanguage
         OllamaChatRequestParameters parameters = (OllamaChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
-        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(chatRequest);
+        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(chatRequest, false);
         OllamaChatResponse ollamaChatResponse =
                 withRetryMappingExceptions(() -> client.chat(ollamaChatRequest), maxRetries);
 
@@ -69,7 +68,7 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatLanguage
 
     @Override
     public ChatRequestParameters defaultRequestParameters() {
-        return defaultParameters;
+        return defaultRequestParameters;
     }
 
     public static OllamaChatModelBuilder builder() {

@@ -1,13 +1,12 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.quoted;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.quoted;
 
 @Experimental
 public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
@@ -19,7 +18,6 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
     private final Integer repeatLastN;
     private final Double repeatPenalty;
     private final Integer seed;
-    private final Integer numPredict;
     private final Double minP;
     private final Long keepAlive;
 
@@ -32,7 +30,6 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         this.repeatLastN = builder.repeatLastN;
         this.repeatPenalty = builder.repeatPenalty;
         this.seed = builder.seed;
-        this.numPredict = builder.numPredict;
         this.minP = builder.minP;
         this.keepAlive = builder.keepAlive;
     }
@@ -65,10 +62,6 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         return seed;
     }
 
-    public Integer numPredict() {
-        return numPredict;
-    }
-
     public Double minP() {
         return minP;
     }
@@ -89,7 +82,6 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(repeatLastN, that.repeatLastN)
                 && Objects.equals(repeatPenalty, that.repeatPenalty)
                 && Objects.equals(seed, that.seed)
-                && Objects.equals(numPredict, that.numPredict)
                 && Objects.equals(minP, that.minP)
                 && Objects.equals(keepAlive, that.keepAlive);
     }
@@ -105,10 +97,8 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 repeatLastN,
                 repeatPenalty,
                 seed,
-                numPredict,
                 minP,
-                keepAlive
-        );
+                keepAlive);
     }
 
     @Override
@@ -131,8 +121,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 + numCtx + ", repeatLastN="
                 + repeatLastN + ", repeatPenalty="
                 + repeatPenalty + ", seed="
-                + seed + ", numPredict="
-                + numPredict + ", minP="
+                + seed + ", minP="
                 + minP + '}';
     }
 
@@ -157,7 +146,6 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         private Integer repeatLastN;
         private Double repeatPenalty;
         private Integer seed;
-        private Integer numPredict;
         private Double minP;
         private Long keepAlive;
 
@@ -172,7 +160,6 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 repeatLastN(getOrDefault(ollamaChatRequestParameters.repeatLastN, repeatLastN));
                 repeatPenalty(getOrDefault(ollamaChatRequestParameters.frequencyPenalty(), repeatPenalty));
                 seed(getOrDefault(ollamaChatRequestParameters.seed, seed));
-                numPredict(getOrDefault(ollamaChatRequestParameters.numPredict, numPredict));
                 minP(getOrDefault(ollamaChatRequestParameters.minP, minP));
                 keepAlive(getOrDefault(ollamaChatRequestParameters.keepAlive, keepAlive));
             }
@@ -234,9 +221,14 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
             return this;
         }
 
+        /**
+         * This parameter is semantically equal to {@link DefaultChatRequestParameters#maxOutputTokens}.
+         * <p>Setting this parameter is actually setting {@link DefaultChatRequestParameters#maxOutputTokens}</p>
+         *
+         * @return builder
+         */
         public Builder numPredict(Integer numPredict) {
-            this.numPredict = numPredict;
-            return this;
+            return maxOutputTokens(numPredict);
         }
 
         /**

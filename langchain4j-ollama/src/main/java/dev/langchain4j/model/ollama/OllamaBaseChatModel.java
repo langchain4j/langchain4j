@@ -21,7 +21,7 @@ import java.util.Set;
 abstract class OllamaBaseChatModel {
 
     protected OllamaClient client;
-    protected OllamaChatRequestParameters defaultParameters;
+    protected OllamaChatRequestParameters defaultRequestParameters;
     protected List<ChatModelListener> listeners;
     protected Set<Capability> supportedCapabilities;
 
@@ -41,25 +41,25 @@ abstract class OllamaBaseChatModel {
                 .build();
 
         ChatRequestParameters commonParameters = getOrDefault(
-                builder.defaultParameters,
+                builder.defaultRequestParameters,
                 DefaultChatRequestParameters.builder().build());
         OllamaChatRequestParameters ollamaParameters;
-        if (builder.defaultParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters) {
+        if (builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters) {
             ollamaParameters = ollamaChatRequestParameters;
         } else {
             ollamaParameters = OllamaChatRequestParameters.builder().build();
         }
 
         ResponseFormat responseFormat = "json".equals(builder.format) ? ResponseFormat.JSON : builder.responseFormat;
-        this.defaultParameters = OllamaChatRequestParameters.builder()
+        this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
+                .maxOutputTokens(getOrDefault(builder.numPredict, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(builder.stop, () -> copyIfNotNull(commonParameters.stopSequences())))
                 .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
-                .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(responseFormat, commonParameters.responseFormat()))
                 // Ollama-specific parameters
                 .mirostat(getOrDefault(builder.mirostat, ollamaParameters.mirostat()))
@@ -69,7 +69,6 @@ abstract class OllamaBaseChatModel {
                 .repeatLastN(getOrDefault(builder.repeatLastN, ollamaParameters.repeatLastN()))
                 .repeatPenalty(getOrDefault(builder.repeatPenalty, ollamaParameters.repeatPenalty()))
                 .seed(getOrDefault(builder.seed, ollamaParameters.seed()))
-                .numPredict(getOrDefault(builder.numPredict, ollamaParameters.numPredict()))
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
                 .build();
 
@@ -82,7 +81,7 @@ abstract class OllamaBaseChatModel {
         protected HttpClientBuilder httpClientBuilder;
         protected String baseUrl;
 
-        protected ChatRequestParameters defaultParameters;
+        protected ChatRequestParameters defaultRequestParameters;
         protected String modelName;
         protected Double temperature;
         protected Integer topK;
@@ -127,8 +126,8 @@ abstract class OllamaBaseChatModel {
             return self();
         }
 
-        public B defaultParameters(ChatRequestParameters defaultParameters) {
-            this.defaultParameters = defaultParameters;
+        public B defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
             return self();
         }
 

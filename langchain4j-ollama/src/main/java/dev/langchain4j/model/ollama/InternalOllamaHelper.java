@@ -2,7 +2,6 @@ package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
@@ -118,10 +117,6 @@ class InternalOllamaHelper {
         if (parameters.toolChoice() != null) {
             throw new IllegalArgumentException("'toolChoice' parameter is not suppoerted by Ollama");
         }
-        if (parameters.maxOutputTokens() != null && parameters.numPredict() != null) {
-            throw new IllegalArgumentException(
-                    "'maxOutputTokens' parameter and 'numPredict' parameter can't be declared at the same time");
-        }
     }
 
     static AiMessage aiMessageFrom(OllamaChatResponse ollamaChatResponse) {
@@ -138,7 +133,7 @@ class InternalOllamaHelper {
                 new TokenUsage(ollamaChatResponse.getPromptEvalCount(), ollamaChatResponse.getEvalCount()));
     }
 
-    static OllamaChatRequest toOllamaChatRequest(ChatRequest chatRequest) {
+    static OllamaChatRequest toOllamaChatRequest(ChatRequest chatRequest, boolean stream) {
         OllamaChatRequestParameters requestParameters = (OllamaChatRequestParameters) chatRequest.parameters();
         return OllamaChatRequest.builder()
                 .model(requestParameters.modelName())
@@ -154,13 +149,13 @@ class InternalOllamaHelper {
                         .repeatPenalty(requestParameters.repeatPenalty())
                         .seed(requestParameters.seed())
                         // numPredict and maxOutputTokens are semantically identical
-                        .numPredict(getOrDefault(requestParameters.maxOutputTokens(), requestParameters.numPredict()))
+                        .numPredict(requestParameters.maxOutputTokens())
                         .numCtx(requestParameters.numCtx())
                         .stop(requestParameters.stopSequences())
                         .minP(requestParameters.minP())
                         .build())
                 .format(toOllamaResponseFormat(requestParameters.responseFormat()))
-                .stream(false)
+                .stream(stream)
                 .tools(toOllamaTools(chatRequest.toolSpecifications()))
                 .keepAlive(requestParameters.keepAlive())
                 .build();

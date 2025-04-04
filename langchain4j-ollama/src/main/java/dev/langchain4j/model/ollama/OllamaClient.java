@@ -1,5 +1,18 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.http.client.HttpMethod.DELETE;
+import static dev.langchain4j.http.client.HttpMethod.GET;
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
+import static java.lang.Boolean.TRUE;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -14,22 +27,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.time.Duration;
 import java.util.Map;
-
-import static dev.langchain4j.http.client.HttpMethod.DELETE;
-import static dev.langchain4j.http.client.HttpMethod.GET;
-import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
-import static java.lang.Boolean.TRUE;
-import static java.time.Duration.ofSeconds;
 
 class OllamaClient {
 
@@ -131,7 +130,7 @@ class OllamaClient {
     public void streamingChat(ChatRequest request, StreamingChatResponseHandler handler) {
         ensureNotEmpty(request.messages(), "messages");
 
-        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request);
+        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true);
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)

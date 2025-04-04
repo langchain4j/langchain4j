@@ -53,7 +53,7 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
 
     @Override
     public ChatRequestParameters defaultRequestParameters() {
-        return defaultParameters;
+        return defaultRequestParameters;
     }
 
     public static OllamaStreamingChatModelBuilder builder() {

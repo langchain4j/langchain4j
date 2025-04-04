@@ -1,5 +1,12 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -12,17 +19,9 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
