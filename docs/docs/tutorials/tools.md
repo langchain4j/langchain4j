@@ -346,6 +346,24 @@ Result executeQuery(Query query) {
 }
 ```
 
+:::note
+Please note that `@Description` placed on an `enum` value has **_no effect_** and **_is not_** included
+in the generated JSON schema:
+```java
+enum Priority {
+
+    @Description("Critical issues such as payment gateway failures or security breaches.") // this is ignored
+    CRITICAL,
+    
+    @Description("High-priority issues like major feature malfunctions or widespread outages.") // this is ignored
+    HIGH,
+    
+    @Description("Low-priority issues such as minor bugs or cosmetic problems.") // this is ignored
+    LOW
+}
+```
+:::
+
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
 you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`.

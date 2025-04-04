@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = JsonReferenceSchema.Builder.class)
@@ -19,15 +18,14 @@ public class JsonReferenceSchema extends JsonSchemaElement {
     private final String reference;
 
     public JsonReferenceSchema(Builder builder) {
-        super(null);
+        super((String) null);
         this.reference = builder.reference;
     }
 
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof JsonReferenceSchema
-                && equalTo((JsonReferenceSchema) another);
+        return another instanceof JsonReferenceSchema && equalTo((JsonReferenceSchema) another);
     }
 
     private boolean equalTo(JsonReferenceSchema another) {
@@ -43,9 +41,7 @@ public class JsonReferenceSchema extends JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonReferenceSchema{" +
-                "reference=" + reference +
-                "}";
+        return "JsonReferenceSchema{" + "reference=" + reference + "}";
     }
 
     public static Builder builder() {

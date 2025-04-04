@@ -1,13 +1,14 @@
-package dev.langchain4j.model.mistralai;
+package dev.langchain4j.model.mistralai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.service.AiServicesWithNewToolsIT;
+import dev.langchain4j.model.mistralai.MistralAiChatModel;
+import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 
 import java.util.List;
 
 import static java.util.Collections.singletonList;
 
-class MistralAiAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
+class MistralAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
