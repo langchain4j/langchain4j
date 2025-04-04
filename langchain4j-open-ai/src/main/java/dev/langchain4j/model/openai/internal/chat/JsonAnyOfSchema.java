@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -18,11 +17,12 @@ public class JsonAnyOfSchema extends JsonSchemaElement {
 
     @JsonProperty
     private final String description;
+
     @JsonProperty("anyOf")
     private final List<JsonSchemaElement> anyOf;
 
     public JsonAnyOfSchema(Builder builder) {
-        super(null);
+        super((String) null);
         this.description = builder.description;
         this.anyOf = builder.anyOf;
     }
@@ -30,13 +30,11 @@ public class JsonAnyOfSchema extends JsonSchemaElement {
     @Override
     public boolean equals(final Object another) {
         if (this == another) return true;
-        return another instanceof JsonAnyOfSchema
-                && equalTo((JsonAnyOfSchema) another);
+        return another instanceof JsonAnyOfSchema && equalTo((JsonAnyOfSchema) another);
     }
 
     private boolean equalTo(final JsonAnyOfSchema another) {
-        return Objects.equals(description, another.description)
-                && Objects.equals(anyOf, another.anyOf);
+        return Objects.equals(description, another.description) && Objects.equals(anyOf, another.anyOf);
     }
 
     @Override
@@ -49,13 +47,10 @@ public class JsonAnyOfSchema extends JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonAnyOfSchema{" +
-                "description='" + description + '\'' +
-                ", anyOf=" + anyOf +
-                '}';
+        return "JsonAnyOfSchema{" + "description='" + description + '\'' + ", anyOf=" + anyOf + '}';
     }
 
-    public static Builder builder(){
+    public static Builder builder() {
         return new Builder();
     }
 
