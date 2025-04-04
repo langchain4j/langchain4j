@@ -7,6 +7,7 @@ sidebar_position: 0
 | Embedding Store                                                                       | Storing Metadata | Filtering by Metadata      | Removing Embeddings |
 |---------------------------------------------------------------------------------------|------------------|----------------------------|---------------------|
 | [In-memory](/integrations/embedding-stores/in-memory)                                 | ✅                | ✅                          | ✅                   |
+| [AlloyDB for Postgres](/integrations/embedding-stores/alloydb)                                     | ✅               | ✅                         | ✅                  |
 | [Astra DB](/integrations/embedding-stores/astra-db)                                   | ✅                |                            |                     |
 | [Azure AI Search](/integrations/embedding-stores/azure-ai-search)                     | ✅                | ✅                          | ✅                   |
 | [Azure CosmosDB Mongo vCore](/integrations/embedding-stores/azure-cosmos-mongo-vcore) | ✅                |                            |                     |
@@ -32,4 +33,4 @@ sidebar_position: 0
 | [Tablestore](/integrations/embedding-stores/tablestore)                               | ✅                | ✅                          | ✅                   |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
 | [Vespa](/integrations/embedding-stores/vespa)                                         |                  |                            |                     |
-| [Weaviate](/integrations/embedding-stores/weaviate)                                   | ✅                |                            | ✅                   |
+| [Weaviate](/integrations/embedding-stores/weaviate)                                   | ✅               |                            | ✅                  |
