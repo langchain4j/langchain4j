@@ -16,6 +16,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.GuardrailParams.CommonGuardrailParams;
 import dev.langchain4j.guardrail.InputGuardrailParams;
 import dev.langchain4j.guardrail.OutputGuardrailParams;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -138,14 +139,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return switch (method.getName()) {
                                 case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
                                 case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
-                                default -> throw new UnsupportedOperationException("Unknown method on ChatMemoryAccess class : " + method.getName());
+                                default -> throw new UnsupportedOperationException(
+                                        "Unknown method on ChatMemoryAccess class : " + method.getName());
                             };
                         }
 
                         validateParameters(method);
 
                         final Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
-                        final ChatMemory chatMemory = context.hasChatMemory() ? context.chatMemoryService.getOrCreateChatMemory(memoryId) : null;
+                        final ChatMemory chatMemory = context.hasChatMemory()
+                                ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
+                                : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         var userMessageTemplate = getUserMessageTemplate(method, args);
@@ -160,8 +164,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
-                        var chatMemory = context.hasChatMemory() ? context.chatMemory(memoryId) : null;
-
                         var commonGuardrailParam = new CommonGuardrailParams(
                                 chatMemory, augmentationResult, userMessageTemplate, variables);
 
@@ -174,8 +176,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
-                        boolean supportsJsonSchema =
-                                supportsJsonSchema(); // TODO should it be called for returnType==String?
+                        boolean supportsJsonSchema = supportsJsonSchema(); // TODO should it be called for
+                        // returnType==String?
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         if (supportsJsonSchema && !streaming) {
                             jsonSchema = jsonSchemaFrom(returnType);

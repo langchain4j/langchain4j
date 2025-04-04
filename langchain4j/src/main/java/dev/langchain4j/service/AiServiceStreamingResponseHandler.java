@@ -28,8 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Handles response from a language model for AI Service that is streamed token-by-token.
- * Handles both regular (text) responses and responses with the request to execute one or multiple tools.
+ * Handles response from a language model for AI Service that is streamed token-by-token. Handles both regular (text)
+ * responses and responses with the request to execute one or multiple tools.
  */
 class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler {
     private static final Logger LOG = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
@@ -175,7 +175,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private ChatMemory getMemory(Object memId) {
-        return context.hasChatMemory() ? context.chatMemory(memoryId) : temporaryMemory;
+        return context.hasChatMemory() ? context.chatMemoryService.getOrCreateChatMemory(memoryId) : temporaryMemory;
     }
 
     private void addToMemory(ChatMessage chatMessage) {
