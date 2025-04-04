@@ -105,7 +105,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     @MethodSource("modelsSupportingTools")
     @DisabledIf("supportsToolChoiceRequired")
     protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(ChatLanguageModel model) {
-        if (model.equals(MISTRAL_LARGE)) {
+        if (List.of(MISTRAL_LARGE, AWS_NOVA_MICRO).contains(model)) {
             super.should_force_LLM_to_execute_any_tool(model);
         } else {
             super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);

@@ -343,6 +343,11 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
     /**
      * Configures the strategy to be used when the LLM hallucinates a tool name (i.e., attempts to call a nonexistent tool).
      *

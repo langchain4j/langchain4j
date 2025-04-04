@@ -304,15 +304,7 @@ boolean positive = sentimentAnalyzer.isPositive("It's wonderful!");
 ### `Enum` as return type
 ```java
 enum Priority {
-    
-    @Description("Critical issues such as payment gateway failures or security breaches.")
-    CRITICAL,
-    
-    @Description("High-priority issues like major feature malfunctions or widespread outages.")
-    HIGH,
-    
-    @Description("Low-priority issues such as minor bugs or cosmetic problems.")
-    LOW
+    CRITICAL, HIGH, LOW
 }
 
 interface PriorityAnalyzer {
@@ -326,10 +318,6 @@ PriorityAnalyzer priorityAnalyzer = AiServices.create(PriorityAnalyzer.class, mo
 Priority priority = priorityAnalyzer.analyzePriority("The main payment gateway is down, and customers cannot process transactions.");
 // CRITICAL
 ```
-
-:::note
-`@Description` annotation is optional. It's suggested to be used when enum names are not self-explanatory.
-:::
 
 ### POJO as a return type
 ```java
