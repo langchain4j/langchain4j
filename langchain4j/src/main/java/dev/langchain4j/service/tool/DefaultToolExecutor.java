@@ -1,11 +1,14 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.internal.Json;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import dev.langchain4j.model.chat.request.json.CustomSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.NoneCustomSchemaElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -16,8 +19,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -126,11 +129,26 @@ public class DefaultToolExecutor implements ToolExecutor {
             }
 
             String parameterName = parameter.getName();
-            if (argumentsMap.containsKey(parameterName)) {
-                Object argument = argumentsMap.get(parameterName);
-                Class<?> parameterClass = parameter.getType();
-                Type parameterType = parameter.getParameterizedType();
+            Object argument = argumentsMap.get(parameterName);
+            Class<?> parameterClass = parameter.getType();
+            Type parameterType = parameter.getParameterizedType();
 
+            if (!argumentsMap.containsKey(parameterName)) continue;
+
+            if (parameter.isAnnotationPresent(P.class)) {
+                final P annotation = parameter.getAnnotation(P.class);
+                if (annotation.jsonSchema() != null
+                        && !NoneCustomSchemaElement.class.isAssignableFrom(annotation.jsonSchema())) {
+                    final Class<? extends JsonSchemaElement> jsonSchemaClass = annotation.jsonSchema();
+                    try {
+                        final CustomSchemaElement customSchemaElement =
+                                (CustomSchemaElement) jsonSchemaClass.getDeclaredConstructors()[0].newInstance();
+                        arguments[i] = customSchemaElement.coerceArgument(argument, parameterName, parameterClass, parameterType);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            } else {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
             }
         }

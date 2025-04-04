@@ -1,10 +1,12 @@
 package dev.langchain4j.agent.tool;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import dev.langchain4j.model.chat.request.json.CustomSchemaElement;
+import dev.langchain4j.model.chat.request.json.NoneCustomSchemaElement;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Parameter of a Tool
@@ -25,4 +27,6 @@ public @interface P {
      * Default is true.
      */
     boolean required() default true;
+
+    Class<? extends CustomSchemaElement> jsonSchema() default NoneCustomSchemaElement.class;
 }

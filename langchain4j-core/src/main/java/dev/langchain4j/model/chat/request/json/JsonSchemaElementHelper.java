@@ -191,7 +191,8 @@ public class JsonSchemaElementHelper {
             }
             properties.put("properties", toMap(jsonObjectSchema.properties(), strict));
             if (strict) {
-                // When using Structured Outputs, all fields must be required, see https://platform.openai.com/docs/guides/structured-outputs/supported-schemas#all-fields-must-be-required
+                // When using Structured Outputs, all fields must be required, see 
+                // https://platform.openai.com/docs/guides/structured-outputs/supported-schemas#all-fields-must-be-required
                 properties.put("required", jsonObjectSchema.properties().keySet().stream().toList());
             } else {
                 if (jsonObjectSchema.required() != null) {
@@ -266,6 +267,8 @@ public class JsonSchemaElementHelper {
                     .collect(Collectors.toList());
             properties.put("anyOf", anyOf);
             return properties;
+        } else if (jsonSchemaElement instanceof CustomSchemaElement customSchemaElement) {
+            return customSchemaElement.toMap();
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
         }

@@ -1,15 +1,19 @@
 package dev.langchain4j.service.tool;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.model.chat.request.json.CustomSchemaElement;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,6 +41,26 @@ class DefaultToolExecutorTest implements WithAssertions {
         C
     }
 
+    public record CustomOffsetDateTimeSchema() implements CustomSchemaElement {
+
+        @Override
+        public Map<String, Object> toMap() {
+            return Map.of(
+                    "description", "a java.time.OffsetDateTime parameter",
+                    "type", "java.time.OffsetDateTime"
+            );
+        }
+
+        @Override
+        public Object coerceArgument(final Object argument, final String parameterName, final Class<?> parameterClass, final Type parameterType) {
+            if (parameterClass == OffsetDateTime.class) {
+                return OffsetDateTime.parse(String.valueOf(argument));
+            } else {
+                throw new IllegalArgumentException("argument type does not match the parameter class type");
+            }
+        }
+    }
+
     @SuppressWarnings("unused")
     public void example(
             @ToolMemoryId UUID idA,
@@ -59,7 +83,8 @@ class DefaultToolExecutorTest implements WithAssertions {
             Double Double2P,
             List<Integer> integerList,
             Set<ExampleEnum> enumSet,
-            Map<String, Integer> map) {}
+            Map<String, Integer> map,
+            @P(value = "offsetDateTime", jsonSchema = CustomOffsetDateTimeSchema.class) OffsetDateTime offsetDateTime) {}
 
     @Test
     void prepare_arguments() throws Exception {
@@ -88,7 +113,8 @@ class DefaultToolExecutorTest implements WithAssertions {
                         Double.class,
                         List.class,
                         Set.class,
-                        Map.class);
+                        Map.class,
+                        OffsetDateTime.class);
 
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("arg1", 1.0);
@@ -111,6 +137,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         arguments.put("arg18", asList(1.0, 2.0, 3.0));
         arguments.put("arg19", new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
         arguments.put("arg20", singletonMap("A", 1.0));
+        arguments.put("arg21", OffsetDateTime.parse("2025-03-25T12:00:00+00:01"));
 
         Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, memoryId);
 
@@ -136,7 +163,8 @@ class DefaultToolExecutorTest implements WithAssertions {
                         2.2,
                         asList(1, 2, 3),
                         new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)),
-                        singletonMap("A", 1));
+                        singletonMap("A", 1),
+                        OffsetDateTime.parse("2025-03-25T12:00:00+00:01"));
 
         {
             Map<String, Object> as = new HashMap<>(arguments);
