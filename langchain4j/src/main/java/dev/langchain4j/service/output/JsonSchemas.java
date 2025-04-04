@@ -3,10 +3,7 @@ package dev.langchain4j.service.output;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
-import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -43,15 +40,17 @@ public class JsonSchemas {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
-        if (returnType == Boolean.class) {
+        // TODO float, long, biginteger, bigdecimal, etc
+
+        if (returnType == boolean.class || returnType == Boolean.class) {
             return getBooleanJsonSchema();
         }
 
-        if (returnType == Integer.class || returnType == int.class) {
+        if (returnType == int.class || returnType == Integer.class) {
             return getIntegerJsonSchema();
         }
 
-        if (returnType == Double.class || returnType == double.class) {
+        if (returnType == double.class || returnType == Double.class) {
             return getDoubleJsonSchema();
         }
 
@@ -63,8 +62,8 @@ public class JsonSchemas {
             Class<?> actualType = resolveFirstGenericParameterClass(returnType);
             if (actualType != null && actualType.isEnum()) {
                 return Optional.of(arraySchemaFrom(returnType, actualType, enumSchemaFrom(actualType)));
-            } else if (actualType != null && String.class.equals(actualType)) {
-                return Optional.of(arraySchemaFrom(returnType, actualType, stringSchemaFrom()));
+            } else if (actualType == String.class) {
+                return Optional.of(arraySchemaFrom(returnType, actualType, new JsonStringSchema()));
             } else {
                 return Optional.of(arraySchemaFrom(returnType, actualType, objectSchemaFrom(actualType)));
             }
@@ -75,6 +74,7 @@ public class JsonSchemas {
                         .name(returnTypeClass.getSimpleName())
                         .rootElement(JsonObjectSchema.builder()
                                 .addProperty("value", enumSchemaFrom(returnTypeClass))
+                                .required("value")
                                 .build())
                         .build();
                 return Optional.of(jsonSchema);
@@ -89,30 +89,33 @@ public class JsonSchemas {
     }
 
     private static Optional<JsonSchema> getBooleanJsonSchema() {
-        final JsonSchema jsonSchema = JsonSchema.builder()
-                .name("Boolean")
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name("boolean")
                 .rootElement(JsonObjectSchema.builder()
-                        .addProperty("boolean", JsonBooleanSchema.builder().build())
+                        .addBooleanProperty("value")
+                        .required("value")
                         .build())
                 .build();
         return Optional.of(jsonSchema);
     }
 
     private static Optional<JsonSchema> getIntegerJsonSchema() {
-        final JsonSchema jsonSchema = JsonSchema.builder()
-                .name("Integer")
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name("integer")
                 .rootElement(JsonObjectSchema.builder()
-                        .addProperty("Integer", JsonIntegerSchema.builder().build())
+                        .addIntegerProperty("value")
+                        .required("value")
                         .build())
                 .build();
         return Optional.of(jsonSchema);
     }
 
     private static Optional<JsonSchema> getDoubleJsonSchema() {
-        final JsonSchema jsonSchema = JsonSchema.builder()
-                .name("Double")
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name("double")
                 .rootElement(JsonObjectSchema.builder()
-                        .addProperty("Double", JsonNumberSchema.builder().build())
+                        .addNumberProperty("value")
+                        .required("value")
                         .build())
                 .build();
         return Optional.of(jsonSchema);
@@ -139,11 +142,6 @@ public class JsonSchemas {
     private static JsonEnumSchema enumSchemaFrom(Class<?> actualType) {
         return JsonEnumSchema.builder()
                 .enumValues(stream(actualType.getEnumConstants()).map(Object::toString).toList())
-                .build();
-    }
-
-    private static JsonStringSchema stringSchemaFrom() {
-        return JsonStringSchema.builder()
                 .build();
     }
 

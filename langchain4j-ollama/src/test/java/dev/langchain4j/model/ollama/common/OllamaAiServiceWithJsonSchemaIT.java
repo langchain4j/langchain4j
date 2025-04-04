@@ -93,4 +93,32 @@ class OllamaAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT 
     @MethodSource("models")
     protected void should_extract_pojo_with_uuid(ChatLanguageModel model) {
     }
+
+    @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_list_of_pojo(ChatLanguageModel model) {
+    }
+
+    @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_set_of_pojo(ChatLanguageModel model) {
+    }
+
+    @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_list_of_enums(ChatLanguageModel model) {
+    }
+
+    @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_set_of_enums(ChatLanguageModel model) {
+    }
 }
