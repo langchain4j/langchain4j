@@ -125,14 +125,6 @@ public class OpenAiChatModel implements ChatLanguageModel {
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
     }
 
-    /**
-     * @deprecated please use {@link #defaultRequestParameters()} and then {@link ChatRequestParameters#modelName()} instead
-     */
-    @Deprecated(forRemoval = true)
-    public String modelName() {
-        return defaultRequestParameters.modelName();
-    }
-
     @Override
     public OpenAiChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
@@ -183,16 +175,6 @@ public class OpenAiChatModel implements ChatLanguageModel {
     @Override
     public ModelProvider provider() {
         return OPEN_AI;
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default values for the model name and temperature will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
     }
 
     public static OpenAiChatModelBuilder builder() {

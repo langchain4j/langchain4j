@@ -92,16 +92,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
                 .execute();
     }
 
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default values for the model name and temperature will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiStreamingLanguageModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
-    }
-
     public static OpenAiStreamingLanguageModelBuilder builder() {
         for (OpenAiStreamingLanguageModelBuilderFactory factory : loadFactories(OpenAiStreamingLanguageModelBuilderFactory.class)) {
             return factory.get();

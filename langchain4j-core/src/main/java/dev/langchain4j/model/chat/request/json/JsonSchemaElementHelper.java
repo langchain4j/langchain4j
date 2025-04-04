@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -26,11 +27,14 @@ public class JsonSchemaElementHelper {
     private static final String DEFAULT_UUID_DESCRIPTION = "String in a UUID format";
 
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz) {
-        return jsonSchemaElementFrom(clazz, clazz, null, new LinkedHashMap<>());
+        return jsonSchemaElementFrom(clazz, clazz, null, false, new LinkedHashMap<>());
     }
 
-    public static JsonSchemaElement jsonSchemaElementFrom(
-            Class<?> clazz, Type type, String fieldDescription, Map<Class<?>, VisitedClassMetadata> visited) {
+    public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz,
+                                                          Type type,
+                                                          String fieldDescription,
+                                                          boolean areSubFieldsRequiredByDefault,
+                                                          Map<Class<?>, VisitedClassMetadata> visited) {
         if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
@@ -60,23 +64,27 @@ public class JsonSchemaElementHelper {
 
         if (clazz.isArray()) {
             return JsonArraySchema.builder()
-                    .items(jsonSchemaElementFrom(clazz.getComponentType(), null, null, visited))
+                    .items(jsonSchemaElementFrom(clazz.getComponentType(), null, null, areSubFieldsRequiredByDefault, visited))
                     .description(fieldDescription)
                     .build();
         }
 
         if (Collection.class.isAssignableFrom(clazz)) {
             return JsonArraySchema.builder()
-                    .items(jsonSchemaElementFrom(getActualType(type), null, null, visited))
+                    .items(jsonSchemaElementFrom(getActualType(type), null, null, areSubFieldsRequiredByDefault, visited))
                     .description(fieldDescription)
                     .build();
         }
 
-        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, visited, false);
+        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
     }
 
     public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(
-            Class<?> type, String description, Map<Class<?>, VisitedClassMetadata> visited, boolean setDefinitions) {
+            Class<?> type,
+            String description,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            boolean setDefinitions) {
         if (visited.containsKey(type) && isCustomClass(type)) {
             VisitedClassMetadata visitedClassMetadata = visited.get(type);
             JsonSchemaElement jsonSchemaElement = visitedClassMetadata.jsonSchemaElement;
@@ -92,21 +100,25 @@ public class JsonSchemaElementHelper {
         visited.put(type, new VisitedClassMetadata(jsonReferenceSchema, reference, false));
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
+        List<String> required = new ArrayList<>();
         for (Field field : type.getDeclaredFields()) {
             String fieldName = field.getName();
             if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
                 continue;
             }
+            if (isRequired(field, areSubFieldsRequiredByDefault)) {
+                required.add(fieldName);
+            }
             String fieldDescription = descriptionFrom(field);
-            JsonSchemaElement jsonSchemaElement =
-                    jsonSchemaElementFrom(field.getType(), field.getGenericType(), fieldDescription, visited);
+            JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(field.getType(), field.getGenericType(),
+                    fieldDescription, areSubFieldsRequiredByDefault, visited);
             properties.put(fieldName, jsonSchemaElement);
         }
 
         JsonObjectSchema.Builder builder = JsonObjectSchema.builder()
                 .description(Optional.ofNullable(description).orElse(descriptionFrom(type)))
                 .addProperties(properties)
-                .required(new ArrayList<>(properties.keySet()));
+                .required(required);
 
         visited.get(type).jsonSchemaElement = builder.build();
 
@@ -123,6 +135,15 @@ public class JsonSchemaElementHelper {
         }
 
         return builder.build();
+    }
+
+    private static boolean isRequired(Field field, boolean defaultValue) {
+        JsonProperty jsonProperty = field.getAnnotation(JsonProperty.class);
+        if (jsonProperty != null) {
+            return jsonProperty.required();
+        }
+
+        return defaultValue;
     }
 
     private static String descriptionFrom(Field field) {
@@ -183,91 +204,117 @@ public class JsonSchemaElementHelper {
     }
 
     public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement, boolean strict) {
+        return toMap(jsonSchemaElement, strict, true);
+    }
+
+    public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement, boolean strict, boolean required) {
         if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
-            Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("type", "object");
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", type("object", strict, required));
+
             if (jsonObjectSchema.description() != null) {
-                properties.put("description", jsonObjectSchema.description());
+                map.put("description", jsonObjectSchema.description());
             }
-            properties.put("properties", toMap(jsonObjectSchema.properties(), strict));
+
+            Map<String, Map<String, Object>> properties = new LinkedHashMap<>();
+            jsonObjectSchema.properties().forEach((property, value) ->
+                    properties.put(property, toMap(value, strict, jsonObjectSchema.required().contains(property))));
+            map.put("properties", properties);
+
             if (strict) {
-                // When using Structured Outputs, all fields must be required, see https://platform.openai.com/docs/guides/structured-outputs/supported-schemas#all-fields-must-be-required
-                properties.put("required", jsonObjectSchema.properties().keySet().stream().toList());
+                // When using Structured Outputs with strict=true, all fields must be required.
+                // See https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=chat#all-fields-must-be-required
+                map.put("required", jsonObjectSchema.properties().keySet().stream().toList());
             } else {
                 if (jsonObjectSchema.required() != null) {
-                    properties.put("required", jsonObjectSchema.required());
+                    map.put("required", jsonObjectSchema.required());
                 }
             }
+
             if (strict) {
-                properties.put("additionalProperties", false);
+                map.put("additionalProperties", false);
             }
+
             if (jsonObjectSchema.definitions() != null) {
-                properties.put("$defs", toMap(jsonObjectSchema.definitions(), strict));
+                map.put("$defs", toMap(jsonObjectSchema.definitions(), strict));
             }
-            return properties;
+
+            return map;
         } else if (jsonSchemaElement instanceof JsonArraySchema jsonArraySchema) {
-            Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("type", "array");
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", type("array", strict, required));
             if (jsonArraySchema.description() != null) {
-                properties.put("description", jsonArraySchema.description());
+                map.put("description", jsonArraySchema.description());
             }
-            properties.put("items", toMap(jsonArraySchema.items(), strict));
-            return properties;
+            map.put("items", toMap(jsonArraySchema.items(), strict));
+            return map;
         } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
-            Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("type", "string");
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", type("string", strict, required));
             if (jsonEnumSchema.description() != null) {
-                properties.put("description", jsonEnumSchema.description());
+                map.put("description", jsonEnumSchema.description());
             }
-            properties.put("enum", jsonEnumSchema.enumValues());
-            return properties;
+            map.put("enum", jsonEnumSchema.enumValues());
+            return map;
         } else if (jsonSchemaElement instanceof JsonStringSchema jsonStringSchema) {
-            Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("type", "string");
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", type("string", strict, required));
             if (jsonStringSchema.description() != null) {
-                properties.put("description", jsonStringSchema.description());
+                map.put("description", jsonStringSchema.description());
             }
-            return properties;
+            return map;
         } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
-            Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("type", "integer");
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", type("integer", strict, required));
             if (jsonIntegerSchema.description() != null) {
-                properties.put("description", jsonIntegerSchema.description());
+                map.put("description", jsonIntegerSchema.description());
             }
-            return properties;
+            return map;
         } else if (jsonSchemaElement instanceof JsonNumberSchema jsonNumberSchema) {
-            Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("type", "number");
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", type("number", strict, required));
             if (jsonNumberSchema.description() != null) {
-                properties.put("description", jsonNumberSchema.description());
+                map.put("description", jsonNumberSchema.description());
             }
-            return properties;
+            return map;
         } else if (jsonSchemaElement instanceof JsonBooleanSchema jsonBooleanSchema) {
-            Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("type", "boolean");
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", type("boolean", strict, required));
             if (jsonBooleanSchema.description() != null) {
-                properties.put("description", jsonBooleanSchema.description());
+                map.put("description", jsonBooleanSchema.description());
             }
-            return properties;
+            return map;
         } else if (jsonSchemaElement instanceof JsonReferenceSchema) {
-            Map<String, Object> properties = new LinkedHashMap<>();
+            Map<String, Object> map = new LinkedHashMap<>();
             String reference = ((JsonReferenceSchema) jsonSchemaElement).reference();
             if (reference != null) {
-                properties.put("$ref", "#/$defs/" + reference);
+                map.put("$ref", "#/$defs/" + reference);
             }
-            return properties;
+            return map;
         } else if (jsonSchemaElement instanceof JsonAnyOfSchema jsonAnyOfSchema) {
-            Map<String, Object> properties = new LinkedHashMap<>();
+            Map<String, Object> map = new LinkedHashMap<>();
             if (jsonAnyOfSchema.description() != null) {
-                properties.put("description", jsonAnyOfSchema.description());
+                map.put("description", jsonAnyOfSchema.description());
             }
             List<Map<String, Object>> anyOf = jsonAnyOfSchema.anyOf().stream()
                     .map(element -> toMap(element, strict))
                     .collect(Collectors.toList());
-            properties.put("anyOf", anyOf);
-            return properties;
+            map.put("anyOf", anyOf);
+            return map;
+        } else if (jsonSchemaElement instanceof JsonNullSchema) {
+            return Map.of("type", "null");
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
+        }
+    }
+
+    private static Object type(String type, boolean strict, boolean required) {
+        if (strict && !required) {
+            // Emulating an optional parameter by using a union type with null.
+            // See https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=chat#all-fields-must-be-required
+            return new String[]{type, "null"};
+        } else {
+            return type;
         }
     }
 

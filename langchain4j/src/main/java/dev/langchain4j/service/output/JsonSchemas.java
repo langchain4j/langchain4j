@@ -133,7 +133,7 @@ public class JsonSchemas {
     }
 
     private static JsonSchemaElement objectSchemaFrom(Class<?> actualType) {
-        return jsonObjectOrReferenceSchemaFrom(actualType, null, new LinkedHashMap<>(), true);
+        return jsonObjectOrReferenceSchemaFrom(actualType, null, false, new LinkedHashMap<>(), true);
     }
 
     private static JsonEnumSchema enumSchemaFrom(Class<?> actualType) {

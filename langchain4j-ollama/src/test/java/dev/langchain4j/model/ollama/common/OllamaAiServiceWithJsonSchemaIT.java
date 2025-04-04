@@ -1,9 +1,12 @@
-package dev.langchain4j.model.ollama;
+package dev.langchain4j.model.ollama.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.service.AiServicesWithJsonSchemaIT;
+import dev.langchain4j.model.ollama.LC4jOllamaContainer;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
@@ -16,7 +19,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
-class OllamaAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
+class OllamaAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
     private static final String MODEL = LLAMA_3_1;
     private static LC4jOllamaContainer ollama;
@@ -42,49 +45,52 @@ class OllamaAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                 .build());
     }
 
-    @Test
-    @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_nested_pojo() {
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_missing_data(ChatLanguageModel model) {
     }
 
-    @Test
-    @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_list_of_pojos() {
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_nested_pojo(ChatLanguageModel model) {
     }
 
-    @Test
-    @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_array_of_pojos() {
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_list_of_pojos(ChatLanguageModel model) {
     }
 
-    @Test
-    @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_set_of_pojos() {
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_array_of_pojos(ChatLanguageModel model) {
     }
 
-    @Test
-    @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_pojo_with_uuid() {
-
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_set_of_pojos(ChatLanguageModel model) {
     }
 
-    @Test
-    @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_set_of_pojo() {}
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_local_date_time_fields(ChatLanguageModel model) {
+    }
 
-    @Test
-    @Disabled("llama 3.1 is cannot do it properly")
     @Override
-    protected void should_extract_list_of_pojo() {}
-
-    @Test
-    @Disabled("llama 3.1 is cannot do it properly")
-    @Override
-    protected void should_extract_enum() {}
+    @Disabled("llama 3.1 cannot do it properly")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_uuid(ChatLanguageModel model) {
+    }
 }
