@@ -3,7 +3,9 @@ package dev.langchain4j.store.embedding.milvus;
 import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -127,6 +129,26 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         assertThat(matches).hasSize(2);
         assertThat(matches.get(0).embedding()).isNull();
         assertThat(matches.get(1).embedding()).isNull();
+    }
+
+    @Test
+    void testMilvusAddAllIllegalArgumentException() {
+        List<TextSegment> textSegments =
+                List.of(new TextSegment("hello", new Metadata()), new TextSegment("hi", new Metadata()));
+        List<Embedding> embeddings = embeddingModel.embedAll(textSegments).content();
+        embeddings.add(embeddingModel.embed("yes").content());
+        assertThatThrownBy(() -> embeddingStore.addAll(embeddings, textSegments))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("embeddings size is not equal to textSegments size");
+    }
+
+    @Test
+    void testMilvusAddAll() {
+        List<TextSegment> textSegments =
+                List.of(new TextSegment("hello", new Metadata()), new TextSegment("hi", new Metadata()));
+        List<Embedding> embeddings = embeddingModel.embedAll(textSegments).content();
+        List<String> ids = embeddingStore.addAll(embeddings, textSegments);
+        assertThat(ids).hasSize(2);
     }
 
     @Override
