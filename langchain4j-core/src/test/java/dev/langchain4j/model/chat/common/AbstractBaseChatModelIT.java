@@ -1,5 +1,14 @@
 package dev.langchain4j.model.chat.common;
 
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -22,6 +31,9 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.Base64;
+import java.util.List;
+import java.util.Set;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -29,19 +41,6 @@ import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.Base64;
-import java.util.List;
-import java.util.Set;
-
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
  * Contains all the common tests that every {@link ChatLanguageModel}
@@ -57,14 +56,14 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
-    static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
+    static final String CAT_IMAGE_URL =
+            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    static final String DICE_IMAGE_URL =
+            "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
             .name("getWeather")
-            .parameters(JsonObjectSchema.builder()
-                    .addStringProperty("city")
-                    .build())
+            .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
             .build();
 
     static final ResponseFormat RESPONSE_FORMAT = ResponseFormat.builder()
@@ -92,8 +91,15 @@ public abstract class AbstractBaseChatModelIT<M> {
         return models();
     }
 
-    protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
+    protected String catImageUrl() {
+        return CAT_IMAGE_URL;
+    }
 
+    protected String diceImageUrl() {
+        return DICE_IMAGE_URL;
+    }
+
+    protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
 
     // MESSAGES
 
@@ -151,8 +157,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 // TODO .addSystemMessage, .addUserMessage?
                 .messages(
                         SystemMessage.from("Translate messages from user into German"),
-                        UserMessage.from("Translate: 'I love you'")
-                )
+                        UserMessage.from("Translate: 'I love you'"))
                 .build();
 
         // when
@@ -203,8 +208,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     private void ensureModelNameIsDifferentFromDefault(String modelName, M model) {
         // TODO slight optimization: check model.parameters().modelName() instead?
-        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a story"));
+        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder().messages(UserMessage.from("Tell me a story"));
         if (supportsMaxOutputTokensParameter()) {
             ChatRequestParameters parameters = ChatRequestParameters.builder()
                     .maxOutputTokens(1) // to save tokens
@@ -254,9 +258,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         String modelName = "dummy";
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .modelName(modelName)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().modelName(modelName).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"))
@@ -284,9 +287,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         int maxOutputTokens = 5;
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a long story"))
                 .parameters(parameters)
@@ -328,9 +330,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         int maxOutputTokens = 5;
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -374,9 +375,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         int maxOutputTokens = 5;
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a long story"))
@@ -404,9 +404,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         List<String> stopSequences = List.of("World", " World");
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .stopSequences(stopSequences)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().stopSequences(stopSequences).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Hello World'"))
@@ -437,9 +436,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         List<String> stopSequences = List.of("World", " World");
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .stopSequences(stopSequences)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().stopSequences(stopSequences).build();
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -472,9 +470,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         List<String> stopSequences = List.of("World");
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .stopSequences(stopSequences)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().stopSequences(stopSequences).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Hello World'"))
@@ -530,7 +527,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @Test
     @EnabledIf("supportsMaxOutputTokensParameter")
-    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+    protected void
+            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
 
         // given
         // TODO test more/all common params?
@@ -593,7 +591,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
@@ -621,11 +620,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         ChatRequest chatRequest2 = ChatRequest.builder()
-                .messages(
-                        userMessage,
-                        aiMessage,
-                        ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
-                )
+                .messages(userMessage, aiMessage, ToolExecutionResultMessage.from(toolExecutionRequest, "sunny"))
                 .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .build())
@@ -683,7 +678,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("tool")
                     .hasMessageContaining("not support");
-
         }
     }
 
@@ -716,7 +710,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
@@ -750,7 +745,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
@@ -785,7 +781,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("ToolChoice.REQUIRED")
                     .hasMessageContaining("not support");
-
         }
     }
 
@@ -802,8 +797,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         ResponseFormat responseFormat = ResponseFormat.JSON;
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany? " +
-                        "Answer with a JSON object containing a single 'city' field"))
+                .messages(UserMessage.from("What is the capital of Germany? "
+                        + "Answer with a JSON object containing a single 'city' field"))
                 .parameters(ChatRequestParameters.builder()
                         .responseFormat(responseFormat)
                         .build())
@@ -835,8 +830,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         ResponseFormat responseFormat = ResponseFormat.JSON;
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany? " +
-                        "Answer with a JSON object containing a single 'city' field"))
+                .messages(UserMessage.from("What is the capital of Germany? "
+                        + "Answer with a JSON object containing a single 'city' field"))
                 .parameters(ChatRequestParameters.builder()
                         .responseFormat(responseFormat)
                         .build())
@@ -849,7 +844,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("JSON response format")
                     .hasMessageContaining("not support");
-
         }
     }
 
@@ -903,7 +897,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("JSON response format")
                     .hasMessageContaining("not support");
-
         }
     }
 
@@ -943,7 +936,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
@@ -970,11 +964,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         ChatRequest chatRequest2 = ChatRequest.builder()
-                .messages(
-                        userMessage,
-                        aiMessage,
-                        ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
-                )
+                .messages(userMessage, aiMessage, ToolExecutionResultMessage.from(toolExecutionRequest, "sunny"))
                 .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .responseFormat(responseFormat)
@@ -1019,14 +1009,10 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_single_image_as_base64_encoded_string(M model) {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
-                ImageContent.from(base64Data, "image/png")
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
+        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
@@ -1055,22 +1041,17 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see on these images?"),
-                ImageContent.from(encoder.encodeToString(readBytes(CAT_IMAGE_URL)), "image/png"),
-                ImageContent.from(encoder.encodeToString(readBytes(DICE_IMAGE_URL)), "image/png")
-        );
+                ImageContent.from(encoder.encodeToString(readBytes(catImageUrl())), "image/png"),
+                ImageContent.from(encoder.encodeToString(readBytes(diceImageUrl())), "image/png"));
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+        assertThat(aiMessage.text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertTokenUsage()) {
@@ -1088,14 +1069,10 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(M model) {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
-                ImageContent.from(base64Data, "image/png")
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
+        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when-then
         AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
@@ -1115,13 +1092,9 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_single_image_as_public_URL(M model) {
 
         // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
-                ImageContent.from(CAT_IMAGE_URL)
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
+        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
@@ -1148,21 +1121,16 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see on these images?"),
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL)
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+                ImageContent.from(catImageUrl()),
+                ImageContent.from(diceImageUrl()));
+        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+        assertThat(aiMessage.text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertTokenUsage()) {
@@ -1180,13 +1148,9 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_fail_if_images_as_public_URLs_are_not_supported(M model) {
 
         // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
-                ImageContent.from(CAT_IMAGE_URL)
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
+        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when-then
         AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
