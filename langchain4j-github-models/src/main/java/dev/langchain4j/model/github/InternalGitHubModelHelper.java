@@ -1,23 +1,15 @@
 package dev.langchain4j.model.github;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
-
 import com.azure.ai.inference.ChatCompletionsClientBuilder;
 import com.azure.ai.inference.EmbeddingsClientBuilder;
 import com.azure.ai.inference.ModelServiceVersion;
 import com.azure.ai.inference.models.ChatCompletionsFunctionToolCall;
 import com.azure.ai.inference.models.ChatCompletionsFunctionToolDefinition;
 import com.azure.ai.inference.models.ChatCompletionsOptions;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormat;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonObject;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonSchema;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonSchemaDefinition;
 import com.azure.ai.inference.models.ChatCompletionsToolCall;
 import com.azure.ai.inference.models.ChatCompletionsToolDefinition;
 import com.azure.ai.inference.models.ChatMessageImageContentItem;
@@ -58,20 +50,44 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
 
 class InternalGitHubModelHelper {
 
@@ -418,8 +434,7 @@ class InternalGitHubModelHelper {
                 .build();
     }
 
-    static ChatResponse createListenerResponse(
-            String responseId, String responseModel, Response<AiMessage> response) {
+    static ChatResponse createListenerResponse(String responseId, String responseModel, Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
@@ -433,5 +448,66 @@ class InternalGitHubModelHelper {
                         .finishReason(response.finishReason())
                         .build())
                 .build();
+    }
+
+    static ChatCompletionsResponseFormat toChatCompletionsResponseFormat(
+            ResponseFormat responseFormat, Boolean strict) {
+        if (responseFormat == null || responseFormat.type() == TEXT) {
+            return null;
+        }
+
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
+            return new ChatCompletionsResponseFormatJsonObject();
+        } else {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+                throw new IllegalArgumentException(
+                        "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                                + jsonSchema.rootElement().getClass());
+            }
+            return new ChatCompletionsResponseFormatJsonSchema(new ChatCompletionsResponseFormatJsonSchemaDefinition(
+                    jsonSchema.name(), toJsonSchemaDefinition(jsonSchema.rootElement())).setStrict(strict));
+        }
+    }
+
+    static Map<String, BinaryData> toJsonSchemaDefinition(JsonSchemaElement jsonSchemaElement) {
+        Map<String, BinaryData> result = new HashMap<>();
+        if (jsonSchemaElement instanceof JsonStringSchema jsonStringSchema) {
+            result.put("type", BinaryData.fromString("\"string\""));
+            result.put("description", BinaryData.fromString(jsonStringSchema.description()));
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
+            result.put("type", BinaryData.fromString("\"integer\""));
+            result.put("description", BinaryData.fromString(jsonIntegerSchema.description()));
+        } else if (jsonSchemaElement instanceof JsonNumberSchema jsonNumberSchema) {
+            result.put("type", BinaryData.fromString("\"number\""));
+            result.put("description", BinaryData.fromString(jsonNumberSchema.description()));
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema jsonBooleanSchema) {
+            result.put("type", BinaryData.fromString("\"boolean\""));
+            result.put("description", BinaryData.fromString(jsonBooleanSchema.description()));
+        } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
+            result.put("type", BinaryData.fromString("\"string\""));
+            result.put("enum", BinaryData.fromObject(jsonEnumSchema.enumValues()));
+            result.put("description", BinaryData.fromString(jsonEnumSchema.description()));
+        } else if (jsonSchemaElement instanceof JsonArraySchema jsonArraySchema) {
+            result.put("type", BinaryData.fromString("\"array\""));
+            result.put(
+                    "items",
+                    BinaryData.fromObject(toJsonSchemaDefinition(jsonArraySchema.items())));
+            result.put("description", BinaryData.fromString(jsonArraySchema.description()));
+        } else if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
+            Map<String, JsonSchemaElement> properties = jsonObjectSchema.properties();
+            Map<String, BinaryData> azureProperties = new LinkedHashMap<>();
+            properties.forEach(
+                    (key, value) -> azureProperties.put(key, BinaryData.fromObject(toJsonSchemaDefinition((value)))));
+            result.put("type", BinaryData.fromString("\"object\""));
+            result.put("properties", BinaryData.fromObject(azureProperties));
+            result.put("required", BinaryData.fromObject(jsonObjectSchema.required()));
+            result.put(
+                    "additionalProperties",
+                    BinaryData.fromObject(jsonObjectSchema.additionalProperties()));
+        } else {
+            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement);
+        }
+        return result;
     }
 }
