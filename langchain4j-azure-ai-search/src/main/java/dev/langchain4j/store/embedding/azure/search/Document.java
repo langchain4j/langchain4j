@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.azure.search;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Collection;
 
 public class Document {
@@ -68,6 +67,17 @@ public class Document {
             this.attributes = attributes;
         }
 
+        public void setAttributes(dev.langchain4j.data.document.Metadata metadata) {
+            this.attributes = metadata.toMap().entrySet().stream()
+                    .map(entry -> {
+                        Document.Metadata.Attribute attribute = new Document.Metadata.Attribute();
+                        attribute.setKey(entry.getKey());
+                        attribute.setValue(entry.getValue().toString());
+                        return attribute;
+                    })
+                    .toList();
+        }
+
         public static class Attribute {
             private String key;
 
@@ -91,5 +101,3 @@ public class Document {
         }
     }
 }
-
-
