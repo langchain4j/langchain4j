@@ -85,7 +85,6 @@ There are several ways to declare input guardrails, listed here in order of prec
 1. [`@InputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) method.
 2. [`@InputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class.
 3. [`InputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/InputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder.
-4. 
 Regardless of how they are declared, input guardrails are always executed in the order they appear in the list.
 
 #### Annotation on individual AI Service methods
