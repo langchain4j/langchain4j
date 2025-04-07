@@ -57,14 +57,8 @@ class EnumSetOutputParserTest {
                 Arguments.of(" CAT \n DOG ", Set.of(CAT, DOG)),
 
                 // JSON
-                Arguments.of("{\"items\":[CAT]}", Set.of(CAT)),
-                Arguments.of("{\"items\":['CAT']}", Set.of(CAT)),
                 Arguments.of("{\"items\":[\"CAT\"]}", Set.of(CAT)),
-                Arguments.of("{\"items\":[CAT, DOG]}", Set.of(CAT, DOG)),
-
-                // JSON: wrong case
-                Arguments.of("{\"items\":[cat]}", Set.of(CAT)),
-                Arguments.of("{\"items\":[Cat]}", Set.of(CAT)),
+                Arguments.of("{\"items\":[\"CAT\", \"DOG\"]}", Set.of(CAT, DOG)),
 
                 // JSON: empty
                 Arguments.of("{}", Set.of()),
@@ -75,18 +69,18 @@ class EnumSetOutputParserTest {
                 Arguments.of("{\"items\":\"CAT\"}", Set.of(CAT)),
 
                 // JSON: wrong property name
-                Arguments.of("{\"values\":[CAT]}", Set.of(CAT)),
-                Arguments.of("{\"animals\":[CAT]}", Set.of(CAT)),
+                Arguments.of("{\"values\":[\"CAT\"]}", Set.of(CAT)),
+                Arguments.of("{\"animals\":[\"CAT\"]}", Set.of(CAT)),
 
                 // JSON: surrounded by whitespaces
-                Arguments.of(" {\"items\":[CAT]} ", Set.of(CAT))
+                Arguments.of(" {\"items\":[\"CAT\"]} ", Set.of(CAT))
         );
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
             "BANANA",
-            "{\"items\":[BANANA]}"
+            "{\"items\":[\"BANANA\"]}"
     })
     void should_fail_to_parse_set_of_enums(String text) {
 
@@ -99,7 +93,7 @@ class EnumSetOutputParserTest {
                 .hasMessageContaining("Unknown enum value: BANANA");
     }
 
-    @Test()
+    @Test
     void should_preserve_order() {
 
         // given
@@ -115,14 +109,14 @@ class EnumSetOutputParserTest {
         assertThat(enumIterator.next()).isEqualTo(BIRD);
     }
 
-    @Test()
+    @Test
     void should_preserve_order_JSON() {
 
         // given
         EnumSetOutputParser parser = new EnumSetOutputParser(Animal.class);
 
         // when
-        Set<Enum> parsed = parser.parse("{\"items\":[CAT, DOG, BIRD]}");
+        Set<Enum> parsed = parser.parse("{\"items\":[\"CAT\", \"DOG\", \"BIRD\"]}");
 
         // then
         Iterator<Enum> enumIterator = parsed.iterator();

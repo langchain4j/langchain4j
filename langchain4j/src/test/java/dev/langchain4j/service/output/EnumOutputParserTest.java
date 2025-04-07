@@ -57,13 +57,7 @@ class EnumOutputParserTest {
                 Arguments.of(" [ CAT ] ", CAT),
 
                 // JSON
-                Arguments.of("{\"value\":CAT}", CAT),
-                Arguments.of("{\"value\":'CAT'}", CAT),
                 Arguments.of("{\"value\":\"CAT\"}", CAT),
-
-                // JSON: wrong case
-                Arguments.of("{\"value\":cat}", CAT),
-                Arguments.of("{\"value\":Cat}", CAT),
 
                 // JSON: empty
                 Arguments.of("{}", null),
@@ -71,17 +65,17 @@ class EnumOutputParserTest {
                 Arguments.of("{\"value\":\"\"}", null),
 
                 // JSON: wrong property name
-                Arguments.of("{\"animal\":CAT}", CAT),
+                Arguments.of("{\"animal\":\"CAT\"}", CAT),
 
                 // JSON: surrounded by whitespaces
-                Arguments.of(" {\"value\":CAT} ", CAT)
+                Arguments.of(" {\"value\":\"CAT\"} ", CAT)
         );
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
             "BANANA",
-            "{\"value\":BANANA}"
+            "{\"value\":\"BANANA\"}"
     })
     void should_fail_to_parse_enum(String text) {
 

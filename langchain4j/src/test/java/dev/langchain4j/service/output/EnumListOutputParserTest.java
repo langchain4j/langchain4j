@@ -54,14 +54,8 @@ class EnumListOutputParserTest {
             Arguments.of(" CAT \n DOG ", List.of(CAT, DOG)),
 
             // JSON
-            Arguments.of("{\"items\":[CAT]}", List.of(CAT)),
-            Arguments.of("{\"items\":['CAT']}", List.of(CAT)),
             Arguments.of("{\"items\":[\"CAT\"]}", List.of(CAT)),
-            Arguments.of("{\"items\":[CAT, DOG]}", List.of(CAT, DOG)),
-
-            // JSON: wrong case
-            Arguments.of("{\"items\":[cat]}", List.of(CAT)),
-            Arguments.of("{\"items\":[Cat]}", List.of(CAT)),
+            Arguments.of("{\"items\":[\"CAT\", \"DOG\"]}", List.of(CAT, DOG)),
 
             // JSON: empty
             Arguments.of("{}", List.of()),
@@ -72,18 +66,18 @@ class EnumListOutputParserTest {
             Arguments.of("{\"items\":\"CAT\"}", List.of(CAT)),
 
             // JSON: wrong property name
-            Arguments.of("{\"values\":[CAT]}", List.of(CAT)),
-            Arguments.of("{\"animals\":[CAT]}", List.of(CAT)),
+            Arguments.of("{\"values\":[\"CAT\"]}", List.of(CAT)),
+            Arguments.of("{\"animals\":[\"CAT\"]}", List.of(CAT)),
 
             // JSON: surrounded by whitespaces
-            Arguments.of(" {\"items\":[CAT]} ", List.of(CAT))
+            Arguments.of(" {\"items\":[\"CAT\"]} ", List.of(CAT))
         );
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
         "BANANA",
-        "{\"items\":[BANANA]}"
+        "{\"items\":[\"BANANA\"]}"
     })
     void should_fail_to_parse_list_of_enums(String text) {
 

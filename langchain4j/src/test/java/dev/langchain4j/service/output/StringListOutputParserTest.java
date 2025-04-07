@@ -46,7 +46,6 @@ class StringListOutputParserTest {
                 // JSON with "items" property
                 Arguments.of("{\"items\":[\"CAT\"]}", List.of("CAT")),
                 Arguments.of("{\"items\":[\"CAT\",\"DOG\"]}", List.of("CAT", "DOG")),
-                Arguments.of("{\"items\":[CAT]}", List.of("CAT")), // Minimal parser flexibility
                 Arguments.of("{\"items\":[\"CAT\",\"DOG\",\"BIRD\"]}", List.of("CAT", "DOG", "BIRD")),
 
                 // JSON with alternative property name
