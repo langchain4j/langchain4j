@@ -17,14 +17,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai</artifactId>
-  <version>0.36.2</version>
+  <version>1.0.0-beta2</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai:0.36.2'
+implementation 'dev.langchain4j:langchain4j-vertex-ai:1.0.0-beta2'
 ```
 
 ### Try out an example code:
@@ -56,13 +56,13 @@ public class ChatLanguageModel {
             .temperature(0.0)
             .build();
 
-        Response<AiMessage> response = model.generate(
+        ChatResponse response = model.chat(
             UserMessage.from(
                 "Describe in several sentences what language model you are: \n" +
                 "Describe in several sentences what is your code name: "
             )
         );
-        System.out.println(response.content().text());
+        System.out.println(response.aiMessage().text());
 
         // I am a large language model, trained by Google. 
         // I am a transformer-based language model that has been trained 

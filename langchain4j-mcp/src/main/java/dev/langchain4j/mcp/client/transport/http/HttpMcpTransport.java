@@ -6,17 +6,18 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.InitializationNotification;
+import dev.langchain4j.mcp.client.protocol.McpClientMessage;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -28,17 +29,17 @@ import org.slf4j.LoggerFactory;
 
 public class HttpMcpTransport implements McpTransport {
 
+    private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
     private final String sseUrl;
     private final OkHttpClient client;
     private final boolean logResponses;
     private final boolean logRequests;
     private EventSource mcpSseEventListener;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
-    private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
 
     // this is obtained from the server after initializing the SSE channel
     private volatile String postUrl;
+    private volatile McpOperationHandler messageHandler;
 
     public HttpMcpTransport(Builder builder) {
         OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
@@ -57,73 +58,81 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public void start() {
+    public void start(McpOperationHandler messageHandler) {
+        this.messageHandler = messageHandler;
         mcpSseEventListener = startSseChannel(logResponses);
     }
 
     @Override
-    public JsonNode initialize(final McpInitializeRequest request) {
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
         Request httpRequest = null;
+        Request initializationNotification = null;
         try {
-            httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(request)))
-                    .build();
+            httpRequest = createRequest(operation);
+            initializationNotification = createRequest(new InitializationNotification());
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
-        return executeAndWait(httpRequest, request.getId());
+        final Request finalInitializationNotification = initializationNotification;
+        return execute(httpRequest, operation.getId())
+                .thenCompose(originalResponse -> execute(finalInitializationNotification, null)
+                        .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
     }
 
     @Override
-    public JsonNode listTools(McpListToolsRequest operation) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
         try {
-            Request httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(operation)))
-                    .build();
-            return executeAndWait(httpRequest, operation.getId());
+            Request httpRequest = createRequest(operation);
+            return execute(httpRequest, operation.getId());
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
     @Override
-    public JsonNode executeTool(McpCallToolRequest operation) {
+    public void executeOperationWithoutResponse(McpClientMessage operation) {
         try {
-            Request httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(operation)))
-                    .build();
-            return executeAndWait(httpRequest, operation.getId());
+            Request httpRequest = createRequest(operation);
+            execute(httpRequest, null);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private JsonNode executeAndWait(Request request, Long id) {
-        try {
-            CompletableFuture<JsonNode> future = new CompletableFuture<>();
-            pendingOperations.put(id, future);
-            try (final Response response = client.newCall(request).execute()) {
+    private CompletableFuture<JsonNode> execute(Request request, Long id) {
+        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+        if (id != null) {
+            messageHandler.startOperation(id, future);
+        }
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                future.completeExceptionally(e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
                 int statusCode = response.code();
-                if (statusCode < 200 || statusCode >= 300) {
-                    throw new RuntimeException("Unexpected status code: " + statusCode);
+                if (!isExpectedStatusCode(statusCode)) {
+                    future.completeExceptionally(new RuntimeException("Unexpected status code: " + statusCode));
+                }
+                // For messages with null ID, we don't wait for a response in the SSE channel
+                if (id == null) {
+                    future.complete(null);
                 }
             }
-            return future.get();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        });
+        return future;
+    }
+
+    private boolean isExpectedStatusCode(int statusCode) {
+        return statusCode >= 200 && statusCode < 300;
     }
 
     private EventSource startSseChannel(boolean logResponses) {
         Request request = new Request.Builder().url(sseUrl).build();
         CompletableFuture<String> initializationFinished = new CompletableFuture<>();
-        SseEventListener listener = new SseEventListener(pendingOperations, logResponses, initializationFinished);
+        SseEventListener listener = new SseEventListener(messageHandler, logResponses, initializationFinished);
         EventSource eventSource = EventSources.createFactory(client).newEventSource(request, listener);
         // wait for the SSE channel to be created, receive the POST url from the server, throw an exception if that
         // failed
@@ -131,7 +140,7 @@ public class HttpMcpTransport implements McpTransport {
             int timeout = client.callTimeoutMillis() > 0 ? client.callTimeoutMillis() : Integer.MAX_VALUE;
             String relativePostUrl = initializationFinished.get(timeout, TimeUnit.MILLISECONDS);
             postUrl = buildAbsolutePostUrl(relativePostUrl);
-            log.debug("Received the server's POST URL: " + postUrl);
+            log.debug("Received the server's POST URL: {}", postUrl);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -144,6 +153,14 @@ public class HttpMcpTransport implements McpTransport {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private Request createRequest(McpClientMessage message) throws JsonProcessingException {
+        return new Request.Builder()
+                .url(postUrl)
+                .header("Content-Type", "application/json")
+                .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(message)))
+                .build();
     }
 
     @Override

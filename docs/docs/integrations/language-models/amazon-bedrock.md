@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-beta2</version>
 </dependency>
 ```
 
@@ -19,12 +19,47 @@ In order to use Amazon Bedrock models, you need to configure AWS credentials.
 One of the options is to set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
 More information can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html).
 
-## AI21 Models
-- `BedrockAI21LabsChatModel`
+## Difference Between InvokeAPI and ConverseAPI
+Amazon Bedrock offers two primary model invocation API operations for inference:
+- [Converse](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) – Amazon recommend using the Converse API as it provides consistent API, that works with all Amazon Bedrock models that support messages.
+- [InvokeModel](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-invoke.html) – Originally aimed at single calls to obtain a response to a single prompt.
 
-## Anthropic Models
-- `BedrockAnthropicMessageChatModel`: supports new Messages API
-- `BedrockAnthropicCompletionChatModel`: supports old Text Completions API
+## ChatLanguageModel using ConverseAPI
+Guardrails and streaming are not supported by the current implementation.
+
+Supported models and their features can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
+
+Models ids can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
+
+### Configuration
+```java
+ChatLanguageModel model = BedrockChatModel.builder()
+        .modelId("us.amazon.nova-lite-v1:0")
+        .maxRetries(...)
+        .timeout(...)
+        .logRequests(...)
+        .logResponses(...)
+        .defaultRequestParameters(ChatRequestParameters.builder()
+                .topP(...)
+                .temperature(...)
+                .maxOutputTokens(...)
+                .stopSequences(...)
+                .toolSpecifications(...)
+                .build())
+        .build();
+```
+### Examples
+
+- [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockChatModelExample.java)
+
+## ChatLanguageModel using InvokeAPI
+
+### AI21 Models
+- `BedrockAI21LabsChatModel` (deprecated, please use `BedrockChatModel`)
+
+### Anthropic Models
+- `BedrockAnthropicMessageChatModel`: (deprecated, please use `BedrockChatModel`) supports new Messages API
+- `BedrockAnthropicCompletionChatModel`: (deprecated, please use `BedrockChatModel`) supports old Text Completions API
 - `BedrockAnthropicStreamingChatModel`
 
 Example:
@@ -34,21 +69,20 @@ ChatLanguageModel model = BedrockAnthropicMessageChatModel.builder()
 .build();
 ```
 
-## Cohere Models
-- `BedrockCohereChatModel`
+### Cohere Models
+- `BedrockCohereChatModel` (deprecated, please use `BedrockChatModel`)
 
-## Meta Llama Models
-- `BedrockLlamaChatModel`
+### Meta Llama Models
+- `BedrockLlamaChatModel` (deprecated, please use `BedrockChatModel`)
 
-## Mistral Models
-- `BedrockMistralAiChatModel`
+### Mistral Models
+- `BedrockMistralAiChatModel` (deprecated, please use `BedrockChatModel`)
 
-## Titan Models
-- `BedrockTitanChatModel`
+### Titan Models
+- `BedrockTitanChatModel` (deprecated, please use `BedrockChatModel`)
 - `BedrockTitanEmbeddingModel`
 
+### Examples
 
-## Examples
-
-- [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockChatModelExample.java)
-- [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockStreamingChatModelExample.java)
+- [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockChatModelExample.java)
+- [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/invoke/BedrockStreamingChatModelExample.java)

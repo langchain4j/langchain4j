@@ -6,22 +6,24 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-public class ToolSpecificationHelperTest {
+class ToolSpecificationHelperTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
-    public void toolWithSimpleParams() throws JsonProcessingException {
+    void toolWithSimpleParams() throws JsonProcessingException {
         String text =
                 // language=json
                 """
@@ -71,15 +73,15 @@ public class ToolSpecificationHelperTest {
                 """;
         ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
-        assertThat(toolSpecifications.size()).isEqualTo(1);
+        assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("operation");
         assertThat(toolSpecification.description()).isEqualTo("Super operation");
 
         // validate parameters
         JsonObjectSchema parameters = toolSpecification.parameters();
-        assertThat(parameters.properties().size()).isEqualTo(6);
-        assertThat(parameters.required().size()).isEqualTo(1);
+        assertThat(parameters.properties()).hasSize(6);
+        assertThat(parameters.required()).hasSize(1);
         assertThat(parameters.required().get(0)).isEqualTo("stringParameter");
 
         JsonStringSchema messageParameter =
@@ -108,7 +110,7 @@ public class ToolSpecificationHelperTest {
     }
 
     @Test
-    public void toolWithObjectParam() throws JsonProcessingException {
+    void toolWithObjectParam() throws JsonProcessingException {
         String text =
                 // language=json
                 """
@@ -141,19 +143,19 @@ public class ToolSpecificationHelperTest {
                 """;
         ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
-        assertThat(toolSpecifications.size()).isEqualTo(1);
+        assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("operation");
         assertThat(toolSpecification.description()).isEqualTo("Super operation");
 
         // validate parameters
         JsonObjectSchema parameters = toolSpecification.parameters();
-        assertThat(parameters.properties().size()).isEqualTo(1);
+        assertThat(parameters.properties()).hasSize(1);
 
         JsonObjectSchema complexParameter =
                 (JsonObjectSchema) parameters.properties().get("complexParameter");
         assertThat(complexParameter.description()).isEqualTo("A complex parameter");
-        assertThat(complexParameter.properties().size()).isEqualTo(2);
+        assertThat(complexParameter.properties()).hasSize(2);
 
         JsonStringSchema nestedStringParameter =
                 (JsonStringSchema) complexParameter.properties().get("nestedString");
@@ -165,7 +167,7 @@ public class ToolSpecificationHelperTest {
     }
 
     @Test
-    public void toolWithNoParams() throws JsonProcessingException {
+    void toolWithNoParams() throws JsonProcessingException {
         String text =
                 // language=json
                 """
@@ -182,11 +184,61 @@ public class ToolSpecificationHelperTest {
                 """;
         ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
-        assertThat(toolSpecifications.size()).isEqualTo(1);
+        assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("getTinyImage");
         assertThat(toolSpecification.description()).isEqualTo("Returns the MCP_TINY_IMAGE");
         JsonObjectSchema parameters = toolSpecification.parameters();
-        assertThat(parameters.properties().size()).isEqualTo(0);
+        assertThat(parameters.properties()).isEmpty();
+    }
+
+    @Test
+    void arrayWithMultipleAllowedTypes() throws JsonProcessingException {
+        String text =
+                """
+                        [{
+                          "name": "query",
+                          "description": "Execute a SELECT query",
+                          "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                              "sql": {
+                                "type": "string",
+                                "description": "SQL SELECT query"
+                              },
+                              "params": {
+                                "type": "array",
+                                "items": {
+                                  "type": [
+                                    "string",
+                                    "number",
+                                    "boolean",
+                                    "null",
+                                    "integer"
+                                  ]
+                                },
+                                "description": "Query parameters (optional)"
+                              }
+                            },
+                            "required": [
+                              "sql"
+                            ]
+                          }
+                        }]
+                        """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+        JsonArraySchema params = (JsonArraySchema) parameters.properties().get("params");
+        assertThat(params.description()).isEqualTo("Query parameters (optional)");
+        assertThat(params.items()).isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) params.items();
+        assertThat(anyOf.anyOf().get(0)).isInstanceOf(JsonStringSchema.class);
+        assertThat(anyOf.anyOf().get(1)).isInstanceOf(JsonNumberSchema.class);
+        assertThat(anyOf.anyOf().get(2)).isInstanceOf(JsonBooleanSchema.class);
+        assertThat(anyOf.anyOf().get(3)).isInstanceOf(JsonNullSchema.class);
+        assertThat(anyOf.anyOf().get(4)).isInstanceOf(JsonIntegerSchema.class);
     }
 }

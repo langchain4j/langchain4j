@@ -1,5 +1,7 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -9,11 +11,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -25,10 +27,11 @@ public class OllamaLanguageModel implements LanguageModel {
     private final OllamaClient client;
     private final String modelName;
     private final Options options;
-    private final String format;
+    private final ResponseFormat responseFormat;
     private final Integer maxRetries;
 
-    public OllamaLanguageModel(String baseUrl,
+    public OllamaLanguageModel(HttpClientBuilder httpClientBuilder,
+                               String baseUrl,
                                String modelName,
                                Double temperature,
                                Integer topK,
@@ -39,15 +42,21 @@ public class OllamaLanguageModel implements LanguageModel {
                                Integer numCtx,
                                List<String> stop,
                                String format,
+                               ResponseFormat responseFormat,
                                Duration timeout,
                                Integer maxRetries,
                                Boolean logRequests,
                                Boolean logResponses,
                                Map<String, String> customHeaders
     ) {
+        if (format != null && responseFormat != null) {
+            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
+        }
+
         this.client = OllamaClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .customHeaders(customHeaders)
@@ -63,7 +72,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .numCtx(numCtx)
                 .stop(stop)
                 .build();
-        this.format = format;
+        this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
@@ -81,11 +90,11 @@ public class OllamaLanguageModel implements LanguageModel {
                 .model(modelName)
                 .prompt(prompt)
                 .options(options)
-                .format(format)
+                .format(toOllamaResponseFormat(responseFormat))
                 .stream(false)
                 .build();
 
-        CompletionResponse response = withRetry(() -> client.completion(request), maxRetries);
+        CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request), maxRetries);
 
         return Response.from(
                 response.getResponse(),
@@ -95,6 +104,7 @@ public class OllamaLanguageModel implements LanguageModel {
 
     public static class OllamaLanguageModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String modelName;
         private Double temperature;
@@ -106,6 +116,7 @@ public class OllamaLanguageModel implements LanguageModel {
         private Integer numCtx;
         private List<String> stop;
         private String format;
+        private ResponseFormat responseFormat;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -115,6 +126,18 @@ public class OllamaLanguageModel implements LanguageModel {
         public OllamaLanguageModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        /**
+         * TODO
+         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
+         *
+         * @param httpClientBuilder
+         * @return
+         */
+        public OllamaLanguageModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OllamaLanguageModelBuilder baseUrl(String baseUrl) {
@@ -167,8 +190,21 @@ public class OllamaLanguageModel implements LanguageModel {
             return this;
         }
 
+        /**
+         * @deprecated Please use {@link #responseFormat(ResponseFormat)} instead.
+         * For example: {@code responseFormat(ResponseFormat.JSON)}.
+         * <br>
+         * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
+         * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
+         */
+        @Deprecated
         public OllamaLanguageModelBuilder format(String format) {
             this.format = format;
+            return this;
+        }
+
+        public OllamaLanguageModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -199,6 +235,7 @@ public class OllamaLanguageModel implements LanguageModel {
 
         public OllamaLanguageModel build() {
             return new OllamaLanguageModel(
+                    httpClientBuilder,
                     baseUrl,
                     modelName,
                     temperature,
@@ -210,6 +247,7 @@ public class OllamaLanguageModel implements LanguageModel {
                     numCtx,
                     stop,
                     format,
+                    responseFormat,
                     timeout,
                     maxRetries,
                     logRequests,

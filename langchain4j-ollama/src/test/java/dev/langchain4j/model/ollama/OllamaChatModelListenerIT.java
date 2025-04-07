@@ -1,10 +1,12 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
-import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollama;
+import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
 import static java.util.Collections.singletonList;
 
 class OllamaChatModelListenerIT extends ChatModelListenerIT {
@@ -12,7 +14,7 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
     @Override
     protected ChatLanguageModel createModel(ChatModelListener listener) {
         return OllamaChatModel.builder()
-                .baseUrl(AbstractOllamaToolsLanguageModelInfrastructure.ollamaBaseUrl())
+                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
@@ -25,15 +27,14 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected String modelName() {
-        return TOOL_MODEL;
+        return LLAMA_3_1;
     }
 
     @Override
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OllamaChatModel.builder()
-                .baseUrl(AbstractOllamaToolsLanguageModelInfrastructure.ollamaBaseUrl())
+                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
                 .modelName("banana")
-                .maxRetries(0)
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -42,7 +43,7 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return ModelNotFoundException.class;
     }
 
     @Override

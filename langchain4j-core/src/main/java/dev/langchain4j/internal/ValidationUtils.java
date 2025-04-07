@@ -69,6 +69,22 @@ public class ValidationUtils {
     }
 
     /**
+     * Ensures that the given array is not null and not empty.
+     * @param array The array to check.
+     * @param name The name of the array to be used in the exception message.
+     * @return The array if it is not null and not empty.
+     * @param <T> The component type of the array.
+     * @throws IllegalArgumentException if the array is null or empty.
+     */
+    public static <T> T[] ensureNotEmpty(T[] array, String name) {
+        if (array == null || array.length == 0) {
+            throw illegalArgument("%s cannot be null or empty", name);
+        }
+
+        return array;
+    }
+
+    /**
      * Ensures that the given map is not null and not empty.
      *
      * @param map  The map to check.
@@ -121,6 +137,21 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the expression is false.
      */
     public static int ensureGreaterThanZero(Integer i, String name) {
+        if (i == null || i <= 0) {
+            throw illegalArgument("%s must be greater than zero, but is: %s", name, i);
+        }
+
+        return i;
+    }
+
+    /**
+     * Ensures that the given expression is true.
+     * @param i The expression to check.
+     * @param name The message to be used in the exception.
+     * @return The value if it is greater than zero.
+     * @throws IllegalArgumentException if the expression is false.
+     */
+    public static double ensureGreaterThanZero(Double i, String name) {
         if (i == null || i <= 0) {
             throw illegalArgument("%s must be greater than zero, but is: %s", name, i);
         }

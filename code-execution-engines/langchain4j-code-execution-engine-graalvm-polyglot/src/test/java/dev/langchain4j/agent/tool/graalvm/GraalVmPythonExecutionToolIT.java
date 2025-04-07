@@ -1,13 +1,13 @@
 package dev.langchain4j.agent.tool.graalvm;
 
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
+
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import org.junit.jupiter.api.Test;
-
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 
 class GraalVmPythonExecutionToolIT {
 
@@ -24,7 +24,7 @@ class GraalVmPythonExecutionToolIT {
     }
 
     @Test
-    public void should_execute_tool() {
+    void should_execute_tool() {
 
         GraalVmPythonExecutionTool tool = spy(new GraalVmPythonExecutionTool());
 

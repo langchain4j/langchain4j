@@ -1,8 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>1.0.0-beta3-SNAPSHOT</version>
+        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-core</artifactId>
+    <name>LangChain4j :: Core</name>
+    <description>Core classes and interfaces of LangChain4j</description>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <properties>
         <!-- Tell the compiler to stop warning us about Java8 -->
@@ -11,22 +28,11 @@
         <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 
-    <parent>
-        <groupId>dev.langchain4j</groupId>
-        <artifactId>langchain4j-parent</artifactId>
-        <version>0.37.0-SNAPSHOT</version>
-        <relativePath>../langchain4j-parent/pom.xml</relativePath>
-    </parent>
-
-    <artifactId>langchain4j-core</artifactId>
-    <name>LangChain4j :: Core</name>
-    <description>Core classes and interfaces of LangChain4j</description>
-
     <dependencies>
 
         <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
 
         <dependency>
@@ -44,19 +50,21 @@
             <artifactId>kotlin-stdlib</artifactId>
             <optional>true</optional>
         </dependency>
-      
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-kotlin</artifactId>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-core-jvm</artifactId>
             <optional>true</optional>
         </dependency>
 
-        <!-- Test dependencies -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -65,14 +73,14 @@
         </dependency>
 
         <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
+            <groupId>io.kotest</groupId>
+            <artifactId>kotest-assertions-core-jvm</artifactId>
             <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
+            <groupId>io.kotest</groupId>
+            <artifactId>kotest-assertions-json-jvm</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -82,37 +90,7 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>com.willowtreeapps.assertk</groupId>
-            <artifactId>assertk</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.jetbrains.kotlinx</groupId>
-            <artifactId>kotlinx-coroutines-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.tinylog</groupId>
-            <artifactId>tinylog-impl</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.tinylog</groupId>
-            <artifactId>slf4j-tinylog</artifactId>
-            <scope>test</scope>
-        </dependency>
-
     </dependencies>
-
     <build>
         <plugins>
             <plugin>
@@ -126,33 +104,17 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-maven-plugin</artifactId>
-                <extensions>true</extensions>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>compile</id>
+                        <id>attach-sources</id>
                         <goals>
-                            <goal>compile</goal>
+                            <goal>jar-no-fork</goal>
+                            <!-- For getting test source -->
+                            <goal>test-jar-no-fork</goal>
                         </goals>
-                        <configuration>
-                            <sourceDirs>
-                                <sourceDir>src/main/kotlin</sourceDir>
-                            </sourceDirs>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>test-compile</id>
-                        <goals>
-                            <goal>test-compile</goal>
-                        </goals>
-                        <configuration>
-                            <sourceDirs>
-                                <sourceDir>src/test/kotlin</sourceDir>
-                            </sourceDirs>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -174,14 +136,10 @@
                 <executions>
                     <execution>
                         <goals>
+                            <goal>dokka</goal>
                             <goal>javadocJar</goal>
-                            <goal>javadoc</goal>
                         </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <attach>true</attach>
-                            <outputDir>target/apidocs</outputDir>
-                        </configuration>
+                        <phase>prepare-package</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -197,10 +155,10 @@
                     </execution>
                     <execution>
                         <id>report</id>
-                        <phase>prepare-package</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <phase>prepare-package</phase>
                     </execution>
                     <execution>
                         <id>jacoco-check</id>
@@ -213,6 +171,9 @@
                                     <excludes>
                                         <exclude>dev.langchain4j.data.document</exclude>
                                         <exclude>dev.langchain4j.data.text</exclude>
+                                        <exclude>dev.langchain4j.exception</exclude>
+                                        <exclude>dev.langchain4j.internal</exclude>
+                                        <exclude>dev.langchain4j.model.chat</exclude>
                                         <exclude>dev.langchain4j.model.chat.listener</exclude>
                                         <exclude>dev.langchain4j.model.chat.request</exclude>
                                         <exclude>dev.langchain4j.model.chat.request.json</exclude>
@@ -287,14 +248,6 @@
         </plugins>
     </build>
 
-    <licenses>
-        <license>
-            <name>Apache License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
-
     <reporting>
         <plugins>
             <plugin>
@@ -311,5 +264,14 @@
             </plugin>
         </plugins>
     </reporting>
+
+    <profiles>
+        <profile>
+            <id>kotlin</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+    </profiles>
 
 </project>

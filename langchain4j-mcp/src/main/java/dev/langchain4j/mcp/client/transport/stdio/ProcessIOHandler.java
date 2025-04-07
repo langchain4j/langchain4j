@@ -1,30 +1,28 @@
 package dev.langchain4j.mcp.client.transport.stdio;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.io.PrintStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class ProcessIOHandler implements Runnable {
 
     private final Process process;
-    private final Map<Long, CompletableFuture<JsonNode>> pendingOperations;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(ProcessIOHandler.class);
     private final boolean logEvents;
+    private final McpOperationHandler messageHandler;
+    private final PrintStream out;
 
-    public ProcessIOHandler(
-            Process process, Map<Long, CompletableFuture<JsonNode>> pendingOperations, boolean logEvents) {
+    public ProcessIOHandler(Process process, McpOperationHandler messageHandler, boolean logEvents) {
         this.process = process;
-        this.pendingOperations = pendingOperations;
         this.logEvents = logEvents;
+        this.messageHandler = messageHandler;
+        this.out = new PrintStream(process.getOutputStream(), true);
     }
 
     @Override
@@ -35,18 +33,7 @@ class ProcessIOHandler implements Runnable {
                 if (logEvents) {
                     log.debug("< {}", line);
                 }
-                try {
-                    JsonNode message = OBJECT_MAPPER.readValue(line, JsonNode.class);
-                    long messageId = message.get("id").asLong();
-                    CompletableFuture<JsonNode> op = pendingOperations.remove(messageId);
-                    if (op != null) {
-                        op.complete(message);
-                    } else {
-                        log.warn("Received response for unknown message id: {}", messageId);
-                    }
-                } catch (JsonProcessingException e) {
-                    log.warn("Failed to parse response data", e);
-                }
+                messageHandler.handle(OBJECT_MAPPER.readTree(line));
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -58,7 +45,6 @@ class ProcessIOHandler implements Runnable {
         if (logEvents) {
             log.debug("> {}", message);
         }
-        process.getOutputStream().write((message + "\n").getBytes(StandardCharsets.UTF_8));
-        process.getOutputStream().flush();
+        out.println(message);
     }
 }

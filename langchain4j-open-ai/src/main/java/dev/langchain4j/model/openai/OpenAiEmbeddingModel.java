@@ -1,85 +1,72 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.embedding.EmbeddingRequest;
-import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.embedding.TokenCountEstimator;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
+import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 
-import java.net.Proxy;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
+import java.util.Objects;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
-import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
  */
-public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
+public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAiClient client;
     private final String modelName;
     private final Integer dimensions;
     private final String user;
     private final Integer maxRetries;
-    private final Tokenizer tokenizer;
+    private final Integer maxSegmentsPerBatch;
 
-    public OpenAiEmbeddingModel(String baseUrl,
-                                String apiKey,
-                                String organizationId,
-                                String modelName,
-                                Integer dimensions,
-                                String user,
-                                Duration timeout,
-                                Integer maxRetries,
-                                Proxy proxy,
-                                Boolean logRequests,
-                                Boolean logResponses,
-                                Tokenizer tokenizer,
-                                Map<String, String> customHeaders) {
+    public OpenAiEmbeddingModel(OpenAiEmbeddingModelBuilder builder) {
 
-        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
+        if ("demo".equals(builder.apiKey) && !"http://langchain4j.dev/demo/openai/v1".equals(builder.baseUrl)) {
+            // TODO remove before releasing 1.0.0
+            throw new RuntimeException("""
+                    If you wish to continue using the 'demo' key, please specify the base URL explicitly:
+                    OpenAiEmbeddingModel.builder().baseUrl("http://langchain4j.dev/demo/openai/v1").apiKey("demo").build();
+                    """);
         }
 
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
         this.client = OpenAiClient.builder()
-                .openAiApiKey(apiKey)
-                .baseUrl(baseUrl)
-                .organizationId(organizationId)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
+                .apiKey(builder.apiKey)
+                .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(customHeaders)
+                .customHeaders(builder.customHeaders)
                 .build();
-        this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
-        this.dimensions = dimensions;
-        this.user = user;
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.modelName = builder.modelName;
+        this.dimensions = builder.dimensions;
+        this.user = builder.user;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
+        ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
     }
 
     @Override
@@ -98,11 +85,38 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        List<String> texts = textSegments.stream()
-                .map(TextSegment::text)
-                .toList();
+        List<String> texts = textSegments.stream().map(TextSegment::text).toList();
 
-        return embedTexts(texts);
+        List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
+
+        return embedBatchedTexts(textBatches);
+    }
+
+    private List<List<String>> partition(List<String> inputList, int size) {
+        List<List<String>> result = new ArrayList<>();
+        for (int i = 0; i < inputList.size(); i += size) {
+            int fromIndex = i;
+            int toIndex = Math.min(i + size, inputList.size());
+            result.add(inputList.subList(fromIndex, toIndex));
+        }
+        return result;
+    }
+
+    private Response<List<Embedding>> embedBatchedTexts(List<List<String>> textBatches) {
+        List<Response<List<Embedding>>> responses = new ArrayList<>();
+        for (List<String> batch : textBatches) {
+            Response<List<Embedding>> response = embedTexts(batch);
+            responses.add(response);
+        }
+        return Response.from(
+                responses.stream()
+                        .flatMap(response -> response.content().stream())
+                        .toList(),
+                responses.stream()
+                        .map(Response::tokenUsage)
+                        .filter(Objects::nonNull)
+                        .reduce(TokenUsage::add)
+                        .orElse(null));
     }
 
     private Response<List<Embedding>> embedTexts(List<String> texts) {
@@ -114,31 +128,13 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
                 .user(user)
                 .build();
 
-        EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);
+        EmbeddingResponse response = withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .toList();
 
-        return Response.from(
-                embeddings,
-                tokenUsageFrom(response.usage())
-        );
-    }
-
-    @Override
-    public int estimateTokenCount(String text) {
-        return tokenizer.estimateTokenCountInText(text);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiEmbeddingModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
+        return Response.from(embeddings, tokenUsageFrom(response.usage()));
     }
 
     public static OpenAiEmbeddingModelBuilder builder() {
@@ -150,22 +146,29 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
     public static class OpenAiEmbeddingModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private String projectId;
+
         private String modelName;
         private Integer dimensions;
         private String user;
         private Duration timeout;
         private Integer maxRetries;
-        private Proxy proxy;
+        private Integer maxSegmentsPerBatch;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
 
         public OpenAiEmbeddingModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public OpenAiEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OpenAiEmbeddingModelBuilder modelName(String modelName) {
@@ -193,6 +196,11 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
             return this;
         }
 
+        public OpenAiEmbeddingModelBuilder projectId(String projectId) {
+            this.projectId = projectId;
+            return this;
+        }
+
         public OpenAiEmbeddingModelBuilder dimensions(Integer dimensions) {
             this.dimensions = dimensions;
             return this;
@@ -213,11 +221,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
             return this;
         }
 
-        public OpenAiEmbeddingModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
-            return this;
-        }
-
         public OpenAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -228,50 +231,18 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
             return this;
         }
 
-        public OpenAiEmbeddingModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
-            return this;
-        }
-
         public OpenAiEmbeddingModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }
 
-        public OpenAiEmbeddingModel build() {
-            return new OpenAiEmbeddingModel(
-                    this.baseUrl,
-                    this.apiKey,
-                    this.organizationId,
-                    this.modelName,
-                    this.dimensions,
-                    this.user,
-                    this.timeout,
-                    this.maxRetries,
-                    this.proxy,
-                    this.logRequests,
-                    this.logResponses,
-                    this.tokenizer,
-                    this.customHeaders
-            );
+        public OpenAiEmbeddingModelBuilder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
+            this.maxSegmentsPerBatch = maxSegmentsPerBatch;
+            return this;
         }
 
-        @Override
-        public String toString() {
-            return new StringJoiner(", ", OpenAiEmbeddingModelBuilder.class.getSimpleName() + "[", "]")
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("organizationId='" + organizationId + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("dimensions=" + dimensions)
-                    .add("user='" + user + "'")
-                    .add("timeout=" + timeout)
-                    .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
-                    .add("logRequests=" + logRequests)
-                    .add("logResponses=" + logResponses)
-                    .add("tokenizer=" + tokenizer)
-                    .add("customHeaders=" + customHeaders)
-                    .toString();
+        public OpenAiEmbeddingModel build() {
+            return new OpenAiEmbeddingModel(this);
         }
     }
 }

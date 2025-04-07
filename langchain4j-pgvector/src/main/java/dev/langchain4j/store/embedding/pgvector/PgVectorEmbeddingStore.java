@@ -9,19 +9,34 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
-import java.sql.*;
-import java.util.*;
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.lang.String.join;
 import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
@@ -33,7 +48,7 @@ import static java.util.stream.Collectors.toList;
  * Only cosine similarity is used.
  * Only ivfflat index is used.
  */
-@NoArgsConstructor(force = true) // Needed for inherited bean injection validation
+// Needed for inherited bean injection validation
 public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
     /**
@@ -61,7 +76,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dropTableFirst        Should drop table first, usually for testing
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      */
-    @Builder(builderMethodName = "datasourceBuilder", builderClassName = "DatasourceBuilder")
     protected PgVectorEmbeddingStore(DataSource datasource,
                                      String table,
                                      Integer dimension,
@@ -99,7 +113,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      */
     @SuppressWarnings("unused")
-    @Builder
     protected PgVectorEmbeddingStore(
             String host,
             Integer port,
@@ -118,6 +131,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataStorageConfig);
     }
 
+    public PgVectorEmbeddingStore() {
+        this.datasource = null;
+        this.table = null;
+        this.metadataHandler = null;
+    }
+
     private static DataSource createDataSource(String host, Integer port, String user, String password, String database) {
         host = ensureNotBlank(host, "host");
         port = ensureGreaterThanZero(port, "port");
@@ -133,6 +152,14 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         source.setPassword(password);
 
         return source;
+    }
+
+    public static DatasourceBuilder datasourceBuilder() {
+        return new DatasourceBuilder();
+    }
+
+    public static PgVectorEmbeddingStoreBuilder builder() {
+        return new PgVectorEmbeddingStoreBuilder();
     }
 
 
@@ -283,11 +310,13 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         try (Connection connection = getConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
             String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
-            whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
+            whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
             String query = String.format(
-                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, " +
-                            "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
-                    referenceVector, join(",", metadataHandler.columnsNames()), table, whereClause, minScore, maxResults);
+                    "SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, %s FROM %s " +
+                            "WHERE round(cast(float8 (embedding <=> '%s') as numeric), 8) <= round(2 - 2 * %s, 8) %s " + "ORDER BY embedding <=> '%s' LIMIT %s;",
+                    referenceVector, join(",", metadataHandler.columnsNames()), table, referenceVector,
+                    minScore, whereClause, referenceVector, maxResults
+            );
             try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
                 try (ResultSet resultSet = selectStmt.executeQuery()) {
                     while (resultSet.next()) {
@@ -387,5 +416,153 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
         PGvector.addVectorType(connection);
         return connection;
+    }
+
+    public static class DatasourceBuilder {
+        private DataSource datasource;
+        private String table;
+        private Integer dimension;
+        private Boolean useIndex;
+        private Integer indexListSize;
+        private Boolean createTable;
+        private Boolean dropTableFirst;
+        private MetadataStorageConfig metadataStorageConfig;
+
+        DatasourceBuilder() {
+        }
+
+        public DatasourceBuilder datasource(DataSource datasource) {
+            this.datasource = datasource;
+            return this;
+        }
+
+        public DatasourceBuilder table(String table) {
+            this.table = table;
+            return this;
+        }
+
+        public DatasourceBuilder dimension(Integer dimension) {
+            this.dimension = dimension;
+            return this;
+        }
+
+        public DatasourceBuilder useIndex(Boolean useIndex) {
+            this.useIndex = useIndex;
+            return this;
+        }
+
+        public DatasourceBuilder indexListSize(Integer indexListSize) {
+            this.indexListSize = indexListSize;
+            return this;
+        }
+
+        public DatasourceBuilder createTable(Boolean createTable) {
+            this.createTable = createTable;
+            return this;
+        }
+
+        public DatasourceBuilder dropTableFirst(Boolean dropTableFirst) {
+            this.dropTableFirst = dropTableFirst;
+            return this;
+        }
+
+        public DatasourceBuilder metadataStorageConfig(MetadataStorageConfig metadataStorageConfig) {
+            this.metadataStorageConfig = metadataStorageConfig;
+            return this;
+        }
+
+        public PgVectorEmbeddingStore build() {
+            return new PgVectorEmbeddingStore(this.datasource, this.table, this.dimension, this.useIndex, this.indexListSize, this.createTable, this.dropTableFirst, this.metadataStorageConfig);
+        }
+
+        public String toString() {
+            return "PgVectorEmbeddingStore.DatasourceBuilder(datasource=" + this.datasource + ", table=" + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize=" + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst=" + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ")";
+        }
+    }
+
+    public static class PgVectorEmbeddingStoreBuilder {
+        private String host;
+        private Integer port;
+        private String user;
+        private String password;
+        private String database;
+        private String table;
+        private Integer dimension;
+        private Boolean useIndex;
+        private Integer indexListSize;
+        private Boolean createTable;
+        private Boolean dropTableFirst;
+        private MetadataStorageConfig metadataStorageConfig;
+
+        PgVectorEmbeddingStoreBuilder() {
+        }
+
+        public PgVectorEmbeddingStoreBuilder host(String host) {
+            this.host = host;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder port(Integer port) {
+            this.port = port;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder user(String user) {
+            this.user = user;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder database(String database) {
+            this.database = database;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder table(String table) {
+            this.table = table;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder dimension(Integer dimension) {
+            this.dimension = dimension;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder useIndex(Boolean useIndex) {
+            this.useIndex = useIndex;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder indexListSize(Integer indexListSize) {
+            this.indexListSize = indexListSize;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder createTable(Boolean createTable) {
+            this.createTable = createTable;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder dropTableFirst(Boolean dropTableFirst) {
+            this.dropTableFirst = dropTableFirst;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder metadataStorageConfig(MetadataStorageConfig metadataStorageConfig) {
+            this.metadataStorageConfig = metadataStorageConfig;
+            return this;
+        }
+
+        public PgVectorEmbeddingStore build() {
+            return new PgVectorEmbeddingStore(this.host, this.port, this.user, this.password, this.database, this.table, this.dimension, this.useIndex, this.indexListSize, this.createTable, this.dropTableFirst, this.metadataStorageConfig);
+        }
+
+        public String toString() {
+            return "PgVectorEmbeddingStore.PgVectorEmbeddingStoreBuilder(host=" + this.host + ", port=" + this.port + ", user=" + this.user + ", password=" + this.password + ", database=" + this.database + ", table=" + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize=" + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst=" + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ")";
+        }
     }
 }

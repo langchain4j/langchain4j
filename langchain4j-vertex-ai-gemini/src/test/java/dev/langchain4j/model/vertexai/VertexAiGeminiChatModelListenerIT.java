@@ -41,14 +41,12 @@ class VertexAiGeminiChatModelListenerIT extends ChatModelListenerIT {
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName("banana")
                 .listeners(singletonList(listener))
-                .logRequests(true)
-                .logResponses(true)
                 .build();
     }
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return com.google.api.gax.rpc.NotFoundException.class;
     }
 
     @AfterEach

@@ -3,15 +3,15 @@ package dev.langchain4j.mcp.client.transport.stdio;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.InitializationNotification;
+import dev.langchain4j.mcp.client.protocol.McpClientMessage;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,10 +21,10 @@ public class StdioMcpTransport implements McpTransport {
     private final Map<String, String> environment;
     private Process process;
     private ProcessIOHandler processIOHandler;
-    private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
     private final boolean logEvents;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(StdioMcpTransport.class);
+    private volatile McpOperationHandler messageHandler;
 
     public StdioMcpTransport(Builder builder) {
         this.command = builder.command;
@@ -33,7 +33,8 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public void start() {
+    public void start(McpOperationHandler messageHandler) {
+        this.messageHandler = messageHandler;
         log.debug("Starting process: {}", command);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.environment().putAll(environment);
@@ -46,37 +47,40 @@ public class StdioMcpTransport implements McpTransport {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        processIOHandler = new ProcessIOHandler(process, pendingOperations, logEvents);
+        processIOHandler = new ProcessIOHandler(process, messageHandler, logEvents);
         // FIXME: where should we obtain the thread?
         new Thread(processIOHandler).start();
         new Thread(new ProcessStderrHandler(process)).start();
     }
 
     @Override
-    public JsonNode initialize(McpInitializeRequest request) {
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(request);
-            return executeAndWait(requestString, request.getId());
+            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
+            String initializationNotification = OBJECT_MAPPER.writeValueAsString(new InitializationNotification());
+            return execute(requestString, operation.getId())
+                    .thenCompose(originalResponse -> execute(initializationNotification, null)
+                            .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
     @Override
-    public JsonNode listTools(McpListToolsRequest operation) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return executeAndWait(requestString, operation.getId());
+            return execute(requestString, operation.getId());
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
     @Override
-    public JsonNode executeTool(McpCallToolRequest operation) {
+    public void executeOperationWithoutResponse(McpClientMessage operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return executeAndWait(requestString, operation.getId());
+            execute(requestString, null);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -87,15 +91,21 @@ public class StdioMcpTransport implements McpTransport {
         process.destroy();
     }
 
-    private JsonNode executeAndWait(String request, Long id) {
-        try {
-            CompletableFuture<JsonNode> future = new CompletableFuture<>();
-            pendingOperations.put(id, future);
-            processIOHandler.submit(request);
-            return future.get();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+    private CompletableFuture<JsonNode> execute(String request, Long id) {
+        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+        if (id != null) {
+            messageHandler.startOperation(id, future);
         }
+        try {
+            processIOHandler.submit(request);
+            // For messages with null ID, we don't wait for a corresponding response
+            if (id == null) {
+                future.complete(null);
+            }
+        } catch (IOException e) {
+            future.completeExceptionally(e);
+        }
+        return future;
     }
 
     public static class Builder {

@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.37.0-SNAPSHOT</version>
+    <version>1.0.0-beta3-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -17,6 +17,10 @@
         <module>langchain4j</module>
 
         <module>langchain4j-easy-rag</module>
+
+        <!-- http clients -->
+        <module>langchain4j-http-client</module>
+        <module>http-clients/langchain4j-http-client-jdk</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
@@ -31,6 +35,7 @@
         <module>langchain4j-ollama</module>
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
+        <module>langchain4j-open-ai-official</module>
         <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>
@@ -48,6 +53,7 @@
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-infinispan</module>
+        <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-mongodb-atlas</module>
         <module>langchain4j-neo4j</module>
@@ -56,7 +62,6 @@
         <module>langchain4j-pgvector</module>
         <module>langchain4j-pinecone</module>
         <module>langchain4j-qdrant</module>
-        <module>langchain4j-redis</module>
         <module>langchain4j-tablestore</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
@@ -144,6 +149,21 @@
                     </pom>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.simpligility.maven.plugins</groupId>
+                <artifactId>android-maven-plugin</artifactId>
+                <version>4.6.0</version>
+                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <id>lint</id>
+                        <goals>
+                            <goal>lint</goal>
+                        </goals>
+                        <phase>process-classes</phase>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
         <extensions>
             <extension>
@@ -191,16 +211,17 @@
         </profile>
         <profile>
             <id>openrewrite</id>
-            <!-- `mvn -P openrewrite org.openrewrite.maven:rewrite-maven-plugin:run` -->
+            <!-- `mvn -Popenrewrite -Dspotless.check.skip=true org.openrewrite.maven:rewrite-maven-plugin:run` -->
             <build>
                 <plugins>
                     <plugin>
                         <groupId>org.openrewrite.maven</groupId>
                         <artifactId>rewrite-maven-plugin</artifactId>
-                        <version>5.42.2</version>
+                        <version>5.43.4</version>
                         <configuration>
                             <activeRecipes>
-                                <!--<recipe>org.openrewrite.java.OrderImports</recipe>-->
+                                <recipe>org.openrewrite.java.testing.cleanup.TestsShouldNotBePublic</recipe>
+                                <recipe>org.openrewrite.java.testing.cleanup.RemoveTestPrefix</recipe>
                                 <recipe>org.openrewrite.java.testing.assertj.Assertj</recipe>
                             </activeRecipes>
                             <failOnDryRunResults>true</failOnDryRunResults>

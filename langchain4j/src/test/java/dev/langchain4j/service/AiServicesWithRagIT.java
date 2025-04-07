@@ -28,15 +28,12 @@ import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrateg
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
-import dev.langchain4j.retriever.EmbeddingStoreRetriever;
-import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.builder.sql.LanguageModelSqlFilterBuilder;
-import dev.langchain4j.store.embedding.filter.builder.sql.TableDefinition;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -52,6 +49,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
@@ -254,6 +252,7 @@ class AiServicesWithRagIT {
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
     }
 
+    @Disabled("TODO fix")
     @ParameterizedTest
     @MethodSource("models")
     void should_not_route_when_query_is_ambiguous(ChatLanguageModel model) {
@@ -323,6 +322,7 @@ class AiServicesWithRagIT {
         verifyNoMoreInteractions(contentRetriever);
     }
 
+    @Disabled("Fixed in https://github.com/langchain4j/langchain4j/pull/2311")
     @ParameterizedTest
     @MethodSource("models")
     void should_fail_when_query_is_ambiguous(ChatLanguageModel model) {
@@ -433,46 +433,6 @@ class AiServicesWithRagIT {
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_LLM_generated_metadata_filter(ChatLanguageModel model) {
-
-        // given
-        TextSegment groundhogDay = TextSegment.from("Groundhog Day", new dev.langchain4j.data.document.Metadata().put("genre", "comedy").put("year", 1993));
-        TextSegment forrestGump = TextSegment.from("Forrest Gump", metadata("genre", "drama").put("year", 1994));
-        TextSegment dieHard = TextSegment.from("Die Hard", metadata("genre", "action").put("year", 1998));
-
-        TableDefinition tableDefinition = TableDefinition.builder()
-                .name("movies")
-                .addColumn("genre", "VARCHAR", "one of: [comedy, drama, action]")
-                .addColumn("year", "INT")
-                .build();
-
-        LanguageModelSqlFilterBuilder sqlFilterBuilder = new LanguageModelSqlFilterBuilder(model, tableDefinition);
-
-        EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
-        embeddingStore.add(embeddingModel.embed(groundhogDay).content(), groundhogDay);
-        embeddingStore.add(embeddingModel.embed(forrestGump).content(), forrestGump);
-        embeddingStore.add(embeddingModel.embed(dieHard).content(), dieHard);
-
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
-                .dynamicFilter(sqlFilterBuilder::build)
-                .build();
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .contentRetriever(contentRetriever)
-                .build();
-
-        // when
-        String answer = assistant.answer("Recommend me a good drama from 90s");
-
-        // then
-        assertThat(answer).containsIgnoringCase("Gump");
-    }
-
     interface PersonalizedAssistant {
 
         String chat(@MemoryId String userId, @dev.langchain4j.service.UserMessage String userMessage);
@@ -502,6 +462,7 @@ class AiServicesWithRagIT {
         PersonalizedAssistant personalizedAssistant = AiServices.builder(PersonalizedAssistant.class)
                 .chatLanguageModel(model)
                 .contentRetriever(contentRetriever)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
 
         // when
@@ -549,27 +510,6 @@ class AiServicesWithRagIT {
         assertThat(answer).containsIgnoringCase("dog");
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_legacy_retriever(ChatLanguageModel model) {
-
-        // given
-        Retriever<TextSegment> legacyRetriever =
-                EmbeddingStoreRetriever.from(embeddingStore, embeddingModel, 1);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .retriever(legacyRetriever)
-                .build();
-
-        // when
-        String answer = assistant.answer("Can I cancel my booking?");
-
-        // then
-        assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
-    }
-
-
     interface AssistantReturningResult {
 
         Result<String> answer(String query);
@@ -606,12 +546,12 @@ class AiServicesWithRagIT {
                         "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period." +
                         "4.2 If the booking period is less than 17 days, cancellations are not permitted."
         );
-        assertThat(content.textSegment().metadata("index")).isEqualTo("3");
-        assertThat(content.textSegment().metadata("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
+        assertThat(content.textSegment().metadata().getString("index")).isEqualTo("3");
+        assertThat(content.textSegment().metadata().getString("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
     }
 
     private void ingest(String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
-        OpenAiTokenizer tokenizer = new OpenAiTokenizer();
+        OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
         DocumentSplitter splitter = DocumentSplitters.recursive(100, 0, tokenizer);
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(splitter)

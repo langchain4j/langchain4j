@@ -1,9 +1,9 @@
 package dev.langchain4j.service.tool;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.internal.Json;
 
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -16,19 +16,30 @@ class ToolExecutionRequestUtil {
 
     private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
 
+    private static final Pattern LEADING_TRAILING_QUOTE_PATTERN = Pattern.compile("^\"|\"$");
+
+    private static final Pattern ESCAPED_QUOTE_PATTERN = Pattern.compile("\\\\\"");
+
     private ToolExecutionRequestUtil() {
     }
 
-    /**
-     * Gson instance.
-     */
-    private static final Gson GSON = new Gson();
+    private static final Type MAP_TYPE = new ParameterizedType() {
 
-    /**
-     * Utility {@link TypeToken} describing {@code Map<String, Object>}.
-     */
-    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
-    }.getType();
+        @Override
+        public Type[] getActualTypeArguments() {
+            return new Type[]{String.class, Object.class};
+        }
+
+        @Override
+        public Type getRawType() {
+            return Map.class;
+        }
+
+        @Override
+        public Type getOwnerType() {
+            return null;
+        }
+    };
 
     /**
      * Convert arguments to map.
@@ -37,7 +48,8 @@ class ToolExecutionRequestUtil {
      * @return map
      */
     static Map<String, Object> argumentsAsMap(String arguments) {
-        return GSON.fromJson(removeTrailingComma(arguments), MAP_TYPE);
+        String normalizeArguments = normalizeJsonString(arguments);
+        return Json.fromJson(removeTrailingComma(normalizeArguments), MAP_TYPE);
     }
 
     /**
@@ -53,4 +65,23 @@ class ToolExecutionRequestUtil {
         Matcher matcher = TRAILING_COMMA_PATTERN.matcher(json);
         return matcher.replaceAll("$1");
     }
+
+    /**
+     * Normalizes a JSON string by removing leading and trailing quotes and unescaping internal double quotes.
+     *
+     * @param arguments the raw JSON string
+     * @return the normalized JSON string
+     */
+    static String normalizeJsonString(String arguments) {
+        if (arguments == null || arguments.isEmpty()) {
+            return arguments;
+        }
+
+        Matcher leadingTrailingMatcher = LEADING_TRAILING_QUOTE_PATTERN.matcher(arguments);
+        String normalizedJson = leadingTrailingMatcher.replaceAll("");
+
+        Matcher escapedQuoteMatcher = ESCAPED_QUOTE_PATTERN.matcher(normalizedJson);
+        return escapedQuoteMatcher.replaceAll("\"");
+    }
+
 }

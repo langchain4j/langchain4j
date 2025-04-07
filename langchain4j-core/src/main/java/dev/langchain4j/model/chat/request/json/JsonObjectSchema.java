@@ -59,7 +59,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
     public static class Builder {
 
         private String description;
-        private Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
+        private final Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         private List<String> required = new ArrayList<>();
         private Boolean additionalProperties;
         private Map<String, JsonSchemaElement> definitions;
@@ -70,7 +70,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
         }
 
         /**
-         * Sets the properties of this JSON object.
+         * Adds all properties in the parameter Map to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
          * @see #addProperty(String, JsonSchemaElement)
@@ -85,8 +85,8 @@ public class JsonObjectSchema implements JsonSchemaElement {
          * @see #addEnumProperty(String, List)
          * @see #addEnumProperty(String, List, String)
          */
-        public Builder properties(Map<String, JsonSchemaElement> properties) {
-            this.properties = properties;
+        public Builder addProperties(Map<String, JsonSchemaElement> properties) {
+            this.properties.putAll(properties);
             return this;
         }
 
@@ -94,7 +94,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          * Adds a single property to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          * @see #addStringProperty(String)
          * @see #addStringProperty(String, String)
          * @see #addIntegerProperty(String)
@@ -117,7 +117,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addStringProperty(String, String)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addStringProperty(String name) {
             this.properties.put(name, new JsonStringSchema());
@@ -130,7 +130,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addStringProperty(String)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addStringProperty(String name, String description) {
             this.properties.put(name, JsonStringSchema.builder().description(description).build());
@@ -143,7 +143,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addIntegerProperty(String, String)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addIntegerProperty(String name) {
             this.properties.put(name, new JsonIntegerSchema());
@@ -156,7 +156,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addIntegerProperty(String)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addIntegerProperty(String name, String description) {
             this.properties.put(name, JsonIntegerSchema.builder().description(description).build());
@@ -169,7 +169,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addNumberProperty(String, String)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addNumberProperty(String name) {
             this.properties.put(name, new JsonNumberSchema());
@@ -182,7 +182,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addNumberProperty(String)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addNumberProperty(String name, String description) {
             this.properties.put(name, JsonNumberSchema.builder().description(description).build());
@@ -195,7 +195,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addBooleanProperty(String, String)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addBooleanProperty(String name) {
             this.properties.put(name, new JsonBooleanSchema());
@@ -208,7 +208,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addBooleanProperty(String)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addBooleanProperty(String name, String description) {
             this.properties.put(name, JsonBooleanSchema.builder().description(description).build());
@@ -221,7 +221,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addEnumProperty(String, List, String)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addEnumProperty(String name, List<String> enumValues) {
             this.properties.put(name, JsonEnumSchema.builder().enumValues(enumValues).build());
@@ -234,7 +234,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addEnumProperty(String, List)
          * @see #addProperty(String, JsonSchemaElement)
-         * @see #properties(Map)
+         * @see #addProperties(Map)
          */
         public Builder addEnumProperty(String name, List<String> enumValues, String description) {
             this.properties.put(name, JsonEnumSchema.builder().enumValues(enumValues).description(description).build());

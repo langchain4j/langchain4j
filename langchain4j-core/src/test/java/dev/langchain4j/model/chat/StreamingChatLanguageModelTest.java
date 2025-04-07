@@ -1,11 +1,11 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -14,51 +14,44 @@ import java.util.List;
 import java.util.Locale;
 
 class StreamingChatLanguageModelTest implements WithAssertions {
+
     public static class StreamingUpperCaseEchoModel implements StreamingChatLanguageModel {
+
         @Override
-        public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-            ChatMessage lastMessage = messages.get(messages.size() - 1);
-            Response<AiMessage> response = new Response<>(new AiMessage(lastMessage.text().toUpperCase(Locale.ROOT)));
-            handler.onComplete(response);
+        public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+            List<ChatMessage> messages = chatRequest.messages();
+            UserMessage lastMessage = (UserMessage) messages.get(messages.size() - 1);
+            ChatResponse chatResponse = ChatResponse.builder()
+                    .aiMessage(new AiMessage(lastMessage.singleText().toUpperCase(Locale.ROOT)))
+                    .build();
+            handler.onCompleteResponse(chatResponse);
         }
     }
 
-    public static final class CollectorResponseHandler<T> implements StreamingResponseHandler<T> {
-        private final List<Response<T>> responses = new ArrayList<>();
+    public static final class CollectorResponseHandler implements StreamingChatResponseHandler {
 
-        public List<Response<T>> responses() {
+        private final List<ChatResponse> responses = new ArrayList<>();
+
+        public List<ChatResponse> responses() {
             return responses;
         }
 
         @Override
-        public void onNext(String token) {}
+        public void onPartialResponse(String partialResponse) {
+        }
 
         @Override
-        public void onError(Throwable error) {}
+        public void onCompleteResponse(ChatResponse completeResponse) {
+            responses.add(completeResponse);
+        }
 
         @Override
-        public void onComplete(Response<T> response) {
-            responses.add(response);
+        public void onError(Throwable error) {
         }
     }
 
     @Test
-    public void test_not_supported() {
-        StreamingUpperCaseEchoModel model = new StreamingUpperCaseEchoModel();
-        CollectorResponseHandler<AiMessage> handler = new CollectorResponseHandler<>();
-        List<ChatMessage> messages = new ArrayList<>();
-
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> model.generate(messages, new ArrayList<>(), handler))
-                .withMessageContaining("Tools are currently not supported by this model");
-
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> model.generate(messages, ToolSpecification.builder().name("foo").build(), handler))
-                .withMessageContaining("Tools are currently not supported by this model");
-    }
-
-    @Test
-    public void test_generate() {
+    void generate() {
         StreamingChatLanguageModel model = new StreamingUpperCaseEchoModel();
 
         {
@@ -67,23 +60,23 @@ class StreamingChatLanguageModelTest implements WithAssertions {
             messages.add(new AiMessage("Hi"));
             messages.add(new UserMessage("How are you?"));
 
-            CollectorResponseHandler<AiMessage> handler = new CollectorResponseHandler<>();
-            model.generate(messages, handler);
+            CollectorResponseHandler handler = new CollectorResponseHandler();
+            model.chat(messages, handler);
 
-            Response<AiMessage> response = handler.responses().get(0);
+            ChatResponse response = handler.responses().get(0);
 
-            assertThat(response.content().text()).isEqualTo("HOW ARE YOU?");
+            assertThat(response.aiMessage().text()).isEqualTo("HOW ARE YOU?");
             assertThat(response.tokenUsage()).isNull();
             assertThat(response.finishReason()).isNull();
         }
 
         {
-            CollectorResponseHandler<AiMessage> handler = new CollectorResponseHandler<>();
-            model.generate("How are you?", handler);
+            CollectorResponseHandler handler = new CollectorResponseHandler();
+            model.chat("How are you?", handler);
 
-            Response<AiMessage> response = handler.responses().get(0);
+            ChatResponse response = handler.responses().get(0);
 
-            assertThat(response.content().text()).isEqualTo("HOW ARE YOU?");
+            assertThat(response.aiMessage().text()).isEqualTo("HOW ARE YOU?");
             assertThat(response.tokenUsage()).isNull();
             assertThat(response.finishReason()).isNull();
         }

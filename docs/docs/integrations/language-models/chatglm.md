@@ -13,26 +13,26 @@ For ChatGLM2, ChatGLM3 and GLM4, their API are compatible with OpenAI. you can r
 ## Maven Dependency
 
 :::note
-Since `0.37.0`, `langchain4j-chatglm` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-chatglm`.
+Since `1.0.0-alpha1`, `langchain4j-chatglm` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-chatglm`.
 :::
 
-`0.36.2` and previous:
+Before `1.0.0-alpha1`:
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-chatglm</artifactId>
-    <version>0.36.2</version>
+    <version>${previous version here}</version>
 </dependency>
 ```
 
-`0.37.0` and later:
+`1.0.0-alpha1` and later:
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-chatglm</artifactId>
-    <version>0.37.0</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
@@ -43,7 +43,7 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>0.37.0</version>
+        <version>${latest version here}</version>
         <typ>pom</typ>
         <scope>import</scope>
     </dependency>
@@ -53,7 +53,7 @@ Or, you can use BOM to manage dependencies consistently:
 
 ## APIs
 
-You can instantiate `ChatGlmChatModel`:
+You can instantiate `ChatGlmChatModel` using following code:
 
 ```java
 ChatLanguageModel model = ChatGlmChatModel.builder()
@@ -71,4 +71,4 @@ Now you can use it like a normal `ChatLanguageModel`.
 
 ## Examples
 
-- [ChatGlmChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-chatglm/src/test/java/dev/langchain4j/model/chatglm/ChatGlmChatModelIT.java)
+- [ChatGlmChatModelIT](https://github.com/langchain4j/langchain4j-community/blob/main/models/langchain4j-community-chatglm/src/test/java/dev/langchain4j/community/model/chatglm/ChatGlmChatModelIT.java)

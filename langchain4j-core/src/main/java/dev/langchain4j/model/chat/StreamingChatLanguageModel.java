@@ -1,77 +1,110 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ListenersUtil;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-import static java.util.Collections.singletonList;
+import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
- * Represents a language model that has a chat interface and can stream a response one token at a time.
+ * Represents a language model that has a chat API and can stream a response one token at a time.
+ *
+ * @see ChatLanguageModel
  */
 public interface StreamingChatLanguageModel {
 
     /**
-     * Generates a response from the model based on a message from a user.
+     * This is the main API to interact with the chat model.
+     * <p>
+     * A temporary default implementation of this method is necessary
+     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
      *
-     * @param userMessage The message from the user.
-     * @param handler     The handler for streaming the response.
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
      */
-    default void generate(String userMessage, StreamingResponseHandler<AiMessage> handler) {
-        generate(singletonList(UserMessage.from(userMessage)), handler);
+    default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
+
+        List<ChatModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+        StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                handler.onPartialResponse(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                ListenersUtil.onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
+                handler.onCompleteResponse(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                ListenersUtil.onError(error, finalChatRequest, provider(), attributes, listeners);
+                handler.onError(error);
+            }
+        };
+
+        ListenersUtil.onRequest(finalChatRequest, provider(), attributes, listeners);
+        doChat(finalChatRequest, observingHandler);
     }
 
-    /**
-     * Generates a response from the model based on a message from a user.
-     *
-     * @param userMessage The message from the user.
-     * @param handler     The handler for streaming the response.
-     */
-    default void generate(UserMessage userMessage, StreamingResponseHandler<AiMessage> handler) {
-        generate(singletonList(userMessage), handler);
+    default ChatRequestParameters defaultRequestParameters() {
+        return ChatRequestParameters.builder().build();
     }
 
-    /**
-     * Generates a response from the model based on a sequence of messages.
-     * Typically, the sequence contains messages in the following order:
-     * System (optional) - User - AI - User - AI - User ...
-     *
-     * @param messages A list of messages.
-     * @param handler  The handler for streaming the response.
-     */
-    void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler);
-
-    /**
-     * Generates a response from the model based on a list of messages and a list of tool specifications.
-     * The response may either be a text message or a request to execute one of the specified tools.
-     * Typically, the list contains messages in the following order:
-     * System (optional) - User - AI - User - AI - User ...
-     *
-     * @param messages           A list of messages.
-     * @param toolSpecifications A list of tools that the model is allowed to execute.
-     *                           The model autonomously decides whether to use any of these tools.
-     * @param handler            The handler for streaming the response.
-     *                           {@link AiMessage} can contain either a textual response or a request to execute one of the tools.
-     */
-    default void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        throw new IllegalArgumentException("Tools are currently not supported by this model");
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
     }
 
-    /**
-     * Generates a response from the model based on a list of messages and a single tool specification.
-     * <b>The model is forced to execute the specified tool.
-     * This is usually achieved by setting `tool_choice=ANY` in the LLM provider API.</b>
-     *
-     * @param messages          A list of messages.
-     * @param toolSpecification The specification of a tool that <b>must</b> be executed.
-     *                          The model is <b>forced</b> to execute this tool.
-     * @param handler           The handler for streaming the response.
-     */
-    default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        throw new IllegalArgumentException("Tools are currently not supported by this model");
+    default ModelProvider provider() {
+        return OTHER;
     }
+
+    default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    default void chat(String userMessage, StreamingChatResponseHandler handler) {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from(userMessage))
+                .build();
+
+        chat(chatRequest, handler);
+    }
+
+    default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(messages)
+                .build();
+
+        chat(chatRequest, handler);
+    }
+
+    default Set<Capability> supportedCapabilities() {
+        return Set.of();
+    }
+
+    // TODO improve javadoc
 }
