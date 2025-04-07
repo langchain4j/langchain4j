@@ -751,38 +751,49 @@ class AiServicesWithToolsIT {
         verifyNoMoreInteractions(toolExecutor);
     }
 
+    static class Calculator {
+
+        @Tool("applies the function xyz on the provided number")
+        int xyz(@P("number to operate on") int number) {
+            System.out.printf("called xyz(%s)%n", number);
+            return number + 1;
+        }
+    }
+
     @Test
-    void should_not_allow_configuring_tools_and_tool_provider_simultaneously() {
+    void should_allow_configuring_tools_and_tool_provider_simultaneously() {
 
-        ChatLanguageModel chatLanguageModel = new ChatModelMock("mocked");
+        ToolExecutor toolExecutor = spy(new BookingToolExecutor());
 
-        // First provider then tools
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .toolProvider((ToolProviderRequest request) -> null)
-                .tools(new HashMap<>())
-                .build());
+        Calculator calculator = spy(new Calculator());
 
-        // First provider then static tools
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .toolProvider((ToolProviderRequest request) -> null)
-                .tools(new StringArrayProcessor())
-                .build());
+        ToolProvider toolProvider = request -> {
+            ToolSpecification toolSpecification = ToolSpecification.builder()
+                    .name("get_booking_details")
+                    .description("Returns booking details")
+                    .parameters(JsonObjectSchema.builder()
+                            .addStringProperty("bookingNumber")
+                            .build())
+                    .build();
+            return ToolProviderResult.builder()
+                    .add(toolSpecification, toolExecutor)
+                    .build();
+        };
 
-        // First tools then provider
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .tools(new HashMap<>())
-                .toolProvider((ToolProviderRequest request) -> null)
-                .build());
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(models().findFirst().get())
+                .toolProvider(toolProvider)
+                .tools(calculator)
+                .build();
 
-        // First static tools then provider
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .tools(new StringArrayProcessor())
-                .toolProvider((ToolProviderRequest request) -> null)
-                .build());
+        var response = assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
+        assertThat(response.content().text()).contains("2028");
+
+        verify(calculator).xyz(2027);
+        verifyNoMoreInteractions(calculator);
+
+        verify(toolExecutor).execute(any(), any());
+        verifyNoMoreInteractions(toolExecutor);
     }
 
     private static Map<String, Object> toMap(String arguments) {
