@@ -4,13 +4,13 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PingResponse extends McpClientMessage {
+public class McpPingResponse extends McpClientMessage {
 
     // has to be an empty object
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private final Map<String, Object> result = new HashMap<>();
 
-    public PingResponse(final Long id) {
+    public McpPingResponse(final Long id) {
         super(id);
     }
 }
