@@ -90,9 +90,11 @@ public class ToolService {
         if (toolProviderResult != null) {
             for (Map.Entry<ToolSpecification, ToolExecutor> entry :
                     toolProviderResult.tools().entrySet()) {
-                // Check for duplicated tools, giving precedence to static ones
                 if (toolExecs.putIfAbsent(entry.getKey().name(), entry.getValue()) == null) {
                     toolsSpecs.add(entry.getKey());
+                } else {
+                    throw new IllegalConfigurationException(
+                            "Duplicated definition for tool: " + entry.getKey().name());
                 }
             }
         }

@@ -10,6 +10,7 @@ import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -797,7 +798,7 @@ class AiServicesWithToolsIT {
     }
 
     @Test
-    void should_give_precedence_to_static_tools() {
+    void should_throw_if_static_and_dynamic_tools_are_duplicated() {
         Calculator calculator = spy(new Calculator());
 
         ToolProvider toolProvider = request -> {
@@ -817,25 +818,16 @@ class AiServicesWithToolsIT {
                     .build();
         };
 
-        Assistant assistantWithNoStaticTool = AiServices.builder(Assistant.class)
-                .chatLanguageModel(models().findFirst().get())
-                .toolProvider(toolProvider)
-                .build();
-
-        var response = assistantWithNoStaticTool.chat("Apply the function xyz on the number 2027");
-        assertThat(response.content().text()).contains("3000");
-
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(models().findFirst().get())
                 .toolProvider(toolProvider)
                 .tools(calculator)
                 .build();
 
-        response = assistant.chat("Apply the function xyz on the number 2027");
-        assertThat(response.content().text()).contains("2028");
-
-        verify(calculator).xyz(2027);
-        verifyNoMoreInteractions(calculator);
+        assertThat(
+                assertThrows(IllegalConfigurationException.class,
+                        () -> assistant.chat("Apply the function xyz on the number 2027"))
+        ).hasMessageContaining("xyz");
     }
 
     private static Map<String, Object> toMap(String arguments) {
