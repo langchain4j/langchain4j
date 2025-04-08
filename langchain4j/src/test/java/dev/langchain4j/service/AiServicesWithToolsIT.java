@@ -796,6 +796,48 @@ class AiServicesWithToolsIT {
         verifyNoMoreInteractions(toolExecutor);
     }
 
+    @Test
+    void should_give_precedence_to_static_tools() {
+        Calculator calculator = spy(new Calculator());
+
+        ToolProvider toolProvider = request -> {
+            ToolSpecification toolSpecification = ToolSpecification.builder()
+                    .name("xyz")
+                    .description("applies the function xyz on the provided number")
+                    .parameters(JsonObjectSchema.builder()
+                            .addIntegerProperty("number")
+                            .build())
+                    .build();
+            return ToolProviderResult.builder()
+                    .add(toolSpecification, (ToolExecutionRequest toolExecutionRequest, Object memoryId) -> {
+                        Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+                        assertThat(arguments).containsExactly(entry("number", 2027));
+                        return "3000";
+                    })
+                    .build();
+        };
+
+        Assistant assistantWithNoStaticTool = AiServices.builder(Assistant.class)
+                .chatLanguageModel(models().findFirst().get())
+                .toolProvider(toolProvider)
+                .build();
+
+        var response = assistantWithNoStaticTool.chat("Apply the function xyz on the number 2027");
+        assertThat(response.content().text()).contains("3000");
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(models().findFirst().get())
+                .toolProvider(toolProvider)
+                .tools(calculator)
+                .build();
+
+        response = assistant.chat("Apply the function xyz on the number 2027");
+        assertThat(response.content().text()).contains("2028");
+
+        verify(calculator).xyz(2027);
+        verifyNoMoreInteractions(calculator);
+    }
+
     private static Map<String, Object> toMap(String arguments) {
         try {
             return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {});

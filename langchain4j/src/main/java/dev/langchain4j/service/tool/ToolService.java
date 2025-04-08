@@ -90,8 +90,10 @@ public class ToolService {
         if (toolProviderResult != null) {
             for (Map.Entry<ToolSpecification, ToolExecutor> entry :
                     toolProviderResult.tools().entrySet()) {
-                toolsSpecs.add(entry.getKey());
-                toolExecs.put(entry.getKey().name(), entry.getValue());
+                // Check for duplicated tools, giving precedence to static ones
+                if (toolExecs.putIfAbsent(entry.getKey().name(), entry.getValue()) == null) {
+                    toolsSpecs.add(entry.getKey());
+                }
             }
         }
         return new ToolExecutionContext(toolsSpecs, toolExecs);
