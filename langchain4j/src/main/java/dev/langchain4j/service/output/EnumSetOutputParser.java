@@ -20,6 +20,7 @@ class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
 
     @Override
     public Set<Enum> parse(String text) {
+        // TODO review once again, check if exception or empty
         if (text == null || text.isBlank()) {
             return new HashSet<>();
         }

@@ -12,6 +12,7 @@ class StringListOutputParser extends CollectionOutputParser<List<String>> {
 
     @Override
     public List<String> parse(String text) {
+        // TODO review once again, check if exception or empty
         if (text == null || text.isBlank()) {
             return new ArrayList<>();
         }

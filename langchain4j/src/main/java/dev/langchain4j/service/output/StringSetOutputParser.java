@@ -10,6 +10,7 @@ class StringSetOutputParser extends CollectionOutputParser<Set<String>> {
 
     @Override
     public Set<String> parse(String text) {
+        // TODO review once again, check if exception or empty
         if (text == null || text.isBlank()) {
             return new LinkedHashSet<>();
         }

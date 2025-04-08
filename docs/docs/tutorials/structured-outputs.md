@@ -500,7 +500,7 @@ When using JSON Schema with AI Services, there are some limitations:
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming).
 - Currently, it works only when return type is a (single) POJO or a `Result<POJO>`.
 If you need other types (e.g., `List<POJO>`, `enum`, etc.), please wrap these into a POJO.
-We are [working](https://github.com/langchain4j/langchain4j/pull/1938) on supporting more return types soon.
+We are [working](https://github.com/langchain4j/langchain4j/pull/1938) on supporting more return types soon. TODO
 - POJOs can contain:
   - Scalar/simple types (e.g., `String`, `int`/`Integer`, `double`/`Double`, `boolean`/`Boolean`, etc.)
   - `enum`s

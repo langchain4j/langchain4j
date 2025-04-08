@@ -40,8 +40,6 @@ public class JsonSchemas {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
-        // TODO float, long, biginteger, bigdecimal, etc
-
         if (returnType == boolean.class || returnType == Boolean.class) {
             return getBooleanJsonSchema();
         }
@@ -50,10 +48,19 @@ public class JsonSchemas {
             return getIntegerJsonSchema();
         }
 
+        if (returnType == long.class || returnType == Long.class) {
+            return getLongJsonSchema();
+        }
+
+        if (returnType == float.class || returnType == Float.class) {
+            return getFloatJsonSchema();
+        }
+
         if (returnType == double.class || returnType == Double.class) {
             return getDoubleJsonSchema();
         }
 
+        // TODO refactor
         if (!isPojo(returnType) && !isEnum(returnType) && !isListOfStrings(returnType) && !isSetOfStrings(returnType)) {
             return Optional.empty();
         }
@@ -101,7 +108,7 @@ public class JsonSchemas {
 
     private static Optional<JsonSchema> getIntegerJsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
-                .name("integer")
+                .name("integer") // TODO add range? description?
                 .rootElement(JsonObjectSchema.builder()
                         .addIntegerProperty("value")
                         .required("value")
@@ -110,9 +117,31 @@ public class JsonSchemas {
         return Optional.of(jsonSchema);
     }
 
+    private static Optional<JsonSchema> getLongJsonSchema() {
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name("long") // TODO add range? description?
+                .rootElement(JsonObjectSchema.builder()
+                        .addIntegerProperty("value")
+                        .required("value")
+                        .build())
+                .build();
+        return Optional.of(jsonSchema);
+    }
+
+    private static Optional<JsonSchema> getFloatJsonSchema() {
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name("float") // TODO add range? description?
+                .rootElement(JsonObjectSchema.builder()
+                        .addNumberProperty("value")
+                        .required("value")
+                        .build())
+                .build();
+        return Optional.of(jsonSchema);
+    }
+
     private static Optional<JsonSchema> getDoubleJsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
-                .name("double")
+                .name("double") // TODO add range? description?
                 .rootElement(JsonObjectSchema.builder()
                         .addNumberProperty("value")
                         .required("value")

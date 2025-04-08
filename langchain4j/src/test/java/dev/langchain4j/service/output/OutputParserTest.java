@@ -35,22 +35,6 @@ class OutputParserTest implements WithAssertions {
     }
 
     @Test
-    void test_Boolean() {
-        BooleanOutputParser parser = new BooleanOutputParser();
-        assertThat(parser.formatInstructions()).isEqualTo("one of [true, false]");
-
-        assertThat(parser.parse("true"))
-                .isEqualTo(parser.parse(" true "))
-                .isEqualTo(parser.parse("TRUE"))
-                .isEqualTo(true);
-        assertThat(parser.parse("false"))
-                .isEqualTo(parser.parse("FALSE"))
-                // surprising, but how Boolean.parseBoolean works
-                .isEqualTo(parser.parse("yes"))
-                .isEqualTo(false);
-    }
-
-    @Test
     void test_Byte() {
         ByteOutputParser parser = new ByteOutputParser();
         assertThat(parser.formatInstructions()).isEqualTo("integer number in range [-128, 127]");
@@ -76,17 +60,6 @@ class OutputParserTest implements WithAssertions {
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> parser.parse("01-12-2020"))
                 .withMessage("Invalid date format: 01-12-2020");
-    }
-
-    @Test
-    void test_Double() {
-        DoubleOutputParser parser = new DoubleOutputParser();
-        assertThat(parser.formatInstructions()).isEqualTo("floating point number");
-
-        assertThat(parser.parse("3.14")).isEqualTo(3.14);
-        assertThat(parser.parse(" 3.14 ")).isEqualTo(3.14);
-
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("3.14.15"));
     }
 
     public enum Enum {
@@ -141,31 +114,6 @@ class OutputParserTest implements WithAssertions {
     }
 
     @Test
-    void test_Float() {
-        FloatOutputParser parser = new FloatOutputParser();
-        assertThat(parser.formatInstructions()).isEqualTo("floating point number");
-
-        assertThat(parser.parse("3.14")).isEqualTo(3.14f);
-        assertThat(parser.parse(" 3.14 ")).isEqualTo(3.14f);
-
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("3.14.15"));
-    }
-
-    @Test
-    void integer() {
-        IntOutputParser parser = new IntOutputParser();
-        assertThat(parser.formatInstructions()).isEqualTo("integer number");
-
-        assertThat(parser.parse("42")).isEqualTo(42);
-        assertThat(parser.parse("42.0")).isEqualTo(42);
-        assertThat(parser.parse(" 42 ")).isEqualTo(42);
-        assertThat(parser.parse("0.0")).isEqualTo(0);
-
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> parser.parse("42.2"));
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> parser.parse("0.1"));
-    }
-
-    @Test
     void local_date() {
         LocalDateOutputParser parser = new LocalDateOutputParser();
         assertThat(parser.formatInstructions()).isEqualTo("yyyy-MM-dd");
@@ -205,17 +153,6 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("12:34:56.789")).isEqualTo(LocalTime.of(12, 34, 56, 789_000_000));
 
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> parser.parse("red"));
-    }
-
-    @Test
-    void test_Long() {
-        LongOutputParser parser = new LongOutputParser();
-        assertThat(parser.formatInstructions()).isEqualTo("integer number");
-
-        assertThat(parser.parse("42")).isEqualTo(42L);
-        assertThat(parser.parse(" 42 ")).isEqualTo(42L);
-
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("42.0"));
     }
 
     @Test

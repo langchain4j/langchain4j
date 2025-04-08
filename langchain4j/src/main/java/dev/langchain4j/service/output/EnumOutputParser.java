@@ -21,6 +21,7 @@ class EnumOutputParser implements OutputParser<Enum> {
 
     @Override
     public Enum parse(String string) {
+        // TODO review once again, check if exception or null
         if (string == null || string.isBlank()) {
             return null;
         }

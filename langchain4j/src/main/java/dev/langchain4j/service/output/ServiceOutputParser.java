@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
@@ -83,8 +84,7 @@ public class ServiceOutputParser {
     }
 
     private static Object parsePojos(String text, Type returnType) {
-        // If there is no JSON content at all, treat it as "empty"
-        if (text == null || text.trim().isEmpty()) {
+        if (isNullOrBlank(text)) {
             if (typeHasRawClass(returnType, List.class)) {
                 return new ArrayList<>();
             } else if (typeHasRawClass(returnType, Set.class)) {
@@ -121,10 +121,8 @@ public class ServiceOutputParser {
                 }
             }
 
-            // Recursively parse the items array, e.g. into a List<Pojo>
             return Json.fromJson(Json.toJson(items), returnType);
         } else {
-            // Some other non‐collection type, just hand off to Jackson
             return Json.fromJson(text, returnType);
         }
     }

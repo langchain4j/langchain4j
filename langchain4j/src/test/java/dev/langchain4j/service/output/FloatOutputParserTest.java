@@ -10,16 +10,16 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class DoubleOutputParserTest {
+class FloatOutputParserTest {
 
-    private final DoubleOutputParser parser = new DoubleOutputParser();
+    private final FloatOutputParser parser = new FloatOutputParser();
 
     @ParameterizedTest
     @MethodSource("validInputProvider")
-    void should_parse_valid_input(String input, Double expected) {
+    void should_parse_valid_input(String input, Float expected) {
 
         // when
-        Double actual = parser.parse(input);
+        Float actual = parser.parse(input);
 
         // then
         assertThat(actual).isEqualTo(expected);
@@ -27,29 +27,29 @@ class DoubleOutputParserTest {
 
     static Stream<Arguments> validInputProvider() {
         return Stream.of(
-                // Plain doubles
-                Arguments.of("3.14", 3.14),
-                Arguments.of("   3.14   ", 3.14),
-                Arguments.of("-2.718", -2.718),
-                Arguments.of("0", 0.0),
-                Arguments.of("42", 42.0),
-                Arguments.of(String.valueOf(Double.MAX_VALUE), Double.MAX_VALUE),
-                Arguments.of("1e309", Double.POSITIVE_INFINITY),
-                Arguments.of(String.valueOf(Double.MIN_VALUE), Double.MIN_VALUE),
-                Arguments.of("-1e309", Double.NEGATIVE_INFINITY),
+                // Plain floats
+                Arguments.of("3.14", 3.14f),
+                Arguments.of("   3.14   ", 3.14f),
+                Arguments.of("-2.718", -2.718f),
+                Arguments.of("0", 0.0f),
+                Arguments.of("42", 42.0f),
+                Arguments.of(String.valueOf(Float.MAX_VALUE), Float.MAX_VALUE),
+                Arguments.of("1e309", Float.POSITIVE_INFINITY),
+                Arguments.of(String.valueOf(Float.MIN_VALUE), Float.MIN_VALUE),
+                Arguments.of("-1e309", Float.NEGATIVE_INFINITY),
 
                 // JSON with "value" key
-                Arguments.of("{\"value\": 1.23}", 1.23),
-                Arguments.of("{\"value\": \"-4.56\"}", -4.56),
-                Arguments.of("{\"value\": 0}", 0.0),
-                Arguments.of("{\"value\": \"42\"}", 42.0),
+                Arguments.of("{\"value\": 1.23}", 1.23f),
+                Arguments.of("{\"value\": \"-4.56\"}", -4.56f),
+                Arguments.of("{\"value\": 0}", 0.0f),
+                Arguments.of("{\"value\": \"42\"}", 42.0f),
 
                 // Surrounded by whitespace
-                Arguments.of("   {\"value\": 77.99}   ", 77.99),
+                Arguments.of("   {\"value\": 77.99}   ", 77.99f),
 
                 // JSON fallback to first property
-                Arguments.of("{\"foo\": 99.001}", 99.001),
-                Arguments.of("{\"bar\": \"-100.5\"}", -100.5)
+                Arguments.of("{\"foo\": 99.001}", 99.001f),
+                Arguments.of("{\"bar\": \"-100.5\"}", -100.5f)
         );
     }
 
@@ -59,7 +59,7 @@ class DoubleOutputParserTest {
         assertThatThrownBy(() -> parser.parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
-                .hasMessageContaining("into java.lang.Double");
+                .hasMessageContaining("into java.lang.Float");
     }
 
     static Stream<String> noDataInputProvider() {
@@ -81,7 +81,7 @@ class DoubleOutputParserTest {
         assertThatThrownBy(() -> parser.parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
-                .hasMessageContaining("into java.lang.Double");
+                .hasMessageContaining("into java.lang.Float");
     }
 
     static Stream<String> invalidInputProvider() {

@@ -62,6 +62,8 @@ class DefaultOutputParserFactory implements OutputParserFactory {
             if (typeArgumentClass.equals(String.class)) {
                 return Optional.of(new StringListOutputParser());
             }
+
+            // TODO list of pojo?
         }
 
         if (rawClass.equals(Set.class)) {
@@ -72,6 +74,8 @@ class DefaultOutputParserFactory implements OutputParserFactory {
             if (typeArgumentClass.equals(String.class)) {
                 return Optional.of(new StringSetOutputParser());
             }
+
+            // TODO set of pojo?
         }
 
         OutputParser<?> outputParser = OUTPUT_PARSERS.get(rawClass);
