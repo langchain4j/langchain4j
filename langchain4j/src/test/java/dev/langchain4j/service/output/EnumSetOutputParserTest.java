@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Iterator;
@@ -48,7 +49,6 @@ class EnumSetOutputParserTest {
                 Arguments.of("Cat", Set.of(CAT)),
 
                 // Plain text: empty
-                Arguments.of(null, Set.of()),
                 Arguments.of("", Set.of()),
                 Arguments.of(" ", Set.of()),
 
@@ -61,9 +61,7 @@ class EnumSetOutputParserTest {
                 Arguments.of("{\"items\":[\"CAT\", \"DOG\"]}", Set.of(CAT, DOG)),
 
                 // JSON: empty
-                Arguments.of("{}", Set.of()),
                 Arguments.of("{\"items\":[]}", Set.of()),
-                Arguments.of("{\"items\":null}", Set.of()),
 
                 // JSON: wrong type
                 Arguments.of("{\"items\":\"CAT\"}", Set.of(CAT)),
@@ -78,6 +76,17 @@ class EnumSetOutputParserTest {
     }
 
     @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"{}", "{\"items\": null}", "{\"items\": \"\"}"})
+    void should_fail_to_parse_empty_input(String input) {
+
+        assertThatThrownBy(() -> new EnumSetOutputParser(Animal.class).parse(input))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse")
+                .hasMessageContaining("Animal");
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {
             "BANANA",
             "{\"items\":[\"BANANA\"]}"
@@ -89,8 +98,9 @@ class EnumSetOutputParserTest {
 
         // when-then
         assertThatThrownBy(() -> parser.parse(text))
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Unknown enum value: BANANA");
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse")
+                .hasMessageContaining("Animal");
     }
 
     @Test

@@ -19,16 +19,20 @@ class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
 
     @Override
     public List<Enum> parse(String text) {
-        // TODO review once again, check if exception or empty
-        if (text == null || text.isBlank()) {
+        // TODO remove duplication, everywhere
+
+        if (text == null) {
+            throw ParsingUtils.outputParsingException(text, getType(), null);
+        }
+
+        if (text.isBlank()) {
             return new ArrayList<>();
         }
 
         if (text.trim().startsWith("{")) {
             Map<?, ?> map = Json.fromJson(text, Map.class);
-
             if (map == null || map.isEmpty()) {
-                return new ArrayList<>();
+                throw ParsingUtils.outputParsingException(text, getType(), null);
             }
 
             Object items;
@@ -39,18 +43,22 @@ class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
             }
 
             if (items == null) {
-                return new ArrayList<>();
+                throw ParsingUtils.outputParsingException(text, getType(), null);
             } else if (items instanceof String) {
                 items = List.of(items);
             }
 
             return ((Collection<String>) items).stream()
-                .map(enumOutputParser::parse)
-                .collect(toList());
+                    .map(enumOutputParser::parse)
+                    .collect(toList());
         }
 
         return Stream.of(text.split("\n"))
-            .map(enumOutputParser::parse)
-            .collect(toList());
+                .map(enumOutputParser::parse)
+                .collect(toList());
+    }
+
+    private String getType() {
+        return "java.util.List<" + enumClass.getName() + ">";
     }
 }

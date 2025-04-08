@@ -1,11 +1,9 @@
 package dev.langchain4j.service.output;
 
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.output.structured.Description;
 
 import java.lang.reflect.Field;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -20,47 +18,18 @@ class EnumOutputParser implements OutputParser<Enum> {
     }
 
     @Override
-    public Enum parse(String string) {
-        // TODO review once again, check if exception or null
-        if (string == null || string.isBlank()) {
-            return null;
-        }
+    public Enum parse(String text) {
+        return ParsingUtils.parseAsValueOrJson(text, this::parseEnum, enumClass);
+    }
 
-        string = trimAndRemoveBracketsIfPresent(string);
-
-        if (string.trim().startsWith("{")) {
-
-            Map<?, ?> map = Json.fromJson(string, Map.class);
-
-            if (map == null || map.isEmpty()) {
-                return null;
-            }
-
-            Object value;
-            if (map.containsKey("value")) {
-                value = map.get("value");
-            } else {
-                value = map.values().iterator().next();
-            }
-
-            if (value == null) {
-                return null;
-            }
-
-            string = value.toString();
-        }
-
-        if (string.isBlank()) {
-            return null;
-        }
-
+    private Enum parseEnum(String text) {
+        text = trimAndRemoveBracketsIfPresent(text);
         for (Enum enumConstant : enumClass.getEnumConstants()) {
-            if (enumConstant.name().equalsIgnoreCase(string)) {
+            if (enumConstant.name().equalsIgnoreCase(text)) {
                 return enumConstant;
             }
         }
-
-        throw new RuntimeException("Unknown enum value: " + string);
+        throw ParsingUtils.outputParsingException(text, enumClass, null);
     }
 
     @Override

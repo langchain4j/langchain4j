@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.stream.Stream;
@@ -44,11 +45,6 @@ class EnumOutputParserTest {
                 Arguments.of("cat", CAT),
                 Arguments.of("Cat", CAT),
 
-                // Plain text: empty
-                Arguments.of(null, null),
-                Arguments.of("", null),
-                Arguments.of(" ", null),
-
                 // Plain text: surrounded by whitespaces
                 Arguments.of(" CAT ", CAT),
 
@@ -59,17 +55,23 @@ class EnumOutputParserTest {
                 // JSON
                 Arguments.of("{\"value\":\"CAT\"}", CAT),
 
-                // JSON: empty
-                Arguments.of("{}", null),
-                Arguments.of("{\"value\":null}", null),
-                Arguments.of("{\"value\":\"\"}", null),
-
                 // JSON: wrong property name
                 Arguments.of("{\"animal\":\"CAT\"}", CAT),
 
                 // JSON: surrounded by whitespaces
                 Arguments.of(" {\"value\":\"CAT\"} ", CAT)
         );
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", " ", "{}", "{\"value\": null}", "{\"value\": \"\"}"})
+    void should_fail_to_parse_empty_input(String input) {
+
+        assertThatThrownBy(() -> new EnumOutputParser(Animal.class).parse(input))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse")
+                .hasMessageContaining("Animal");
     }
 
     @ParameterizedTest
@@ -84,8 +86,9 @@ class EnumOutputParserTest {
 
         // when-then
         assertThatThrownBy(() -> parser.parse(text))
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Unknown enum value: BANANA");
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse")
+                .hasMessageContaining("Animal");
     }
 
     enum Weather {

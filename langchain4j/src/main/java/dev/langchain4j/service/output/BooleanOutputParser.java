@@ -12,12 +12,8 @@ class BooleanOutputParser implements OutputParser<Boolean> {
         if (trimmed.equalsIgnoreCase("true") || trimmed.equalsIgnoreCase("false")) {
             return Boolean.parseBoolean(trimmed);
         } else {
-            throw outputParsingException(text);
+            throw ParsingUtils.outputParsingException(text, Boolean.class, null);
         }
-    }
-
-    private static OutputParsingException outputParsingException(String text) {
-        return new OutputParsingException("Failed to parse '%s' into java.lang.Boolean".formatted(text));
     }
 
     @Override

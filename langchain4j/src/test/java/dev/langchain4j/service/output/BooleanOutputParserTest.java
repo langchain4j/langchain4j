@@ -55,7 +55,7 @@ class BooleanOutputParserTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"", " ", "{}", "{\"value\": null}"})
+    @ValueSource(strings = {"", " ", "{}", "{\"value\": null}", "{\"value\": \"\"}"})
     void should_fail_to_parse_empty_input(String input) {
 
         assertThatThrownBy(() -> new BooleanOutputParser().parse(input))

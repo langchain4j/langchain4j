@@ -10,7 +10,7 @@ import static dev.langchain4j.service.output.EnumOutputParser.getEnumDescription
 @SuppressWarnings("rawtypes")
 abstract class EnumCollectionOutputParser<T extends Enum> implements OutputParser<Collection<T>> {
 
-    private final Class<? extends Enum> enumClass;
+    protected final Class<? extends Enum> enumClass;
     protected final EnumOutputParser enumOutputParser;
 
     EnumCollectionOutputParser(Class<? extends Enum> enumClass) {

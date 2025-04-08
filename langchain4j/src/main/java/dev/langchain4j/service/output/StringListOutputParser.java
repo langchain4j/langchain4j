@@ -8,20 +8,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 class StringListOutputParser extends CollectionOutputParser<List<String>> {
 
     @Override
     public List<String> parse(String text) {
-        // TODO review once again, check if exception or empty
-        if (text == null || text.isBlank()) {
+        if (text == null) {
+            throw ParsingUtils.outputParsingException(text, getType(), null);
+        }
+
+        if (text.isBlank()) {
             return new ArrayList<>();
         }
 
         if (text.trim().startsWith("{")) {
             Map<?, ?> map = Json.fromJson(text, Map.class);
-
             if (map == null || map.isEmpty()) {
-                return new ArrayList<>();
+                throw ParsingUtils.outputParsingException(text, getType(), null);
             }
 
             Object items;
@@ -32,20 +36,24 @@ class StringListOutputParser extends CollectionOutputParser<List<String>> {
             }
 
             if (items == null) {
-                return new ArrayList<>();
+                throw ParsingUtils.outputParsingException(text, getType(), null);
             } else if (items instanceof String) {
                 items = List.of(items);
             }
+
             return ((Collection<String>) items).stream()
+                    .map(String::trim)
+                    .filter(line -> !isNullOrBlank(line))
                     .toList();
         }
 
         return Stream.of(text.split("\n"))
-                // Trim each line
                 .map(String::trim)
-                // filter out any empty lines if needed
-                .filter(line -> !line.isBlank())
+                .filter(line -> !isNullOrBlank(line))
                 .toList();
     }
 
+    private String getType() {
+        return "java.util.List<java.lang.String>";
+    }
 }

@@ -97,23 +97,6 @@ class OutputParserTest implements WithAssertions {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void test_Enum() {
-        EnumOutputParser parser = new EnumOutputParser(Enum.class);
-
-        assertThat(parser.parse("A"))
-                .isEqualTo(parser.parse(" A "))
-                .isEqualTo(parser.parse("a"))
-                .isEqualTo(Enum.A);
-        assertThat(parser.parse("B")).isEqualTo(parser.parse("b")).isEqualTo(Enum.B);
-        assertThat(parser.parse("C")).isEqualTo(parser.parse("c")).isEqualTo(Enum.C);
-
-        assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> parser.parse("D"))
-                .withMessage("Unknown enum value: D");
-    }
-
-    @Test
     void local_date() {
         LocalDateOutputParser parser = new LocalDateOutputParser();
         assertThat(parser.formatInstructions()).isEqualTo("yyyy-MM-dd");
