@@ -1,10 +1,12 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
+
 class DoubleOutputParser implements OutputParser<Double> {
 
     @Override
     public Double parse(String text) {
-        return ParsingUtils.parseAsValueOrJson(text, Double::parseDouble, Double.class);
+        return parseAsValueOrJson(text, Double::parseDouble, Double.class);
     }
 
     @Override

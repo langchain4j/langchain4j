@@ -7,6 +7,8 @@ import java.util.Locale;
 import java.util.Optional;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
 
 @SuppressWarnings("rawtypes")
 class EnumOutputParser implements OutputParser<Enum> {
@@ -19,7 +21,7 @@ class EnumOutputParser implements OutputParser<Enum> {
 
     @Override
     public Enum parse(String text) {
-        return ParsingUtils.parseAsValueOrJson(text, this::parseEnum, enumClass);
+        return parseAsValueOrJson(text, this::parseEnum, enumClass);
     }
 
     private Enum parseEnum(String text) {
@@ -29,7 +31,7 @@ class EnumOutputParser implements OutputParser<Enum> {
                 return enumConstant;
             }
         }
-        throw ParsingUtils.outputParsingException(text, enumClass, null);
+        throw outputParsingException(text, enumClass);
     }
 
     @Override

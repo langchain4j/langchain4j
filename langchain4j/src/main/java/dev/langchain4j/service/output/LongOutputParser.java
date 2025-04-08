@@ -1,12 +1,13 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
 import static dev.langchain4j.service.tool.DefaultToolExecutor.getBoundedLongValue;
 
 class LongOutputParser implements OutputParser<Long> {
 
     @Override
     public Long parse(String text) {
-        return ParsingUtils.parseAsValueOrJson(text, LongOutputParser::parseLong, Long.class);
+        return parseAsValueOrJson(text, LongOutputParser::parseLong, Long.class);
     }
 
     private static Long parseLong(String text) {

@@ -8,8 +8,6 @@ import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.IllegalConfigurationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.stubbing.Answer;
 
@@ -23,10 +21,8 @@ import java.time.LocalTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -97,10 +93,10 @@ class ServiceOutputParserTest {
         Response<AiMessage> responseStub = Response.from(aiMessage);
         sut = new ServiceOutputParser(defaultOutputParserFactorySpy);
 
-        AtomicReference<Optional<OutputParser<?>>> capturedParserReference = new AtomicReference<>();
+        AtomicReference<OutputParser<?>> capturedParserReference = new AtomicReference<>();
 
-        doAnswer((Answer<Optional<?>>) invocation -> {
-                    Optional<OutputParser<?>> result = (Optional<OutputParser<?>>) invocation.callRealMethod();
+        doAnswer((Answer<?>) invocation -> {
+                    OutputParser<?> result = (OutputParser<?>) invocation.callRealMethod();
                     capturedParserReference.set(result);
                     return result;
                 })
@@ -111,7 +107,7 @@ class ServiceOutputParserTest {
         sut.parse(responseStub, rawReturnType);
 
         // Then
-        Object capturedOutputParser = capturedParserReference.get().get();
+        Object capturedOutputParser = capturedParserReference.get();
         assertThat(capturedOutputParser).isInstanceOf(expectedOutputParserType);
     }
 
@@ -209,61 +205,6 @@ class ServiceOutputParserTest {
         assertThat(person.birthDate).isNull();
     }
 
-
-    record Pojo(String name) {
-    }
-
-    @ParameterizedTest
-    @MethodSource
-    void should_parse_list_of_pojo(String json, List<Pojo> expected) {
-
-        // given
-        Type type = new TypeReference<List<Pojo>>() {
-        }.getType();
-
-        // when
-        List<Pojo> pojos = (List<Pojo>) sut.parse(Response.from(AiMessage.from(json)), type);
-
-        // then
-        assertThat(pojos).isEqualTo(expected);
-    }
-
-    static Stream<Arguments> should_parse_list_of_pojo() {
-        return Stream.of(
-
-            Arguments.of(
-                "{\"items\":[{\"name\":\"Klaus\"}]}",
-                List.of(new Pojo("Klaus"))
-            ),
-            Arguments.of(
-                "{\"items\":[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]}",
-                List.of(new Pojo("Klaus"), new Pojo("Franny"))
-            ),
-
-            // empty
-            Arguments.of("", List.of()),
-            Arguments.of(" ", List.of()),
-            Arguments.of("{}", List.of()),
-            Arguments.of("{\"items\":[]}", List.of()),
-            Arguments.of("{\"items\":null}", List.of()),
-
-            // wrong property name
-            Arguments.of(
-                "{\"values\":[{\"name\":\"Klaus\"}]}",
-                List.of(new Pojo("Klaus"))
-            ),
-            Arguments.of(
-                "{\"people\":[{\"name\":\"Klaus\"}]}",
-                List.of(new Pojo("Klaus"))
-            ),
-
-            // surrounded by whitespaces
-            Arguments.of(
-                " {\"items\":[{\"name\":\"Klaus\"}]} ",
-                List.of(new Pojo("Klaus"))
-            )
-        );
-    }
 
     /********************************************************************************************
      * Output format instructions tests

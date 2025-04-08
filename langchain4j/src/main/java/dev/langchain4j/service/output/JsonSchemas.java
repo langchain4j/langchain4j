@@ -11,7 +11,6 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
-import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
@@ -19,8 +18,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
@@ -35,34 +34,36 @@ public class JsonSchemas {
             returnType = resolveFirstGenericParameterClass(returnType);
         }
 
+        if (returnType == String.class
+                || returnType == AiMessage.class
+                || returnType == TokenStream.class
+                || returnType == Response.class) {
+            return Optional.empty();
+        }
+
         // TODO validate this earlier
         if (returnType == void.class) {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
         if (returnType == boolean.class || returnType == Boolean.class) {
-            return getBooleanJsonSchema();
+            return booleanJsonSchema();
         }
 
         if (returnType == int.class || returnType == Integer.class) {
-            return getIntegerJsonSchema();
+            return integerJsonSchema();
         }
 
         if (returnType == long.class || returnType == Long.class) {
-            return getLongJsonSchema();
+            return longJsonSchema();
         }
 
         if (returnType == float.class || returnType == Float.class) {
-            return getFloatJsonSchema();
+            return floatJsonSchema();
         }
 
         if (returnType == double.class || returnType == Double.class) {
-            return getDoubleJsonSchema();
-        }
-
-        // TODO refactor
-        if (!isPojo(returnType) && !isEnum(returnType) && !isListOfStrings(returnType) && !isSetOfStrings(returnType)) {
-            return Optional.empty();
+            return doubleJsonSchema();
         }
 
         if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
@@ -95,7 +96,7 @@ public class JsonSchemas {
         }
     }
 
-    private static Optional<JsonSchema> getBooleanJsonSchema() {
+    private static Optional<JsonSchema> booleanJsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name("boolean")
                 .rootElement(JsonObjectSchema.builder()
@@ -106,7 +107,7 @@ public class JsonSchemas {
         return Optional.of(jsonSchema);
     }
 
-    private static Optional<JsonSchema> getIntegerJsonSchema() {
+    private static Optional<JsonSchema> integerJsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name("integer") // TODO add range? description?
                 .rootElement(JsonObjectSchema.builder()
@@ -117,7 +118,7 @@ public class JsonSchemas {
         return Optional.of(jsonSchema);
     }
 
-    private static Optional<JsonSchema> getLongJsonSchema() {
+    private static Optional<JsonSchema> longJsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name("long") // TODO add range? description?
                 .rootElement(JsonObjectSchema.builder()
@@ -128,7 +129,7 @@ public class JsonSchemas {
         return Optional.of(jsonSchema);
     }
 
-    private static Optional<JsonSchema> getFloatJsonSchema() {
+    private static Optional<JsonSchema> floatJsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name("float") // TODO add range? description?
                 .rootElement(JsonObjectSchema.builder()
@@ -139,7 +140,7 @@ public class JsonSchemas {
         return Optional.of(jsonSchema);
     }
 
-    private static Optional<JsonSchema> getDoubleJsonSchema() {
+    private static Optional<JsonSchema> doubleJsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name("double") // TODO add range? description?
                 .rootElement(JsonObjectSchema.builder()
@@ -148,20 +149,6 @@ public class JsonSchemas {
                         .build())
                 .build();
         return Optional.of(jsonSchema);
-    }
-
-    private static boolean isListOfStrings(Type returnType) {
-        return isCollectionOfStrings(returnType, List.class);
-    }
-
-    private static boolean isSetOfStrings(Type returnType) {
-        return isCollectionOfStrings(returnType, Set.class);
-    }
-
-    private static boolean isCollectionOfStrings(Type returnType, Class<?> clazz) {
-        Class<?> rawClass = getRawClass(returnType);
-        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
-        return clazz.isAssignableFrom(rawClass) && String.class.equals(typeArgumentClass);
     }
 
     private static JsonSchemaElement objectSchemaFrom(Class<?> actualType) {
@@ -184,34 +171,5 @@ public class JsonSchemas {
                         .required("items")
                         .build())
                 .build();
-    }
-
-    static boolean isEnum(Type returnType) {
-        if (returnType instanceof Class<?> && ((Class<?>) returnType).isEnum()) {
-            return true;
-        }
-
-        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
-        return typeArgumentClass != null && typeArgumentClass.isEnum();
-    }
-
-    private static boolean isPojo(Type returnType) {
-
-        if (returnType == String.class
-                || returnType == AiMessage.class
-                || returnType == TokenStream.class
-                || returnType == Response.class) {
-            return false;
-        }
-
-        // Explanation (which will make this a lot easier to understand):
-        // In the case of List<String> these two would be set like:
-        // rawClass: List.class
-        // typeArgumentClass: String.class
-        Class<?> rawClass = getRawClass(returnType);
-        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
-
-        Optional<OutputParser<?>> outputParser = new DefaultOutputParserFactory().get(rawClass, typeArgumentClass);
-        return outputParser.isEmpty();
     }
 }

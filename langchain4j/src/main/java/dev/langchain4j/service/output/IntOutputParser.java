@@ -1,12 +1,13 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
 import static dev.langchain4j.service.tool.DefaultToolExecutor.getBoundedLongValue;
 
 class IntOutputParser implements OutputParser<Integer> {
 
     @Override
     public Integer parse(String text) {
-        return ParsingUtils.parseAsValueOrJson(text, IntOutputParser::parseInt, Integer.class);
+        return parseAsValueOrJson(text, IntOutputParser::parseInt, Integer.class);
     }
 
     private static Integer parseInt(String text) {
