@@ -205,10 +205,53 @@ public class EmbeddingStoreIngestor {
 
         // TODO handle failures, parallelize
         log.debug("Starting to store {} text segments into the embedding store", segments.size());
-        embeddingStore.addAll(embeddingsResponse.content(), segments);
+        List<String> ids = embeddingStore.addAll(embeddingsResponse.content(), segments);
         log.debug("Finished storing {} text segments into the embedding store", segments.size());
 
-        return new IngestionResult(embeddingsResponse.tokenUsage());
+        return new IngestionResult(embeddingsResponse.tokenUsage(), ids);
+    }
+
+    /**
+     * Ingests specified documents into an {@link EmbeddingStore} that was specified
+     * during the creation of this {@code EmbeddingStoreIngestor}.
+     *
+     * @param documents the documents to ingest.
+     * @param ids       the ids to use for storing the documents.
+     * @return result including information related to ingestion process.
+     */
+    public IngestionResult ingest(List<Document> documents, List<String> ids) {
+
+        log.debug("Starting to ingest {} documents", documents.size());
+
+        if (documentTransformer != null) {
+            documents = documentTransformer.transformAll(documents);
+            log.debug("Documents were transformed into {} documents", documents.size());
+        }
+        List<TextSegment> segments;
+        if (documentSplitter != null) {
+            segments = documentSplitter.splitAll(documents);
+            log.debug("Documents were split into {} text segments", segments.size());
+        } else {
+            segments = documents.stream()
+                    .map(Document::toTextSegment)
+                    .collect(toList());
+        }
+        if (textSegmentTransformer != null) {
+            segments = textSegmentTransformer.transformAll(segments);
+            log.debug("Text segments were transformed into {} text segments", documents.size());
+        }
+
+        // TODO handle failures, parallelize
+        log.debug("Starting to embed {} text segments", segments.size());
+        Response<List<Embedding>> embeddingsResponse = embeddingModel.embedAll(segments);
+        log.debug("Finished embedding {} text segments", segments.size());
+
+        // TODO handle failures, parallelize
+        log.debug("Starting to store {} text segments into the embedding store", segments.size());
+        embeddingStore.addAll(ids, embeddingsResponse.content(), segments);
+        log.debug("Finished storing {} text segments into the embedding store", segments.size());
+
+        return new IngestionResult(embeddingsResponse.tokenUsage(), ids);
     }
 
     /**
