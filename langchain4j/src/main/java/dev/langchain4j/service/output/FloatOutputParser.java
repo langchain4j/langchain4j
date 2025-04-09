@@ -1,5 +1,10 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+
+import java.util.Optional;
+
 import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
 
 class FloatOutputParser implements OutputParser<Float> {
@@ -7,6 +12,18 @@ class FloatOutputParser implements OutputParser<Float> {
     @Override
     public Float parse(String text) {
         return parseAsValueOrJson(text, Float::parseFloat, Float.class);
+    }
+
+    @Override
+    public Optional<JsonSchema> jsonSchema() {
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name("float") // TODO add range? description?
+                .rootElement(JsonObjectSchema.builder()
+                        .addNumberProperty("value")
+                        .required("value")
+                        .build())
+                .build();
+        return Optional.of(jsonSchema);
     }
 
     @Override

@@ -25,10 +25,10 @@ class EnumListOutputParserTest {
     void should_parse_list_of_enums(String text, List<Animal> expected) {
 
         // given
-        EnumListOutputParser parser = new EnumListOutputParser(Animal.class);
+        EnumListOutputParser<Animal> parser = new EnumListOutputParser<>(Animal.class);
 
         // when
-        List<?> animals = parser.parse(text);
+        List<Animal> animals = parser.parse(text);
 
         // then
         assertThat(animals).isEqualTo(expected);
@@ -78,7 +78,7 @@ class EnumListOutputParserTest {
     @ValueSource(strings = {"{}", "{\"items\": null}", "{\"items\": \"\"}"})
     void should_fail_to_parse_empty_input(String input) {
 
-        assertThatThrownBy(() -> new EnumListOutputParser(Animal.class).parse(input))
+        assertThatThrownBy(() -> new EnumListOutputParser<>(Animal.class).parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("Animal");
@@ -92,7 +92,7 @@ class EnumListOutputParserTest {
     void should_fail_to_parse_list_of_enums(String text) {
 
         // given
-        EnumListOutputParser parser = new EnumListOutputParser(Animal.class);
+        EnumListOutputParser<Animal> parser = new EnumListOutputParser<>(Animal.class);
 
         // when-then
         assertThatThrownBy(() -> parser.parse(text))

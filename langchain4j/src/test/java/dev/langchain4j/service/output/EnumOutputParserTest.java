@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class EnumOutputParserTest {
 
-    EnumOutputParser sut = new EnumOutputParser(Weather.class);
+    EnumOutputParser<Weather> sut = new EnumOutputParser<>(Weather.class);
 
     enum Animal {
         CAT, DOG, BIRD
@@ -26,10 +26,10 @@ class EnumOutputParserTest {
     void should_parse_enum(String text, Animal expected) {
 
         // given
-        EnumOutputParser parser = new EnumOutputParser(Animal.class);
+        EnumOutputParser<Animal> parser = new EnumOutputParser<>(Animal.class);
 
         // when
-        Animal animal = (Animal) parser.parse(text);
+        Animal animal = parser.parse(text);
 
         // then
         assertThat(animal).isEqualTo(expected);
@@ -68,7 +68,7 @@ class EnumOutputParserTest {
     @ValueSource(strings = {"", " ", "{}", "{\"value\": null}", "{\"value\": \"\"}"})
     void should_fail_to_parse_empty_input(String input) {
 
-        assertThatThrownBy(() -> new EnumOutputParser(Animal.class).parse(input))
+        assertThatThrownBy(() -> new EnumOutputParser<>(Animal.class).parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("Animal");
@@ -82,7 +82,7 @@ class EnumOutputParserTest {
     void should_fail_to_parse_enum(String text) {
 
         // given
-        EnumOutputParser parser = new EnumOutputParser(Animal.class);
+        EnumOutputParser<Animal> parser = new EnumOutputParser<>(Animal.class);
 
         // when-then
         assertThatThrownBy(() -> parser.parse(text))

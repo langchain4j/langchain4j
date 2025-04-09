@@ -2,22 +2,21 @@ package dev.langchain4j.service.output;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 
-import static dev.langchain4j.service.output.ParsingUtils.parseCollectionAsValueOrJson;
+class EnumSetOutputParser<E extends Enum<E>> extends EnumCollectionOutputParser<E, Set<E>> {
 
-@SuppressWarnings("rawtypes")
-class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
-
-    EnumSetOutputParser(Class<? extends Enum> enumClass) {
+    EnumSetOutputParser(Class<E> enumClass) {
         super(enumClass);
     }
 
     @Override
-    public Set<Enum> parse(String text) {
-        return (Set<Enum>) parseCollectionAsValueOrJson(text, enumOutputParser::parse, LinkedHashSet::new, getType());
+    Supplier<Set<E>> emptyCollectionSupplier() {
+        return LinkedHashSet::new;
     }
 
-    private String getType() { // TODO, check everywhere
-        return "java.util.Set<" + enumClass.getName() + ">";
+    @Override
+    Class<?> collectionType() {
+        return Set.class;
     }
 }

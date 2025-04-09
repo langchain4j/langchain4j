@@ -2,17 +2,17 @@ package dev.langchain4j.service.output;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
-import static dev.langchain4j.service.output.ParsingUtils.parseCollectionAsValueOrJson;
-
-class StringListOutputParser extends CollectionOutputParser<List<String>> {
+class StringListOutputParser extends StringCollectionOutputParser<List<String>> {
 
     @Override
-    public List<String> parse(String text) {
-        return (List<String>) parseCollectionAsValueOrJson(text, s -> s, ArrayList::new, getType());
+    Supplier<List<String>> emptyCollectionSupplier() {
+        return ArrayList::new;
     }
 
-    private String getType() {
-        return "java.util.List<java.lang.String>";
+    @Override
+    Class<?> collectionType() {
+        return List.class;
     }
 }

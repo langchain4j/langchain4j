@@ -42,10 +42,10 @@ class ParsingUtils {
         return parse(text, parser, type);
     }
 
-    static <T> Collection<T> parseCollectionAsValueOrJson(String text,
-                                                          Function<String, T> parser,
-                                                          Supplier<Collection<T>> emptyCollectionSupplier,
-                                                          String type) {
+    static <T, CT extends Collection<T>> CT parseCollectionAsValueOrJson(String text,
+                                                                         Function<String, T> parser,
+                                                                         Supplier<CT> emptyCollectionSupplier,
+                                                                         String type) {
         if (text == null) {
             throw ParsingUtils.outputParsingException(text, type, null);
         }
@@ -73,7 +73,7 @@ class ParsingUtils {
                 items = List.of(items);
             }
 
-            Collection<T> collection = emptyCollectionSupplier.get();
+            CT collection = emptyCollectionSupplier.get();
             for (Object item : ((Collection<?>) items)) {
                 String itemAsString;
                 if (item instanceof String string) {
@@ -86,7 +86,7 @@ class ParsingUtils {
             return collection;
         }
 
-        Collection<T> collection = emptyCollectionSupplier.get();
+        CT collection = emptyCollectionSupplier.get();
         for (String line : text.split("\n")) {
             if (isNullOrBlank(line)) {
                 continue;

@@ -10,8 +10,10 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.Result;
 import org.junit.jupiter.api.Test;
+
 import java.time.LocalDate;
 import java.util.Optional;
+
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,14 +36,10 @@ class JsonSchemasTest {
         assertThat(jsonSchemaFrom(String.class)).isEmpty();
         assertThat(jsonSchemaFrom(AiMessage.class)).isEmpty();
         assertThat(jsonSchemaFrom(Response.class)).isEmpty();
-//        assertThat(jsonSchemaFrom(LocalDate.class)).isEmpty(); TODO
+        assertThat(jsonSchemaFrom(Integer.class)).isEmpty();
+        assertThat(jsonSchemaFrom(LocalDate.class)).isEmpty();
         assertThat(jsonSchemaFrom(new TypeReference<Result<String>>() {
         }.getType())).isEmpty();
-
-        //TODO separate test?
-        assertThat(jsonSchemaFrom(Integer.class)).isNotEmpty();
-        assertThat(jsonSchemaFrom(Boolean.class)).isNotEmpty();
-        assertThat(jsonSchemaFrom(Double.class)).isNotEmpty();
     }
 
 

@@ -1,6 +1,7 @@
 package dev.langchain4j.service.output;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
@@ -8,6 +9,7 @@ import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.Optional;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
@@ -33,29 +35,53 @@ public class ServiceOutputParser {
             returnType = resolveFirstGenericParameterClass(returnType);
         }
 
-        // Explanation (which will make this a lot easier to understand):
-        // In the case of List<String> these two would be set like:
-        // rawClass: List.class
-        // typeArgumentClass: String.class
-        Class<?> rawReturnClass = getRawClass(returnType);
+        // In the case of returnType = List<String> these two would be set like:
+        // rawClass = List.class
+        // typeArgumentClass = String.class
+        Class<?> rawClass = getRawClass(returnType);
         Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
 
-        if (rawReturnClass == Response.class) { // TODO remove?
+        if (rawClass == Response.class) { // TODO remove?
             return response;
         }
 
         AiMessage aiMessage = response.content();
-        if (rawReturnClass == AiMessage.class) {
+        if (rawClass == AiMessage.class) {
             return aiMessage;
         }
 
         String text = aiMessage.text();
-        if (rawReturnClass == String.class) {
+        if (rawClass == String.class) {
             return text;
         }
 
-        OutputParser<?> outputParser = outputParserFactory.get(rawReturnClass, typeArgumentClass);
+        OutputParser<?> outputParser = outputParserFactory.get(rawClass, typeArgumentClass);
         return outputParser.parse(text);
+    }
+
+    public Optional<JsonSchema> jsonSchema(Type returnType) {
+
+        if (typeHasRawClass(returnType, Result.class)) {
+            returnType = resolveFirstGenericParameterClass(returnType);
+        }
+
+        // In the case of returnType = List<String> these two would be set like:
+        // rawClass = List.class
+        // typeArgumentClass = String.class
+        Class<?> rawClass = getRawClass(returnType);
+        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+
+        if (!isSchemaRequired(rawClass)) { // TODO test Map<?,>?
+            return Optional.empty();
+        }
+
+        // TODO validate this earlier
+        if (returnType == void.class) {
+            throw illegalConfiguration("Return type of method '%s' cannot be void");
+        }
+
+        OutputParser<?> outputParser = outputParserFactory.get(rawClass, typeArgumentClass);
+        return outputParser.jsonSchema();
     }
 
     public String outputFormatInstructions(Type returnType) {
@@ -64,18 +90,13 @@ public class ServiceOutputParser {
             returnType = resolveFirstGenericParameterClass(returnType);
         }
 
-        // Explanation (which will make this a lot easier to understand):
-        // In the case of List<String> these two would be set like:
-        // rawClass: List.class
-        // typeArgumentClass: String.class
+        // In the case of returnType = List<String> these two would be set like:
+        // rawClass = List.class
+        // typeArgumentClass = String.class
         Class<?> rawClass = getRawClass(returnType);
         Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
 
-        if (rawClass == String.class
-                || rawClass == AiMessage.class
-                || rawClass == TokenStream.class
-                || rawClass == Response.class
-                || rawClass == Map.class) {
+        if (!isSchemaRequired(rawClass)) {
             return "";
         }
 
@@ -90,5 +111,13 @@ public class ServiceOutputParser {
             formatInstructions = "\nYou must answer strictly in the following format: " + formatInstructions;
         }
         return formatInstructions;
+    }
+
+    private static boolean isSchemaRequired(Class<?> type) {
+        return type != String.class
+                && type != AiMessage.class
+                && type != TokenStream.class
+                && type != Response.class
+                && type != Map.class;
     }
 }

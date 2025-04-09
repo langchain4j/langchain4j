@@ -28,7 +28,7 @@ class EnumSetOutputParserTest {
     void should_parse_set_of_enums(String text, Set<Animal> expected) {
 
         // given
-        EnumSetOutputParser parser = new EnumSetOutputParser(Animal.class);
+        EnumSetOutputParser<Animal> parser = new EnumSetOutputParser<>(Animal.class);
 
         // when
         Set<?> animals = parser.parse(text);
@@ -80,7 +80,7 @@ class EnumSetOutputParserTest {
     @ValueSource(strings = {"{}", "{\"items\": null}", "{\"items\": \"\"}"})
     void should_fail_to_parse_empty_input(String input) {
 
-        assertThatThrownBy(() -> new EnumSetOutputParser(Animal.class).parse(input))
+        assertThatThrownBy(() -> new EnumSetOutputParser<>(Animal.class).parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("Animal");
@@ -94,7 +94,7 @@ class EnumSetOutputParserTest {
     void should_fail_to_parse_set_of_enums(String text) {
 
         // given
-        EnumSetOutputParser parser = new EnumSetOutputParser(Animal.class);
+        EnumSetOutputParser<Animal> parser = new EnumSetOutputParser<>(Animal.class);
 
         // when-then
         assertThatThrownBy(() -> parser.parse(text))
@@ -107,13 +107,13 @@ class EnumSetOutputParserTest {
     void should_preserve_order() {
 
         // given
-        EnumSetOutputParser parser = new EnumSetOutputParser(Animal.class);
+        EnumSetOutputParser<Animal> parser = new EnumSetOutputParser<>(Animal.class);
 
         // when
-        Set<Enum> parsed = parser.parse("CAT\nDOG\nBIRD");
+        Set<Animal> parsed = parser.parse("CAT\nDOG\nBIRD");
 
         // then
-        Iterator<Enum> enumIterator = parsed.iterator();
+        Iterator<Animal> enumIterator = parsed.iterator();
         assertThat(enumIterator.next()).isEqualTo(CAT);
         assertThat(enumIterator.next()).isEqualTo(DOG);
         assertThat(enumIterator.next()).isEqualTo(BIRD);
@@ -123,13 +123,13 @@ class EnumSetOutputParserTest {
     void should_preserve_order_JSON() {
 
         // given
-        EnumSetOutputParser parser = new EnumSetOutputParser(Animal.class);
+        EnumSetOutputParser<Animal> parser = new EnumSetOutputParser<>(Animal.class);
 
         // when
-        Set<Enum> parsed = parser.parse("{\"items\":[\"CAT\", \"DOG\", \"BIRD\"]}");
+        Set<Animal> parsed = parser.parse("{\"items\":[\"CAT\", \"DOG\", \"BIRD\"]}");
 
         // then
-        Iterator<Enum> enumIterator = parsed.iterator();
+        Iterator<Animal> enumIterator = parsed.iterator();
         assertThat(enumIterator.next()).isEqualTo(CAT);
         assertThat(enumIterator.next()).isEqualTo(DOG);
         assertThat(enumIterator.next()).isEqualTo(BIRD);

@@ -1,6 +1,7 @@
 package dev.langchain4j.service.output;
 
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.structured.Description;
 
 import java.lang.reflect.Field;
@@ -8,12 +9,15 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
 import static java.lang.String.format;
@@ -40,6 +44,15 @@ class PojoOutputParser<T> implements OutputParser<T> {
             String jsonBlock = extractJsonBlock(text);
             return Json.fromJson(jsonBlock, type);
         }
+    }
+
+    @Override
+    public Optional<JsonSchema> jsonSchema() {
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name(type.getSimpleName())
+                .rootElement(jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true))
+                .build();
+        return Optional.of(jsonSchema);
     }
 
     @Override

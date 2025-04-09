@@ -2,17 +2,17 @@ package dev.langchain4j.service.output;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 
-import static dev.langchain4j.service.output.ParsingUtils.parseCollectionAsValueOrJson;
-
-class StringSetOutputParser extends CollectionOutputParser<Set<String>> {
+class StringSetOutputParser extends StringCollectionOutputParser<Set<String>> {
 
     @Override
-    public Set<String> parse(String text) {
-        return (Set<String>) parseCollectionAsValueOrJson(text, s -> s, LinkedHashSet::new, getType());
+    Supplier<Set<String>> emptyCollectionSupplier() {
+        return LinkedHashSet::new;
     }
 
-    private String getType() {
-        return "java.util.Set<java.lang.String>";
+    @Override
+    Class<?> collectionType() {
+        return Set.class;
     }
 }

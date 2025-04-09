@@ -51,12 +51,12 @@ class DefaultOutputParserFactory implements OutputParserFactory {
     public OutputParser<?> get(Class<?> rawClass, Class<?> typeArgumentClass) {
 
         if (rawClass.isEnum()) {
-            return new EnumOutputParser(rawClass.asSubclass(Enum.class));
+            return new EnumOutputParser<>(rawClass.asSubclass(Enum.class));
         }
 
         if (rawClass.equals(List.class)) {
             if (typeArgumentClass.isEnum()) {
-                return new EnumListOutputParser(typeArgumentClass.asSubclass(Enum.class));
+                return new EnumListOutputParser<>(typeArgumentClass.asSubclass(Enum.class));
             }
 
             if (typeArgumentClass.equals(String.class)) {
@@ -68,7 +68,7 @@ class DefaultOutputParserFactory implements OutputParserFactory {
 
         if (rawClass.equals(Set.class)) {
             if (typeArgumentClass.isEnum()) {
-                return new EnumSetOutputParser(typeArgumentClass.asSubclass(Enum.class));
+                return new EnumSetOutputParser<>(typeArgumentClass.asSubclass(Enum.class));
             }
 
             if (typeArgumentClass.equals(String.class)) {
