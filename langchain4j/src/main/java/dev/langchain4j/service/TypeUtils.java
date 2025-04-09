@@ -35,8 +35,8 @@ public class TypeUtils {
         return rawClass.equals(getRawClass(type));
     }
 
-    public static Class<?> resolveFirstGenericParameterClass(Type returnType) {
-        Type[] typeArguments = getTypeArguments(returnType);
+    public static Class<?> resolveFirstGenericParameterClass(Type type) {
+        Type[] typeArguments = getTypeArguments(type);
 
         if (typeArguments.length == 0) {
             return null;
@@ -50,6 +50,16 @@ public class TypeUtils {
         }
 
         return null;
+    }
+
+    public static Type resolveFirstGenericParameterType(Type returnType) {
+        Type[] typeArguments = getTypeArguments(returnType);
+
+        if (typeArguments.length == 0) {
+            return null;
+        }
+
+        return typeArguments[0];
     }
 
     private static Type[] getTypeArguments(Type returnType) {

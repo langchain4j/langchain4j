@@ -15,6 +15,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
 public class ServiceOutputParser {
@@ -32,14 +33,15 @@ public class ServiceOutputParser {
     public Object parse(Response<AiMessage> response, Type returnType) { // TODO Response -> ChatResponse?
 
         if (typeHasRawClass(returnType, Result.class)) {
-            returnType = resolveFirstGenericParameterClass(returnType);
+            // In the case of returnType = Result<List<String>>, returnType will be set to List<String>
+            returnType = resolveFirstGenericParameterType(returnType);
         }
 
         // In the case of returnType = List<String> these two would be set like:
         // rawClass = List.class
         // typeArgumentClass = String.class
         Class<?> rawClass = getRawClass(returnType);
-        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+        Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
         if (rawClass == Response.class) { // TODO remove?
             return response;
@@ -62,16 +64,17 @@ public class ServiceOutputParser {
     public Optional<JsonSchema> jsonSchema(Type returnType) {
 
         if (typeHasRawClass(returnType, Result.class)) {
-            returnType = resolveFirstGenericParameterClass(returnType);
+            // In the case of returnType = Result<List<String>>, returnType will be set to List<String>
+            returnType = resolveFirstGenericParameterType(returnType);
         }
 
         // In the case of returnType = List<String> these two would be set like:
         // rawClass = List.class
         // typeArgumentClass = String.class
         Class<?> rawClass = getRawClass(returnType);
-        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+        Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
-        if (!isSchemaRequired(rawClass)) { // TODO test Map<?,>?
+        if (schemaNotRequired(rawClass)) {
             return Optional.empty();
         }
 
@@ -87,16 +90,17 @@ public class ServiceOutputParser {
     public String outputFormatInstructions(Type returnType) {
 
         if (typeHasRawClass(returnType, Result.class)) {
-            returnType = resolveFirstGenericParameterClass(returnType);
+            // In the case of returnType = Result<List<String>>, returnType will be set to List<String>
+            returnType = resolveFirstGenericParameterType(returnType);
         }
 
         // In the case of returnType = List<String> these two would be set like:
         // rawClass = List.class
         // typeArgumentClass = String.class
         Class<?> rawClass = getRawClass(returnType);
-        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+        Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
-        if (!isSchemaRequired(rawClass)) {
+        if (schemaNotRequired(rawClass)) {
             return "";
         }
 
@@ -113,11 +117,11 @@ public class ServiceOutputParser {
         return formatInstructions;
     }
 
-    private static boolean isSchemaRequired(Class<?> type) {
-        return type != String.class
-                && type != AiMessage.class
-                && type != TokenStream.class
-                && type != Response.class
-                && type != Map.class;
+    private static boolean schemaNotRequired(Class<?> type) {
+        return type == String.class
+                || type == AiMessage.class
+                || type == TokenStream.class
+                || type == Response.class
+                || type == Map.class;
     }
 }

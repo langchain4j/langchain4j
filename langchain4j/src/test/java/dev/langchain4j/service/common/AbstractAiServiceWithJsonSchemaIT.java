@@ -962,31 +962,30 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         verify(model).supportedCapabilities();
     }
 
-
-    interface PersonExtractor14 {
-
-        class Person {
-
-            String name;
-        }
-
-        Result<Person> extractPersonFrom(String text);
-    }
-
     @ParameterizedTest
     @MethodSource("models")
     protected void should_return_result_with_pojo(ChatLanguageModel model) {
 
         // given
+        interface PersonExtractor {
+
+            class Person {
+
+                String name;
+            }
+
+            Result<Person> extractPersonFrom(String text);
+        }
+
         model = spy(model);
 
-        PersonExtractor14 personExtractor = AiServices.create(PersonExtractor14.class, model);
+        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, model);
 
         String text = "Extract the person's information from the following text: Klaus";
 
         // when
-        Result<PersonExtractor14.Person> result = personExtractor.extractPersonFrom(text);
-        PersonExtractor14.Person person = result.content();
+        Result<PersonExtractor.Person> result = personExtractor.extractPersonFrom(text);
+        PersonExtractor.Person person = result.content();
 
         // then
         assertThat(person.name).isEqualTo("Klaus");
@@ -1008,6 +1007,56 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                         .build())
                                 .build())
                         .build());
+        verify(model).supportedCapabilities();
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_return_result_with_list_of_pojo(ChatLanguageModel model) {
+
+        // given
+        interface PersonExtractor {
+
+            class Person {
+
+                String name;
+            }
+
+            Result<List<Person>> extractPeopleFrom(String text);
+        }
+
+        model = spy(model);
+
+        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, model);
+
+        String text = "Extract the person's information from the following text: Klaus and Francine";
+
+        // when
+        Result<List<PersonExtractor.Person>> result = personExtractor.extractPeopleFrom(text);
+        List<PersonExtractor.Person> people = result.content();
+
+        // then
+        assertThat(people).hasSize(2);
+        assertThat(people.get(0).name).isEqualTo("Klaus");
+        assertThat(people.get(1).name).isEqualTo("Francine");
+
+        verify(model).chat(ChatRequest.builder()
+                .messages(List.of(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .name("List_of_Person")
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addProperty("values", JsonArraySchema.builder()
+                                                .items(JsonObjectSchema.builder()
+                                                        .addStringProperty("name")
+                                                        .build())
+                                                .build())
+                                        .required("values")
+                                        .build())
+                                .build())
+                        .build())
+                .build());
         verify(model).supportedCapabilities();
     }
 
