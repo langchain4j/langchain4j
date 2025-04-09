@@ -44,13 +44,6 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
                 .build();
     }
 
-    // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
-    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false;
-    }
-
     // output format not supported
     @Override
     protected boolean supportsJsonResponseFormat() {

@@ -16,10 +16,13 @@ import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
 import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.InitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.McpGetPromptRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.client.protocol.McpListPromptsRequest;
 import dev.langchain4j.mcp.client.protocol.McpListResourceTemplatesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.client.protocol.McpPingRequest;
 import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
@@ -44,19 +47,22 @@ public class DefaultMcpClient implements McpClient {
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
     private final AtomicLong idGenerator = new AtomicLong(0);
     private final McpTransport transport;
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final String clientName;
     private final String clientVersion;
     private final String protocolVersion;
     private final Duration toolExecutionTimeout;
     private final Duration resourcesTimeout;
+    private final Duration promptsTimeout;
+    private final Duration pingTimeout;
     private final JsonNode RESULT_TIMEOUT;
     private final String toolExecutionTimeoutErrorMessage;
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
     private final McpOperationHandler messageHandler;
     private final McpLogMessageHandler logHandler;
-    private final AtomicReference<List<ResourceRef>> resourceRefs = new AtomicReference<>();
-    private final AtomicReference<List<ResourceTemplateRef>> resourceTemplateRefs = new AtomicReference<>();
+    private final AtomicReference<List<McpResource>> resourceRefs = new AtomicReference<>();
+    private final AtomicReference<List<McpResourceTemplate>> resourceTemplateRefs = new AtomicReference<>();
+    private final AtomicReference<List<McpPrompt>> promptRefs = new AtomicReference<>();
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -65,7 +71,9 @@ public class DefaultMcpClient implements McpClient {
         protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
         toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
         resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
+        promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
         logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
+        pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
         toolExecutionTimeoutErrorMessage =
                 getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
         RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
@@ -158,7 +166,7 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
-    public List<ResourceRef> listResources() {
+    public List<McpResource> listResources() {
         if (resourceRefs.get() == null) {
             obtainResourceList();
         }
@@ -166,7 +174,7 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
-    public ResourceResponse readResource(String uri) {
+    public McpReadResourceResult readResource(String uri) {
         final long operationId = idGenerator.getAndIncrement();
         McpReadResourceRequest operation = new McpReadResourceRequest(operationId, uri);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
@@ -184,7 +192,48 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
-    public List<ResourceTemplateRef> listResourceTemplates() {
+    public List<McpPrompt> listPrompts() {
+        if (promptRefs.get() == null) {
+            obtainPromptList();
+        }
+        return promptRefs.get();
+    }
+
+    @Override
+    public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
+        long operationId = idGenerator.getAndIncrement();
+        McpGetPromptRequest operation = new McpGetPromptRequest(operationId, name, arguments);
+        long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
+        JsonNode result = null;
+        CompletableFuture<JsonNode> resultFuture = null;
+        try {
+            resultFuture = transport.executeOperationWithResponse(operation);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            return PromptsHelper.parsePromptContents(result);
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
+    public void checkHealth() {
+        transport.checkHealth();
+        long operationId = idGenerator.getAndIncrement();
+        McpPingRequest ping = new McpPingRequest(operationId);
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(ping);
+            resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
+    public List<McpResourceTemplate> listResourceTemplates() {
         if (resourceTemplateRefs.get() == null) {
             obtainResourceTemplateList();
         }
@@ -229,6 +278,25 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    private synchronized void obtainPromptList() {
+        if (promptRefs.get() != null) {
+            return;
+        }
+        McpListPromptsRequest operation = new McpListPromptsRequest(idGenerator.getAndIncrement());
+        long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
+        JsonNode result = null;
+        CompletableFuture<JsonNode> resultFuture = null;
+        try {
+            resultFuture = transport.executeOperationWithResponse(operation);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            promptRefs.set(PromptsHelper.parsePromptRefs(result));
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operation.getId());
+        }
+    }
+
     @Override
     public void close() {
         try {
@@ -247,6 +315,8 @@ public class DefaultMcpClient implements McpClient {
         private String protocolVersion;
         private Duration toolExecutionTimeout;
         private Duration resourcesTimeout;
+        private Duration pingTimeout;
+        private Duration promptsTimeout;
         private McpLogMessageHandler logHandler;
 
         public Builder transport(McpTransport transport) {
@@ -307,6 +377,16 @@ public class DefaultMcpClient implements McpClient {
         }
 
         /**
+         * Sets the timeout for prompt-related operations (listing prompts as well as rendering the contents of a prompt).
+         * The default value is 60 seconds.
+         * A value of zero means no timeout.
+         */
+        public Builder promptsTimeout(Duration promptsTimeout) {
+            this.promptsTimeout = promptsTimeout;
+            return this;
+        }
+
+        /**
          * Sets the error message to return when a tool execution times out.
          * The default value is "There was a timeout executing the tool".
          */
@@ -320,6 +400,17 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder logHandler(McpLogMessageHandler logHandler) {
             this.logHandler = logHandler;
+            return this;
+        }
+
+        /**
+         * The timeout to apply when waiting for a ping response.
+         * Currently, this is only used in the health check - if the
+         * server does not send a pong within this timeframe, the health
+         * check will fail. The timeout is 10 seconds.
+         */
+        public Builder pingTimeout(Duration pingTimeout) {
+            this.pingTimeout = pingTimeout;
             return this;
         }
 

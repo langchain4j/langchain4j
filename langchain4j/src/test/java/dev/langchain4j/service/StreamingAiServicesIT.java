@@ -171,13 +171,13 @@ class StreamingAiServicesIT {
         assertThat(messages).hasSize(4);
 
         assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(firstUserMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(firstUserMessage);
 
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
         assertThat(messages.get(1)).isEqualTo(firstResponse.aiMessage());
 
         assertThat(messages.get(2)).isInstanceOf(UserMessage.class);
-        assertThat(messages.get(2).text()).isEqualTo(secondUserMessage);
+        assertThat(((UserMessage) messages.get(2)).singleText()).isEqualTo(secondUserMessage);
 
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
         assertThat(messages.get(3)).isEqualTo(secondResponse.aiMessage());
@@ -243,7 +243,7 @@ class StreamingAiServicesIT {
         assertThat(messages).hasSize(4);
 
         assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
@@ -261,7 +261,7 @@ class StreamingAiServicesIT {
         assertThat(toolExecutionResultMessage.text()).isEqualTo("6.97070153193991E8");
 
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(3).text()).contains("6.97");
+        assertThat(((AiMessage) messages.get(3)).text()).contains("6.97");
     }
 
     @Test
@@ -328,7 +328,7 @@ class StreamingAiServicesIT {
         assertThat(messages).hasSize(6);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
@@ -359,7 +359,7 @@ class StreamingAiServicesIT {
         assertThat(secondToolExecutionResultMessage.text()).isEqualTo("9892737.215997653");
 
         assertThat(messages.get(5)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(5).text()).contains("6.97", "9.89");
+        assertThat(((AiMessage) messages.get(5)).text()).contains("6.97", "9.89");
     }
 
     @Test
@@ -425,7 +425,7 @@ class StreamingAiServicesIT {
         assertThat(messages).hasSize(5);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
@@ -454,6 +454,6 @@ class StreamingAiServicesIT {
         assertThat(secondToolExecutionResultMessage.text()).isEqualTo("9892737.215997653");
 
         assertThat(messages.get(4)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(4).text()).contains("6.97", "9.89");
+        assertThat(((AiMessage) messages.get(4)).text()).contains("6.97", "9.89");
     }
 }
