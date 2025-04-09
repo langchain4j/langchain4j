@@ -26,7 +26,7 @@ class IntegerOutputParser implements OutputParser<Integer> {
     @Override
     public Optional<JsonSchema> jsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
-                .name("integer") // TODO add range? description?
+                .name("integer")
                 .rootElement(JsonObjectSchema.builder()
                         .addIntegerProperty("value")
                         .required("value")

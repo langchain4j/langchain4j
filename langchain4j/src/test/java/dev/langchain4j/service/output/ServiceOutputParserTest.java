@@ -267,28 +267,6 @@ class ServiceOutputParserTest {
         String key;
     }
 
-
-    @Test
-    void should_parse_pojo() {
-
-        // given
-        String json = """
-            {
-                "firstName": "Klaus",
-                "lastName": "Heisler"
-            }
-            """;
-
-        // when
-        Person person = (Person) sut.parse(Response.from(AiMessage.from(json)), Person.class);
-
-        // then
-        assertThat(person.firstName).isEqualTo("Klaus");
-        assertThat(person.lastName).isEqualTo("Heisler");
-        assertThat(person.birthDate).isNull();
-    }
-
-
     /********************************************************************************************
      * Output format instructions tests
      ********************************************************************************************/

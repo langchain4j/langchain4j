@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.quoted;
 
 class ParsingUtils {
 
@@ -99,6 +100,6 @@ class ParsingUtils {
     }
 
     static OutputParsingException outputParsingException(String text, String type, Throwable cause) {
-        return new OutputParsingException("Failed to parse '%s' into %s".formatted(text, type), cause);
+        return new OutputParsingException("Failed to parse %s into %s".formatted(quoted(text), type), cause);
     }
 }

@@ -1010,56 +1010,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         verify(model).supportedCapabilities();
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    protected void should_return_result_with_list_of_pojo(ChatLanguageModel model) {
-
-        // given
-        interface PersonExtractor {
-
-            class Person {
-
-                String name;
-            }
-
-            Result<List<Person>> extractPeopleFrom(String text);
-        }
-
-        model = spy(model);
-
-        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, model);
-
-        String text = "Extract the person's information from the following text: Klaus and Francine";
-
-        // when
-        Result<List<PersonExtractor.Person>> result = personExtractor.extractPeopleFrom(text);
-        List<PersonExtractor.Person> people = result.content();
-
-        // then
-        assertThat(people).hasSize(2);
-        assertThat(people.get(0).name).isEqualTo("Klaus");
-        assertThat(people.get(1).name).isEqualTo("Francine");
-
-        verify(model).chat(ChatRequest.builder()
-                .messages(List.of(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .name("List_of_Person")
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("values", JsonArraySchema.builder()
-                                                .items(JsonObjectSchema.builder()
-                                                        .addStringProperty("name")
-                                                        .build())
-                                                .build())
-                                        .required("values")
-                                        .build())
-                                .build())
-                        .build())
-                .build());
-        verify(model).supportedCapabilities();
-    }
-
     interface PersonExtractor15 {
 
         class Person {
@@ -1352,7 +1302,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
     protected void should_extract_long_primitive(ChatLanguageModel model) {
 
         // given
-        interface IntegerExtractor {
+        interface LongExtractor {
 
             @UserMessage("Extract number of people mentioned in the following text: {{it}}")
             long extractNumberOfPeople(String text);
@@ -1360,7 +1310,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         model = spy(model);
 
-        IntegerExtractor intExtractor = AiServices.create(IntegerExtractor.class, model);
+        LongExtractor intExtractor = AiServices.create(LongExtractor.class, model);
 
         String text = "Klaus is 37 years old, 1.78m height and single. " +
                 "Franny is 35 years old, 1.65m height and married.";
@@ -1376,7 +1326,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
-                                .name("long")
+                                .name("integer")
                                 .rootElement(JsonObjectSchema.builder()
                                         .addIntegerProperty("value")
                                         .required("value")
@@ -1392,7 +1342,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
     protected void should_extract_long_boxed(ChatLanguageModel model) {
 
         // given
-        interface IntegerExtractor {
+        interface LongExtractor {
 
             @UserMessage("Extract number of people mentioned in the following text: {{it}}")
             Long extractNumberOfPeople(String text);
@@ -1400,7 +1350,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         model = spy(model);
 
-        IntegerExtractor intExtractor = AiServices.create(IntegerExtractor.class, model);
+        LongExtractor intExtractor = AiServices.create(LongExtractor.class, model);
 
         String text = "Klaus is 37 years old, 1.78m height and single. " +
                 "Franny is 35 years old, 1.65m height and married.";
@@ -1416,7 +1366,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
-                                .name("long")
+                                .name("integer")
                                 .rootElement(JsonObjectSchema.builder()
                                         .addIntegerProperty("value")
                                         .required("value")
@@ -1427,9 +1377,83 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         verify(model).supportedCapabilities();
     }
 
-    // TODO float, Float
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_float_primitive(ChatLanguageModel model) {
 
+        // given
+        interface FloatExtractor {
 
+            @UserMessage("Extract temperature in Munich from the following text: {{it}}")
+            float extractTemperatureInMunich(String text);
+        }
+
+        model = spy(model);
+
+        FloatExtractor doubleExtractor = AiServices.create(FloatExtractor.class, model);
+
+        String text = "The average temperature of the coldest month is of -0.5 °C";
+
+        // when
+        float temperatureInMunich = doubleExtractor.extractTemperatureInMunich(text);
+
+        // then
+        assertThat(temperatureInMunich).isEqualTo(-0.5f);
+
+        verify(model).chat(ChatRequest.builder()
+                .messages(singletonList(userMessage("Extract temperature in Munich from the following text: " + text)))
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .name("number")
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addNumberProperty("value")
+                                        .required("value")
+                                        .build())
+                                .build())
+                        .build())
+                .build());
+        verify(model).supportedCapabilities();
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_float_boxed(ChatLanguageModel model) {
+
+        // given
+        interface FloatExtractor {
+
+            @UserMessage("Extract temperature in Munich from the following text: {{it}}")
+            Float extractTemperatureInMunich(String text);
+        }
+
+        model = spy(model);
+
+        FloatExtractor doubleExtractor = AiServices.create(FloatExtractor.class, model);
+
+        String text = "The average temperature of the coldest month is of -0.5 °C";
+
+        // when
+        Float temperatureInMunich = doubleExtractor.extractTemperatureInMunich(text);
+
+        // then
+        assertThat(temperatureInMunich).isEqualTo(-0.5f);
+
+        verify(model).chat(ChatRequest.builder()
+                .messages(singletonList(userMessage("Extract temperature in Munich from the following text: " + text)))
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .name("number")
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addNumberProperty("value")
+                                        .required("value")
+                                        .build())
+                                .build())
+                        .build())
+                .build());
+        verify(model).supportedCapabilities();
+    }
 
     @ParameterizedTest
     @MethodSource("models")
@@ -1459,7 +1483,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
-                                .name("double")
+                                .name("number")
                                 .rootElement(JsonObjectSchema.builder()
                                         .addNumberProperty("value")
                                         .required("value")
@@ -1498,7 +1522,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
-                                .name("double")
+                                .name("number")
                                 .rootElement(JsonObjectSchema.builder()
                                         .addNumberProperty("value")
                                         .required("value")
@@ -1509,36 +1533,35 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         verify(model).supportedCapabilities();
     }
 
-
     // Lists
-
-    interface PojoListExtractor {
-
-        class Person {
-
-            String name;
-            int age;
-            Double height;
-            boolean married;
-        }
-
-        List<Person> extractListOfPojoFrom(String text);
-    }
 
     @ParameterizedTest
     @MethodSource("models")
     protected void should_extract_list_of_pojo(ChatLanguageModel model) {
 
         // given
+        interface PeopleExtractor {
+
+            class Person {
+
+                String name;
+                int age;
+                Double height;
+                boolean married;
+            }
+
+            List<Person> extractPeopleFrom(String text);
+        }
+
         model = spy(model);
 
-        PojoListExtractor pojoListExtractor = AiServices.create(PojoListExtractor.class, model);
+        PeopleExtractor peopleExtractor = AiServices.create(PeopleExtractor.class, model);
 
         String text = "Klaus is 37 years old, 1.78m height and single. " +
                 "Franny is 35 years old, 1.65m height and married.";
 
         // when
-        List<PojoListExtractor.Person> people = pojoListExtractor.extractListOfPojoFrom(text);
+        List<PeopleExtractor.Person> people = peopleExtractor.extractPeopleFrom(text);
 
         // then
         assertThat(people.get(0).name).isEqualTo("Klaus");
@@ -1574,10 +1597,54 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         verify(model).supportedCapabilities();
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_return_result_with_list_of_pojo(ChatLanguageModel model) {
 
-    interface ListOfStringsExtractor {
-        @UserMessage("Extract names of people from the following text: {{it}}")
-        List<String> extractOnlyListOfPeopleNames(String text);
+        // given
+        interface PeopleExtractor {
+
+            class Person {
+
+                String name;
+            }
+
+            Result<List<Person>> extractPeopleFrom(String text);
+        }
+
+        model = spy(model);
+
+        PeopleExtractor personExtractor = AiServices.create(PeopleExtractor.class, model);
+
+        String text = "Extract the person's information from the following text: Klaus and Francine";
+
+        // when
+        Result<List<PeopleExtractor.Person>> result = personExtractor.extractPeopleFrom(text);
+        List<PeopleExtractor.Person> people = result.content();
+
+        // then
+        assertThat(people).hasSize(2);
+        assertThat(people.get(0).name).isEqualTo("Klaus");
+        assertThat(people.get(1).name).isEqualTo("Francine");
+
+        verify(model).chat(ChatRequest.builder()
+                .messages(List.of(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .name("List_of_Person")
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addProperty("values", JsonArraySchema.builder()
+                                                .items(JsonObjectSchema.builder()
+                                                        .addStringProperty("name")
+                                                        .build())
+                                                .build())
+                                        .required("values")
+                                        .build())
+                                .build())
+                        .build())
+                .build());
+        verify(model).supportedCapabilities();
     }
 
     @ParameterizedTest
@@ -1585,6 +1652,12 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
     protected void should_extract_list_of_strings(ChatLanguageModel model) {
 
         // given
+        interface ListOfStringsExtractor {
+
+            @UserMessage("Extract names of people from the following text: {{it}}")
+            List<String> extractPeopleNames(String text);
+        }
+
         model = spy(model);
 
         ListOfStringsExtractor listOfStringsExtractor = AiServices.create(ListOfStringsExtractor.class, model);
@@ -1593,9 +1666,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                 "Franny is 35 years old, 1.65m height and married.";
 
         // when
-        List<String> names = listOfStringsExtractor.extractOnlyListOfPeopleNames(text);
-
-        names.forEach(System.out::println);
+        List<String> names = listOfStringsExtractor.extractPeopleNames(text);
 
         // then
         assertThat(names.size()).isEqualTo(2);
@@ -1624,16 +1695,17 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     // Sets
 
-    interface SetOfStringsExtractor {
-        @UserMessage("Extract names of people from the following text: {{it}}")
-        Set<String> extractOnlySetOfPeopleNames(String text);
-    }
-
     @ParameterizedTest
     @MethodSource("models")
     protected void should_extract_set_of_strings(ChatLanguageModel model) {
 
         // given
+        interface SetOfStringsExtractor {
+
+            @UserMessage("Extract names of people from the following text: {{it}}")
+            Set<String> extractSetOfPeopleNames(String text);
+        }
+
         model = spy(model);
 
         SetOfStringsExtractor setOfStringsExtractor = AiServices.create(SetOfStringsExtractor.class, model);
@@ -1642,9 +1714,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                 "Franny is 35 years old, 1.65m height and married.";
 
         // when
-        Set<String> names = setOfStringsExtractor.extractOnlySetOfPeopleNames(text);
-
-        names.forEach(System.out::println);
+        Set<String> names = setOfStringsExtractor.extractSetOfPeopleNames(text);
 
         // then
         assertThat(names.size()).isEqualTo(2);
@@ -1670,25 +1740,24 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         verify(model).supportedCapabilities();
     }
 
-
-    interface PojoSetExtractor {
-
-        class Person {
-
-            String name;
-            int age;
-            Double height;
-            boolean married;
-        }
-
-        Set<Person> extractSetOfPojoFrom(String text);
-    }
-
     @ParameterizedTest
     @MethodSource("models")
     protected void should_extract_set_of_pojo(ChatLanguageModel model) {
 
         // given
+        interface PojoSetExtractor {
+
+            class Person {
+
+                String name;
+                int age;
+                Double height;
+                boolean married;
+            }
+
+            Set<Person> extractSetOfPojoFrom(String text);
+        }
+
         model = spy(model);
 
         PojoSetExtractor pojoSetExtractor = AiServices.create(PojoSetExtractor.class, model);

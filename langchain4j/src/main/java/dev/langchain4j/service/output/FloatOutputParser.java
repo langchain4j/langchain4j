@@ -17,7 +17,7 @@ class FloatOutputParser implements OutputParser<Float> {
     @Override
     public Optional<JsonSchema> jsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
-                .name("float") // TODO add range? description?
+                .name("number")
                 .rootElement(JsonObjectSchema.builder()
                         .addNumberProperty("value")
                         .required("value")

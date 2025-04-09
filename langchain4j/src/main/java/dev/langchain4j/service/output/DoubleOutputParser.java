@@ -17,7 +17,7 @@ class DoubleOutputParser implements OutputParser<Double> {
     @Override
     public Optional<JsonSchema> jsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
-                .name("double") // TODO add range? description?
+                .name("number")
                 .rootElement(JsonObjectSchema.builder()
                         .addNumberProperty("value")
                         .required("value")

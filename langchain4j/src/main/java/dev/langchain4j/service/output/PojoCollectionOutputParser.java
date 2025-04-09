@@ -34,6 +34,8 @@ abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implement
         return collectionType().getName() + "<" + type.getName() + ">";
     }
 
+    abstract Class<?> collectionType();
+
     @Override
     public Optional<JsonSchema> jsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
@@ -47,8 +49,6 @@ abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implement
                 .build();
         return Optional.of(jsonSchema);
     }
-
-    abstract Class<?> collectionType();
 
     @Override
     public String formatInstructions() {

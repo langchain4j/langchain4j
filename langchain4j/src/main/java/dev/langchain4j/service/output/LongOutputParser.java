@@ -26,7 +26,7 @@ class LongOutputParser implements OutputParser<Long> {
     @Override
     public Optional<JsonSchema> jsonSchema() {
         JsonSchema jsonSchema = JsonSchema.builder()
-                .name("long") // TODO add range? description?
+                .name("integer")
                 .rootElement(JsonObjectSchema.builder()
                         .addIntegerProperty("value")
                         .required("value")

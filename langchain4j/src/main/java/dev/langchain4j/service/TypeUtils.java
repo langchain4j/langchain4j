@@ -52,14 +52,9 @@ public class TypeUtils {
         return null;
     }
 
-    public static Type resolveFirstGenericParameterType(Type returnType) {
-        Type[] typeArguments = getTypeArguments(returnType);
-
-        if (typeArguments.length == 0) {
-            return null;
-        }
-
-        return typeArguments[0];
+    public static Type resolveFirstGenericParameterType(Type type) {
+        Type[] typeArguments = getTypeArguments(type);
+        return typeArguments.length > 0 ? typeArguments[0] : null;
     }
 
     private static Type[] getTypeArguments(Type returnType) {
