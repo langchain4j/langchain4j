@@ -66,7 +66,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolResultBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
-public abstract class AbstractBedrockChatModel {
+abstract class AbstractBedrockChatModel {
     protected final Region region;
     protected final String modelId;
     protected final Integer maxRetries;
