@@ -190,6 +190,13 @@
             </dependency>
 
             <dependency>
+                <groupId>io.kotest</groupId>
+                <artifactId>kotest-assertions-json-jvm</artifactId>
+                <version>${kotest.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp-bom</artifactId>
                 <version>${okhttp.version}</version>
