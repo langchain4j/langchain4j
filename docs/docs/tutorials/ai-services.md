@@ -250,40 +250,28 @@ String chat(@V("answerInstructions") String answerInstructions, @V("country") St
 AI services currently do not support multimodality,
 please use the [low-level API](/tutorials/chat-and-language-models#multimodality) for this.
 
+
+## Return Types
+
+AI Service method can return one of the following types:
+- `String` - in this case LLM-generated output is returned without any processing
+- `Result<String>` - same as above, but extra metadata (`TokenUsage`, `FinishReason`,
+sources (`Content`s retrieved during [RAG](/tutorials/ai-services#rag))
+and executed [tools](/tutorials/ai-services#tools-function-calling)) is included in the `Result` class
+- Any type supported by [Structured Outputs](/tutorials/structured-outputs#supported-types)
+
+
 ## Structured Outputs
+
+If you want to receive a structured output (e.g., a complex Java object,
+as opposed to an unstructured text like `String`) from the LLM,
+you can change the return type of your AI Service method from `String` to something else.
 
 :::note
 More info on Structured Outputs can be found [here](/tutorials/structured-outputs).
 :::
 
-If you want to receive a structured output from the LLM,
-you can change the return type of your AI Service method from `String` to something else.
-Currently, AI Services support the following return types:
-- `String`
-- `AiMessage`
-- Any custom POJO
-- Any `Enum` or `List<Enum>` or `Set<Enum>`, if you want to classify text, e.g. sentiment, user intent, etc.
-- `boolean`/`Boolean`, if you need to get "yes" or "no" answer
-- `byte`/`short`/`int`/`BigInteger`/`long`/`float`/`double`/`BigDecimal`
-- `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
-- `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
-- `Map<K, V>`
-- `Result<T>`, if you need to access `TokenUsage`, `FinishReason`, sources (`Content`s retrieved during RAG) and executed tools, aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
-
-Unless the return type is `String`, `AiMessage`, or `Map<K, V>`, the AI Service will automatically append instructions
-to the end of the `UserMessage` indicating the format in which the LLM should respond.
-Before the method returns, the AI Service will parse the output of the LLM into the desired type.
-
-You can observe appended instructions by [enabling logging](/tutorials/logging).
-
-:::note
-Some LLM providers (e.g., OpenAI and Google Gemini) allow specifying JSON schema for the desired output.
-If such a feature is supported **and enabled**, free-form text instructions will not be appended to the end of the `UserMessage`.
-In this case, the JSON schema will be automatically generated from your POJO and passed to the LLM.
-This will guarantee that the LLM adheres to this JSON schema.
-:::
-
-Now let's take a look at some examples.
+A fex examples:
 
 ### `boolean` as return type
 

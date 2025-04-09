@@ -26,10 +26,9 @@ He stands 1.75 meters tall and carries himself with confidence.
 Currently unmarried, he enjoys the freedom to focus on his personal goals and interests.
 ```
 
-Currently, depending on the LLM and the LLM provider, there are four ways how this can be achieved
+Currently, depending on the LLM and the LLM provider, there are three ways how this can be achieved
 (from most to least reliable):
 - [JSON Schema](/tutorials/structured-outputs#json-schema)
-- [Tools (Function Calling)](/tutorials/structured-outputs#tools-function-calling)
 - [Prompting + JSON Mode](/tutorials/structured-outputs#prompting--json-mode)
 - [Prompting](/tutorials/structured-outputs#prompting)
 
@@ -513,19 +512,6 @@ AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting
 interfaces or abstract classes are not supported.
 
 
-## Tools (Function Calling)
-
-This method assumes (mis)using [tools](/tutorials/tools) to produce structured outputs.
-A single tool is specified in the request to the LLM, and the tool parameters describe the desired structure of the output.
-Once the LLM returns an `AiMessage` containing a `ToolExecutionRequest`,
-the JSON string in `ToolExecutionRequest.arguments()` is parsed into a POJO.
-
-More info is coming soon.
-
-In the meantime, please read [this section](/tutorials/tools)
-and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/).
-
-
 ## Prompting + JSON Mode
 More info is coming soon.
 In the meantime, please read [this section](/tutorials/ai-services#json-mode)
@@ -534,15 +520,80 @@ and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-man
 
 ## Prompting
 
-When using prompting, one has to specify the format of the desired output in free-form text
-within a system or user message and hope that the LLM will abide. This approach is quite unreliable.
+When using prompting (this is a default choice, unless support for JSON schema is enabled),
+AI Service will automatically generate format instructions and append them to the end of the `UserMessage`
+indicating the format in which the LLM should respond.
+Before the method returns, the AI Service will parse the output of the LLM into the desired type.
+
+You can observe appended instructions by [enabling logging](/tutorials/logging).
+
+:::note
+This approach is quite unreliable.
 If LLM and LLM provider supports the methods described above, it is better to use those.
+:::
 
-More info is coming soon.
 
-In the meantime, please read [this section](/tutorials/ai-services#structured-outputs)
-and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/).
+## Supported Types
 
+| Type                          | JSON Schema | Prompting |
+|-------------------------------|-------------|-----------|
+| `POJO`                        | ✅           | ✅         |
+| `List<POJO>`, `Set<POJO>`     | ✅           | ❌         |
+| `Enum`                        | ✅           | ✅         |
+| `List<Enum>`, `Set<Enum>`     | ✅           | ✅         |
+| `List<String>`, `Set<String>` | ✅           | ✅         |
+| `boolean`, `Boolean`          | ✅           | ✅         |
+| `int`, `Integer`              | ✅           | ✅         |
+| `long`, `Long`                | ✅           | ✅         |
+| `float`, `Float`              | ✅           | ✅         |
+| `double`, `Double`            | ✅           | ✅         |
+| `byte`, `Byte`                | ❌           | ✅         |
+| `short`, `Short`              | ❌           | ✅         |
+| `BigInteger`                  | ❌           | ✅         |
+| `BigDecimal`                  | ❌           | ✅         |
+| `Date`                        | ❌           | ✅         |
+| `LocalDate`                   | ❌           | ✅         |
+| `LocalTime`                   | ❌           | ✅         |
+| `LocalDateTime`               | ❌           | ✅         |
+| `Map<?, ?>`                   | ❌           | ✅         |
+
+A few examples:
+```java
+record Person(String name, MaritalStatus maritalStatus) {}
+
+enum MaritalStatus {
+    SINGLE, MARRIED, DIVORCED
+}
+
+interface Assistant {
+
+    Person extractPersonFrom(String text);
+
+    Set<Person> extractPeopleFrom(String text);
+
+    MaritalStatus extractMaritalStatusFrom(String text);
+
+    List<MaritalStatus> extractMaritalStatusesFrom(String text);
+
+    List<String> generateOutline(String topic);
+
+    boolean isPositive(String text);
+
+    Integer extractNumberOfPeopleMentionedIn(String text);
+}
+```
+
+Any of the above-mentioned types can be additionally wrapped into a `Result` to get extra metadata:
+```java
+interface Assistant {
+    
+    @UserMessage("Generate an outline for the article on the following topic: {{it}}")
+    Result<List<String>> generateOutlineFor(String topic);
+}
+```
+
+In case support for JSON Schema is enabled but return type is not supported (e.g., `BigInteger`),
+AI Service will fall back to prompting.
 
 ## Related Tutorials
 - [Data extraction: The many ways to get LLMs to spit JSON content](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/) by [Guillaume Laforge](https://glaforge.dev/about/)
