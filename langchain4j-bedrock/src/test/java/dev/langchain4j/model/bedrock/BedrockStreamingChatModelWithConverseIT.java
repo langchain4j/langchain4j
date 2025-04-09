@@ -2,7 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -169,6 +169,6 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
                 .build();
 
         // when then
-        assertThrows(RuntimeException.class, () -> chat(model, chatRequest));
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> chat(model, chatRequest));
     }
 }
