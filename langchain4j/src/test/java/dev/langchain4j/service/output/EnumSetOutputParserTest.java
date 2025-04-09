@@ -73,8 +73,8 @@ class EnumSetOutputParserTest {
     @ValueSource(strings = {
             "BANANA",
             "{\"values\":[\"BANANA\"]}",
-            "{\"banana\":[\"CAT\"]}",
-            "{\"values\":\"CAT\"}" // TODO, ewerywhere
+            "{\"values\":\"CAT\"}",
+            "{\"banana\":[\"CAT\"]}"
     })
     void should_fail_to_parse_invalid_input(String text) {
 

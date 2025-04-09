@@ -46,11 +46,12 @@ class EnumOutputParserTest {
                 Arguments.of("Cat", CAT),
                 Arguments.of(" CAT ", CAT),
                 Arguments.of("[CAT]", CAT),
-                Arguments.of(" [ CAT ] ", CAT),
+                Arguments.of("  [ CAT ]  ", CAT),
 
                 // JSON
                 Arguments.of("{\"value\":\"CAT\"}", CAT),
-                Arguments.of("  {\"value\":\"CAT\"}  ", CAT)
+                Arguments.of("  {\"value\":\"CAT\"}  ", CAT),
+                Arguments.of("  {\"value\":[\"CAT\"]}  ", CAT)
         );
     }
 
@@ -68,7 +69,7 @@ class EnumOutputParserTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "BANANA",
-            "{\"value\":\"BANANA\"}" // TODO, everywhere
+            "{\"value\":\"BANANA\"}",
     })
     void should_fail_to_parse_invalid_input(String text) {
 
