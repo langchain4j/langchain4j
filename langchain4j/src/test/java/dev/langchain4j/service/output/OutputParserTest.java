@@ -1,6 +1,5 @@
 package dev.langchain4j.service.output;
 
-import dev.langchain4j.model.output.structured.Description;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -60,40 +59,6 @@ class OutputParserTest implements WithAssertions {
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> parser.parse("01-12-2020"))
                 .withMessage("Invalid date format: 01-12-2020");
-    }
-
-    public enum Enum {
-        A,
-        B,
-        C
-    }
-
-    public enum EnumWithDescription {
-        @Description("Majority of keywords starting with A")
-        A,
-        @Description("Majority of keywords starting with B")
-        B,
-        @Description("Majority of keywords starting with C")
-        C
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void enum_format_instruction() {
-        EnumOutputParser parser = new EnumOutputParser(Enum.class);
-        assertThat(parser.formatInstructions())
-                .isEqualTo("\nYou must answer strictly with one of these enums:\n" + "A\n" + "B\n" + "C");
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void enum_with_description_format_instruction() {
-        EnumOutputParser parser = new EnumOutputParser(EnumWithDescription.class);
-        assertThat(parser.formatInstructions())
-                .isEqualTo("\nYou must answer strictly with one of these enums:\n"
-                        + "A - Majority of keywords starting with A\n"
-                        + "B - Majority of keywords starting with B\n"
-                        + "C - Majority of keywords starting with C");
     }
 
     @Test

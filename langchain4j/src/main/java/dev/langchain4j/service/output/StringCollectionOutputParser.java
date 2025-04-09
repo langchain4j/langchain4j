@@ -9,13 +9,13 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import static dev.langchain4j.service.output.ParsingUtils.parseCollectionAsValueOrJson;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
 abstract class StringCollectionOutputParser<CT extends Collection<String>> implements OutputParser<CT> {
 
     @Override
     public CT parse(String text) {
-        return parseCollectionAsValueOrJson(text, s -> s, emptyCollectionSupplier(), getType());
+        return parseAsStringOrJson(text, s -> s, emptyCollectionSupplier(), getType());
     }
 
     abstract Supplier<CT> emptyCollectionSupplier();
@@ -31,10 +31,10 @@ abstract class StringCollectionOutputParser<CT extends Collection<String>> imple
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(collectionType().getSimpleName() + "_of_String")
                 .rootElement(JsonObjectSchema.builder()
-                        .addProperty("items", JsonArraySchema.builder()
+                        .addProperty("values", JsonArraySchema.builder()
                                 .items(new JsonStringSchema())
                                 .build())
-                        .required("items")
+                        .required("values")
                         .build())
                 .build();
         return Optional.of(jsonSchema);

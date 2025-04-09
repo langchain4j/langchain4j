@@ -43,41 +43,24 @@ class EnumSetOutputParserTest {
                 // Plain text
                 Arguments.of("CAT", Set.of(CAT)),
                 Arguments.of("CAT\nDOG", Set.of(CAT, DOG)),
-
-                // Plain text: wrong case
                 Arguments.of("cat", Set.of(CAT)),
                 Arguments.of("Cat", Set.of(CAT)),
-
-                // Plain text: empty
                 Arguments.of("", Set.of()),
                 Arguments.of(" ", Set.of()),
-
-                // Plain text: surrounded by whitespaces
                 Arguments.of(" CAT ", Set.of(CAT)),
                 Arguments.of(" CAT \n DOG ", Set.of(CAT, DOG)),
 
                 // JSON
-                Arguments.of("{\"items\":[\"CAT\"]}", Set.of(CAT)),
-                Arguments.of("{\"items\":[\"CAT\", \"DOG\"]}", Set.of(CAT, DOG)),
-
-                // JSON: empty
-                Arguments.of("{\"items\":[]}", Set.of()),
-
-                // JSON: wrong type
-                Arguments.of("{\"items\":\"CAT\"}", Set.of(CAT)),
-
-                // JSON: wrong property name
                 Arguments.of("{\"values\":[\"CAT\"]}", Set.of(CAT)),
-                Arguments.of("{\"animals\":[\"CAT\"]}", Set.of(CAT)),
-
-                // JSON: surrounded by whitespaces
-                Arguments.of(" {\"items\":[\"CAT\"]} ", Set.of(CAT))
+                Arguments.of("{\"values\":[\"CAT\", \"DOG\"]}", Set.of(CAT, DOG)),
+                Arguments.of("{\"values\":[]}", Set.of()),
+                Arguments.of("  {\"values\":[\"CAT\"]}  ", Set.of(CAT))
         );
     }
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"{}", "{\"items\": null}", "{\"items\": \"\"}"})
+    @ValueSource(strings = {"{}", "{\"values\": null}"})
     void should_fail_to_parse_empty_input(String input) {
 
         assertThatThrownBy(() -> new EnumSetOutputParser<>(Animal.class).parse(input))
@@ -89,9 +72,11 @@ class EnumSetOutputParserTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "BANANA",
-            "{\"items\":[\"BANANA\"]}"
+            "{\"values\":[\"BANANA\"]}",
+            "{\"banana\":[\"CAT\"]}",
+            "{\"values\":\"CAT\"}" // TODO, ewerywhere
     })
-    void should_fail_to_parse_set_of_enums(String text) {
+    void should_fail_to_parse_invalid_input(String text) {
 
         // given
         EnumSetOutputParser<Animal> parser = new EnumSetOutputParser<>(Animal.class);
@@ -126,7 +111,7 @@ class EnumSetOutputParserTest {
         EnumSetOutputParser<Animal> parser = new EnumSetOutputParser<>(Animal.class);
 
         // when
-        Set<Animal> parsed = parser.parse("{\"items\":[\"CAT\", \"DOG\", \"BIRD\"]}");
+        Set<Animal> parsed = parser.parse("{\"values\":[\"CAT\", \"DOG\", \"BIRD\"]}");
 
         // then
         Iterator<Animal> enumIterator = parsed.iterator();

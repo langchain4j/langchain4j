@@ -25,8 +25,8 @@ class DefaultOutputParserFactory implements OutputParserFactory {
         OUTPUT_PARSERS.put(short.class, new ShortOutputParser());
         OUTPUT_PARSERS.put(Short.class, new ShortOutputParser());
 
-        OUTPUT_PARSERS.put(int.class, new IntOutputParser());
-        OUTPUT_PARSERS.put(Integer.class, new IntOutputParser());
+        OUTPUT_PARSERS.put(int.class, new IntegerOutputParser());
+        OUTPUT_PARSERS.put(Integer.class, new IntegerOutputParser());
 
         OUTPUT_PARSERS.put(long.class, new LongOutputParser());
         OUTPUT_PARSERS.put(Long.class, new LongOutputParser());

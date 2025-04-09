@@ -4,97 +4,82 @@ import dev.langchain4j.internal.Json;
 
 import java.lang.reflect.Type;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 class ParsingUtils {
 
-    static <T> T parseAsValueOrJson(String text, Function<String, T> parser, Type type) {
+    static <T> T parseAsStringOrJson(String text, Function<String, T> parser, Class<T> type) {
 
         if (isNullOrBlank(text)) {
             throw outputParsingException(text, type);
         }
 
-        if (text.trim().startsWith("{")) {
+        if (isJson(text)) {
             Map<?, ?> map = Json.fromJson(text, Map.class);
-            if (map == null || map.isEmpty()) {
+            if (isNullOrEmpty(map)) {
                 throw outputParsingException(text, type);
             }
 
-            Object value;
-            if (map.containsKey("value")) {
-                value = map.get("value");
-            } else {
-                value = map.values().iterator().next();  // fallback to first property
-            }
-
+            Object value = map.get("value");
             if (value == null) {
                 throw outputParsingException(text, type);
             }
 
             return parse(value.toString(), parser, type);
+        } else {
+            return parse(text, parser, type);
         }
-
-        return parse(text, parser, type);
     }
 
-    static <T, CT extends Collection<T>> CT parseCollectionAsValueOrJson(String text,
-                                                                         Function<String, T> parser,
-                                                                         Supplier<CT> emptyCollectionSupplier,
-                                                                         String type) {
+    static <T, CT extends Collection<T>> CT parseAsStringOrJson(String text,
+                                                                Function<String, T> parser,
+                                                                Supplier<CT> emptyCollectionSupplier,
+                                                                String type) {
         if (text == null) {
             throw ParsingUtils.outputParsingException(text, type, null);
         }
 
-        if (text.isBlank()) {
-            return emptyCollectionSupplier.get();
-        }
-
-        if (text.trim().startsWith("{")) {
+        if (isJson(text)) {
             Map<?, ?> map = Json.fromJson(text, Map.class);
-            if (map == null || map.isEmpty()) {
-                throw ParsingUtils.outputParsingException(text, type, null);
+            if (isNullOrEmpty(map)) {
+                throw outputParsingException(text, type, null);
             }
 
-            Object items;
-            if (map.containsKey("items")) { // TODO values?
-                items = map.get("items");
-            } else {
-                items = map.values().iterator().next();
-            }
-
-            if (items == null) {
-                throw ParsingUtils.outputParsingException(text, type, null);
-            } else if (items instanceof String) {
-                items = List.of(items);
+            Object values = map.get("values");
+            if (!(values instanceof Collection<?>)) {
+                throw outputParsingException(text, type, null);
             }
 
             CT collection = emptyCollectionSupplier.get();
-            for (Object item : ((Collection<?>) items)) {
-                String itemAsString;
-                if (item instanceof String string) {
-                    itemAsString = string;
+            for (Object value : ((Collection<?>) values)) {
+                String stringValue;
+                if (value instanceof String string) {
+                    stringValue = string;
                 } else {
-                    itemAsString = Json.toJson(item);
+                    stringValue = Json.toJson(value);
                 }
-                collection.add(parse(itemAsString, parser, type));
+                collection.add(parse(stringValue, parser, type));
+            }
+            return collection;
+        } else {
+            CT collection = emptyCollectionSupplier.get();
+            for (String line : text.split("\n")) {
+                if (isNullOrBlank(line)) {
+                    continue;
+                }
+                collection.add(parse(line.trim(), parser, type));
             }
             return collection;
         }
+    }
 
-        CT collection = emptyCollectionSupplier.get();
-        for (String line : text.split("\n")) {
-            if (isNullOrBlank(line)) {
-                continue;
-            }
-            T item = parse(line.trim(), parser, type);
-            collection.add(item);
-        }
-        return collection;
+    private static boolean isJson(String text) {
+        return text.trim().startsWith("{");
     }
 
     private static <T> T parse(String text, Function<String, T> parser, Type type) {

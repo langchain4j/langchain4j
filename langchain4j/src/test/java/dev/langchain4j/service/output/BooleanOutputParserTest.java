@@ -30,26 +30,19 @@ class BooleanOutputParserTest {
     static Stream<Arguments> should_parse_string_to_boolean() {
         return Stream.of(
 
-                // Plain text: valid booleans (case-insensitive)
+                // Plain text
                 Arguments.of("true", true),
                 Arguments.of("false", false),
                 Arguments.of("TRUE", true),
                 Arguments.of("False", false),
-
-                // Plain text: surrounded by whitespaces
                 Arguments.of("    true    ", true),
 
-                // JSON: has \"value\" key
+                // JSON
                 Arguments.of("{\"value\": true}", true),
-                Arguments.of("{\"value\": false}", false),
-
                 Arguments.of("{\"value\": \"TRUE\"}", true),
+                Arguments.of("{\"value\": false}", false),
                 Arguments.of("{\"value\": \"False\"}", false),
-
-                // JSON: first property fallback if no \"value\"
-                Arguments.of("{\"other\": true}", true),
-                Arguments.of("{\"other\": false}", false),
-                Arguments.of("{\"a\": true, \"b\": false}", true)
+                Arguments.of("  {\"value\": \"False\"}  ", false)
         );
     }
 
@@ -65,8 +58,8 @@ class BooleanOutputParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"banana", "Answer: true", "Sorry, I cannot answer", "{\"value\": \"banana\"}"})
-    void should_fail_to_parse_illegal_input(String input) {
+    @ValueSource(strings = {"banana", "Answer: true", "Sorry, I cannot answer", "{\"value\": \"banana\"}", "{\"banana\": true}"})
+    void should_fail_to_parse_invalid_input(String input) {
 
         assertThatThrownBy(() -> new BooleanOutputParser().parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)

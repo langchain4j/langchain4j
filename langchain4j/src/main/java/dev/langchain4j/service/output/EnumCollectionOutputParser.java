@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.output.EnumOutputParser.getEnumDescription;
-import static dev.langchain4j.service.output.ParsingUtils.parseCollectionAsValueOrJson;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 import static java.util.Arrays.stream;
 
 abstract class EnumCollectionOutputParser<E extends Enum<E>, CE extends Collection<E>> implements OutputParser<CE> {
@@ -27,7 +27,7 @@ abstract class EnumCollectionOutputParser<E extends Enum<E>, CE extends Collecti
 
     @Override
     public CE parse(String text) {
-        return parseCollectionAsValueOrJson(text, enumOutputParser::parse, emptyCollectionSupplier(), getType());
+        return parseAsStringOrJson(text, enumOutputParser::parse, emptyCollectionSupplier(), getType());
     }
 
     abstract Supplier<CE> emptyCollectionSupplier();
@@ -43,12 +43,12 @@ abstract class EnumCollectionOutputParser<E extends Enum<E>, CE extends Collecti
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(collectionType().getSimpleName() + "_of_" + enumClass.getSimpleName())
                 .rootElement(JsonObjectSchema.builder()
-                        .addProperty("items", JsonArraySchema.builder()
+                        .addProperty("values", JsonArraySchema.builder()
                                 .items(JsonEnumSchema.builder()
                                         .enumValues(stream(enumClass.getEnumConstants()).map(Object::toString).toList())
                                         .build())
                                 .build())
-                        .required("items")
+                        .required("values")
                         .build())
                 .build();
         return Optional.of(jsonSchema);

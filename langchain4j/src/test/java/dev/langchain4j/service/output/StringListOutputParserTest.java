@@ -30,41 +30,44 @@ class StringListOutputParserTest {
 
     static Stream<Arguments> should_parse_list_of_strings() {
         return Stream.of(
+
                 // Plain text
                 Arguments.of("CAT", List.of("CAT")),
                 Arguments.of("CAT\nDOG", List.of("CAT", "DOG")),
-
-                // Plain text: empty
                 Arguments.of("", List.of()),
                 Arguments.of(" ", List.of()),
-
-                // Plain text: surrounded by whitespaces
                 Arguments.of("  CAT  ", List.of("CAT")),
                 Arguments.of(" CAT \n DOG ", List.of("CAT", "DOG")),
 
-                // JSON with "items" property
-                Arguments.of("{\"items\":[\"CAT\"]}", List.of("CAT")),
-                Arguments.of("{\"items\":[\"CAT\",\"DOG\"]}", List.of("CAT", "DOG")),
-
-                // JSON with alternative property name
+                // JSON
                 Arguments.of("{\"values\":[\"CAT\"]}", List.of("CAT")),
-                Arguments.of("{\"animals\":[\"CAT\",\"DOG\"]}", List.of("CAT", "DOG")),
-
-                // JSON: empty
-                Arguments.of("{\"items\":[]}", List.of()),
-
-                // JSON: single string instead of array
-                Arguments.of("{\"items\":\"CAT\"}", List.of("CAT")),
-
-                // JSON: whitespaces
-                Arguments.of("   {\"items\":[\"CAT\"]}   ", List.of("CAT"))
+                Arguments.of("{\"values\":[\"CAT\",\"DOG\"]}", List.of("CAT", "DOG")),
+                Arguments.of("{\"values\":[]}", List.of()),
+                Arguments.of("  {\"values\":[\"CAT\"]}  ", List.of("CAT"))
         );
     }
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"{}", "{\"items\": null}"})
+    @ValueSource(strings = {"{}", "{\"values\": null}", "{\"banana\": []}"})
     void should_fail_to_parse_empty_input(String input) {
+
+        assertThatThrownBy(() -> new StringListOutputParser().parse(input))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse")
+                .hasMessageContaining("java.util.List<java.lang.String>");
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {
+            "{\"values\": \"\"}",
+            "{\"values\": false}",
+            "{\"values\":\"banana\"}",
+            "{\"values\":{\"name\":\"Klaus\"}}",
+            "{\"banana\":[{\"name\":\"Klaus\"}]}",
+    })
+    void should_fail_to_parse_invalid_input(String input) {
 
         assertThatThrownBy(() -> new StringListOutputParser().parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)

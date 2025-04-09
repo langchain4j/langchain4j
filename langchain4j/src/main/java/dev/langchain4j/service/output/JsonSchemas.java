@@ -19,7 +19,8 @@ import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClas
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
 @Experimental
-public class JsonSchemas { // TODO remove? deprecate? update docu
+public class JsonSchemas {
+    // TODO remove? deprecate? update docu
 
     public static Optional<JsonSchema> jsonSchemaFrom(Type returnType) {
 

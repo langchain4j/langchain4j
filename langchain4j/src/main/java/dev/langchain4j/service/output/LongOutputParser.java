@@ -5,14 +5,14 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.Optional;
 
-import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 import static dev.langchain4j.service.tool.DefaultToolExecutor.getBoundedLongValue;
 
 class LongOutputParser implements OutputParser<Long> {
 
     @Override
     public Long parse(String text) {
-        return parseAsValueOrJson(text, LongOutputParser::parseLong, Long.class);
+        return parseAsStringOrJson(text, LongOutputParser::parseLong, Long.class);
     }
 
     private static Long parseLong(String text) {

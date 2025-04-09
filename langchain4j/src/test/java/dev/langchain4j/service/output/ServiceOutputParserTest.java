@@ -42,8 +42,8 @@ class ServiceOutputParserTest {
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Byte.class, ByteOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), short.class, ShortOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Short.class, ShortOutputParser.class);
-        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), int.class, IntOutputParser.class);
-        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Integer.class, IntOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), int.class, IntegerOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Integer.class, IntegerOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), long.class, LongOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Long.class, LongOutputParser.class);
         testWhetherProperOutputParserWasCalled(
@@ -172,7 +172,7 @@ class ServiceOutputParserTest {
 
         // When / Then
         assertThatThrownBy(() -> sut.parse(responseStub, KeyProperty.class))
-                .isExactlyInstanceOf(RuntimeException.class)
+                .isExactlyInstanceOf(OutputParsingException.class)
                 .hasRootCauseInstanceOf(JsonProcessingException.class);
     }
 

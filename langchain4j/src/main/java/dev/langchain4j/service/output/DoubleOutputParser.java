@@ -5,13 +5,13 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.Optional;
 
-import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
 class DoubleOutputParser implements OutputParser<Double> {
 
     @Override
     public Double parse(String text) {
-        return parseAsValueOrJson(text, Double::parseDouble, Double.class);
+        return parseAsStringOrJson(text, Double::parseDouble, Double.class);
     }
 
     @Override

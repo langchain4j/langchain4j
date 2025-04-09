@@ -41,8 +41,12 @@ class PojoOutputParser<T> implements OutputParser<T> {
         try {
             return Json.fromJson(text, type);
         } catch (Exception ignored) {
-            String jsonBlock = extractJsonBlock(text);
-            return Json.fromJson(jsonBlock, type);
+            try {
+                String jsonBlock = extractJsonBlock(text);
+                return Json.fromJson(jsonBlock, type);
+            } catch (Exception e) {
+                throw outputParsingException(text, type.getName(), e);
+            }
         }
     }
 

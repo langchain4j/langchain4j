@@ -5,13 +5,13 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.Optional;
 
-import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
 class FloatOutputParser implements OutputParser<Float> {
 
     @Override
     public Float parse(String text) {
-        return parseAsValueOrJson(text, Float::parseFloat, Float.class);
+        return parseAsStringOrJson(text, Float::parseFloat, Float.class);
     }
 
     @Override

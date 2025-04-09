@@ -1,5 +1,6 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -10,6 +11,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.service.output.EnumOutputParserTest.Animal.CAT;
+import static dev.langchain4j.service.output.EnumOutputParserTest.Weather.SUNNY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -40,26 +42,15 @@ class EnumOutputParserTest {
 
                 // Plain text
                 Arguments.of("CAT", CAT),
-
-                // Plain text: wrong case
                 Arguments.of("cat", CAT),
                 Arguments.of("Cat", CAT),
-
-                // Plain text: surrounded by whitespaces
                 Arguments.of(" CAT ", CAT),
-
-                // Plain text: surrounded by brackets
                 Arguments.of("[CAT]", CAT),
                 Arguments.of(" [ CAT ] ", CAT),
 
                 // JSON
                 Arguments.of("{\"value\":\"CAT\"}", CAT),
-
-                // JSON: wrong property name
-                Arguments.of("{\"animal\":\"CAT\"}", CAT),
-
-                // JSON: surrounded by whitespaces
-                Arguments.of(" {\"value\":\"CAT\"} ", CAT)
+                Arguments.of("  {\"value\":\"CAT\"}  ", CAT)
         );
     }
 
@@ -77,9 +68,9 @@ class EnumOutputParserTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "BANANA",
-            "{\"value\":\"BANANA\"}"
+            "{\"value\":\"BANANA\"}" // TODO, everywhere
     })
-    void should_fail_to_parse_enum(String text) {
+    void should_fail_to_parse_invalid_input(String text) {
 
         // given
         EnumOutputParser<Animal> parser = new EnumOutputParser<>(Animal.class);
@@ -100,11 +91,8 @@ class EnumOutputParserTest {
 
     @Test
     void generateInstruction() {
-        // When
-        String instruction = sut.formatInstructions();
 
-        // Then
-        assertThat(instruction)
+        assertThat(sut.formatInstructions())
                 .isEqualTo("\n" + "You must answer strictly with one of these enums:\n"
                         + "SUNNY\n"
                         + "CLOUDY\n"
@@ -114,28 +102,64 @@ class EnumOutputParserTest {
 
     @Test
     void parseResponse() {
+
         // When
-        Enum<?> resultedEnum = sut.parse(Weather.SUNNY.name());
+        Weather weather = sut.parse(SUNNY.name());
 
         // Then
-        assertThat(resultedEnum).isEqualTo(Weather.SUNNY);
+        assertThat(weather).isEqualTo(SUNNY);
     }
 
     @Test
     void parseResponseWithSpaces() {
+
         // When
-        Enum<?> resultedEnum = sut.parse(" " + Weather.SUNNY.name() + "    ");
+        Weather weather = sut.parse(" " + SUNNY.name() + "    ");
 
         // Then
-        assertThat(resultedEnum).isEqualTo(Weather.SUNNY);
+        assertThat(weather).isEqualTo(SUNNY);
     }
 
     @Test
     void parseResponseWithBrackets() {
+
         // When
-        Enum<?> resultedEnum = sut.parse(" [  " + Weather.SUNNY.name() + "  ]  ");
+        Weather weather = sut.parse(" [  " + SUNNY.name() + "  ]  ");
 
         // Then
-        assertThat(resultedEnum).isEqualTo(Weather.SUNNY);
+        assertThat(weather).isEqualTo(SUNNY);
     }
+
+    public enum Category {
+        A,
+        B,
+        C
+    }
+
+    public enum CategoryWithDescription {
+        @Description("Majority of keywords starting with A")
+        A,
+        @Description("Majority of keywords starting with B")
+        B,
+        @Description("Majority of keywords starting with C")
+        C
+    }
+
+    @Test
+    void enum_format_instruction() {
+        EnumOutputParser<Category> parser = new EnumOutputParser<>(Category.class);
+        assertThat(parser.formatInstructions())
+                .isEqualTo("\nYou must answer strictly with one of these enums:\n" + "A\n" + "B\n" + "C");
+    }
+
+    @Test
+    void enum_with_description_format_instruction() {
+        EnumOutputParser<CategoryWithDescription> parser = new EnumOutputParser<>(CategoryWithDescription.class);
+        assertThat(parser.formatInstructions())
+                .isEqualTo("\nYou must answer strictly with one of these enums:\n"
+                        + "A - Majority of keywords starting with A\n"
+                        + "B - Majority of keywords starting with B\n"
+                        + "C - Majority of keywords starting with C");
+    }
+
 }

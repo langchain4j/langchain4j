@@ -40,42 +40,24 @@ class EnumListOutputParserTest {
                 // Plain text
                 Arguments.of("CAT", List.of(CAT)),
                 Arguments.of("CAT\nDOG", List.of(CAT, DOG)),
-
-                // Plain text: wrong case
                 Arguments.of("cat", List.of(CAT)),
                 Arguments.of("Cat", List.of(CAT)),
-
-                // Plain text: empty
                 Arguments.of("", List.of()),
                 Arguments.of(" ", List.of()),
-
-                // Plain text: surrounded by whitespaces
                 Arguments.of(" CAT ", List.of(CAT)),
                 Arguments.of(" CAT \n DOG ", List.of(CAT, DOG)),
 
                 // JSON
-                // TODO value or items or values: check everywhere
-                Arguments.of("{\"items\":[\"CAT\"]}", List.of(CAT)),
-                Arguments.of("{\"items\":[\"CAT\", \"DOG\"]}", List.of(CAT, DOG)),
-
-                // JSON: empty
-                Arguments.of("{\"items\":[]}", List.of()),
-
-                // JSON: wrong type
-                Arguments.of("{\"items\":\"CAT\"}", List.of(CAT)),
-
-                // JSON: wrong property name
                 Arguments.of("{\"values\":[\"CAT\"]}", List.of(CAT)),
-                Arguments.of("{\"animals\":[\"CAT\"]}", List.of(CAT)),
-
-                // JSON: surrounded by whitespaces
-                Arguments.of(" {\"items\":[\"CAT\"]} ", List.of(CAT))
+                Arguments.of("{\"values\":[\"CAT\", \"DOG\"]}", List.of(CAT, DOG)),
+                Arguments.of("{\"values\":[]}", List.of()),
+                Arguments.of("  {\"values\":[\"CAT\"]}  ", List.of(CAT))
         );
     }
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"{}", "{\"items\": null}", "{\"items\": \"\"}"})
+    @ValueSource(strings = {"{}", "{\"values\": null}"})
     void should_fail_to_parse_empty_input(String input) {
 
         assertThatThrownBy(() -> new EnumListOutputParser<>(Animal.class).parse(input))
@@ -87,9 +69,11 @@ class EnumListOutputParserTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "BANANA",
-            "{\"items\":[\"BANANA\"]}"
+            "{\"values\":[\"BANANA\"]}",
+            "{\"values\":\"CAT\"}",
+            "{\"banana\":[\"CAT\"]}"
     })
-    void should_fail_to_parse_list_of_enums(String text) {
+    void should_fail_to_parse_invalid_input(String text) {
 
         // given
         EnumListOutputParser<Animal> parser = new EnumListOutputParser<>(Animal.class);

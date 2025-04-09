@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
-import static dev.langchain4j.service.output.ParsingUtils.parseCollectionAsValueOrJson;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
 abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implements OutputParser<CT> {
 
@@ -25,7 +25,7 @@ abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implement
 
     @Override
     public CT parse(String text) {
-        return parseCollectionAsValueOrJson(text, parser::parse, emptyCollectionSupplier(), getType());
+        return parseAsStringOrJson(text, parser::parse, emptyCollectionSupplier(), getType());
     }
 
     abstract Supplier<CT> emptyCollectionSupplier();
@@ -39,10 +39,10 @@ abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implement
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(collectionType().getSimpleName() + "_of_" + type.getSimpleName())
                 .rootElement(JsonObjectSchema.builder()
-                        .addProperty("items", JsonArraySchema.builder()
+                        .addProperty("values", JsonArraySchema.builder()
                                 .items(jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true))
                                 .build())
-                        .required("items")
+                        .required("values")
                         .build())
                 .build();
         return Optional.of(jsonSchema);

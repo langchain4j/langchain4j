@@ -30,45 +30,38 @@ class PojoListOutputParserTest {
 
     static Stream<Arguments> should_parse_list_of_pojo() {
         return Stream.of(
-
-                Arguments.of(
-                        "{\"items\":[{\"name\":\"Klaus\"}]}",
-                        List.of(new Person("Klaus"))
-                ),
-                Arguments.of(
-                        "{\"items\":[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]}",
-                        List.of(new Person("Klaus"), new Person("Franny"))
-                ),
-
-                // empty
+                Arguments.of("{\"values\":[{\"name\":\"Klaus\"}]}", List.of(new Person("Klaus"))),
+                Arguments.of("{\"values\":[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]}", List.of(new Person("Klaus"), new Person("Franny"))),
                 Arguments.of("", List.of()),
                 Arguments.of(" ", List.of()),
-                Arguments.of("{\"items\":[]}", List.of()),
-
-                // wrong property name
-                Arguments.of(
-                        "{\"values\":[{\"name\":\"Klaus\"}]}",
-                        List.of(new Person("Klaus"))
-                ),
-                Arguments.of(
-                        "{\"people\":[{\"name\":\"Klaus\"}]}",
-                        List.of(new Person("Klaus"))
-                ),
-
-                // surrounded by whitespaces
-                Arguments.of(
-                        " {\"items\":[{\"name\":\"Klaus\"}]} ",
-                        List.of(new Person("Klaus"))
-                )
+                Arguments.of("{\"values\":[]}", List.of()),
+                Arguments.of(" {\"values\":[{\"name\":\"Klaus\"}]} ", List.of(new Person("Klaus")))
         );
     }
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"{}", "{\"items\": null}", "{\"items\": \"\"}"})
+    @ValueSource(strings = {"{}", "{\"values\": null}"})
     void should_fail_to_parse_empty_input(String input) {
 
         assertThatThrownBy(() -> new PojoListOutputParser<>(Person.class).parse(input))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse")
+                .hasMessageContaining("Person");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "banana",
+            "{\"values\": \"\"}",
+            "{\"values\":\"banana\"}",
+            "{\"values\":[\"banana\"]}",
+            "{\"values\":{\"name\":\"Klaus\"}}",
+            "{\"banana\":[{\"name\":\"Klaus\"}]}",
+    })
+    void should_fail_to_parse_invalid_input(String text) {
+
+        assertThatThrownBy(() -> new PojoListOutputParser<>(Person.class).parse(text))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("Person");

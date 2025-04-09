@@ -6,13 +6,13 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.Optional;
 
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
-import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
 class BooleanOutputParser implements OutputParser<Boolean> {
 
     @Override
     public Boolean parse(String text) {
-        return parseAsValueOrJson(text, BooleanOutputParser::parseBoolean, Boolean.class);
+        return parseAsStringOrJson(text, BooleanOutputParser::parseBoolean, Boolean.class);
     }
 
     private static boolean parseBoolean(String text) {

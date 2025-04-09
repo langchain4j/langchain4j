@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.stream.Stream;
 
@@ -15,7 +17,7 @@ class DoubleOutputParserTest {
     private final DoubleOutputParser parser = new DoubleOutputParser();
 
     @ParameterizedTest
-    @MethodSource("validInputProvider")
+    @MethodSource
     void should_parse_valid_input(String input, Double expected) {
 
         // when
@@ -25,9 +27,10 @@ class DoubleOutputParserTest {
         assertThat(actual).isEqualTo(expected);
     }
 
-    static Stream<Arguments> validInputProvider() {
+    static Stream<Arguments> should_parse_valid_input() {
         return Stream.of(
-                // Plain doubles
+
+                // Plain text
                 Arguments.of("3.14", 3.14),
                 Arguments.of("   3.14   ", 3.14),
                 Arguments.of("-2.718", -2.718),
@@ -38,63 +41,34 @@ class DoubleOutputParserTest {
                 Arguments.of(String.valueOf(Double.MIN_VALUE), Double.MIN_VALUE),
                 Arguments.of("-1e309", Double.NEGATIVE_INFINITY),
 
-                // JSON with "value" key
+                // JSON
                 Arguments.of("{\"value\": 1.23}", 1.23),
                 Arguments.of("{\"value\": \"-4.56\"}", -4.56),
                 Arguments.of("{\"value\": 0}", 0.0),
                 Arguments.of("{\"value\": \"42\"}", 42.0),
-
-                // Surrounded by whitespace
-                Arguments.of("   {\"value\": 77.99}   ", 77.99),
-
-                // JSON fallback to first property
-                Arguments.of("{\"foo\": 99.001}", 99.001),
-                Arguments.of("{\"bar\": \"-100.5\"}", -100.5)
+                Arguments.of("   {\"value\": 77.99}   ", 77.99)
         );
     }
 
     @ParameterizedTest
-    @MethodSource("noDataInputProvider")
-    void should_fail_on_no_data_input(String input) {
+    @NullSource
+    @ValueSource(strings = {"", " ", "{}", "{\"value\": null}", "{\"value\": \"\"}"})
+    void should_fail_to_parse_empty_input(String input) {
+
         assertThatThrownBy(() -> parser.parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("into java.lang.Double");
     }
 
-    static Stream<String> noDataInputProvider() {
-        return Stream.of(
-                // Null or blank
-                null,
-                "",
-                "   ",
-
-                // Empty JSON or JSON with null
-                "{}",
-                "{\"value\": null}"
-        );
-    }
-
     @ParameterizedTest
-    @MethodSource("invalidInputProvider")
-    void should_fail_on_invalid_input(String input) {
+    @ValueSource(strings = {"abc", "4.5.6", "123,4", "{\"value\": \"abc\"}", "{\"value\": \"4.5.6\"}"})
+    void should_fail_to_parse_invalid_input(String input) {
+
         assertThatThrownBy(() -> parser.parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("into java.lang.Double");
-    }
-
-    static Stream<String> invalidInputProvider() {
-        return Stream.of(
-                // Non-numeric text
-                "abc",
-                "4.5.6",
-                "123,4",  // using comma instead of dot
-
-                // JSON with non-numeric or unparseable
-                "{\"value\": \"abc\"}",
-                "{\"value\": \"4.5.6\"}"
-        );
     }
 
     @Test

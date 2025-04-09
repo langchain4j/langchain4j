@@ -4,18 +4,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class IntOutputParserTest {
+class IntegerOutputParserTest {
 
-    private final IntOutputParser parser = new IntOutputParser();
+    private final IntegerOutputParser parser = new IntegerOutputParser();
 
     @ParameterizedTest
-    @MethodSource("validInputProvider")
+    @MethodSource
     void should_parse_valid_input(String input, Integer expected) {
 
         // when
@@ -25,9 +27,10 @@ class IntOutputParserTest {
         assertThat(actual).isEqualTo(expected);
     }
 
-    static Stream<Arguments> validInputProvider() {
+    static Stream<Arguments> should_parse_valid_input() {
         return Stream.of(
-                // Plain integers
+
+                // Plain text
                 Arguments.of("42", 42),
                 Arguments.of("   42   ", 42),
                 Arguments.of("-5", -5),
@@ -36,68 +39,43 @@ class IntOutputParserTest {
                 Arguments.of(String.valueOf(Integer.MAX_VALUE), Integer.MAX_VALUE),
                 Arguments.of(String.valueOf(Integer.MIN_VALUE), Integer.MIN_VALUE),
 
-                // JSON with "value" key
+                // JSON
                 Arguments.of("{\"value\": 123}", 123),
                 Arguments.of("{\"value\": \"-7\"}", -7),
-
-                // JSON fallback to first property
-                Arguments.of("{\"foo\": 100}", 100),
-                Arguments.of("{\"bar\":\"250\"}", 250),
-
-                // Surrounded by whitespace
                 Arguments.of("   {\"value\": 77}   ", 77),
                 Arguments.of("{\"value\":\"1e3\"}", 1000)
         );
     }
 
     @ParameterizedTest
-    @MethodSource("noDataInputProvider")
-    void should_fail_on_no_data_input(String input) {
+    @NullSource
+    @ValueSource(strings = {"", " ", "{}", "{\"value\": null}", "{\"value\": \"\"}"})
+    void should_fail_to_parse_empty_input(String input) {
+
         assertThatThrownBy(() -> parser.parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("into java.lang.Integer");
-    }
-
-    static Stream<String> noDataInputProvider() {
-        return Stream.of(
-                // Null or blank
-                null,
-                "",
-                "   ",
-
-                // Empty JSON or null value
-                "{}",
-                "{\"value\": null}"
-        );
     }
 
     @ParameterizedTest
-    @MethodSource("invalidInputProvider")
-    void should_fail_on_invalid_non_integer_json_input(String input) {
+    @ValueSource(strings = {
+            "{\"value\":\"xyz\"}",
+            "{\"value\": 3.14}",
+            "{\"foo\":\"2.71\"}",
+            "abc",
+            "42abc",
+            "4.5",
+            "-3.1",
+            "2147483648", // Integer.MAX_VALUE + 1
+            "-2147483649" // Integer.MIN_VALUE - 1
+    })
+    void should_fail_to_parse_invalid_input(String input) {
+
         assertThatThrownBy(() -> parser.parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("into java.lang.Integer");
-    }
-
-    static Stream<String> invalidInputProvider() {
-        return Stream.of(
-                // JSON with non-integer or decimal
-                "{\"value\":\"xyz\"}",
-                "{\"value\": 3.14}",
-                "{\"foo\":\"2.71\"}",
-
-                // Non-numeric text
-                "abc",
-                "42abc",
-                "4.5",
-                "-3.1",
-
-                // out of bounds
-                String.valueOf(((long) Integer.MAX_VALUE) + 1),
-                String.valueOf(((long) Integer.MIN_VALUE) - 1)
-        );
     }
 
     @Test

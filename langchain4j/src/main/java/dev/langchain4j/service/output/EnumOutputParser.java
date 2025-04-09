@@ -11,7 +11,7 @@ import java.util.Optional;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
-import static dev.langchain4j.service.output.ParsingUtils.parseAsValueOrJson;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 import static java.util.Arrays.stream;
 
 class EnumOutputParser<E extends Enum<E>> implements OutputParser<E> {
@@ -24,7 +24,7 @@ class EnumOutputParser<E extends Enum<E>> implements OutputParser<E> {
 
     @Override
     public E parse(String text) {
-        return parseAsValueOrJson(text, this::parseEnum, enumClass);
+        return parseAsStringOrJson(text, this::parseEnum, enumClass);
     }
 
     private E parseEnum(String text) {

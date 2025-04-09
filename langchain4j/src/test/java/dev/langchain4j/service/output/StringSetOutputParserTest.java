@@ -49,44 +49,45 @@ class StringSetOutputParserTest {
 
     static Stream<Arguments> should_parse_set_of_strings() {
         return Stream.of(
-                // Plain text: single line
+
+                // Plain text
                 Arguments.of("CAT", Set.of("CAT")),
-
-                // Plain text: multiple lines (duplicates should collapse)
                 Arguments.of("CAT\nDOG\nBIRD\nCAT", Set.of("CAT", "DOG", "BIRD")),
-
-                // Plain text: empty
                 Arguments.of("", Set.of()),
                 Arguments.of("    ", Set.of()),
-
-                // Plain text: surrounded by whitespaces
                 Arguments.of("  CAT  ", Set.of("CAT")),
                 Arguments.of(" CAT \n DOG \n  DOG ", Set.of("CAT", "DOG")),
 
-                // JSON with "items" property
-                Arguments.of("{\"items\":[\"CAT\"]}", Set.of("CAT")),
-                Arguments.of("{\"items\":[\"CAT\",\"DOG\"]}", Set.of("CAT", "DOG")),
-                Arguments.of("{\"items\":[\"CAT\",\"DOG\",\"CAT\"]}", Set.of("CAT", "DOG")),
-
-                // JSON without "items" property (fallback to first property)
+                // JSON
                 Arguments.of("{\"values\":[\"CAT\"]}", Set.of("CAT")),
-                Arguments.of("{\"animals\":[\"CAT\",\"DOG\"]}", Set.of("CAT", "DOG")),
-
-                // JSON: empty
-                Arguments.of("{\"items\":[]}", Set.of()),
-
-                // JSON: single string
-                Arguments.of("{\"items\":\"CAT\"}", Set.of("CAT")),
-
-                // JSON: whitespaces
-                Arguments.of("   {\"items\":[\"CAT\",\"DOG\"]}   ", Set.of("CAT", "DOG"))
+                Arguments.of("{\"values\":[\"CAT\",\"DOG\"]}", Set.of("CAT", "DOG")),
+                Arguments.of("{\"values\":[\"CAT\",\"DOG\",\"CAT\"]}", Set.of("CAT", "DOG")),
+                Arguments.of("{\"values\":[]}", Set.of()),
+                Arguments.of("  {\"values\":[\"CAT\",\"DOG\"]}  ", Set.of("CAT", "DOG"))
         );
     }
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"{}", "{\"items\": null}"})
+    @ValueSource(strings = {"{}", "{\"values\": null}", "{\"banana\": []}"})
     void should_fail_to_parse_empty_input(String input) {
+
+        assertThatThrownBy(() -> new StringSetOutputParser().parse(input))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse")
+                .hasMessageContaining("java.util.Set<java.lang.String>");
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {
+            "{\"values\": \"\"}",
+            "{\"values\": false}",
+            "{\"values\":\"banana\"}",
+            "{\"values\":{\"name\":\"Klaus\"}}",
+            "{\"banana\":[{\"name\":\"Klaus\"}]}",
+    })
+    void should_fail_to_parse_invalid_input(String input) {
 
         assertThatThrownBy(() -> new StringSetOutputParser().parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
