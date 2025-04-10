@@ -111,13 +111,15 @@ class AiServiceTokenStreamTest {
         StreamingChatLanguageModel streamingModel = mock(StreamingChatLanguageModel.class);
         ChatLanguageModel chatLanguageModel = mock(ChatLanguageModel.class);
         AiServiceContext context = new AiServiceContext(getClass());
-        context.streamingChatModel = model;
+        context.streamingChatModel = streamingModel;
         context.chatModel = chatLanguageModel;
+
         return new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
                 .messages(messages)
                 .retrievedContents(content)
                 .context(context)
                 .memoryId(memoryId)
+                .commonGuardrailParams(new CommonGuardrailParams(null, null, "", Map.of()))
                 .build());
     }
 }

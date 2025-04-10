@@ -37,7 +37,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final AiServiceContext context;
     private final Object memoryId;
     private final ChatExecutor chatExecutor;
+
+    @Nullable
     private final CommonGuardrailParams commonGuardrailParams;
+
+    @Nullable
     private final Object methodKey;
 
     private final Consumer<String> partialResponseHandler;
@@ -65,7 +69,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             List<ToolSpecification> toolSpecifications,
             Map<String, ToolExecutor> toolExecutors,
             @Nullable CommonGuardrailParams commonGuardrailParams,
-            Object methodKey) {
+            @Nullable Object methodKey) {
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");

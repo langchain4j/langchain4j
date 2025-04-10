@@ -1,6 +1,6 @@
 package dev.langchain4j.service;
 
-import static java.util.Collections.emptyList;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
-import org.jspecify.annotations.Nullable;
 
 public class AiServiceTokenStream implements TokenStream {
 
@@ -55,12 +54,15 @@ public class AiServiceTokenStream implements TokenStream {
      * @param parameters the parameters for creating the token stream
      */
     public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
+        ensureNotNull(parameters, "parameters");
         this.messages = parameters.messages();
         this.toolSpecifications = parameters.toolSpecifications();
         this.toolExecutors = parameters.toolExecutors();
         this.retrievedContents = parameters.gretrievedContents();
         this.context = parameters.context();
         this.memoryId = parameters.memoryId();
+        this.commonGuardrailParams = parameters.commonGuardrailParams();
+        this.methodKey = parameters.methodKey();
     }
 
     @Override

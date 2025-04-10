@@ -203,7 +203,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.toolService.executionContext(memoryId, userMessage);
 
                         if (streaming) {
-                            TokenStream tokenStream = new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
+                            var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
                                     .toolSpecifications(toolExecutionContext.toolSpecifications())
                                     .toolExecutors(toolExecutionContext.toolExecutors())
@@ -211,7 +211,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             augmentationResult != null ? augmentationResult.contents() : null)
                                     .context(context)
                                     .memoryId(memoryId)
-                                    .build());
+                                    .commonGuardrailParams(commonGuardrailParam)
+                                    .methodKey(method)
+                                    .build();
+
+                            TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
                             // TODO moderation
                             if (returnType == TokenStream.class) {
                                 return tokenStream;
