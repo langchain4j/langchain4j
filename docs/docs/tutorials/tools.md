@@ -501,6 +501,8 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
+
 ## Model Context Protocol (MCP)
 
 You can also import [tools from MCP server](https://modelcontextprotocol.io/docs/concepts/tools).

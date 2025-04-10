@@ -26,10 +26,9 @@ He stands 1.75 meters tall and carries himself with confidence.
 Currently unmarried, he enjoys the freedom to focus on his personal goals and interests.
 ```
 
-Currently, depending on the LLM and the LLM provider, there are four ways how this can be achieved
+Currently, depending on the LLM and the LLM provider, there are three ways how this can be achieved
 (from most to least reliable):
 - [JSON Schema](/tutorials/structured-outputs#json-schema)
-- [Tools (Function Calling)](/tutorials/structured-outputs#tools-function-calling)
 - [Prompting + JSON Mode](/tutorials/structured-outputs#prompting--json-mode)
 - [Prompting](/tutorials/structured-outputs#prompting)
 
@@ -498,35 +497,21 @@ When using JSON Schema with AI Services, there are some limitations:
 - It works only with supported OpenAI, Azure OpenAI, Google AI Gemini, and Ollama models.
 - Support for JSON Schema needs to be enabled explicitly when configuring `ChatLanguageModel`.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming).
-- Currently, it works only when return type is a (single) POJO or a `Result<POJO>`.
-If you need other types (e.g., `List<POJO>`, `enum`, etc.), please wrap these into a POJO.
-We are [working](https://github.com/langchain4j/langchain4j/pull/1938) on supporting more return types soon.
+- Not all types are supported. See the list of supported types [here](/tutorials/structured-outputs#supported-types).
 - POJOs can contain:
   - Scalar/simple types (e.g., `String`, `int`/`Integer`, `double`/`Double`, `boolean`/`Boolean`, etc.)
   - `enum`s
   - Nested POJOs
   - `List<T>`, `Set<T>` and `T[]`, where `T` is a scalar, an `enum` or a POJO
-- When LLM does not support JSON Schema feature, or it is not enabled, or return type is not a POJO,
-AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting).
 - Recursion is currently supported only by OpenAI and Azure OpenAI.
 - Polymorphism is not supported yet. The returned POJO and its nested POJOs must be concrete classes;
 interfaces or abstract classes are not supported.
-
-
-## Tools (Function Calling)
-
-This method assumes (mis)using [tools](/tutorials/tools) to produce structured outputs.
-A single tool is specified in the request to the LLM, and the tool parameters describe the desired structure of the output.
-Once the LLM returns an `AiMessage` containing a `ToolExecutionRequest`,
-the JSON string in `ToolExecutionRequest.arguments()` is parsed into a POJO.
-
-More info is coming soon.
-
-In the meantime, please read [this section](/tutorials/tools)
-and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/).
+- When LLM does not support JSON Schema feature, or it is not enabled, or type is not supported,
+  AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting).
 
 
 ## Prompting + JSON Mode
+
 More info is coming soon.
 In the meantime, please read [this section](/tutorials/ai-services#json-mode)
 and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/).
@@ -534,15 +519,68 @@ and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-man
 
 ## Prompting
 
-When using prompting, one has to specify the format of the desired output in free-form text
-within a system or user message and hope that the LLM will abide. This approach is quite unreliable.
+When using prompting (this is a default choice, unless support for JSON schema is enabled),
+AI Service will automatically generate format instructions and append them to the end of the `UserMessage`
+indicating the format in which the LLM should respond.
+Before the method returns, the AI Service will parse the output of the LLM into the desired type.
+
+You can observe appended instructions by [enabling logging](/tutorials/logging).
+
+:::note
+This approach is quite unreliable.
 If LLM and LLM provider supports the methods described above, it is better to use those.
+:::
 
-More info is coming soon.
 
-In the meantime, please read [this section](/tutorials/ai-services#structured-outputs)
-and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/).
+## Supported Types
 
+| Type                          | JSON Schema | Prompting |
+|-------------------------------|-------------|-----------|
+| `POJO`                        | ✅           | ✅         |
+| `List<POJO>`, `Set<POJO>`     | ✅           | ❌         |
+| `Enum`                        | ✅           | ✅         |
+| `List<Enum>`, `Set<Enum>`     | ✅           | ✅         |
+| `List<String>`, `Set<String>` | ✅           | ✅         |
+| `boolean`, `Boolean`          | ✅           | ✅         |
+| `int`, `Integer`              | ✅           | ✅         |
+| `long`, `Long`                | ✅           | ✅         |
+| `float`, `Float`              | ✅           | ✅         |
+| `double`, `Double`            | ✅           | ✅         |
+| `byte`, `Byte`                | ❌           | ✅         |
+| `short`, `Short`              | ❌           | ✅         |
+| `BigInteger`                  | ❌           | ✅         |
+| `BigDecimal`                  | ❌           | ✅         |
+| `Date`                        | ❌           | ✅         |
+| `LocalDate`                   | ❌           | ✅         |
+| `LocalTime`                   | ❌           | ✅         |
+| `LocalDateTime`               | ❌           | ✅         |
+| `Map<?, ?>`                   | ❌           | ✅         |
+
+A few examples:
+```java
+record Person(String firstName, String lastName) {}
+
+enum Sentiment {
+    POSITIVE, NEGATIVE, NEUTRAL
+}
+
+interface Assistant {
+
+    Person extractPersonFrom(String text);
+
+    Set<Person> extractPeopleFrom(String text);
+
+    Sentiment extractSentimentFrom(String text);
+
+    List<Sentiment> extractSentimentsFrom(String text);
+
+    List<String> generateOutline(String topic);
+
+    boolean isSentimentPositive(String text);
+
+    Integer extractNumberOfPeopleMentionedIn(String text);
+}
+```
 
 ## Related Tutorials
 - [Data extraction: The many ways to get LLMs to spit JSON content](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/) by [Guillaume Laforge](https://glaforge.dev/about/)

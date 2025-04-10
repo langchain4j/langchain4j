@@ -28,8 +28,8 @@ import java.util.function.Function;
 
 public class ToolService {
 
-    private List<ToolSpecification> toolSpecifications;
-    private Map<String, ToolExecutor> toolExecutors;
+    private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
+    private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private ToolProvider toolProvider;
     private int maxSequentialToolsInvocations = 100;
 
@@ -42,20 +42,10 @@ public class ToolService {
     }
 
     public void toolProvider(ToolProvider toolProvider) {
-        if (toolSpecifications != null || toolExecutors != null) {
-            throw new IllegalArgumentException(
-                    "Either the tools or the tool provider can be configured, but not both!");
-        }
         this.toolProvider = toolProvider;
     }
 
     public void tools(Map<ToolSpecification, ToolExecutor> tools) {
-        if (toolProvider != null) {
-            throw new IllegalArgumentException(
-                    "Either the tools or the tool provider can be configured, but not both!");
-        }
-        initTools();
-
         tools.forEach((toolSpecification, toolExecutor) -> {
             toolSpecifications.add(toolSpecification);
             toolExecutors.put(toolSpecification.name(), toolExecutor);
@@ -63,12 +53,6 @@ public class ToolService {
     }
 
     public void tools(Collection<Object> objectsWithTools) {
-        if (toolProvider != null) {
-            throw new IllegalArgumentException(
-                    "Either the tools or the tool provider can be configured, but not both!");
-        }
-        initTools();
-
         for (Object objectWithTool : objectsWithTools) {
             if (objectWithTool instanceof Class) {
                 throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
@@ -88,33 +72,30 @@ public class ToolService {
         }
     }
 
-    public void initTools() {
-        if (toolSpecifications == null) {
-            toolSpecifications = new ArrayList<>();
-        }
-        if (toolExecutors == null) {
-            toolExecutors = new HashMap<>();
-        }
-    }
-
     public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
     }
 
     public ToolExecutionContext executionContext(Object memoryId, UserMessage userMessage) {
         if (this.toolProvider == null) {
-            return new ToolExecutionContext(this.toolSpecifications, this.toolExecutors);
+            return this.toolSpecifications.isEmpty() ?
+                    new ToolExecutionContext(null, null) :
+                    new ToolExecutionContext(this.toolSpecifications, this.toolExecutors);
         }
 
-        List<ToolSpecification> toolsSpecs = new ArrayList<>();
-        Map<String, ToolExecutor> toolExecs = new HashMap<>();
+        List<ToolSpecification> toolsSpecs = new ArrayList<>(this.toolSpecifications);
+        Map<String, ToolExecutor> toolExecs = new HashMap<>(this.toolExecutors);
         ToolProviderRequest toolProviderRequest = new ToolProviderRequest(memoryId, userMessage);
         ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
         if (toolProviderResult != null) {
             for (Map.Entry<ToolSpecification, ToolExecutor> entry :
                     toolProviderResult.tools().entrySet()) {
-                toolsSpecs.add(entry.getKey());
-                toolExecs.put(entry.getKey().name(), entry.getValue());
+                if (toolExecs.putIfAbsent(entry.getKey().name(), entry.getValue()) == null) {
+                    toolsSpecs.add(entry.getKey());
+                } else {
+                    throw new IllegalConfigurationException(
+                            "Duplicated definition for tool: " + entry.getKey().name());
+                }
             }
         }
         return new ToolExecutionContext(toolsSpecs, toolExecs);
