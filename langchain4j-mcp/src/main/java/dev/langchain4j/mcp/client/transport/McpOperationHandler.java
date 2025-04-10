@@ -21,14 +21,17 @@ public class McpOperationHandler {
     private static final Logger log = LoggerFactory.getLogger(McpOperationHandler.class);
     private final McpTransport transport;
     private final Consumer<McpLogMessage> logMessageConsumer;
+    private final Runnable onToolListUpdate;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
             McpTransport transport,
-            Consumer<McpLogMessage> logMessageConsumer) {
+            Consumer<McpLogMessage> logMessageConsumer,
+            Runnable onToolListUpdate) {
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
+        this.onToolListUpdate = onToolListUpdate;
     }
 
     public void handle(JsonNode message) {
@@ -47,17 +50,22 @@ public class McpOperationHandler {
                 }
                 log.warn("Received response for unknown message id: {}", messageId);
             }
-        } else if (message.has("method") && message.get("method").asText().equals("notifications/message")) {
-            // this is a log message
-            if (message.has("params")) {
-                if (logMessageConsumer != null) {
-                    logMessageConsumer.accept(McpLogMessage.fromJson(message.get("params")));
+        } else if (message.has("method")) {
+            String method = message.get("method").asText();
+            if (method.equals("notifications/message")) {
+                // this is a log message
+                if (message.has("params")) {
+                    if (logMessageConsumer != null) {
+                        logMessageConsumer.accept(McpLogMessage.fromJson(message.get("params")));
+                    }
+                } else {
+                    log.warn("Received log message without params: {}", message);
                 }
+            } else if (method.equals("notifications/tools/list_changed")) {
+                onToolListUpdate.run();
             } else {
-                log.warn("Received log message without params: {}", message);
+                log.warn("Received unknown message: {}", message);
             }
-        } else {
-            log.warn("Received unknown message: {}", message);
         }
     }
 

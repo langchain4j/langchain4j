@@ -6,7 +6,6 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -155,18 +154,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
-                        // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
-
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
-
-                        boolean supportsJsonSchema =
-                                supportsJsonSchema(); // TODO should it be called for returnType==String?
+                        boolean supportsJsonSchema = supportsJsonSchema();
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         if (supportsJsonSchema && !streaming) {
-                            jsonSchema = jsonSchemaFrom(returnType);
+                            jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
-
                         if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
                             // TODO append after storing in the memory?
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);

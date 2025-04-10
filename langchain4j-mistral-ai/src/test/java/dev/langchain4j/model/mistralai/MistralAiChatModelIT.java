@@ -1,5 +1,16 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_MEDIUM_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8x7B;
+import static dev.langchain4j.model.output.FinishReason.*;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -8,25 +19,17 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_MEDIUM_LATEST;
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8x7B;
-import static dev.langchain4j.model.output.FinishReason.*;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 class MistralAiChatModelIT {
 
@@ -435,6 +438,38 @@ class MistralAiChatModelIT {
 
         // when
         String json = mistralLargeModel.chat(userMessage);
+
+        // then
+        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
+    }
+
+    @Test
+    void should_fallback_to_default_format_when_no_message_response_format_given() {
+        // given
+        String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
+
+        String expectedJson = "{\"transactionId\":\"T123\",\"status\":\"paid\"}";
+
+        ChatLanguageModel mistralSmallModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .temperature(0.1)
+                .logRequests(true)
+                .logResponses(true)
+                .responseFormat(ResponseFormat.builder()
+                        .type(ResponseFormatType.JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .name("TransactionStatus")
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addStringProperty("transactionId")
+                                        .addStringProperty("status")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        // when
+        String json = mistralSmallModel.chat(userMessage);
 
         // then
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
