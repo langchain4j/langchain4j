@@ -1,70 +1,103 @@
 package dev.langchain4j.model.mistralai.internal.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
+
 import java.util.Map;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+
+@JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@JsonDeserialize(builder = MistralAiJsonSchema.Builder.class)
 public class MistralAiJsonSchema {
-    private String name;
-    private String description;
-    private Map<String, Object> schema;
-    private boolean strict;
 
-    @Override
-    public String toString() {
-        return "MistralAiJsonSchema{" + "name='"
-                + name + '\'' + ", description='"
-                + description + '\'' + ", strict="
-                + strict + ", schema="
-                + schema + '}';
-    }
+    private final String name;
+    private final String description;
+    private final Map<String, Object> schema;
+    private final boolean strict;
 
-    public static MistralAiJsonSchema fromJsonSchema(JsonSchema schema, boolean strict) {
-        MistralAiJsonSchema newSchema = new MistralAiJsonSchema();
-        newSchema.setSchema(JsonSchemaElementHelper.toMap(schema.rootElement()));
-        newSchema.setStrict(strict);
-        newSchema.setName(schema.name());
-        return newSchema;
-    }
-
-    public static MistralAiJsonSchema fromJsonSchema(JsonSchema schema) {
-        return fromJsonSchema(schema, false);
-    }
-
-    public boolean isStrict() {
-        return strict;
-    }
-
-    public Map<String, Object> getSchema() {
-        return schema;
-    }
-
-    public String getDescription() {
-        return description;
+    public MistralAiJsonSchema(Builder builder) {
+        this.name = builder.name;
+        this.description = builder.description;
+        this.schema = builder.schema;
+        this.strict = builder.strict;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(final String name) {
-        this.name = name;
+    public String getDescription() {
+        return description;
     }
 
-    public void setDescription(final String description) {
-        this.description = description;
+    public Map<String, Object> getSchema() {
+        return schema;
     }
 
-    public void setSchema(final Map<String, Object> schema) {
-        this.schema = schema;
+    public boolean isStrict() {
+        return strict;
     }
 
-    public void setStrict(final boolean strict) {
-        this.strict = strict;
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public static class Builder {
+
+        private String name;
+        private String description;
+        private Map<String, Object> schema;
+        private boolean strict;
+
+        private Builder() {
+        }
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder description(String description) {
+            this.description = description;
+            return this;
+        }
+
+        public Builder schema(Map<String, Object> schema) {
+            this.schema = schema;
+            return this;
+        }
+
+        public Builder strict(boolean strict) {
+            this.strict = strict;
+            return this;
+        }
+
+        public MistralAiJsonSchema build() {
+            return new MistralAiJsonSchema(this);
+        }
+    }
+
+    public static MistralAiJsonSchema fromJsonSchema(JsonSchema schema, boolean strict) {
+        return MistralAiJsonSchema.builder()
+                .name(schema.name())
+                .schema(toMap(schema.rootElement(), strict))
+                .strict(strict)
+                .build();
+    }
+
+    public static MistralAiJsonSchema fromJsonSchema(JsonSchema schema) {
+        return fromJsonSchema(schema, false);
     }
 }

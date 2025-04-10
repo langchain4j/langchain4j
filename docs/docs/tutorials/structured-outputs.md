@@ -34,7 +34,7 @@ Currently, depending on the LLM and the LLM provider, there are three ways how t
 
 
 ## JSON Schema
-Some LLM providers (currently OpenAI, Google AI Gemini, and Ollama) allow
+Some LLM providers (currently Azure OpenAI, Google AI Gemini, Mistral, Ollama and OpenAI) allow
 specifying [JSON schema](https://json-schema.org/overview/what-is-jsonschema) for the desired output.
 You can view all supported LLM providers [here](/integrations/language-models) in the "JSON Schema" column.
 
@@ -101,6 +101,13 @@ ChatLanguageModel chatModel = GoogleAiGeminiChatModel.builder()
 ChatLanguageModel chatModel = OllamaChatModel.builder()
         .baseUrl("http://localhost:11434")
         .modelName("llama3.1")
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+// OR
+ChatLanguageModel chatModel = MistralAiChatModel.builder()
+        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+        .modelName("mistral-small-latest")
         .logRequests(true)
         .logResponses(true)
         .build();
@@ -267,7 +274,7 @@ JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
 ```
 
 :::note
-The `JsonReferenceSchema` is currently supported only by OpenAI and Azure OpenAI.
+The `JsonReferenceSchema` is currently supported only by Azure OpenAI, Mistral and OpenAI.
 :::
 
 #### `JsonAnyOfSchema`
@@ -336,10 +343,10 @@ JsonSchemaElement stringSchema = JsonStringSchema.builder()
 #### Limitations
 
 When using JSON Schema with `ChatLanguageModel`, there are some limitations:
-- It works only with supported OpenAI, Azure OpenAI, Google AI Gemini, and Ollama models.
+- It works only with supported Azure OpenAI, Google AI Gemini, Mistral, Ollama and OpenAI models.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming) for OpenAI yet.
-For Google AI Gemini and Ollama, JSON Schema can be specified via `responseSchema(...)` when creating/building the model.
-- `JsonReferenceSchema` and `JsonAnyOfSchema` are currently supported only by OpenAI and Azure OpenAI.
+For Google AI Gemini, Mistral and Ollama, JSON Schema can be specified via `responseSchema(...)` when creating/building the model.
+- `JsonReferenceSchema` and `JsonAnyOfSchema` are currently supported only by Azure OpenAI, Mistral and OpenAI.
 
 
 ### Using JSON Schema with AI Services
@@ -383,6 +390,14 @@ ChatLanguageModel chatModel = OllamaChatModel.builder() // see [1] below
         .logRequests(true)
         .logResponses(true)
         .build();
+// OR
+ChatLanguageModel chatModel = MistralAiChatModel.builder()
+         .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+         .modelName("mistral-small-latest")
+         .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [6] below
+         .logRequests(true)
+         .logResponses(true)
+         .build();
 
 PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatModel); // see [1] below
 
@@ -405,6 +420,7 @@ as these beans are created automatically. More info on this:
 - [3] - This is required to enable the JSON Schema feature for [Azure OpenAI](/integrations/language-models/azure-open-ai).
 - [4] - This is required to enable the JSON Schema feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
 - [5] - This is required to enable the JSON Schema feature for [Ollama](/integrations/language-models/ollama).
+- [6] - This is required to enable the JSON Schema feature for [Mistral](/integrations/language-models/mistral-ai).
 
 When all the following conditions are met:
 - AI Service method returns a POJO
@@ -494,7 +510,7 @@ enum Priority {
 #### Limitations
 
 When using JSON Schema with AI Services, there are some limitations:
-- It works only with supported OpenAI, Azure OpenAI, Google AI Gemini, and Ollama models.
+- It works only with supported Azure OpenAI, Google AI Gemini, Mistral, Ollama and OpenAI models.
 - Support for JSON Schema needs to be enabled explicitly when configuring `ChatLanguageModel`.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming).
 - Not all types are supported. See the list of supported types [here](/tutorials/structured-outputs#supported-types).
@@ -503,7 +519,7 @@ When using JSON Schema with AI Services, there are some limitations:
   - `enum`s
   - Nested POJOs
   - `List<T>`, `Set<T>` and `T[]`, where `T` is a scalar, an `enum` or a POJO
-- Recursion is currently supported only by OpenAI and Azure OpenAI.
+- Recursion is currently supported only by Azure OpenAI, Mistral and OpenAI.
 - Polymorphism is not supported yet. The returned POJO and its nested POJOs must be concrete classes;
 interfaces or abstract classes are not supported.
 - When LLM does not support JSON Schema feature, or it is not enabled, or type is not supported,

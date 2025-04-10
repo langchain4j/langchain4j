@@ -1154,7 +1154,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         BooleanExtractor booleanExtractor = AiServices.create(BooleanExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. ";
+        String text = "Klaus is a 37-year-old man, 1.78 meters tall, and single.";
 
         // when
         boolean isAMan = booleanExtractor.isPersonAMan(text);
@@ -1193,7 +1193,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         BooleanExtractor booleanExtractor = AiServices.create(BooleanExtractor.class, model);
 
-        String text = "Klaus is 37 years old, 1.78m height and single. ";
+        String text = "Klaus is a 37-year-old man, 1.78 meters tall, and single.";
 
         // when
         Boolean isAMan = booleanExtractor.isPersonAMan(text);
