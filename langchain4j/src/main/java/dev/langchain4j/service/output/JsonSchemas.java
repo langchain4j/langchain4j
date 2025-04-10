@@ -12,19 +12,21 @@ import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.Optional;
 
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
 @Experimental
 public class JsonSchemas {
+    // TODO remove? deprecate? update docu
 
     public static Optional<JsonSchema> jsonSchemaFrom(Type returnType) {
 
         if (typeHasRawClass(returnType, Result.class)) {
-            returnType = resolveFirstGenericParameterClass(returnType);
+            returnType = resolveFirstGenericParameterType(returnType);
         }
 
         // TODO validate this earlier
@@ -60,9 +62,9 @@ public class JsonSchemas {
         // rawClass: List.class
         // typeArgumentClass: String.class
         Class<?> rawClass = getRawClass(returnType);
-        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+        Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
-        Optional<OutputParser<?>> outputParser = new DefaultOutputParserFactory().get(rawClass, typeArgumentClass);
-        return outputParser.isEmpty();
+        OutputParser<?> outputParser = new DefaultOutputParserFactory().get(rawClass, typeArgumentClass);
+        return outputParser instanceof PojoOutputParser;
     }
 }
