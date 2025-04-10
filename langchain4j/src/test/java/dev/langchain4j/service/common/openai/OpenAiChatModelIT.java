@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,7 +48,11 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                         .strictTools(true)
                         .build(),
                 defaultModelBuilder()
-                        .responseFormat("json_schema")
+                        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+                        .strictJsonSchema(true)
+                        .build(),
+                defaultModelBuilder()
+                        .responseFormat("json_schema") // testing backward compatibility
                         .strictJsonSchema(true)
                         .build()
                 // TODO json_object?
@@ -159,14 +164,13 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         // given
         OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
+                .maxCompletionTokens(123)
                 .seed(12345)
                 .user("Klaus")
                 .store(true)
-                .metadata(Map.of(
-                        "one", "1",
-                        "two", "2"
-                ))
+                .metadata(Map.of("key", "value"))
                 .serviceTier("default")
+                .reasoningEffort("medium")
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -174,18 +178,28 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
         ChatLanguageModel chatModel = defaultModelBuilder()
-                .logRequests(true) // verifying manually in the logs for now
-                .logResponses(true) // verifying manually in the logs for now
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .maxRetries(1) // it will fail, so no need to retry
                 .build();
 
         // when
-        ChatResponse chatResponse = chatModel.chat(chatRequest);
+        try {
+            chatModel.chat(chatRequest);
+        } catch (Exception e) {
+            // it fails because MockHttpClient.execute() returns null
+        }
 
         // then
-        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
-
-        // TODO verify that parameters are propagated after https://github.com/langchain4j/langchain4j/issues/1044
+        assertThat(mockHttpClient.request().body())
+                .containsIgnoringWhitespaces("\"seed\": 12345")
+                .containsIgnoringWhitespaces("\"user\": \"Klaus\"")
+                .containsIgnoringWhitespaces("\"store\": true")
+                .containsIgnoringWhitespaces("\"metadata\": {\"key\": \"value\"}")
+                .containsIgnoringWhitespaces("\"service_tier\": \"default\"")
+                .containsIgnoringWhitespaces("\"reasoning_effort\": \"medium\"");
     }
 
     @Test
@@ -263,5 +277,39 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    @Test
+    void should_propagate_custom_http_headers() {
+
+        // given
+        Map<String, String> customHeaders = Map.of(
+                "key1", "value1",
+                "key2", "value2"
+        );
+
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        ChatLanguageModel chatModel = defaultModelBuilder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .customHeaders(customHeaders)
+                .maxRetries(1) // it will fail, so no need to retry
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        try {
+            chatModel.chat(chatRequest);
+        } catch (Exception e) {
+            // it fails because MockHttpClient.execute() returns null
+        }
+
+        // then
+        assertThat(mockHttpClient.request().headers())
+                .containsEntry("key1", List.of("value1"))
+                .containsEntry("key2", List.of("value2"));
     }
 }

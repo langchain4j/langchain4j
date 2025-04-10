@@ -1,15 +1,16 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 
 import java.nio.charset.Charset;
@@ -27,6 +28,10 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
+/**
+ * @deprecated please use {@link BedrockChatModel} instead
+ */
+@Deprecated(forRemoval = true, since = "1.0.0-beta2")
 @Slf4j
 @Getter
 @SuperBuilder
@@ -57,7 +62,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    protected Response<AiMessage> generate(List<ChatMessage> messages) {
         String prompt = buildPrompt(messages);
 
         final Map<String, Object> requestParameters = getRequestParameters(prompt);
@@ -69,25 +74,33 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, messages, Collections.emptyList());
+        ChatRequest listenerRequest = createListenerRequest(invokeModelRequest, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
 
-        InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
+        InvokeModelResponse invokeModelResponse = withRetryMappingExceptions(() -> getClient().invokeModel(invokeModelRequest), getMaxRetries());
         final String response = invokeModelResponse.body().asUtf8String().trim();
         final BedrockMistralAiChatModelResponse result = Json.fromJson(response, getResponseClassType());
 
         try {
             Response<AiMessage> responseMessage = toAiMessage(result);
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+            ChatResponse listenerResponse = createListenerResponse(
                     null,
                     null,
                     responseMessage
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
+                    listenerResponse,
+                    listenerRequest,
+                    provider(),
                     attributes
             );
 
@@ -103,7 +116,8 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
         } catch (RuntimeException e) {
             listenerErrorResponse(
                     e,
-                    modelListenerRequest,
+                    listenerRequest,
+                    provider(),
                     attributes
             );
             throw e;
@@ -115,16 +129,13 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
         promptBuilder.append("<s>");
 
         for (ChatMessage message : messages) {
-          switch (message.type()) {
-            case USER:
-              promptBuilder.append("[INST] ").append(message.text()).append(" [/INST]");
-              break;
-            case AI:
-              promptBuilder.append(" ").append(message.text()).append(" ");
-              break;
-            default:
-              throw new IllegalArgumentException("Bedrock Mistral AI does not support the message type: " + message.type());
-          }
+            if (message instanceof UserMessage userMessage) {
+                promptBuilder.append("[INST] ").append(userMessage.singleText()).append(" [/INST]");
+            } else if (message instanceof AiMessage aiMessage) {
+                promptBuilder.append(" ").append(aiMessage.text()).append(" ");
+            } else {
+                throw new IllegalArgumentException("Unsupported message type: " + message.type());
+            }
         }
 
         promptBuilder.append("</s>");

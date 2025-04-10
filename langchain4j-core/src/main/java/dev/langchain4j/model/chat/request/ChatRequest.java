@@ -55,12 +55,12 @@ public class ChatRequest {
         return parameters;
     }
 
-    // TODO deprecate
+    @Experimental
     public List<ToolSpecification> toolSpecifications() {
         return parameters.toolSpecifications();
     }
 
-    // TODO deprecate
+    @Experimental
     public ResponseFormat responseFormat() {
         return parameters.responseFormat();
     }
@@ -113,18 +113,18 @@ public class ChatRequest {
             return this;
         }
 
-        // TODO deprecate
+        @Experimental
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return this;
         }
 
-        // TODO deprecate
+        @Experimental
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
 
-        // TODO deprecate
+        @Experimental
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;

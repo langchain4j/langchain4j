@@ -11,10 +11,10 @@ import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
-public class McpLoggingStdioTransportIT extends McpLoggingTestBase {
+class McpLoggingStdioTransportIT extends McpLoggingTestBase {
 
     @BeforeAll
-    public static void setup() {
+    static void setup() {
         McpTransport transport = new StdioMcpTransport.Builder()
                 .command(List.of(
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("logging_mcp_server.java")))
@@ -29,7 +29,7 @@ public class McpLoggingStdioTransportIT extends McpLoggingTestBase {
     }
 
     @AfterAll
-    public static void teardown() throws Exception {
+    static void teardown() throws Exception {
         if (mcpClient != null) {
             mcpClient.close();
         }

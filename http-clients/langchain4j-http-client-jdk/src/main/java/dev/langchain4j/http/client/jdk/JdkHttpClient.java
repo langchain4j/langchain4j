@@ -36,6 +36,10 @@ public class JdkHttpClient implements HttpClient {
         this.readTimeout = builder.readTimeout();
     }
 
+    public static JdkHttpClientBuilder builder() {
+        return new JdkHttpClientBuilder();
+    }
+
     @Override
     public SuccessfulHttpResponse execute(HttpRequest request) throws HttpException {
         try {

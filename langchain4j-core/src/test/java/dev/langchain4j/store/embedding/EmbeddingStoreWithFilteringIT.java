@@ -192,6 +192,15 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
+                        metadataKey("key").isGreaterThan(2),
+                        asList(
+                                new Metadata().put("key", 10)
+                        ),
+                        asList(
+                                new Metadata()
+                        )
+                ))
+                .add(Arguments.of(
                         metadataKey("key").isGreaterThan(1L),
                         asList(
                                 new Metadata().put("key", 2L),

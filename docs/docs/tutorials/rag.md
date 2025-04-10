@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.0-beta2</version>
 </dependency>
 ```
 
@@ -252,11 +252,13 @@ and update it in the `EmbeddingStore` as well to keep it in sync.
 
 - `Metadata.from(Map)` creates `Metadata` from a `Map`
 - `Metadata.put(String key, String value)` / `put(String, int)` / etc., adds an entry to the `Metadata`
+- `Metadata.putAll(Map)` adds multiple entries to the `Metadata`
 - `Metadata.getString(String key)` / `getInteger(String key)` / etc., returns a value of the `Metadata` entry, casting it to the required type
 - `Metadata.containsKey(String key)` checks whether `Metadata` contains an entry with the specified key
 - `Metadata.remove(String key)` removes an entry from the `Metadata` by key
 - `Metadata.copy()` returns a copy of the `Metadata`
 - `Metadata.toMap()` converts `Metadata` into a `Map`
+- `Metadata.merge(Metadata)` merges the current `Metadata` with another `Metadata`
 </details>
 
 ### Document Loader
@@ -569,7 +571,7 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
 
     // adding a name of the Document to each TextSegment to improve the quality of search
     .textSegmentTransformer(textSegment -> TextSegment.from(
-            textSegment.metadata("file_name") + "\n" + textSegment.text(),
+            textSegment.metadata().getString("file_name") + "\n" + textSegment.text(),
             textSegment.metadata()
     ))
 
@@ -617,8 +619,8 @@ The following diagram shows how these components work together:
 The process is as follows:
 1. The user produces a `UserMessage`, which is converted into a `Query`
 2. The `QueryTransformer` transforms the `Query` into one or multiple `Query`s
-3. Each `Query` is routed by the `QueryRouter` to one or more `ContetRetriever`s
-4. Each `ContetRetriever` retrieves relevant `Content`s for each `Query`
+3. Each `Query` is routed by the `QueryRouter` to one or more `ContentRetriever`s
+4. Each `ContentRetriever` retrieves relevant `Content`s for each `Query`
 5. The `ContentAggregator` combines all retrieved `Content`s into a single final ranked list
 6. This list of `Content`s is injected into the original `UserMessage`
 7. Finally, the `UserMessage`, containing the original query along with the injected relevant content, is sent to the LLM
@@ -900,9 +902,10 @@ interface Assistant {
 }
 
 assistant.chat("How to do Easy RAG with LangChain4j?")
-    .onRetrieved(sources -> ...)
-    .onNext(token -> ...)
-    .onError(error -> ...)
+    .onRetrieved((List<Content> sources) -> ...)
+    .onPartialResponse(...)
+    .onCompleteResponse(...)
+    .onError(...)
     .start();
 ```
 

@@ -1,5 +1,13 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -9,26 +17,17 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithConverseAPIIT {
@@ -44,10 +43,10 @@ class BedrockChatModelWithConverseAPIIT {
         BedrockChatModel bedrockChatModel = new BedrockChatModel("us.amazon.nova-micro-v1:0");
         assertThat(bedrockChatModel).isNotNull();
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
 
         assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
@@ -55,9 +54,8 @@ class BedrockChatModelWithConverseAPIIT {
     @Test
     void should_call_multiple_functions() {
 
-        ChatLanguageModel model = BedrockChatModel.builder()
-                .modelId("us.amazon.nova-micro-v1:0")
-                .build();
+        ChatLanguageModel model =
+                BedrockChatModel.builder().modelId("us.amazon.nova-micro-v1:0").build();
 
         UserMessage userMessage = userMessage(
                 "Give three numbers, ordered by size: the sum of two plus two, the square of four, and finally the cube of eight.");
@@ -69,6 +67,7 @@ class BedrockChatModelWithConverseAPIIT {
                         .parameters(JsonObjectSchema.builder()
                                 .addIntegerProperty("first")
                                 .addIntegerProperty("second")
+                                .required("first", "second")
                                 .build())
                         .build(),
                 ToolSpecification.builder()
@@ -76,6 +75,7 @@ class BedrockChatModelWithConverseAPIIT {
                         .description("returns the square of one number")
                         .parameters(JsonObjectSchema.builder()
                                 .addIntegerProperty("number")
+                                .required("number")
                                 .build())
                         .build(),
                 ToolSpecification.builder()
@@ -83,12 +83,18 @@ class BedrockChatModelWithConverseAPIIT {
                         .description("returns the cube of one number")
                         .parameters(JsonObjectSchema.builder()
                                 .addIntegerProperty("number")
+                                .required("number")
                                 .build())
                         .build());
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecifications);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(userMessage);
         messages.add(aiMessage);
@@ -113,8 +119,14 @@ class BedrockChatModelWithConverseAPIIT {
         }
 
         sleepIfNeeded();
-        Response<AiMessage> response2 = model.generate(messages, toolSpecifications);
-        AiMessage aiMessage2 = response2.content();
+
+        ChatRequest request2 = ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        ChatResponse response2 = model.chat(request2);
+        AiMessage aiMessage2 = response2.aiMessage();
 
         // then
         assertThat(aiMessage2.text()).contains("4", "16", "512");
@@ -141,9 +153,46 @@ class BedrockChatModelWithConverseAPIIT {
                 TextContent.from("Provide a summary of the document"));
 
         // when
-        Response<AiMessage> response = model.generate(singletonList(msg));
+        ChatResponse response = model.chat(List.of(msg));
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("Gemini");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("Gemini");
+    }
+
+    @Test
+    void should_reason() {
+
+        // given
+        ChatLanguageModel model = BedrockChatModel.builder()
+                .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+                .defaultRequestParameters(BedrockChatRequestParameters.builder()
+                        .enableReasoning(1024L)
+                        .build())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
+    }
+
+    @Test
+    void should_fail_if_reasoning_enabled() {
+
+        // given
+        ChatLanguageModel model = BedrockChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .defaultRequestParameters(BedrockChatRequestParameters.builder()
+                        .enableReasoning(1024L)
+                        .build())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when then
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> model.chat(userMessage));
     }
 }

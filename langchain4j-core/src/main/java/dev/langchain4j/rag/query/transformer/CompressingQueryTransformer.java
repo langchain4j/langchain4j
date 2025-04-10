@@ -78,7 +78,7 @@ public class CompressingQueryTransformer implements QueryTransformer {
         }
 
         Prompt prompt = createPrompt(query, format(chatMemory));
-        String compressedQueryText = chatLanguageModel.generate(prompt.text());
+        String compressedQueryText = chatLanguageModel.chat(prompt.text());
         Query compressedQuery = query.metadata() == null
                 ? Query.from(compressedQueryText)
                 : Query.from(compressedQueryText, query.metadata());
@@ -93,8 +93,8 @@ public class CompressingQueryTransformer implements QueryTransformer {
     }
 
     protected String format(ChatMessage message) {
-        if (message instanceof UserMessage) {
-            return "User: " + message.text();
+        if (message instanceof UserMessage userMessage) {
+            return "User: " + userMessage.singleText();
         } else if (message instanceof AiMessage aiMessage) {
             if (aiMessage.hasToolExecutionRequests()) {
                 return null;

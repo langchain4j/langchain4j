@@ -3,9 +3,10 @@ package dev.langchain4j.model.azure;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createModelListenerRequest;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createModelListenerResponse;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerRequest;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerResponse;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
@@ -13,6 +14,7 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toOpenAiMess
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -29,20 +31,20 @@ import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -81,13 +83,12 @@ import org.slf4j.LoggerFactory;
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
-public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+public class AzureOpenAiChatModel implements ChatLanguageModel {
 
     private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
-    private final Tokenizer tokenizer;
     private final Integer maxTokens;
     private final Double temperature;
     private final Double topP;
@@ -111,7 +112,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     public AzureOpenAiChatModel(
             OpenAIClient client,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -131,7 +131,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -156,7 +155,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             String serviceVersion,
             String apiKey,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -182,7 +180,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -216,7 +213,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             String serviceVersion,
             KeyCredential keyCredential,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -242,7 +238,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -276,7 +271,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             String serviceVersion,
             TokenCredential tokenCredential,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -302,7 +296,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -333,7 +326,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     private AzureOpenAiChatModel(
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -352,7 +344,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             Set<Capability> capabilities) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -380,33 +371,36 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null, this.responseFormat);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null, this.responseFormat);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification, this.responseFormat);
-    }
-
-    @Override
     public ChatResponse chat(ChatRequest request) {
 
         ChatRequestParameters parameters = request.parameters();
-        ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.toolChoice());
+        ChatRequestValidator.validateParameters(parameters);
+        if (parameters.toolChoice() == REQUIRED) {
+            if (parameters.toolSpecifications().size() != 1) {
+                throw new UnsupportedFeatureException(
+                        String.format("%s.%s is currently supported only when there is a single tool",
+                                ToolChoice.class.getSimpleName(), REQUIRED.name()));
+            }
+        }
 
         // If the response format is not specified in the request, use the one specified in the model
-        ResponseFormat responseFormat = request.responseFormat();
+        ResponseFormat responseFormat = parameters.responseFormat();
         if (responseFormat == null) {
             responseFormat = this.responseFormat;
         }
-        Response<AiMessage> response = generate(request.messages(), request.toolSpecifications(), null, responseFormat);
+
+        ToolSpecification toolThatMustBeExecuted = null;
+        if (parameters.toolChoice() == REQUIRED) {
+            toolThatMustBeExecuted = parameters.toolSpecifications().get(0);
+        }
+
+        Response<AiMessage> response = generate(
+                request.messages(),
+                parameters.toolSpecifications(),
+                toolThatMustBeExecuted,
+                responseFormat
+        );
+
         return ChatResponse.builder()
                 .aiMessage(response.content())
                 .metadata(ChatResponseMetadata.builder()
@@ -450,9 +444,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             options.setTools(toToolDefinitions(toolSpecifications));
         }
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -468,10 +463,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                     tokenUsageFrom(chatCompletions.getUsage()),
                     finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason()));
 
-            ChatModelResponse modelListenerResponse =
-                    createModelListenerResponse(chatCompletions.getId(), options.getModel(), response);
+            ChatResponse listenerResponse =
+                    createListenerResponse(chatCompletions.getId(), options.getModel(), response);
             ChatModelResponseContext responseContext =
-                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, attributes);
+                    new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
             listeners.forEach(listener -> {
                 try {
                     listener.onResponse(responseContext);
@@ -484,7 +479,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         } catch (Exception exception) {
 
             ChatModelErrorContext errorContext =
-                    new ChatModelErrorContext(exception, modelListenerRequest, null, attributes);
+                    new ChatModelErrorContext(exception, listenerRequest, provider(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -499,8 +494,13 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     }
 
     @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return AZURE_OPEN_AI;
     }
 
     public static Builder builder() {
@@ -518,7 +518,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
         private String deploymentName;
-        private Tokenizer tokenizer;
         private Integer maxTokens;
         private Double temperature;
         private Double topP;
@@ -608,11 +607,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
          */
         public Builder deploymentName(String deploymentName) {
             this.deploymentName = deploymentName;
-            return this;
-        }
-
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 
@@ -752,7 +746,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             serviceVersion,
                             tokenCredential,
                             deploymentName,
-                            tokenizer,
                             maxTokens,
                             temperature,
                             topP,
@@ -781,7 +774,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             serviceVersion,
                             keyCredential,
                             deploymentName,
-                            tokenizer,
                             maxTokens,
                             temperature,
                             topP,
@@ -810,7 +802,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                         serviceVersion,
                         apiKey,
                         deploymentName,
-                        tokenizer,
                         maxTokens,
                         temperature,
                         topP,
@@ -837,7 +828,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 return new AzureOpenAiChatModel(
                         openAIClient,
                         deploymentName,
-                        tokenizer,
                         maxTokens,
                         temperature,
                         topP,

@@ -19,7 +19,7 @@ class MariaDbEmbeddingIndexedStoreTest extends EmbeddingStoreWithFilteringIT {
     static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
 
     @BeforeAll
-    public static void beforeAll() {
+    static void beforeAll() {
         mariadbContainer.start();
     }
 

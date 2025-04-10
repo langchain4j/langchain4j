@@ -92,7 +92,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     }
 
     @Test
-    void test_milvus_with_existing_client() {
+    void milvus_with_existing_client() {
 
         ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
                 .withHost(milvus.getHost())

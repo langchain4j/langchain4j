@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.mariadb;
 import java.util.Arrays;
 import org.junit.jupiter.api.BeforeAll;
 
-public class MariaDbEmbeddingStoreWithColumnsFilteringTest extends MariaDbEmbeddingStoreConfigTest {
+class MariaDbEmbeddingStoreWithColumnsFilteringTest extends MariaDbEmbeddingStoreConfigTest {
 
     @BeforeAll
     static void beforeAllTests() {

@@ -67,6 +67,8 @@ ChatModelListener listener = new ChatModelListener() {
             System.out.println(openAiParameters.reasoningEffort());
         }
 
+        System.out.println(requestContext.modelProvider());
+
         Map<Object, Object> attributes = requestContext.attributes();
         attributes.put("my-attribute", "my-value");
     }
@@ -101,6 +103,8 @@ ChatModelListener listener = new ChatModelListener() {
         ChatRequest chatRequest = responseContext.chatRequest();
         System.out.println(chatRequest);
 
+        System.out.println(responseContext.modelProvider());
+
         Map<Object, Object> attributes = responseContext.attributes();
         System.out.println(attributes.get("my-attribute"));
     }
@@ -113,6 +117,8 @@ ChatModelListener listener = new ChatModelListener() {
         ChatRequest chatRequest = errorContext.chatRequest();
         System.out.println(chatRequest);
 
+        System.out.println(errorContext.modelProvider());
+
         Map<Object, Object> attributes = errorContext.attributes();
         System.out.println(attributes.get("my-attribute"));
     }
@@ -124,7 +130,7 @@ ChatLanguageModel model = OpenAiChatModel.builder()
         .listeners(List.of(listener))
         .build();
 
-model.generate("Tell me a joke about Java");
+model.chat("Tell me a joke about Java");
 ```
 
 The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same

@@ -4,18 +4,14 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.net.URI;
 import java.util.List;
 
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_QUALITY_HD;
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_RESPONSE_FORMAT_B64_JSON;
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_SIZE_256_x_256;
 import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
+import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_3;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Disabled("Run manually before release. Expensive to run very often.")
@@ -27,8 +23,8 @@ class OpenAiImageModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(DALL_E_2) // so that you pay not much :)
-            .size(DALL_E_SIZE_256_x_256)
+            .modelName(DALL_E_2)
+            .size("256x256")
             .logRequests(true)
             .logResponses(true);
 
@@ -44,32 +40,17 @@ class OpenAiImageModelIT {
     }
 
     @Test
-    void image_generation_with_persisting_works() {
-        OpenAiImageModel model = modelBuilder.responseFormat(DALL_E_RESPONSE_FORMAT_B64_JSON).withPersisting().build();
-
-        Response<Image> response = model.generate("Bird flying in the sky");
-
-        URI localImage = response.content().url();
-        log.info("Your local image is here: {}", localImage);
-        assertThat(new File(localImage)).exists();
-    }
-
-    @Test
     void multiple_images_generation_with_base64_works() {
-        OpenAiImageModel model = modelBuilder.responseFormat(DALL_E_RESPONSE_FORMAT_B64_JSON).withPersisting().build();
+        OpenAiImageModel model = modelBuilder.responseFormat("b64_json").build();
 
         Response<List<Image>> response = model.generate("Cute red parrot sings", 2);
 
         assertThat(response.content()).hasSize(2);
 
         Image localImage1 = response.content().get(0);
-        log.info("Your first local image is here: {}", localImage1.url());
-        assertThat(new File(localImage1.url())).exists();
         assertThat(localImage1.base64Data()).isNotNull().isBase64();
 
         Image localImage2 = response.content().get(1);
-        log.info("Your second local image is here: {}", localImage2.url());
-        assertThat(new File(localImage2.url())).exists();
         assertThat(localImage2.base64Data()).isNotNull().isBase64();
     }
 
@@ -79,7 +60,8 @@ class OpenAiImageModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .quality(DALL_E_QUALITY_HD)
+                .modelName(DALL_E_3)
+                .quality("hd")
                 .logRequests(true)
                 .logResponses(true)
                 .build();

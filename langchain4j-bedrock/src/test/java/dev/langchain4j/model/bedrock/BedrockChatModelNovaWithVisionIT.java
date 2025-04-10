@@ -18,7 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
+class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
@@ -42,13 +42,6 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
                 // force a working model with stopSequence parameter for @Tests
                 .modelId("cohere.command-r-v1:0")
                 .build();
-    }
-
-    // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
-    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false;
     }
 
     // output format not supported

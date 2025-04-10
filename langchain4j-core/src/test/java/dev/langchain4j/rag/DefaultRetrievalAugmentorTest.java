@@ -1,34 +1,5 @@
 package dev.langchain4j.rag;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.aggregator.ContentAggregator;
-import dev.langchain4j.rag.content.injector.ContentInjector;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.query.Metadata;
-import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.rag.query.router.DefaultQueryRouter;
-import dev.langchain4j.rag.query.router.QueryRouter;
-import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
-import dev.langchain4j.rag.query.transformer.QueryTransformer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.MockedStatic;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.stream.Stream;
-
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -44,6 +15,34 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.aggregator.ContentAggregator;
+import dev.langchain4j.rag.content.injector.ContentInjector;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.rag.query.router.DefaultQueryRouter;
+import dev.langchain4j.rag.query.router.QueryRouter;
+import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
+import dev.langchain4j.rag.query.transformer.QueryTransformer;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.MockedStatic;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class DefaultRetrievalAugmentorTest {
 
@@ -86,23 +85,25 @@ class DefaultRetrievalAugmentorTest {
         ContentInjector contentInjector = spy(new TestContentInjector());
 
         RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
-            .queryTransformer(queryTransformer)
-            .queryRouter(queryRouter)
-            .contentAggregator(contentAggregator)
-            .contentInjector(contentInjector)
-            .executor(executor)
-            .build();
+                .queryTransformer(queryTransformer)
+                .queryRouter(queryRouter)
+                .contentAggregator(contentAggregator)
+                .contentInjector(contentInjector)
+                .executor(executor)
+                .build();
 
         UserMessage userMessage = UserMessage.from("query");
 
         Metadata metadata = Metadata.from(userMessage, null, null);
 
         // when
-        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
+        AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
 
         // then
-        assertThat(augmented.singleText()).isEqualTo(
-            """
+        UserMessage augmented = (UserMessage) result.chatMessage();
+        assertThat(augmented.singleText())
+                .isEqualTo(
+                        """
                 query
                 content 1
                 content 2
@@ -111,8 +112,7 @@ class DefaultRetrievalAugmentorTest {
                 content 1
                 content 2
                 content 3
-                content 4"""
-        );
+                content 4""");
 
         verify(queryTransformer).transform(Query.from("query", metadata));
         verifyNoMoreInteractions(queryTransformer);
@@ -130,27 +130,21 @@ class DefaultRetrievalAugmentorTest {
         verifyNoMoreInteractions(contentRetriever2);
 
         Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
-        queryToContents.put(query1, asList(
-            asList(content1, content2),
-            asList(content3, content4)
+        queryToContents.put(query1, asList(asList(content1, content2), asList(content3, content4)));
 
-        ));
-        queryToContents.put(query2, asList(
-            asList(content1, content2),
-            asList(content3, content4)
+        queryToContents.put(query2, asList(asList(content1, content2), asList(content3, content4)));
 
-        ));
         verify(contentAggregator).aggregate(queryToContents);
         verifyNoMoreInteractions(contentAggregator);
 
-        verify(contentInjector).inject(asList(
-            content1, content2, content3, content4,
-            content1, content2, content3, content4
-        ), userMessage);
-        verify(contentInjector).inject(asList(
-            content1, content2, content3, content4,
-            content1, content2, content3, content4
-        ), (ChatMessage) userMessage);
+        verify(contentInjector)
+                .inject(
+                        asList(content1, content2, content3, content4, content1, content2, content3, content4),
+                        userMessage);
+        verify(contentInjector)
+                .inject(
+                        asList(content1, content2, content3, content4, content1, content2, content3, content4),
+                        (ChatMessage) userMessage);
         verifyNoMoreInteractions(contentInjector);
     }
 
@@ -177,29 +171,30 @@ class DefaultRetrievalAugmentorTest {
         Executor executor = spy(new TestExecutor());
 
         RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
-            .queryTransformer(queryTransformer)
-            .queryRouter(queryRouter)
-            .contentAggregator(contentAggregator)
-            .contentInjector(contentInjector)
-            .executor(executor)
-            .build();
+                .queryTransformer(queryTransformer)
+                .queryRouter(queryRouter)
+                .contentAggregator(contentAggregator)
+                .contentInjector(contentInjector)
+                .executor(executor)
+                .build();
 
         UserMessage userMessage = UserMessage.from("query");
 
         Metadata metadata = Metadata.from(userMessage, null, null);
 
         // when
-        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
+        AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
 
         // then
-        assertThat(augmented.singleText()).isEqualTo(
-            """
+        UserMessage augmented = (UserMessage) result.chatMessage();
+        assertThat(augmented.singleText())
+                .isEqualTo(
+                        """
                 query
                 content 1
                 content 2
                 content 3
-                content 4"""
-        );
+                content 4""");
 
         Query query = Query.from("query", metadata);
         verify(queryTransformer).transform(query);
@@ -215,11 +210,8 @@ class DefaultRetrievalAugmentorTest {
         verifyNoMoreInteractions(contentRetriever2);
 
         Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
-        queryToContents.put(query, asList(
-            asList(content1, content2),
-            asList(content3, content4)
+        queryToContents.put(query, asList(asList(content1, content2), asList(content3, content4)));
 
-        ));
         verify(contentAggregator).aggregate(queryToContents);
         verifyNoMoreInteractions(contentAggregator);
 
@@ -258,27 +250,27 @@ class DefaultRetrievalAugmentorTest {
         Executor executor = mock(Executor.class);
 
         RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
-            .queryTransformer(queryTransformer)
-            .queryRouter(queryRouter)
-            .contentAggregator(contentAggregator)
-            .contentInjector(contentInjector)
-            .executor(executor)
-            .build();
+                .queryTransformer(queryTransformer)
+                .queryRouter(queryRouter)
+                .contentAggregator(contentAggregator)
+                .contentInjector(contentInjector)
+                .executor(executor)
+                .build();
 
         UserMessage userMessage = UserMessage.from("query");
 
         Metadata metadata = Metadata.from(userMessage, null, null);
 
         // when
-        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
+        AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
 
         // then
-        assertThat(augmented.singleText()).isEqualTo(
-            """
+        UserMessage augmented = (UserMessage) result.chatMessage();
+        assertThat(augmented.singleText())
+                .isEqualTo("""
                 query
                 content 1
-                content 2"""
-        );
+                content 2""");
 
         Query query = Query.from("query", metadata);
         verify(queryTransformer).transform(query);
@@ -311,19 +303,20 @@ class DefaultRetrievalAugmentorTest {
         QueryRouter queryRouter = spy(new TestQueryRouter(retrievers));
 
         RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
-            .queryRouter(queryRouter)
-            .executor(executor)
-            .build();
+                .queryRouter(queryRouter)
+                .executor(executor)
+                .build();
 
         UserMessage userMessage = UserMessage.from("query");
 
         Metadata metadata = Metadata.from(userMessage, null, null);
 
         // when
-        UserMessage augmentedUserMessage = retrievalAugmentor.augment(userMessage, metadata);
+        AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
 
         // then
-        assertThat(augmentedUserMessage).isEqualTo(userMessage);
+        UserMessage augmented = (UserMessage) result.chatMessage();
+        assertThat(augmented).isEqualTo(userMessage);
 
         verify(queryRouter).route(Query.from("query", metadata));
         verifyNoMoreInteractions(queryRouter);
@@ -331,14 +324,14 @@ class DefaultRetrievalAugmentorTest {
 
     static Stream<Executor> executors() {
         return Stream.<Executor>builder()
-            .add(Executors.newCachedThreadPool())
-            .add(Executors.newFixedThreadPool(1))
-            .add(Executors.newFixedThreadPool(2))
-            .add(Executors.newFixedThreadPool(3))
-            .add(Executors.newFixedThreadPool(4))
-            .add(Runnable::run) // same thread executor
-            .add(null) // to use default Executor in DefaultRetrievalAugmentor
-            .build();
+                .add(Executors.newCachedThreadPool())
+                .add(Executors.newFixedThreadPool(1))
+                .add(Executors.newFixedThreadPool(2))
+                .add(Executors.newFixedThreadPool(3))
+                .add(Executors.newFixedThreadPool(4))
+                .add(Runnable::run) // same thread executor
+                .add(null) // to use default Executor in DefaultRetrievalAugmentor
+                .build();
     }
 
     static class TestQueryTransformer implements QueryTransformer {
@@ -387,22 +380,20 @@ class DefaultRetrievalAugmentorTest {
 
         @Override
         public List<Content> aggregate(Map<Query, Collection<List<Content>>> queryToContents) {
-            return queryToContents.values()
-                .stream()
-                .flatMap(Collection::stream)
-                .flatMap(List::stream)
-                .collect(toList());
+            return queryToContents.values().stream()
+                    .flatMap(Collection::stream)
+                    .flatMap(List::stream)
+                    .collect(toList());
         }
     }
 
     static class TestContentInjector implements ContentInjector {
 
         @Override
-        public UserMessage inject(List<Content> contents, UserMessage userMessage) {
-            String joinedContents = contents.stream()
-                .map(it -> it.textSegment().text())
-                .collect(joining("\n"));
-            return UserMessage.from(userMessage.text() + "\n" + joinedContents);
+        public ChatMessage inject(List<Content> contents, ChatMessage chatMessage) {
+            String joinedContents =
+                    contents.stream().map(it -> it.textSegment().text()).collect(joining("\n"));
+            return UserMessage.from(((UserMessage) chatMessage).singleText() + "\n" + joinedContents);
         }
     }
 }

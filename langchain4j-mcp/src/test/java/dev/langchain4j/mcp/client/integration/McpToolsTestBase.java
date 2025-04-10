@@ -29,7 +29,7 @@ public abstract class McpToolsTestBase {
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools.size()).isEqualTo(5);
+        assertThat(tools).hasSize(6);
 
         ToolSpecification echoString = findToolSpecificationByName(toolProviderResult, "echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -56,6 +56,10 @@ public abstract class McpToolsTestBase {
         ToolSpecification error = findToolSpecificationByName(toolProviderResult, "error");
         assertThat(error.description()).isEqualTo("Throws a business error");
         assertThat(error.parameters().properties()).isEmpty();
+
+        ToolSpecification errorResponse = findToolSpecificationByName(toolProviderResult, "errorResponse");
+        assertThat(errorResponse.description()).isEqualTo("Returns a response as an error");
+        assertThat(errorResponse.parameters().properties()).isEmpty();
     }
 
     @Test
@@ -79,7 +83,8 @@ public abstract class McpToolsTestBase {
                 .arguments("{\"input\": 1}") // wrong argument type
                 .build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
-        assertThat(toolExecutionResultString).isEqualTo("There was an error executing the tool");
+        assertThat(toolExecutionResultString)
+                .isEqualTo("There was an error executing the tool. Message: Internal error. Code: -32603");
     }
 
     @Test
@@ -91,7 +96,9 @@ public abstract class McpToolsTestBase {
                 .arguments("{\"input\": 1}")
                 .build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
-        assertThat(toolExecutionResultString).isEqualTo("There was an error executing the tool");
+        assertThat(toolExecutionResultString)
+                .isEqualTo("There was an error executing the tool. "
+                        + "Message: Invalid tool name: THIS-TOOL-DOES-NOT-EXIST. Code: -32602");
     }
 
     @Test
@@ -101,7 +108,21 @@ public abstract class McpToolsTestBase {
         ToolExecutionRequest toolExecutionRequest =
                 ToolExecutionRequest.builder().name("error").arguments("{}").build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
-        assertThat(toolExecutionResultString).isEqualTo("There was an error executing the tool");
+        assertThat(toolExecutionResultString)
+                .isEqualTo("There was an error executing the tool. Message: Internal error. Code: -32603");
+    }
+
+    @Test
+    public void executeToolThatReturnsError() {
+        ToolProviderResult toolProviderResult = obtainTools();
+        ToolExecutor executor = findToolExecutorByName(toolProviderResult, "errorResponse");
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("errorResponse")
+                .arguments("{}")
+                .build();
+        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+        assertThat(toolExecutionResultString)
+                .isEqualTo("There was an error executing the tool. The tool returned: This is an actual error");
     }
 
     @Test
