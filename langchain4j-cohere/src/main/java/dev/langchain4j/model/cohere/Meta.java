@@ -1,9 +1,10 @@
 package dev.langchain4j.model.cohere;
 
-import lombok.Getter;
-
-@Getter
 class Meta {
 
     private BilledUnits billedUnits;
+
+    public BilledUnits getBilledUnits() {
+        return this.billedUnits;
+    }
 }

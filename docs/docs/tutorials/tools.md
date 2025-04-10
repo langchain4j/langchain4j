@@ -254,10 +254,33 @@ Methods annotated with `@Tool` can accept any number of parameters of various ty
 
 Methods without parameters are supported as well.
 
-By default, all method parameters are considered mandatory/required.
+#### Required and Optional
+
+By default, all tool method parameters are considered **_required_**.
 This means that the LLM will have to produce a value for such a parameter.
-A parameter can be made optional by annotating it with `@P(required = false)`.
-Declaring fields of POJO parameters as optional is not supported yet.
+A parameter can be made optional by annotating it with `@P(required = false)`:
+```java
+@Tool
+void getTemperature(String location, @P(required = false) Unit unit) {
+    ...
+}
+```
+
+Fields and sub-fields of complex parameters are also considered **_required_** by default.
+You can make a field optional by annotating it with `@JsonProperty(required = false)`:
+```java
+record User(String name, @JsonProperty(required = false) String email) {}
+
+@Tool
+void add(User user) {
+    ...
+}
+```
+
+:::note
+Please note that when used with [structured outputs](/tutorials/structured-outputs),
+all fields and sub-fields are considered **_optional_** by default.
+:::
 
 Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
 are currently supported only by OpenAI.
@@ -345,6 +368,24 @@ Result executeQuery(Query query) {
   ...
 }
 ```
+
+:::note
+Please note that `@Description` placed on an `enum` value has **_no effect_** and **_is not_** included
+in the generated JSON schema:
+```java
+enum Priority {
+
+    @Description("Critical issues such as payment gateway failures or security breaches.") // this is ignored
+    CRITICAL,
+    
+    @Description("High-priority issues like major feature malfunctions or widespread outages.") // this is ignored
+    HIGH,
+    
+    @Description("Low-priority issues such as minor bugs or cosmetic problems.") // this is ignored
+    LOW
+}
+```
+:::
 
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
@@ -459,6 +500,8 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .toolProvider(toolProvider)
     .build();
 ```
+
+It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
 
 ## Model Context Protocol (MCP)
 

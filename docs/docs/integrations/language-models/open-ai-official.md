@@ -196,8 +196,7 @@ OpenAiChatModel.builder()
         .build();
 ```
 
-In this case AI Service will not append "You must answer strictly in the following JSON format: ..." string
-to the end of the last `UserMessage`, but will create a JSON schema from the given POJO and pass it to the LLM.
+In this case AI Service will automatically generate a JSON schema from the given POJO and pass it to the LLM.
 
 ## Configuring the models for streaming
 

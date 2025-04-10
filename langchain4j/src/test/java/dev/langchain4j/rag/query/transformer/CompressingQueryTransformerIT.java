@@ -36,7 +36,7 @@ class CompressingQueryTransformerIT {
         UserMessage userMessage = UserMessage.from("How old is he?");
         Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
 
-        Query query = Query.from(userMessage.text(), metadata);
+        Query query = Query.from(userMessage.singleText(), metadata);
 
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
 
