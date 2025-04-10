@@ -1,9 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -28,13 +26,12 @@ import static java.time.Duration.ofSeconds;
  * However, it's recommended to use {@link OpenAiChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  */
-public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
+public class OpenAiLanguageModel implements LanguageModel {
 
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
     private final Integer maxRetries;
-    private final Tokenizer tokenizer;
 
     public OpenAiLanguageModel(OpenAiLanguageModelBuilder builder) {
         this.client = OpenAiClient.builder()
@@ -53,7 +50,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
-        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
     }
 
     public String modelName() {
@@ -77,21 +73,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 tokenUsageFrom(response.usage()),
                 finishReasonFrom(completionChoice.finishReason())
         );
-    }
-
-    @Override
-    public int estimateTokenCount(String prompt) {
-        return tokenizer.estimateTokenCountInText(prompt);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default values for the model name and temperature will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiLanguageModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
     }
 
     public static OpenAiLanguageModelBuilder builder() {
@@ -119,7 +100,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
 
         public OpenAiLanguageModelBuilder() {
@@ -183,11 +163,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
         public OpenAiLanguageModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        public OpenAiLanguageModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 

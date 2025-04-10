@@ -62,16 +62,16 @@
         <assertj.version>3.27.3</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.2.2</awaitility.version>
-        <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
-        <azure-ai-openai.version>1.0.0-beta.14</azure-ai-openai.version>
+        <aws.java.sdk.version>2.31.6</aws.java.sdk.version>
+        <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
         <azure-sdk.version>1.2.31</azure-sdk.version>
         <bytebuddy.version>1.15.10</bytebuddy.version>
         <elastic.version>8.15.3</elastic.version>
         <github-api.version>1.318</github-api.version>
         <gson.version>2.10.1</gson.version>
         <httpclient5.version>5.2.1</httpclient5.version>
-        <infinispan.version>15.0.0.Final</infinispan.version>
-        <jackson.version>2.18.2</jackson.version>
+        <infinispan.version>15.0.14.Final</infinispan.version>
+        <jackson.version>2.18.3</jackson.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
         <jtokkit.version>1.1.0</jtokkit.version>
@@ -88,7 +88,7 @@
         <mockito.version>5.14.2</mockito.version>
         <netty.version>4.1.119.Final</netty.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <openai-java.version>0.34.1</openai-java.version>
+        <openai-java.version>1.2.0</openai-java.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <reactor-bom.version>2024.0.3</reactor-bom.version>
@@ -186,6 +186,13 @@
                 <groupId>com.willowtreeapps.assertk</groupId>
                 <artifactId>assertk</artifactId>
                 <version>${assertk.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.kotest</groupId>
+                <artifactId>kotest-assertions-json-jvm</artifactId>
+                <version>${kotest.version}</version>
                 <scope>test</scope>
             </dependency>
 
