@@ -141,7 +141,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private void addToMemory(ChatMessage chatMessage) {
         if (context.hasChatMemory()) {
-            context.chatMemory(memoryId).add(chatMessage);
+            context.chatMemoryService.getOrCreateChatMemory(memoryId).add(chatMessage);
         } else {
             temporaryMemory.add(chatMessage);
         }
@@ -149,7 +149,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private List<ChatMessage> messagesToSend(Object memoryId) {
         return context.hasChatMemory()
-                ? context.chatMemory(memoryId).messages()
+                ? context.chatMemoryService.getOrCreateChatMemory(memoryId).messages()
                 : temporaryMemory;
     }
 
