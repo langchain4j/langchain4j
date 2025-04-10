@@ -69,13 +69,10 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
     }
 
     @Override
-    protected boolean assertExceptionType() {
-        return false;
-    }
-
-    @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        return BedrockChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     // Nova models support StopSequence but have an incoherent behavior, it includes the stopSequence in the
@@ -88,8 +85,9 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
 
         // given
         List<String> stopSequences = List.of("ipsum", " Ipsum");
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().stopSequences(stopSequences).build();
+        ChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+                .stopSequences(stopSequences)
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Lorem ipsum dolor sit amet'"))
@@ -116,8 +114,9 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
 
         // given
         List<String> stopSequences = List.of("ipsum", " Ipsum");
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().stopSequences(stopSequences).build();
+        ChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+                .stopSequences(stopSequences)
+                .build();
         StreamingChatLanguageModel model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
