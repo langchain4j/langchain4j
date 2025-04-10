@@ -259,6 +259,9 @@ public class MistralAiChatModel implements ChatLanguageModel {
             return this;
         }
 
+        /**
+         * @deprecated please use {@link #responseFormat(ResponseFormat)} instead
+         */
         @Deprecated(forRemoval = true)
         public MistralAiChatModelBuilder responseFormat(String responseFormat) {
             this.responseFormat = MistralAiResponseFormatType.valueOf(responseFormat.toUpperCase())
@@ -266,6 +269,9 @@ public class MistralAiChatModel implements ChatLanguageModel {
             return this;
         }
 
+        /**
+         * @deprecated please use {@link #responseFormat(ResponseFormat)} instead
+         */
         @Deprecated(forRemoval = true)
         public MistralAiChatModelBuilder responseFormat(MistralAiResponseFormatType responseFormat) {
             this.responseFormat = responseFormat.toGenericResponseFormat();
