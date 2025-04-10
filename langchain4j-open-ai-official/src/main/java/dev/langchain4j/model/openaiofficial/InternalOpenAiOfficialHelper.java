@@ -22,7 +22,6 @@ import com.openai.credential.BearerTokenCredential;
 import com.openai.credential.Credential;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
-import com.openai.models.Metadata;
 import com.openai.models.ReasoningEffort;
 import com.openai.models.ResponseFormatJsonObject;
 import com.openai.models.chat.completions.ChatCompletion;
@@ -679,7 +678,7 @@ class InternalOpenAiOfficialHelper {
         }
 
         if (parameters.metadata() != null) {
-            builder.metadata(Metadata.builder()
+            builder.metadata(ChatCompletionCreateParams.Metadata.builder()
                     .putAllAdditionalProperties(parameters.metadata().entrySet().stream()
                             .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonValue.from(entry.getValue()))))
                     .build());
