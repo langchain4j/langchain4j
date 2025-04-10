@@ -6,12 +6,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -22,18 +16,20 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamRequest;
-
-import java.time.Duration;
 
 @Slf4j
 @Getter
@@ -47,28 +43,40 @@ public abstract class AbstractSharedBedrockChatModel {
 
     @Builder.Default
     protected final String humanPrompt = HUMAN_PROMPT;
+
     @Builder.Default
     protected final String assistantPrompt = ASSISTANT_PROMPT;
+
     @Builder.Default
     protected final Integer maxRetries = 5;
+
     @Builder.Default
     protected final Region region = Region.US_EAST_1;
+
     @Builder.Default
-    protected final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.builder().build();
+    protected final AwsCredentialsProvider credentialsProvider = null;
+
     @Builder.Default
     protected final int maxTokens = 300;
+
     @Builder.Default
     protected final double temperature = 1;
+
     @Builder.Default
     protected final float topP = 0.999f;
+
     @Builder.Default
-    protected final String[] stopSequences = new String[]{};
+    protected final String[] stopSequences = new String[] {};
+
     @Builder.Default
     protected final int topK = 250;
+
     @Builder.Default
     protected final Duration timeout = Duration.ofMinutes(1L);
+
     @Builder.Default
     protected final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
+
     @Builder.Default
     protected final List<ChatModelListener> listeners = Collections.emptyList();
 
@@ -121,10 +129,8 @@ public abstract class AbstractSharedBedrockChatModel {
         return parameters;
     }
 
-    protected void listenerErrorResponse(Throwable e,
-                                         ChatRequest listenerRequest,
-                                         ModelProvider modelProvider,
-                                         Map<Object, Object> attributes) {
+    protected void listenerErrorResponse(
+            Throwable e, ChatRequest listenerRequest, ModelProvider modelProvider, Map<Object, Object> attributes) {
         Throwable error;
         if (e.getCause() instanceof SdkClientException) {
             error = e.getCause();
@@ -132,12 +138,8 @@ public abstract class AbstractSharedBedrockChatModel {
             error = e;
         }
 
-        ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                error,
-                listenerRequest,
-                modelProvider,
-                attributes
-        );
+        ChatModelErrorContext errorContext =
+                new ChatModelErrorContext(error, listenerRequest, modelProvider, attributes);
 
         listeners.forEach(listener -> {
             try {
@@ -146,12 +148,12 @@ public abstract class AbstractSharedBedrockChatModel {
                 log.warn("Exception while calling model listener", e2);
             }
         });
-
     }
 
-    protected ChatRequest createListenerRequest(InvokeModelRequest invokeModelRequest,
-                                                     List<ChatMessage> messages,
-                                                     List<ToolSpecification> toolSpecifications) {
+    protected ChatRequest createListenerRequest(
+            InvokeModelRequest invokeModelRequest,
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecifications) {
         return ChatRequest.builder()
                 .messages(messages)
                 .parameters(ChatRequestParameters.builder()
@@ -164,9 +166,10 @@ public abstract class AbstractSharedBedrockChatModel {
                 .build();
     }
 
-    protected ChatRequest createListenerRequest(InvokeModelWithResponseStreamRequest invokeModelRequest,
-                                                List<ChatMessage> messages,
-                                                List<ToolSpecification> toolSpecifications) {
+    protected ChatRequest createListenerRequest(
+            InvokeModelWithResponseStreamRequest invokeModelRequest,
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecifications) {
         return ChatRequest.builder()
                 .messages(messages)
                 .parameters(ChatRequestParameters.builder()
@@ -179,10 +182,8 @@ public abstract class AbstractSharedBedrockChatModel {
                 .build();
     }
 
-
-    protected ChatResponse createListenerResponse(String responseId,
-                                                  String responseModel,
-                                                  Response<AiMessage> response) {
+    protected ChatResponse createListenerResponse(
+            String responseId, String responseModel, Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
@@ -204,5 +205,4 @@ public abstract class AbstractSharedBedrockChatModel {
      * @return model id
      */
     protected abstract String getModelId();
-
 }

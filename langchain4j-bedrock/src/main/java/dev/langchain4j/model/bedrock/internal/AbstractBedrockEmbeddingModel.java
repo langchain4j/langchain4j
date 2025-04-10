@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.bedrock.BedrockRuntimeClientFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
@@ -35,8 +37,11 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
 
     @Builder.Default
     private final Region region = Region.US_EAST_1;
+
     @Builder.Default
-    private final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.builder().build();
+    private final AwsCredentialsProvider credentialsProvider =
+            DefaultCredentialsProvider.builder().build();
+
     @Builder.Default
     private final Integer maxRetries = 5;
 
@@ -57,9 +62,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
             totalInputToken += response.getInputTextTokenCount();
         }
 
-        return Response.from(
-                embeddings,
-                new TokenUsage(totalInputToken));
+        return Response.from(embeddings, new TokenUsage(totalInputToken));
     }
 
     /**
@@ -103,8 +106,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
      */
     protected InvokeModelResponse invoke(final String body) {
 
-        InvokeModelRequest invokeModelRequest = InvokeModelRequest
-                .builder()
+        InvokeModelRequest invokeModelRequest = InvokeModelRequest.builder()
                 .modelId(getModelId())
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
@@ -131,9 +133,9 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
      * @return bedrock client
      */
     private BedrockRuntimeClient initClient() {
-        return BedrockRuntimeClient.builder()
-                .region(region)
-                .credentialsProvider(credentialsProvider)
-                .build();
+        BedrockRuntimeClientFactory factory = ServiceLoader.load(BedrockRuntimeClientFactory.class)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No BedrockRuntimeClientFactory implementation found"));
+        return factory.createClient(region, credentialsProvider, null, false, false);
     }
 }

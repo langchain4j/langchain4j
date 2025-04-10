@@ -17,12 +17,12 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
@@ -44,10 +44,18 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
     private BedrockStreamingChatModel(Builder builder) {
         super(builder);
-        this.client = isNull(builder.client)
-                ? createClient(
-                        getOrDefault(builder.getLogRequests(), false), getOrDefault(builder.getLogResponses(), false))
-                : builder.client;
+        if (isNull(builder.client)) {
+            BedrockRuntimeAsyncClientFactory factory = ServiceLoader.load(BedrockRuntimeAsyncClientFactory.class)
+                    .findFirst()
+                    .orElseThrow(
+                            () -> new RuntimeException("No BedrockRuntimeAsyncClientFactory implementation found"));
+            this.client = factory.createAsyncClient(
+                    this.region,
+                    builder.awsCredentialsProvider,
+                    this.timeout,
+                    getOrDefault(builder.logRequests, false),
+                    getOrDefault(builder.logResponses, false));
+        } else this.client = builder.client;
     }
 
     @Override
@@ -134,18 +142,6 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         return new Builder();
     }
 
-    private BedrockRuntimeAsyncClient createClient(boolean logRequests, boolean logResponses) {
-        return BedrockRuntimeAsyncClient.builder()
-                .region(this.region)
-                .credentialsProvider(DefaultCredentialsProvider.create())
-                .overrideConfiguration(config -> {
-                    config.apiCallTimeout(this.timeout);
-                    if (logRequests || logResponses)
-                        config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses));
-                })
-                .build();
-    }
-
     public static class Builder extends AbstractBuilder<Builder> {
         private BedrockRuntimeAsyncClient client;
 
@@ -155,6 +151,14 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         }
 
         public BedrockStreamingChatModel build() {
+            if (nonNull(this.client)
+                    && (nonNull(this.region)
+                            || nonNull(this.awsCredentialsProvider)
+                            || nonNull(this.logRequests)
+                            || nonNull(this.logResponses))) {
+                throw new IllegalArgumentException(
+                        "You must provide either a BedrockRuntimeAsyncClient or a combination of region, awsCredentialsProvider, logRequests, and logResponses — not both. Providing both may lead to inconsistent behavior.");
+            }
             return new BedrockStreamingChatModel(this);
         }
     }

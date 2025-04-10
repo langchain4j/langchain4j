@@ -17,8 +17,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
@@ -38,10 +38,17 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
 
     private BedrockChatModel(Builder builder) {
         super(builder);
-        this.client = isNull(builder.client)
-                ? createClient(
-                        getOrDefault(builder.getLogRequests(), false), getOrDefault(builder.getLogResponses(), false))
-                : builder.client;
+        if (isNull(builder.client)) {
+            BedrockRuntimeClientFactory factory = ServiceLoader.load(BedrockRuntimeClientFactory.class)
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("No BedrockRuntimeClientFactory implementation found"));
+            this.client = factory.createClient(
+                    this.region,
+                    builder.awsCredentialsProvider,
+                    this.timeout,
+                    getOrDefault(builder.logRequests, false),
+                    getOrDefault(builder.logResponses, false));
+        } else this.client = builder.client;
     }
 
     @Override
@@ -98,18 +105,6 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
         return new Builder();
     }
 
-    private BedrockRuntimeClient createClient(boolean logRequests, boolean logResponses) {
-        return BedrockRuntimeClient.builder()
-                .region(this.region)
-                .credentialsProvider(DefaultCredentialsProvider.create())
-                .overrideConfiguration(config -> {
-                    config.apiCallTimeout(this.timeout);
-                    if (logRequests || logResponses)
-                        config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses));
-                })
-                .build();
-    }
-
     public static class Builder extends AbstractBuilder<Builder> {
         private BedrockRuntimeClient client;
 
@@ -119,6 +114,14 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
         }
 
         public BedrockChatModel build() {
+            if (nonNull(this.client)
+                    && (nonNull(this.region)
+                            || nonNull(this.awsCredentialsProvider)
+                            || nonNull(this.logRequests)
+                            || nonNull(this.logResponses))) {
+                throw new IllegalArgumentException(
+                        "You must provide either a BedrockRuntimeClient or a combination of region, awsCredentialsProvider, logRequests, and logResponses — not both. Providing both may lead to inconsistent behavior.");
+            }
             return new BedrockChatModel(this);
         }
     }

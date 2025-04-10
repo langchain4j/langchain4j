@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
@@ -424,6 +425,7 @@ abstract class AbstractBedrockChatModel {
         protected Boolean logRequests;
         protected Boolean logResponses;
         protected List<ChatModelListener> listeners;
+        protected AwsCredentialsProvider awsCredentialsProvider;
 
         @SuppressWarnings("unchecked")
         public T self() {
@@ -475,6 +477,11 @@ abstract class AbstractBedrockChatModel {
 
         public T listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
+            return self();
+        }
+
+        public T awsCredentialsProvider(AwsCredentialsProvider awsCredentialsProvider) {
+            this.awsCredentialsProvider = awsCredentialsProvider;
             return self();
         }
     }

@@ -26,6 +26,7 @@
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
+        <module>langchain4j-bedrock-runtime-clients</module>
         <module>langchain4j-cohere</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-jina</module>
