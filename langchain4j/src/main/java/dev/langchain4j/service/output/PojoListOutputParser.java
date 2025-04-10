@@ -4,14 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-class EnumListOutputParser<E extends Enum<E>> extends EnumCollectionOutputParser<E, List<E>> {
+class PojoListOutputParser<T> extends PojoCollectionOutputParser<T, List<T>> {
 
-    EnumListOutputParser(Class<E> enumClass) {
-        super(enumClass);
+    PojoListOutputParser(Class<T> type) {
+        super(type);
     }
 
     @Override
-    Supplier<List<E>> emptyCollectionSupplier() {
+    Supplier<List<T>> emptyCollectionSupplier() {
         return ArrayList::new;
     }
 

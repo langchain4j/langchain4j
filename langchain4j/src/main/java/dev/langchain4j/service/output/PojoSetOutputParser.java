@@ -4,10 +4,14 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
-class StringSetOutputParser extends StringCollectionOutputParser<Set<String>> {
+class PojoSetOutputParser<T> extends PojoCollectionOutputParser<T, Set<T>> {
+
+    PojoSetOutputParser(Class<T> type) {
+        super(type);
+    }
 
     @Override
-    Supplier<Set<String>> emptyCollectionSupplier() {
+    Supplier<Set<T>> emptyCollectionSupplier() {
         return LinkedHashSet::new;
     }
 

@@ -8,18 +8,18 @@ import java.util.Optional;
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 import static dev.langchain4j.service.tool.DefaultToolExecutor.getBoundedLongValue;
 
-class LongOutputParser implements OutputParser<Long> {
+class IntegerOutputParser implements OutputParser<Integer> {
 
     @Override
-    public Long parse(String text) {
-        return parseAsStringOrJson(text, LongOutputParser::parseLong, Long.class);
+    public Integer parse(String text) {
+        return parseAsStringOrJson(text, IntegerOutputParser::parseInteger, Integer.class);
     }
 
-    private static Long parseLong(String text) {
+    private static Integer parseInteger(String text) {
         try {
-            return Long.parseLong(text);
+            return Integer.parseInt(text);
         } catch (NumberFormatException nfe) {
-            return getBoundedLongValue(text, "long", Long.class, Long.MIN_VALUE, Long.MAX_VALUE);
+            return (int) getBoundedLongValue(text, "int", Integer.class, Integer.MIN_VALUE, Integer.MAX_VALUE);
         }
     }
 
