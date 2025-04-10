@@ -460,17 +460,9 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
-        public Boolean getLogRequests() {
-            return logRequests;
-        }
-
         public T logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return self();
-        }
-
-        public Boolean getLogResponses() {
-            return logResponses;
         }
 
         public T listeners(List<ChatModelListener> listeners) {

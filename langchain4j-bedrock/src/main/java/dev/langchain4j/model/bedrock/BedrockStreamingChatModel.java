@@ -46,7 +46,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         super(builder);
         this.client = isNull(builder.client)
                 ? createClient(
-                        getOrDefault(builder.getLogRequests(), false), getOrDefault(builder.getLogResponses(), false))
+                        getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
                 : builder.client;
     }
 
