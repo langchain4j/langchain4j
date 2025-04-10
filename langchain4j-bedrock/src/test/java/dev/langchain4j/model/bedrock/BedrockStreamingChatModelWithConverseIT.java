@@ -1,9 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -11,6 +16,8 @@ import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -170,5 +177,43 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
 
         // when then
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> chat(model, chatRequest));
+    }
+
+    record Dinosaur(String name, String periodOfActivity, String description) {}
+
+    record Milestone(String name, String period, String description) {}
+
+    @Tool
+    String mermaidTimelineDiagram(List<Milestone> milestons, List<Dinosaur> dinosaurs) {
+        return "";
+    }
+
+    @Test
+    void should_call_tool_with_chunked_parameters() {
+
+        StreamingChatLanguageModel model = TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU;
+
+        UserMessage userMessage = userMessage(
+                "Create a clear timeline to be displayed in mermaid.live with iconic dinosaurs and major milestones of the Mesozoic era.");
+        Method mermaidTimelineDiagram = Arrays.stream(
+                        BedrockStreamingChatModelWithConverseIT.class.getDeclaredMethods())
+                .filter(m -> m.getName().equals("mermaidTimelineDiagram"))
+                .findFirst()
+                .orElseThrow();
+        List<ToolSpecification> toolSpecifications = List.of(toolSpecificationFrom(mermaidTimelineDiagram));
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+            assertThat(toolExecutionRequest.name()).isEqualTo("mermaidTimelineDiagram");
+            assertThat(toolExecutionRequest.arguments()).isNotEmpty();
+        }
     }
 }
