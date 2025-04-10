@@ -9,6 +9,8 @@ import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.to
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
+import com.azure.identity.AuthenticationUtil;
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.OpenAIClient;
@@ -16,6 +18,7 @@ import com.openai.client.OpenAIClientAsync;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
 import com.openai.core.JsonValue;
+import com.openai.credential.BearerTokenCredential;
 import com.openai.credential.Credential;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
@@ -134,20 +137,15 @@ class InternalOpenAiOfficialHelper {
         builder.baseUrl(
                 calculateBaseUrl(baseUrl, modelHost, modelName, azureDeploymentName, azureOpenAiServiceVersion));
 
-        if (apiKey != null) {
-            if (modelHost == ModelHost.AZURE_OPENAI) {
-                builder.credential(AzureApiKeyCredential.create(apiKey));
-            } else {
-                builder.apiKey(apiKey);
-            }
-        } else if (credential != null) {
-            builder.credential(credential);
-        } else if (modelHost == ModelHost.GITHUB_MODELS && System.getenv(GITHUB_TOKEN) != null) {
-            builder.apiKey(System.getenv(GITHUB_TOKEN));
-        } else {
+        Credential calculatedCredential = calculateCredential(modelHost, apiKey, credential);
+        String calculatedApiKey = calculateApiKey(modelHost, apiKey);
+        if (calculatedCredential == null && calculatedApiKey == null) {
             throw new IllegalArgumentException("Either apiKey or credential must be set to authenticate");
+        } else if (calculatedCredential != null) {
+            builder.credential(calculatedCredential);
+        } else {
+            builder.apiKey(calculatedApiKey);
         }
-
         builder.organization(organizationId);
 
         if (azureOpenAiServiceVersion != null) {
@@ -196,20 +194,15 @@ class InternalOpenAiOfficialHelper {
         builder.baseUrl(
                 calculateBaseUrl(baseUrl, modelHost, modelName, azureDeploymentName, azureOpenAiServiceVersion));
 
-        if (apiKey != null) {
-            if (modelHost == ModelHost.AZURE_OPENAI) {
-                builder.credential(AzureApiKeyCredential.create(apiKey));
-            } else {
-                builder.apiKey(apiKey);
-            }
-        } else if (credential != null) {
-            builder.credential(credential);
-        } else if (modelHost == ModelHost.GITHUB_MODELS && System.getenv(GITHUB_TOKEN) != null) {
-            builder.apiKey(System.getenv(GITHUB_TOKEN));
-        } else {
+        Credential calculatedCredential = calculateCredential(modelHost, apiKey, credential);
+        String calculatedApiKey = calculateApiKey(modelHost, apiKey);
+        if (calculatedCredential == null && calculatedApiKey == null) {
             throw new IllegalArgumentException("Either apiKey or credential must be set to authenticate");
+        } else if (calculatedCredential != null) {
+            builder.credential(calculatedCredential);
+        } else {
+            builder.apiKey(calculatedApiKey);
         }
-
         builder.organization(organizationId);
 
         if (azureOpenAiServiceVersion != null) {
@@ -262,6 +255,36 @@ class InternalOpenAiOfficialHelper {
         } else {
             throw new IllegalArgumentException("Unknown model host: " + modelHost);
         }
+    }
+
+    private static Credential calculateCredential(ModelHost modelHost, String apiKey, Credential credential) {
+        if (apiKey != null) {
+            if (modelHost == ModelHost.AZURE_OPENAI) {
+                return AzureApiKeyCredential.create(apiKey);
+            }
+        } else if (credential != null) {
+            return credential;
+        } else if (modelHost == ModelHost.AZURE_OPENAI) {
+            try {
+                return BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
+                        new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default"));
+
+            } catch (NoClassDefFoundError e) {
+                throw new IllegalArgumentException(
+                        "Azure OpenAI was detected, but no credential was provided. "
+                                + "If you want to use passwordless authentication, you need to add the Azure Identity library (groupId=`com.azure`, artifactId=`azure-identity`) to your classpath.");
+            }
+        }
+        return null;
+    }
+
+    private static String calculateApiKey(ModelHost modelHost, String apiKey) {
+        if (modelHost != ModelHost.AZURE_OPENAI && apiKey != null) {
+            return apiKey;
+        } else if (modelHost == ModelHost.GITHUB_MODELS && System.getenv(GITHUB_TOKEN) != null) {
+            return System.getenv(GITHUB_TOKEN);
+        }
+        return null;
     }
 
     static List<ChatCompletionMessageParam> toOpenAiMessages(List<ChatMessage> messages) {
