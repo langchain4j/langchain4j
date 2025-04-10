@@ -503,6 +503,21 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
 
+### Tools Hallucination Strategy
+
+It may happen that an LLM hallucinates on tools invocation, or in other words that it asks to use a tool with a name that doesn't exist. In this case by default LangChain4j will throw an exception reporting the problem, but it is possible to configure a different behavior providing the AI service with a strategy to be used in this situation. 
+
+This strategy is an implementation of a `Function<ToolExecutionRequest, ToolExecutionResultMessage>` defining which `ToolExecutionResultMessage` should be produced as the result for a `ToolExecutionRequest` containing the request to invoke a tool that is not available. For instance, it could be possible to configure the AI service with a strategy that returns to the LLM a response that hopefully will push it to retry a different tool invocation, knowing that the formerly required tool doesn't exist, as in the following example:
+
+```java
+AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTool.class)
+        .chatLanguageModel(chatLanguageModel)
+        .tools(new HelloWorld())
+        .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
+                toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()))
+        .build();
+```
+
 ## Model Context Protocol (MCP)
 
 You can also import [tools from MCP server](https://modelcontextprotocol.io/docs/concepts/tools).
