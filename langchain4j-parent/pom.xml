@@ -63,7 +63,7 @@
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.2.2</awaitility.version>
         <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
-        <azure-ai-openai.version>1.0.0-beta.14</azure-ai-openai.version>
+        <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
         <azure-sdk.version>1.2.31</azure-sdk.version>
         <bytebuddy.version>1.15.10</bytebuddy.version>
         <elastic.version>8.15.3</elastic.version>
