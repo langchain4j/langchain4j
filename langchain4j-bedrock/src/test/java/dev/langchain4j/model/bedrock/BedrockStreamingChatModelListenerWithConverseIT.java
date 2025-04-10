@@ -1,27 +1,27 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Collections.singletonList;
 
-import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import java.util.concurrent.CompletionException;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+@EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
+class BedrockStreamingChatModelListenerWithConverseIT extends StreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
-        return OpenAiStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(modelName())
-                .temperature(temperature())
-                .topP(topP())
-                .maxTokens(maxTokens())
+        return BedrockStreamingChatModel.builder()
+                .modelId(modelName())
+                .defaultRequestParameters(DefaultChatRequestParameters.builder()
+                        .modelName(modelName())
+                        .temperature(temperature())
+                        .topP(topP())
+                        .maxOutputTokens(maxTokens())
+                        .build())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -30,14 +30,13 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
 
     @Override
     protected String modelName() {
-        return GPT_4_O_MINI.toString();
+        return "us.amazon.nova-lite-v1:0";
     }
 
     @Override
     protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
-        return OpenAiStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey("banana")
+        return BedrockStreamingChatModel.builder()
+                .modelId("banana")
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -46,6 +45,6 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return HttpException.class;
+        return CompletionException.class;
     }
 }

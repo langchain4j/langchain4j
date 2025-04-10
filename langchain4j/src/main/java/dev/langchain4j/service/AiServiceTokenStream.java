@@ -1,8 +1,6 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.emptyList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -51,24 +49,18 @@ public class AiServiceTokenStream implements TokenStream {
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
 
-    public AiServiceTokenStream(
-            List<ChatMessage> messages,
-            List<ToolSpecification> toolSpecifications,
-            Map<String, ToolExecutor> toolExecutors,
-            List<Content> retrievedContents,
-            AiServiceContext context,
-            Object memoryId,
-            @Nullable CommonGuardrailParams commonGuardrailParams,
-            Object methodKey) {
-        this.messages = ensureNotEmpty(messages, "messages");
-        this.toolSpecifications = copyIfNotNull(toolSpecifications);
-        this.toolExecutors = copyIfNotNull(toolExecutors);
-        this.retrievedContents = retrievedContents;
-        this.context = ensureNotNull(context, "context");
-        this.memoryId = ensureNotNull(memoryId, "memoryId");
-        this.methodKey = ensureNotNull(methodKey, "methodKey");
-        this.commonGuardrailParams = commonGuardrailParams;
-        ensureNotNull(context.streamingChatModel, "streamingChatModel");
+    /**
+     * Creates a new instance of {@link AiServiceTokenStream} with the given parameters.
+     *
+     * @param parameters the parameters for creating the token stream
+     */
+    public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
+        this.messages = parameters.messages();
+        this.toolSpecifications = parameters.toolSpecifications();
+        this.toolExecutors = parameters.toolExecutors();
+        this.retrievedContents = parameters.gretrievedContents();
+        this.context = parameters.context();
+        this.memoryId = parameters.memoryId();
     }
 
     @Override
