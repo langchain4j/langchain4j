@@ -27,12 +27,12 @@ abstract class EnumCollectionOutputParser<E extends Enum<E>, CE extends Collecti
 
     @Override
     public CE parse(String text) {
-        return parseAsStringOrJson(text, enumOutputParser::parse, emptyCollectionSupplier(), getType());
+        return parseAsStringOrJson(text, enumOutputParser::parse, emptyCollectionSupplier(), type());
     }
 
     abstract Supplier<CE> emptyCollectionSupplier();
 
-    private String getType() {
+    private String type() {
         return collectionType() + "<" + enumClass.getName() + ">";
     }
 

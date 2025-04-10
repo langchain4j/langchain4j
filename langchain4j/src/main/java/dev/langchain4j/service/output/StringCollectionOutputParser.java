@@ -15,12 +15,12 @@ abstract class StringCollectionOutputParser<CT extends Collection<String>> imple
 
     @Override
     public CT parse(String text) {
-        return parseAsStringOrJson(text, s -> s, emptyCollectionSupplier(), getType());
+        return parseAsStringOrJson(text, s -> s, emptyCollectionSupplier(), type());
     }
 
     abstract Supplier<CT> emptyCollectionSupplier();
 
-    private String getType() {
+    private String type() {
         return collectionType().getName() + "<java.lang.String>";
     }
 

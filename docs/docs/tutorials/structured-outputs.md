@@ -497,22 +497,21 @@ When using JSON Schema with AI Services, there are some limitations:
 - It works only with supported OpenAI, Azure OpenAI, Google AI Gemini, and Ollama models.
 - Support for JSON Schema needs to be enabled explicitly when configuring `ChatLanguageModel`.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming).
-- Currently, it works only when return type is a (single) POJO or a `Result<POJO>`.
-If you need other types (e.g., `List<POJO>`, `enum`, etc.), please wrap these into a POJO.
-We are [working](https://github.com/langchain4j/langchain4j/pull/1938) on supporting more return types soon. TODO
+- Not all types are supported. See the list of supported types [here](/tutorials/structured-outputs#supported-types).
 - POJOs can contain:
   - Scalar/simple types (e.g., `String`, `int`/`Integer`, `double`/`Double`, `boolean`/`Boolean`, etc.)
   - `enum`s
   - Nested POJOs
   - `List<T>`, `Set<T>` and `T[]`, where `T` is a scalar, an `enum` or a POJO
-- When LLM does not support JSON Schema feature, or it is not enabled, or return type is not a POJO,
-AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting).
 - Recursion is currently supported only by OpenAI and Azure OpenAI.
 - Polymorphism is not supported yet. The returned POJO and its nested POJOs must be concrete classes;
 interfaces or abstract classes are not supported.
+- When LLM does not support JSON Schema feature, or it is not enabled, or type is not supported,
+  AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting).
 
 
 ## Prompting + JSON Mode
+
 More info is coming soon.
 In the meantime, please read [this section](/tutorials/ai-services#json-mode)
 and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/).
@@ -559,10 +558,10 @@ If LLM and LLM provider supports the methods described above, it is better to us
 
 A few examples:
 ```java
-record Person(String name, MaritalStatus maritalStatus) {}
+record Person(String firstName, String lastName) {}
 
-enum MaritalStatus {
-    SINGLE, MARRIED, DIVORCED
+enum Sentiment {
+    POSITIVE, NEGATIVE, NEUTRAL
 }
 
 interface Assistant {
@@ -571,29 +570,17 @@ interface Assistant {
 
     Set<Person> extractPeopleFrom(String text);
 
-    MaritalStatus extractMaritalStatusFrom(String text);
+    Sentiment extractSentimentFrom(String text);
 
-    List<MaritalStatus> extractMaritalStatusesFrom(String text);
+    List<Sentiment> extractSentimentsFrom(String text);
 
     List<String> generateOutline(String topic);
 
-    boolean isPositive(String text);
+    boolean isSentimentPositive(String text);
 
     Integer extractNumberOfPeopleMentionedIn(String text);
 }
 ```
-
-Any of the above-mentioned types can be additionally wrapped into a `Result` to get extra metadata:
-```java
-interface Assistant {
-    
-    @UserMessage("Generate an outline for the article on the following topic: {{it}}")
-    Result<List<String>> generateOutlineFor(String topic);
-}
-```
-
-In case support for JSON Schema is enabled but return type is not supported (e.g., `BigInteger`),
-AI Service will fall back to prompting.
 
 ## Related Tutorials
 - [Data extraction: The many ways to get LLMs to spit JSON content](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/) by [Guillaume Laforge](https://glaforge.dev/about/)

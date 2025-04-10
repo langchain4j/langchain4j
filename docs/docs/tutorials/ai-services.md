@@ -254,24 +254,45 @@ please use the [low-level API](/tutorials/chat-and-language-models#multimodality
 ## Return Types
 
 AI Service method can return one of the following types:
-- `String` - in this case LLM-generated output is returned without any processing
-- `Result<String>` - same as above, but extra metadata (`TokenUsage`, `FinishReason`,
-sources (`Content`s retrieved during [RAG](/tutorials/ai-services#rag))
-and executed [tools](/tutorials/ai-services#tools-function-calling)) is included in the `Result` class
-- Any type supported by [Structured Outputs](/tutorials/structured-outputs#supported-types)
+- `String` - in this case LLM-generated output is returned without any processing/parsing
+- Any type supported by [Structured Outputs](/tutorials/structured-outputs#supported-types) - in this case
+AI service will parse LLM-generated output into a desired type before returning
 
+Any type can be additionally wrapped into a `Result<T>` to get extra metadata about AI Service invocation:
+- `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
+the LLM (e.g., because tools were executed), it will summ token usages of all calls.
+- Sources - `Content`s retrieved during [RAG](/tutorials/ai-services#rag) retrieval
+- Executed [tools](/tutorials/ai-services#tools-function-calling)
+- `FinishReason`
+
+An example:
+```java
+interface Assistant {
+    
+    @UserMessage("Generate an outline for the article on the following topic: {{it}}")
+    Result<List<String>> generateOutlineFor(String topic);
+}
+
+Result<List<String>> result = assistant.generateOutlineFor("Java");
+
+List<String> outline = result.content();
+TokenUsage tokenUsage = result.tokenUsage();
+List<Content> sources = result.sources();
+List<ToolExecution> toolExecutions = result.toolExecutions();
+FinishReason finishReason = result.finishReason();
+```
 
 ## Structured Outputs
 
 If you want to receive a structured output (e.g., a complex Java object,
-as opposed to an unstructured text like `String`) from the LLM,
-you can change the return type of your AI Service method from `String` to something else.
+as opposed to an unstructured text inside the `String`) from the LLM,
+you can change the return type of your AI Service method from `String` to some other type.
 
 :::note
 More info on Structured Outputs can be found [here](/tutorials/structured-outputs).
 :::
 
-A fex examples:
+A few examples:
 
 ### `boolean` as return type
 

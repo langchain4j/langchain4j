@@ -25,12 +25,12 @@ abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implement
 
     @Override
     public CT parse(String text) {
-        return parseAsStringOrJson(text, parser::parse, emptyCollectionSupplier(), getType());
+        return parseAsStringOrJson(text, parser::parse, emptyCollectionSupplier(), type());
     }
 
     abstract Supplier<CT> emptyCollectionSupplier();
 
-    private String getType() {
+    private String type() {
         return collectionType().getName() + "<" + type.getName() + ">";
     }
 
