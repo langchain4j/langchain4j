@@ -44,12 +44,12 @@ public class AiServiceTokenStream implements TokenStream {
      * @param parameters the parameters for creating the token stream
      */
     public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
-        this.messages = parameters.getMessages();
-        this.toolSpecifications = parameters.getToolSpecifications();
-        this.toolExecutors = parameters.getToolExecutors();
-        this.retrievedContents = parameters.getRetrievedContents();
-        this.context = parameters.getContext();
-        this.memoryId = parameters.getMemoryId();
+        this.messages = parameters.messages();
+        this.toolSpecifications = parameters.toolSpecifications();
+        this.toolExecutors = parameters.toolExecutors();
+        this.retrievedContents = parameters.gretrievedContents();
+        this.context = parameters.context();
+        this.memoryId = parameters.memoryId();
     }
 
     @Override

@@ -1,15 +1,16 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecutor;
+
 import java.util.List;
 import java.util.Map;
+
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.
@@ -35,42 +36,42 @@ public class AiServiceTokenStreamParameters {
     /**
      * @return the messages
      */
-    public List<ChatMessage> getMessages() {
+    public List<ChatMessage> messages() {
         return messages;
     }
 
     /**
      * @return the tool specifications
      */
-    public List<ToolSpecification> getToolSpecifications() {
+    public List<ToolSpecification> toolSpecifications() {
         return toolSpecifications;
     }
 
     /**
      * @return the tool executors
      */
-    public Map<String, ToolExecutor> getToolExecutors() {
+    public Map<String, ToolExecutor> toolExecutors() {
         return toolExecutors;
     }
 
     /**
      * @return the retrieved contents
      */
-    public List<Content> getRetrievedContents() {
+    public List<Content> gretrievedContents() {
         return retrievedContents;
     }
 
     /**
      * @return the AI service context
      */
-    public AiServiceContext getContext() {
+    public AiServiceContext context() {
         return context;
     }
 
     /**
      * @return the memory ID
      */
-    public Object getMemoryId() {
+    public Object memoryId() {
         return memoryId;
     }
 
@@ -94,7 +95,8 @@ public class AiServiceTokenStreamParameters {
         private AiServiceContext context;
         private Object memoryId;
 
-        protected Builder() {}
+        protected Builder() {
+        }
 
         /**
          * Sets the messages.
