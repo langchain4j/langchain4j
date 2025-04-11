@@ -19,7 +19,7 @@ import static java.util.Collections.unmodifiableList;
 public final class Delta {
 
     @JsonProperty
-    private final Role role;
+    private final String role;
     @JsonProperty
     private final String content;
     @JsonProperty
@@ -35,7 +35,7 @@ public final class Delta {
         this.functionCall = builder.functionCall;
     }
 
-    public Role role() {
+    public String role() {
         return role;
     }
 
@@ -95,13 +95,13 @@ public final class Delta {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static final class Builder {
 
-        private Role role;
+        private String role;
         private String content;
         private List<ToolCall> toolCalls;
         @Deprecated
         private FunctionCall functionCall;
 
-        public Builder role(Role role) {
+        public Builder role(String role) {
             this.role = role;
             return this;
         }
@@ -123,7 +123,6 @@ public final class Delta {
             this.functionCall = functionCall;
             return this;
         }
-
 
         public Delta build() {
             return new Delta(this);

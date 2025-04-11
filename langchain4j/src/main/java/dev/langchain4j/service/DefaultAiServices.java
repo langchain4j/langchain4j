@@ -6,7 +6,6 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -14,7 +13,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -30,6 +28,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -135,14 +134,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return switch (method.getName()) {
                                 case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
                                 case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
-                                default -> throw new UnsupportedOperationException("Unknown method on ChatMemoryAccess class : " + method.getName());
+                                default -> throw new UnsupportedOperationException(
+                                        "Unknown method on ChatMemoryAccess class : " + method.getName());
                             };
                         }
 
                         validateParameters(method);
 
                         final Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
-                        final ChatMemory chatMemory = context.hasChatMemory() ? context.chatMemoryService.getOrCreateChatMemory(memoryId) : null;
+                        final ChatMemory chatMemory = context.hasChatMemory()
+                                ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
+                                : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
@@ -155,18 +157,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
-                        // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
-
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
-
-                        boolean supportsJsonSchema =
-                                supportsJsonSchema(); // TODO should it be called for returnType==String?
+                        boolean supportsJsonSchema = supportsJsonSchema();
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         if (supportsJsonSchema && !streaming) {
-                            jsonSchema = jsonSchemaFrom(returnType);
+                            jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
-
                         if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
                             // TODO append after storing in the memory?
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
@@ -189,13 +186,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.toolService.executionContext(memoryId, userMessage);
 
                         if (streaming) {
-                            TokenStream tokenStream = new AiServiceTokenStream(
-                                    messages,
-                                    toolExecutionContext.toolSpecifications(),
-                                    toolExecutionContext.toolExecutors(),
-                                    augmentationResult != null ? augmentationResult.contents() : null,
-                                    context,
-                                    memoryId);
+                            TokenStream tokenStream = new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
+                                    .messages(messages)
+                                    .toolSpecifications(toolExecutionContext.toolSpecifications())
+                                    .toolExecutors(toolExecutionContext.toolExecutors())
+                                    .retrievedContents(
+                                            augmentationResult != null ? augmentationResult.contents() : null)
+                                    .context(context)
+                                    .memoryId(memoryId)
+                                    .build());
                             // TODO moderation
                             if (returnType == TokenStream.class) {
                                 return tokenStream;

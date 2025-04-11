@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 /**
  * Utility class for {@link ToolExecutionRequest}.
  */
@@ -48,6 +50,10 @@ class ToolExecutionRequestUtil {
      * @return map
      */
     static Map<String, Object> argumentsAsMap(String arguments) {
+        if (isNullOrBlank(arguments)) {
+            return Map.of();
+        }
+
         String normalizeArguments = normalizeJsonString(arguments);
         return Json.fromJson(removeTrailingComma(normalizeArguments), MAP_TYPE);
     }

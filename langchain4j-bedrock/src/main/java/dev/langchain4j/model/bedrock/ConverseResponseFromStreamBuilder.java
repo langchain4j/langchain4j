@@ -23,6 +23,7 @@ class ConverseResponseFromStreamBuilder {
     private Message.Builder messageBuilder = Message.builder();
     private final StringBuilder stringBuilder = new StringBuilder();
     private ToolUseBlock.Builder toolUseBlockBuilder = null;
+    private StringBuilder toolUseInputBuilder = new StringBuilder();
     private final List<ToolUseBlock> toolUseBlocks = new ArrayList<>();
 
     public static ConverseResponseFromStreamBuilder builder() {
@@ -43,15 +44,17 @@ class ConverseResponseFromStreamBuilder {
         if (contentBlockDeltaEvent.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
             stringBuilder.append(contentBlockDeltaEvent.delta().text());
         } else if (contentBlockDeltaEvent.delta().type().equals(ContentBlockDelta.Type.TOOL_USE)) {
-            toolUseBlockBuilder.input(
-                    documentFromJson(contentBlockDeltaEvent.delta().toolUse().input()));
+            toolUseInputBuilder.append(contentBlockDeltaEvent.delta().toolUse().input());
         }
         return this;
     }
 
     public ConverseResponseFromStreamBuilder append(ContentBlockStopEvent contentBlockStopEvent) {
         if (nonNull(this.toolUseBlockBuilder)) {
+            toolUseBlockBuilder.input(documentFromJson(toolUseInputBuilder.toString()));
             this.toolUseBlocks.add(this.toolUseBlockBuilder.build());
+
+            this.toolUseInputBuilder = new StringBuilder();
             this.toolUseBlockBuilder = null;
         }
         return this;
