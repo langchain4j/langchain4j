@@ -8,6 +8,7 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
@@ -74,6 +75,7 @@ public class AzureOpenAiImageModel implements ImageModel {
             String endpoint,
             String serviceVersion,
             String apiKey,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             String quality,
             String size,
@@ -94,6 +96,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                 apiKey,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -104,6 +107,7 @@ public class AzureOpenAiImageModel implements ImageModel {
             String endpoint,
             String serviceVersion,
             KeyCredential keyCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             String quality,
             String size,
@@ -124,6 +128,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                 keyCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -134,6 +139,7 @@ public class AzureOpenAiImageModel implements ImageModel {
             String endpoint,
             String serviceVersion,
             TokenCredential tokenCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             String quality,
             String size,
@@ -154,6 +160,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                 tokenCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -209,6 +216,7 @@ public class AzureOpenAiImageModel implements ImageModel {
         private String apiKey;
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
+        private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private String quality;
         private String size;
@@ -276,6 +284,17 @@ public class AzureOpenAiImageModel implements ImageModel {
          */
         public Builder tokenCredential(TokenCredential tokenCredential) {
             this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        /**
+         * Sets the {@code HttpClientProvider} to use for creating the HTTP client to communicate with the OpenAI api.
+         *
+         * @param httpClientProvider The {@code HttpClientProvider} to use
+         * @return builder
+         */
+        public Builder httpClientProvider(HttpClientProvider httpClientProvider) {
+            this.httpClientProvider = httpClientProvider;
             return this;
         }
 
@@ -431,6 +450,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                             endpoint,
                             serviceVersion,
                             tokenCredential,
+                            httpClientProvider,
                             deploymentName,
                             quality,
                             size,
@@ -448,6 +468,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                             endpoint,
                             serviceVersion,
                             keyCredential,
+                            httpClientProvider,
                             deploymentName,
                             quality,
                             size,
@@ -465,6 +486,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                         endpoint,
                         serviceVersion,
                         apiKey,
+                        httpClientProvider,
                         deploymentName,
                         quality,
                         size,
