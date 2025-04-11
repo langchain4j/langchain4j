@@ -1,32 +1,39 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-class ChatResponse {
+class OllamaChatResponse {
 
     private String model;
     private String createdAt;
     private Message message;
+    private String doneReason;
     private Boolean done;
     private Integer promptEvalCount;
     private Integer evalCount;
 
-    ChatResponse() {
+    OllamaChatResponse() {}
 
-    }
-
-    ChatResponse(String model, String createdAt, Message message, Boolean done, Integer promptEvalCount, Integer evalCount) {
+    OllamaChatResponse(
+            String model,
+            String createdAt,
+            Message message,
+            String doneReason,
+            Boolean done,
+            Integer promptEvalCount,
+            Integer evalCount) {
         this.model = model;
         this.createdAt = createdAt;
         this.message = message;
+        this.doneReason = doneReason;
         this.done = done;
         this.promptEvalCount = promptEvalCount;
         this.evalCount = evalCount;
@@ -60,6 +67,14 @@ class ChatResponse {
         this.message = message;
     }
 
+    public String getDoneReason() {
+        return doneReason;
+    }
+
+    public void setDoneReason(String doneReason) {
+        this.doneReason = doneReason;
+    }
+
     public Boolean getDone() {
         return done;
     }
@@ -89,6 +104,7 @@ class ChatResponse {
         private String model;
         private String createdAt;
         private Message message;
+        private String doneReason;
         private Boolean done;
         private Integer promptEvalCount;
         private Integer evalCount;
@@ -108,6 +124,11 @@ class ChatResponse {
             return this;
         }
 
+        Builder doneReason(String doneReason) {
+            this.doneReason = doneReason;
+            return this;
+        }
+
         Builder done(Boolean done) {
             this.done = done;
             return this;
@@ -123,8 +144,8 @@ class ChatResponse {
             return this;
         }
 
-        ChatResponse build() {
-            return new ChatResponse(model, createdAt, message, done, promptEvalCount, evalCount);
+        OllamaChatResponse build() {
+            return new OllamaChatResponse(model, createdAt, message, doneReason, done, promptEvalCount, evalCount);
         }
     }
 }

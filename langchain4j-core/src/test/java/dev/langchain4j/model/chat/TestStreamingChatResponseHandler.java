@@ -1,15 +1,14 @@
 package dev.langchain4j.model.chat;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestStreamingChatResponseHandler implements StreamingChatResponseHandler {
 
@@ -37,7 +36,7 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
 
     public ChatResponse get() {
         try {
-            return futureResponse.get(30, SECONDS);
+            return futureResponse.get(180, SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);

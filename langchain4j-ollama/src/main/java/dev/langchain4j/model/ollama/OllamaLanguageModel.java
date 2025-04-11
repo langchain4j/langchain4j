@@ -1,21 +1,20 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaResponseFormat;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -30,25 +29,25 @@ public class OllamaLanguageModel implements LanguageModel {
     private final ResponseFormat responseFormat;
     private final Integer maxRetries;
 
-    public OllamaLanguageModel(HttpClientBuilder httpClientBuilder,
-                               String baseUrl,
-                               String modelName,
-                               Double temperature,
-                               Integer topK,
-                               Double topP,
-                               Double repeatPenalty,
-                               Integer seed,
-                               Integer numPredict,
-                               Integer numCtx,
-                               List<String> stop,
-                               String format,
-                               ResponseFormat responseFormat,
-                               Duration timeout,
-                               Integer maxRetries,
-                               Boolean logRequests,
-                               Boolean logResponses,
-                               Map<String, String> customHeaders
-    ) {
+    public OllamaLanguageModel(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            String modelName,
+            Double temperature,
+            Integer topK,
+            Double topP,
+            Double repeatPenalty,
+            Integer seed,
+            Integer numPredict,
+            Integer numCtx,
+            List<String> stop,
+            String format,
+            ResponseFormat responseFormat,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses,
+            Map<String, String> customHeaders) {
         if (format != null && responseFormat != null) {
             throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
         }
@@ -97,9 +96,7 @@ public class OllamaLanguageModel implements LanguageModel {
         CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request), maxRetries);
 
         return Response.from(
-                response.getResponse(),
-                new TokenUsage(response.getPromptEvalCount(), response.getEvalCount())
-        );
+                response.getResponse(), new TokenUsage(response.getPromptEvalCount(), response.getEvalCount()));
     }
 
     public static class OllamaLanguageModelBuilder {
@@ -252,8 +249,7 @@ public class OllamaLanguageModel implements LanguageModel {
                     maxRetries,
                     logRequests,
                     logResponses,
-                    customHeaders
-            );
+                    customHeaders);
         }
     }
 }
