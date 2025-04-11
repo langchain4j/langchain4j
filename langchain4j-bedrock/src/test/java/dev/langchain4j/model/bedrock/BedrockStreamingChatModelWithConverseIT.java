@@ -178,6 +178,32 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> chat(model, chatRequest));
     }
 
+    static final ToolSpecification TODAY_TOOL =
+            ToolSpecification.builder().name("getTodayDate").build();
+
+    @Test
+    void should_call_tool_with_no_parameters() {
+        StreamingChatLanguageModel model = BedrockStreamingChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .build();
+        UserMessage userMessage = userMessage("What's today's date?");
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(TODAY_TOOL)
+                        .build())
+                .build();
+
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+            assertThat(toolExecutionRequest.name()).isEqualTo("getTodayDate");
+        }
+    }
+
     record Dinosaur(String name, String periodOfActivity, String description) {}
 
     record Milestone(String name, String period, String description) {}
@@ -189,7 +215,6 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
 
     @Test
     void should_call_tool_with_chunked_parameters() {
-
         StreamingChatLanguageModel model = TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU;
 
         UserMessage userMessage = userMessage(
@@ -215,4 +240,5 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
             assertThat(toolExecutionRequest.arguments()).isNotEmpty();
         }
     }
+
 }
