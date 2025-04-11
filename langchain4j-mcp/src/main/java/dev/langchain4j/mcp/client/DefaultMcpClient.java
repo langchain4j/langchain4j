@@ -40,9 +40,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO: currently we request a new list of tools every time, so we should
-// add support for the `ToolListChangedNotification` message, and then we can
-// cache the list
 public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
