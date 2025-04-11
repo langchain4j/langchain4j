@@ -52,7 +52,7 @@ ChatLanguageModel model = BedrockChatModel.builder()
         .build();
 ```
 
-The field additionalModelRequestFields is a Map<String, Object>. As explained [here](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html#bedrock-runtime_Converse-request-additionalModelRequestFields) 
+The field `additionalModelRequestFields` is a `Map<String, Object>`. As explained [here](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html#bedrock-runtime_Converse-request-additionalModelRequestFields) 
 it allows to add inference parameters for a specific model that is not covered by common inferenceConfig. 
 BedrockChatRequestParameters has a convenience method to enable Claude 3.7 thinking process through adding inference
 parameters in additionalModelRequestFields.
@@ -99,7 +99,7 @@ StreamingChatLanguageModel model = BedrockStreamingChatModel.builder()
         .build();
 ```
 
-The field additionalModelRequestFields is a Map<String, Object>. As explained [here](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html#bedrock-runtime_Converse-request-additionalModelRequestFields)
+The field `additionalModelRequestFields` is a `Map<String, Object>`. As explained [here](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html#bedrock-runtime_Converse-request-additionalModelRequestFields)
 it allows to add inference parameters for a specific model that is not covered by common inferenceConfig.
 BedrockChatRequestParameters has a convenience method to enable Claude 3.7 thinking process through adding inference
 parameters in additionalModelRequestFields.
