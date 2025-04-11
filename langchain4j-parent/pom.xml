@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.0.0-beta3-SNAPSHOT</version>
+    <version>1.0.0-beta3</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
