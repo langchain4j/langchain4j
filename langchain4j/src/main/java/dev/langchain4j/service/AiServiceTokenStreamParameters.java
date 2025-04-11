@@ -1,16 +1,17 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.service.tool.ToolExecutor;
-
-import java.util.List;
-import java.util.Map;
-
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.GuardrailParams.CommonGuardrailParams;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.ToolExecutor;
+import java.util.List;
+import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.
@@ -23,6 +24,12 @@ public class AiServiceTokenStreamParameters {
     private final AiServiceContext context;
     private final Object memoryId;
 
+    @Nullable
+    private final CommonGuardrailParams commonGuardrailParams;
+
+    @Nullable
+    private final Object methodKey;
+
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = ensureNotEmpty(builder.messages, "messages");
         this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
@@ -30,6 +37,8 @@ public class AiServiceTokenStreamParameters {
         this.retrievedContents = builder.retrievedContents;
         this.context = ensureNotNull(builder.context, "context");
         this.memoryId = ensureNotNull(builder.memoryId, "memoryId");
+        this.commonGuardrailParams = builder.commonGuardrailParams;
+        this.methodKey = builder.methodKey;
         ensureNotNull(context.streamingChatModel, "streamingChatModel");
     }
 
@@ -76,6 +85,28 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
+     * Retrieves the common parameters shared across guardrail checks for validating interactions
+     * between a user and a language model, if available.
+     *
+     * @return the {@link CommonGuardrailParams} containing chat memory, user message template,
+     * and additional variables required for guardrail processing, or null if not set.
+     */
+    @Nullable
+    public CommonGuardrailParams commonGuardrailParams() {
+        return commonGuardrailParams;
+    }
+
+    /**
+     * Retrieves the method key associated with this instance.
+     *
+     * @return the method key as an Object
+     */
+    @Nullable
+    public Object methodKey() {
+        return methodKey;
+    }
+
+    /**
      * Creates a new builder for {@link AiServiceTokenStreamParameters}.
      *
      * @return a new builder
@@ -94,9 +125,10 @@ public class AiServiceTokenStreamParameters {
         private List<Content> retrievedContents;
         private AiServiceContext context;
         private Object memoryId;
+        private CommonGuardrailParams commonGuardrailParams;
+        private Object methodKey;
 
-        protected Builder() {
-        }
+        protected Builder() {}
 
         /**
          * Sets the messages.
@@ -161,6 +193,30 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder memoryId(Object memoryId) {
             this.memoryId = memoryId;
+            return this;
+        }
+
+        /**
+         * Sets the common guardrail parameters for validating interactions between a user and a language model.
+         *
+         * @param commonGuardrailParams an instance of {@link CommonGuardrailParams} containing the shared parameters
+         *                              required for guardrail checks, such as chat memory, user message template,
+         *                              and additional variables.
+         * @return this builder instance.
+         */
+        public Builder commonGuardrailParams(CommonGuardrailParams commonGuardrailParams) {
+            this.commonGuardrailParams = commonGuardrailParams;
+            return this;
+        }
+
+        /**
+         * Sets the method key.
+         *
+         * @param methodKey the method key
+         * @return this builder
+         */
+        public Builder methodKey(Object methodKey) {
+            this.methodKey = methodKey;
             return this;
         }
 
