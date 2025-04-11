@@ -16,6 +16,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -593,5 +594,24 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         assertThat(TOKENIZER.estimateTokenCountInMessages(chatMemory.messages()))
                 .isEqualTo(EXTRA_TOKENS_PER_REQUEST + systemMessageTokens + aiMessage2Tokens)
                 .isEqualTo(32);
+    }
+
+    @Test
+    void should_work_even_if_the_first_message_exceeds_max_tokens(){
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new
+                OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO));
+
+        chatMemory.add(userMessageWithTokens(25));
+        chatMemory.add(aiMessageWithTokens(10));
+
+        chatMemory.add(userMessageWithTokens(25));
+        chatMemory.add(aiMessageWithTokens(10));
+    }
+
+    @Test
+    void should_not_fail_even_with_just_system_message(){
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new
+                OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO));
+        chatMemory.add(systemMessageWithTokens(10));
     }
 }

@@ -175,12 +175,7 @@ OpenAiChatModel.builder()
     .strictJsonSchema(true)
     .build();
 ```
-In this case AI Service will not append "You must answer strictly in the following JSON format: ..." string
-to the end of the last `UserMessage`, but will create a JSON schema from the given POJO and pass it to the LLM.
-Please note that this works only when method return type is a POJO.
-If the return type is something else, (like an `enum` or a `List<String>`),
-the old behaviour is applied (with "You must answer strictly ...").
-Other return types will be supported in the near future.
+In this case AI Service will automatically generate a JSON schema from the given POJO and pass it to the LLM.
 
 ## Creating `OpenAiStreamingChatModel`
 

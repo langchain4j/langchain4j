@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
 public class TypeUtils {
@@ -35,8 +36,8 @@ public class TypeUtils {
         return rawClass.equals(getRawClass(type));
     }
 
-    public static Class<?> resolveFirstGenericParameterClass(Type returnType) {
-        Type[] typeArguments = getTypeArguments(returnType);
+    public static Class<?> resolveFirstGenericParameterClass(Type type) {
+        Type[] typeArguments = getTypeArguments(type);
 
         if (typeArguments.length == 0) {
             return null;
@@ -52,17 +53,19 @@ public class TypeUtils {
         return null;
     }
 
-    private static Type[] getTypeArguments(Type returnType) {
-        if (returnType == null) {
-            throw new IllegalArgumentException("returnType parameter cannot be null.");
-        }
+    public static Type resolveFirstGenericParameterType(Type type) {
+        Type[] typeArguments = getTypeArguments(type);
+        return typeArguments.length > 0 ? typeArguments[0] : null;
+    }
 
-        if (!(returnType instanceof ParameterizedType type)) {
+    private static Type[] getTypeArguments(Type type) {
+        ensureNotNull(type, "type");
+
+        if (!(type instanceof ParameterizedType parameterizedType)) {
             return new Type[0];
         }
 
-        Type[] typeArguments = type.getActualTypeArguments();
-
+        Type[] typeArguments = parameterizedType.getActualTypeArguments();
         if (typeArguments.length == 0) {
             throw new IllegalArgumentException("Parameterized type has no type arguments.");
         }

@@ -273,14 +273,14 @@ and expect an answer like this:
 The status of transaction T1005 is Pending. The payment date is October 8, 2021.
 ```
 ### JSON mode
-You can also use the JSON mode to get the response in JSON format. To do this, you need to set the `responseFormat` parameter to `json_object` or the java enum `MistralAiResponseFormatType.JSON_OBJECT`  in the `MistralAiChatModel` builder OR `MistralAiStreamingChatModel` builder.
+You can also use the JSON mode to get the response in JSON format. To do this, you need to set the `responseFormat` parameter to `ResponseFormat.JSON`  in the `MistralAiChatModel` builder OR `MistralAiStreamingChatModel` builder.
 
 Syncronous example:
 
 ```java
 ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
-                .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+                .responseFormat(ResponseFormat.JSON)
                 .build();
 
 String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
@@ -323,6 +323,38 @@ String json = futureResponse.get().content().text();
 
 System.out.println(json); // {"transactionId":"T123","status":"paid"}
 ```                
+
+### Structured Outputs
+
+Structured Outputs ensure that a model's responses adhere to a JSON schema.
+
+:::note
+The documentation for using Structured Outputs in LangChain4j is available [here](/tutorials/structured-outputs), and in the section below you will find MistralAI-specific information.
+:::
+
+If desired, the model may be configured with a default JSON Schema that will be used as fallback if no schema is provided in the request.
+
+```java
+ChatLanguageModel model = MistralAiChatModel.builder()
+        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+        .modelName(MISTRAL_SMALL_LATEST)
+        .supportedCapabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA)) // Enable structured outputs
+        .responseFormat(ResponseFormat.builder() // Set the fallback JSON Schema (optional)
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder().rootElement(JsonObjectSchema.builder()
+                                .addProperty("name", JsonStringSchema.builder().build())
+                                .addProperty("capital", JsonStringSchema.builder().build())
+                                .addProperty(
+                                        "languages",
+                                        JsonArraySchema.builder()
+                                                .items(JsonStringSchema.builder().build())
+                                                .build())
+                                .required("name", "capital", "languages")
+                                .build())
+                        .build())
+                .build())
+        .build();
+```
 
 ### Guardrailing
 Guardrails are a way to limit the behavior of the model to prevent it from generating harmful or unwanted content. You can set optionally `safePrompt` parameter in the `MistralAiChatModel` builder or `MistralAiStreamingChatModel` builder.

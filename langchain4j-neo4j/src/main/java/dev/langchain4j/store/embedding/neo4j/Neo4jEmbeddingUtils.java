@@ -11,6 +11,7 @@ import org.neo4j.driver.Values;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -71,12 +72,19 @@ class Neo4jEmbeddingUtils {
             TextSegment segment = embedded.get(idx);
             properties.put(store.getTextProperty(), segment.text());
             Map<String, Object> metadata = segment.metadata().toMap();
-            metadata.forEach((k, v) -> properties.put(store.getMetadataPrefix() + k, Values.value(v)));
+            metadata.forEach((k, v) -> properties.put(store.getMetadataPrefix() + k, toNeo4jValue(v)));
         }
 
         row.put(EMBEDDINGS_ROW_KEY, Values.value(embedding.vector()));
         row.put(PROPS, properties);
         return row;
+    }
+
+    private static Object toNeo4jValue(Object obj) {
+        if (obj instanceof UUID uuid) {
+            obj = uuid.toString();
+        }
+        return Values.value(obj);
     }
 
     public static Stream<List<Map<String, Object>>> getRowsBatched(Neo4jEmbeddingStore store, List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {

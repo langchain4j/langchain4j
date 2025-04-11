@@ -129,4 +129,13 @@ class AwsDocumentConverter {
             throw new RuntimeException("Failed to convert schema to Document", e);
         }
     }
+
+    public static Document convertAdditionalModelRequestFields(Map<String, Object> additionalModelRequestFields) {
+        try {
+            String json = OBJECT_MAPPER.writeValueAsString(additionalModelRequestFields);
+            return documentFromJson(json);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to convert additionalModelRequestFields to Document", e);
+        }
+    }
 }

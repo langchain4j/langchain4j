@@ -11,6 +11,17 @@ LangChain4j utilizes Kotlin [extensions](https://kotlinlang.org/docs/extensions.
 LangChain4j does not require Kotlin libraries as runtime dependencies but allows users to leverage Kotlin's coroutine capabilities for non-blocking execution, enhancing performance and efficiency.
 :::
 
+If you want to use data classes, make sure you have [Jackson module kotlin](https://github.com/FasterXML/jackson-module-kotlin) in your classpath. For Maven, add runtime dependency:
+
+```xml
+ <dependency>
+    <groupId>com.fasterxml.jackson.module</groupId>
+    <artifactId>jackson-module-kotlin</artifactId>
+    <version>[LATEST_VERSION]</version>
+    <scope>runtime</scope>
+</dependency>
+```
+
 ## ChatLanguageModel Extensions
 
 This Kotlin code demonstrates how to use [coroutines and suspend functions](https://kotlinlang.org/docs/coroutines-basics.html) and [type-safe builders](https://kotlinlang.org/docs/type-safe-builders.html) to interact with a [`ChatLanguageModel`](https://docs.langchain4j.dev/tutorials/chat-and-language-models) in LangChain4j.

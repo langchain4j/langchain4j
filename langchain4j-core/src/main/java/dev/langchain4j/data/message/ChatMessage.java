@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
  * @see UserMessage
  * @see AiMessage
  * @see ToolExecutionResultMessage
+ * @see CustomMessage
  */
 public interface ChatMessage {
 

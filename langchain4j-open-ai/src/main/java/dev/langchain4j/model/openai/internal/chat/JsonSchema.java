@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+import java.util.Map;
 import java.util.Objects;
 
 @JsonDeserialize(builder = JsonSchema.Builder.class)
@@ -20,7 +21,7 @@ public class JsonSchema {
     @JsonProperty
     private final Boolean strict;
     @JsonProperty
-    private final JsonObjectSchema schema;
+    private final Map<String, Object> schema;
 
     public JsonSchema(Builder builder) {
         this.name = builder.name;
@@ -70,7 +71,7 @@ public class JsonSchema {
 
         private String name;
         private Boolean strict;
-        private JsonObjectSchema schema;
+        private Map<String, Object> schema;
 
         public Builder name(String name) {
             this.name = name;
@@ -82,7 +83,7 @@ public class JsonSchema {
             return this;
         }
 
-        public Builder schema(JsonObjectSchema schema) {
+        public Builder schema(Map<String, Object> schema) {
             this.schema = schema;
             return this;
         }

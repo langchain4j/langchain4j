@@ -1,11 +1,15 @@
 package dev.langchain4j.model.chat.request.json;
 
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonSchemaElementFrom;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.output.structured.Description;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +44,7 @@ class JsonSchemaElementHelperTest {
         Class<Order> clazz = Order.class;
 
         // when
-        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, new LinkedHashMap<>());
+        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
 
         // then
         assertThat(jsonSchemaElement)
@@ -68,7 +72,7 @@ class JsonSchemaElementHelperTest {
         Class<UUID> clazz = UUID.class;
 
         // when
-        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, new LinkedHashMap<>());
+        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
 
         // then
         assertThat(jsonSchemaElement)
@@ -89,7 +93,7 @@ class JsonSchemaElementHelperTest {
         Class<MyClassWithUuid> clazz = MyClassWithUuid.class;
 
         // when
-        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, new LinkedHashMap<>());
+        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
 
         // then
         assertThat(jsonSchemaElement)
@@ -112,7 +116,7 @@ class JsonSchemaElementHelperTest {
         Class<MyClassWithDescribedUuid> clazz = MyClassWithDescribedUuid.class;
 
         // when
-        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, new LinkedHashMap<>());
+        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
 
         // then
         assertThat(jsonSchemaElement)
@@ -120,5 +124,72 @@ class JsonSchemaElementHelperTest {
                         .addStringProperty("uuid", "My UUID")
                         .required("uuid")
                         .build());
+    }
+
+    @Test
+    void toMap_not_strict() throws JsonProcessingException {
+
+        // given
+        JsonSchemaElement person = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addStringProperty("age")
+                .required("name")
+                .build();
+
+        // when
+        Map<String, Object> map = toMap(person, false);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+                {
+                   "type":"object",
+                   "properties":{
+                      "name":{
+                         "type":"string"
+                      },
+                      "age":{
+                         "type":"string"
+                      }
+                   },
+                   "required":[
+                      "name"
+                   ]
+                }
+                """
+        );
+    }
+
+    @Test
+    void toMap_strict() throws JsonProcessingException {
+
+        // given
+        JsonSchemaElement person = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addStringProperty("age")
+                .required("name")
+                .build();
+
+        // when
+        Map<String, Object> map = toMap(person, true);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+                {
+                   "type":"object",
+                   "properties":{
+                      "name":{
+                         "type":"string"
+                      },
+                      "age":{
+                         "type":["string", "null"]
+                      }
+                   },
+                   "required":[
+                      "name", "age"
+                   ],
+                   "additionalProperties": false
+                }
+                """
+        );
     }
 }

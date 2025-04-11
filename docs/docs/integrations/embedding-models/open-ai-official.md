@@ -69,7 +69,7 @@ EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
 Similar to configuring the [OpenAI Official Chat Model](/integrations/language-models/open-ai-official), you can configure the `OpenAiOfficialEmbeddingModel` with
 Azure OpenAI and GitHub Models, using the `isAzure()` and `isGitHubModels()` methods.
 
-For Azure OpenAI:
+#### Azure OpenAI
 
 ```java
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
@@ -80,7 +80,9 @@ EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
         .build();
 ```
 
-For GitHub Models:
+You can also use "passwordless" authentication, as described in the [OpenAI Official Chat Model](/integrations/language-models/open-ai-official) documentation.
+
+#### GitHub Models
 
 ```java
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()

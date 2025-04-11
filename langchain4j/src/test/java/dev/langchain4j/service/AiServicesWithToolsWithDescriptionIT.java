@@ -148,7 +148,6 @@ class AiServicesWithToolsWithDescriptionIT {
                 .addProperties(singletonMap("arg0", JsonObjectSchema.builder()
                         .description("a person 2")
                         .addStringProperty("name", "a name")
-                        .addStringProperty("name", "a name")
                         .addIntegerProperty("age", "an age")
                         .addNumberProperty("height", "a height")
                         .addBooleanProperty("married", "is married")

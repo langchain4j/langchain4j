@@ -18,6 +18,7 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,7 +45,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
-class Neo4jEmbeddingStoreIT {
+class Neo4jEmbeddingStoreIT extends EmbeddingStoreIT {
 
     public static final String USERNAME = "neo4j";
     public static final String ADMIN_PASSWORD = "adminPass";
@@ -82,6 +83,20 @@ class Neo4jEmbeddingStoreIT {
         session.run("MATCH (n) DETACH DELETE n");
         String indexName = ((Neo4jEmbeddingStore) embeddingStore).getIndexName();
         session.run("DROP INDEX " + SchemaNames.sanitize(indexName).get());
+    }
+
+    @Override
+    protected EmbeddingStore<TextSegment> embeddingStore() {
+        return embeddingStore;
+    }
+
+    @Override
+    protected void ensureStoreIsEmpty() {
+    }
+
+    @Override
+    protected EmbeddingModel embeddingModel() {
+        return embeddingModel;
     }
 
     @Test
