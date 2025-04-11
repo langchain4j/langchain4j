@@ -57,16 +57,6 @@ it allows to add inference parameters for a specific model that is not covered b
 BedrockChatRequestParameters has a convenience method to enable Claude 3.7 thinking process through adding inference
 parameters in additionalModelRequestFields.
 
-### Maven Dependency
-
-```xml
-<dependency>
-    <groupId>software.amazon.awssdk</groupId>
-    <artifactId>apache-client</artifactId>
-    <version>2.31.6</version>
-</dependency>
-```
-
 ### Examples
 
 - [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockChatModelExample.java)
@@ -103,16 +93,6 @@ The field `additionalModelRequestFields` is a `Map<String, Object>`. As explaine
 it allows to add inference parameters for a specific model that is not covered by common inferenceConfig.
 BedrockChatRequestParameters has a convenience method to enable Claude 3.7 thinking process through adding inference
 parameters in additionalModelRequestFields.
-
-### Maven Dependency
-
-```xml
-<dependency>
-    <groupId>software.amazon.awssdk</groupId>
-    <artifactId>netty-nio-client</artifactId>
-    <version>2.31.6</version>
-</dependency>
-```
 
 ### Examples
 
