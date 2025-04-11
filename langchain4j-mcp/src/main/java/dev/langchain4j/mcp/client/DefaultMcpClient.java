@@ -153,7 +153,11 @@ public class DefaultMcpClient implements McpClient {
     public String executeTool(ToolExecutionRequest executionRequest) {
         ObjectNode arguments = null;
         try {
-            arguments = OBJECT_MAPPER.readValue(executionRequest.arguments(), ObjectNode.class);
+            String args =executionRequest.arguments();
+            if(args ==null || args.trim().isEmpty()) {
+                args = "{}";
+            }
+            arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
