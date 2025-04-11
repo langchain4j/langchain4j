@@ -10,14 +10,12 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.listener.ListenersUtil;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
@@ -39,37 +37,30 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
     private BedrockChatModel(Builder builder) {
         super(builder);
         this.client = isNull(builder.client)
-                ? createClient(
-                        getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
+                ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
                 : builder.client;
     }
 
     @Override
-    public ChatResponse chat(ChatRequest request) {
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+    public ChatResponse doChat(ChatRequest request) {
         ConverseRequest convRequest = buildConverseRequest(
                 request.messages(), request.parameters().toolSpecifications(), request.parameters());
-        try {
-            ListenersUtil.onRequest(request, this.provider(), attributes, listeners);
-            ConverseResponse response = withRetryMappingExceptions(() -> client.converse(convRequest), this.maxRetries);
+        ConverseResponse response = withRetryMappingExceptions(() -> client.converse(convRequest), this.maxRetries);
 
-            final ChatResponse chatResponse = ChatResponse.builder()
-                    .aiMessage(aiMessageFrom(response))
-                    .metadata(ChatResponseMetadata.builder()
-                            .id(response.responseMetadata().requestId())
-                            .finishReason(finishReasonFrom(response.stopReason()))
-                            .tokenUsage(tokenUsageFrom(response.usage()))
-                            .modelName(convRequest.modelId())
-                            .build())
-                    .build();
+        return ChatResponse.builder()
+                .aiMessage(aiMessageFrom(response))
+                .metadata(ChatResponseMetadata.builder()
+                        .id(response.responseMetadata().requestId())
+                        .finishReason(finishReasonFrom(response.stopReason()))
+                        .tokenUsage(tokenUsageFrom(response.usage()))
+                        .modelName(convRequest.modelId())
+                        .build())
+                .build();
+    }
 
-            ListenersUtil.onResponse(chatResponse, request, this.provider(), attributes, listeners);
-            return chatResponse;
-
-        } catch (Exception e) {
-            ListenersUtil.onError(e, request, this.provider(), attributes, listeners);
-            throw e;
-        }
+    @Override
+    public BedrockChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     private ConverseRequest buildConverseRequest(
@@ -87,6 +78,11 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
                 .toolConfig(extractToolConfigurationFrom(toolSpecs, parameters))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(parameters))
                 .build();
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
     }
 
     @Override
