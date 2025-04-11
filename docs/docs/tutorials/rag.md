@@ -791,7 +791,7 @@ Please refer to the `AzureAiSearchContentRetriever` Javadoc for more information
 `Neo4jContentRetriever` is an integration with the [Neo4j](https://neo4j.com/) graph database.
 It converts natural language queries into Neo4j Cypher queries
 and retrieves relevant information by running these queries in Neo4j.
-It can be found in the `langchain4j-neo4j` module.
+It can be found in the `langchain4j-community-neo4j-retriever` module.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).

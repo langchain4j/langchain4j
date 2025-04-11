@@ -12,7 +12,13 @@ https://neo4j.com/
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-neo4j</artifactId>
+    <artifactId>langchain4j-community-neo4j</artifactId>
+    <version>1.0.0-beta2</version>
+</dependency>
+
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-community-neo4j-retriever</artifactId>
     <version>1.0.0-beta2</version>
 </dependency>
 ```
