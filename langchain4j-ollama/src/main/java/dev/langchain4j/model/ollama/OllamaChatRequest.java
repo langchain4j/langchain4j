@@ -12,7 +12,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-class ChatRequest {
+class OllamaChatRequest {
 
     private String model;
     private List<Message> messages;
@@ -23,17 +23,18 @@ class ChatRequest {
 
     private Boolean stream;
     private List<Tool> tools;
+    private Long keepAlive;
 
-    ChatRequest() {}
+    OllamaChatRequest() {}
 
-    ChatRequest(
-            String model, List<Message> messages, Options options, Boolean stream, List<Tool> tools, String format) {
-        this.model = model;
-        this.messages = messages;
-        this.options = options;
-        this.stream = stream;
-        this.tools = tools;
-        this.format = format;
+    OllamaChatRequest(Builder builder) {
+        this.model = builder.model;
+        this.messages = builder.messages;
+        this.options = builder.options;
+        this.stream = builder.stream;
+        this.tools = builder.tools;
+        this.format = builder.format;
+        this.keepAlive = builder.keepAlive;
     }
 
     static Builder builder() {
@@ -88,6 +89,14 @@ class ChatRequest {
         this.tools = tools;
     }
 
+    public Long getKeepAlive() {
+        return keepAlive;
+    }
+
+    public void setKeepAlive(Long keepAlive) {
+        this.keepAlive = keepAlive;
+    }
+
     static class Builder {
 
         private String model;
@@ -96,6 +105,7 @@ class ChatRequest {
         private String format;
         private Boolean stream;
         private List<Tool> tools;
+        private Long keepAlive;
 
         Builder model(String model) {
             this.model = model;
@@ -127,8 +137,13 @@ class ChatRequest {
             return this;
         }
 
-        ChatRequest build() {
-            return new ChatRequest(model, messages, options, stream, tools, format);
+        Builder keepAlive(Long keepAlive) {
+            this.keepAlive = keepAlive;
+            return this;
+        }
+
+        OllamaChatRequest build() {
+            return new OllamaChatRequest(this);
         }
     }
 }
