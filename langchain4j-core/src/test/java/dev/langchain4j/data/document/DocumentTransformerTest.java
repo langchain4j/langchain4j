@@ -7,6 +7,7 @@ import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 class DocumentTransformerTest implements WithAssertions {
+
     @Test
     void test() {
         List<Document> docs = new ArrayList<>();
@@ -15,7 +16,7 @@ class DocumentTransformerTest implements WithAssertions {
         docs.add(Document.document("mno qrs", Metadata.metadata("lang", "fr")));
 
         List<Document> results = ((DocumentTransformer) document -> {
-                    if (document.metadata().get("lang").equals("en")) {
+                    if (document.metadata().getString("lang").equals("en")) {
                         return Document.document(document.text().toUpperCase(Locale.ROOT), document.metadata());
                     } else {
                         return null;

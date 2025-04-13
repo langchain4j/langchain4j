@@ -42,8 +42,10 @@ public class AzureOpenAiTokenizer implements Tokenizer {
 
     /**
      * Creates an instance of the {@code AzureOpenAiTokenizer} for the "gpt-3.5-turbo" model.
-     * It should be suitable for most OpenAI models, as most of them use the same cl100k_base encoding (except for GPT-4o).
+     *
+     * @deprecated Please use other constructors and specify the model name explicitly.
      */
+    @Deprecated(forRemoval = true)
     public AzureOpenAiTokenizer() {
         this(GPT_3_5_TURBO.modelType());
     }

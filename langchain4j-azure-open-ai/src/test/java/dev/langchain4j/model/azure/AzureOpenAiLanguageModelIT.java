@@ -9,7 +9,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static dev.langchain4j.model.azure.AzureOpenAiLanguageModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,7 +22,6 @@ class AzureOpenAiLanguageModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-35-turbo-instruct-0914")
-            .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
             .temperature(0.0)
             .maxTokens(20)
             .logRequestsAndResponses(true)

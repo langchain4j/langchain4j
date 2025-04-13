@@ -14,7 +14,7 @@ import java.util.List;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -476,7 +476,7 @@ class DocumentByParagraphSplitterTest {
         // given
         Document document = Document.from("Title\r\n\r\nHeader 1\r\nText 1\r\n\r\nHeader 2\r\nText 2");
 
-        DocumentSplitter splitter = new DocumentByParagraphSplitter(7, 0, new OpenAiTokenizer());
+        DocumentSplitter splitter = new DocumentByParagraphSplitter(7, 0, new OpenAiTokenizer(GPT_3_5_TURBO));
 
         // when
         List<TextSegment> segments = splitter.split(document);

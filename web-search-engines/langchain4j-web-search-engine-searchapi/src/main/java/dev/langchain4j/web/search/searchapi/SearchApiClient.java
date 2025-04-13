@@ -1,7 +1,6 @@
 package dev.langchain4j.web.search.searchapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Builder;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import retrofit2.Response;
@@ -23,7 +22,6 @@ class SearchApiClient {
 
     private final SearchApi api;
 
-    @Builder
     SearchApiClient(Duration timeout, String baseUrl) {
         ensureNotNull(timeout, "timeout");
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
@@ -37,6 +35,10 @@ class SearchApiClient {
                 .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
         this.api = retrofit.create(SearchApi.class);
+    }
+
+    public static SearchApiClientBuilder builder() {
+        return new SearchApiClientBuilder();
     }
 
     SearchApiWebSearchResponse search(SearchApiWebSearchRequest request) {
@@ -70,6 +72,32 @@ class SearchApiClient {
             } else {
                 return new RuntimeException(String.format("status code: %s;", code));
             }
+        }
+    }
+
+    public static class SearchApiClientBuilder {
+        private Duration timeout;
+        private String baseUrl;
+
+        SearchApiClientBuilder() {
+        }
+
+        public SearchApiClientBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public SearchApiClientBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public SearchApiClient build() {
+            return new SearchApiClient(this.timeout, this.baseUrl);
+        }
+
+        public String toString() {
+            return "SearchApiClient.SearchApiClientBuilder(timeout=" + this.timeout + ", baseUrl=" + this.baseUrl + ")";
         }
     }
 }

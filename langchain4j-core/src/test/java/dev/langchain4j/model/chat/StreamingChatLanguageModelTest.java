@@ -20,9 +20,9 @@ class StreamingChatLanguageModelTest implements WithAssertions {
         @Override
         public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
             List<ChatMessage> messages = chatRequest.messages();
-            ChatMessage lastMessage = messages.get(messages.size() - 1);
+            UserMessage lastMessage = (UserMessage) messages.get(messages.size() - 1);
             ChatResponse chatResponse = ChatResponse.builder()
-                    .aiMessage(new AiMessage(lastMessage.text().toUpperCase(Locale.ROOT)))
+                    .aiMessage(new AiMessage(lastMessage.singleText().toUpperCase(Locale.ROOT)))
                     .build();
             handler.onCompleteResponse(chatResponse);
         }

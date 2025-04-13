@@ -37,7 +37,7 @@ It will also work with models supporting the OpenAI API.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -67,7 +67,7 @@ ImageModel model = OpenAiOfficialImageModel.builder()
 Similar to configuring the [OpenAI Official Chat Model](/integrations/language-models/open-ai-official), you can configure the `OpenAiOfficialImageModel` with
 Azure OpenAI and GitHub Models, using the `isAzure()` and `isGitHubModels()` methods.
 
-For Azure OpenAI:
+#### Azure OpenAI
 
 ```java
 ImageModel model = OpenAiOfficialImageModel.builder()
@@ -78,7 +78,9 @@ ImageModel model = OpenAiOfficialImageModel.builder()
         .build();
 ```
 
-For GitHub Models:
+You can also use "passwordless" authentication, as described in the [OpenAI Official Chat Model](/integrations/language-models/open-ai-official) documentation.
+
+#### GitHub Models
 
 ```java
 ImageModel model = OpenAiOfficialImageModel.builder()

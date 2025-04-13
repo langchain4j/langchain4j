@@ -155,6 +155,21 @@ public class AnthropicCreateMessageRequest {
         return new Builder();
     }
 
+    public Builder toBuilder() {
+        return new Builder().model(this.model)
+                .messages(this.messages)
+                .system(this.system)
+                .maxTokens(this.maxTokens)
+                .stopSequences(this.stopSequences)
+                .stream(this.stream)
+                .temperature(this.temperature)
+                .topP(this.topP)
+                .topK(this.topK)
+                .tools(this.tools)
+                .toolChoice(this.toolChoice)
+                .thinking(this.thinking);
+    }
+
     public static class Builder {
 
         private String model;

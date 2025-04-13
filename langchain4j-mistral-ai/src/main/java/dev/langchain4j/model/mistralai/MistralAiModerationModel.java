@@ -1,6 +1,10 @@
 package dev.langchain4j.model.mistralai;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralCategories;
@@ -12,7 +16,6 @@ import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -53,9 +56,24 @@ public class MistralAiModerationModel implements ModerationModel {
 
     @Override
     public Response<Moderation> moderate(List<ChatMessage> messages) {
-        return moderateInternal(messages.stream().map(ChatMessage::text).collect(Collectors.toUnmodifiableList()));
+        return moderateInternal(messages.stream()
+                .map(MistralAiModerationModel::toText)
+                .toList());
     }
 
+    private static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            return toolExecutionResultMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
+    }
 
     private Response<Moderation> moderateInternal(List<String> inputs) {
 

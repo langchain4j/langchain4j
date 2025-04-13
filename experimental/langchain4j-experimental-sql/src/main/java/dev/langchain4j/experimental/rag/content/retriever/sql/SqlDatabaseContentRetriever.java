@@ -11,13 +11,16 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import lombok.Builder;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.Select;
 
 import javax.sql.DataSource;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -91,7 +94,6 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
      *                          An error message will be sent back to the LLM to try correcting the query.
      *                          This is an optional parameter. Default: 1.
      */
-    @Builder
     @Experimental
     public SqlDatabaseContentRetriever(DataSource dataSource,
                                        String sqlDialect,
@@ -234,6 +236,10 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         return createTableStatement.toString();
     }
 
+    public static SqlDatabaseContentRetrieverBuilder builder() {
+        return new SqlDatabaseContentRetrieverBuilder();
+    }
+
     @Override
     public List<Content> retrieve(Query naturalLanguageQuery) {
 
@@ -331,7 +337,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 List<String> columnValues = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
 
-                    String columnValue = resultSet.getObject(i)==null?"":resultSet.getObject(i).toString();
+                    String columnValue = resultSet.getObject(i) == null ? "" : resultSet.getObject(i).toString();
 
                     if (columnValue.contains(",")) {
                         columnValue = "\"" + columnValue + "\"";
@@ -347,5 +353,55 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
     private static Content format(String result, String sqlQuery) {
         return Content.from(String.format("Result of executing '%s':\n%s", sqlQuery, result));
+    }
+
+    public static class SqlDatabaseContentRetrieverBuilder {
+        private DataSource dataSource;
+        private String sqlDialect;
+        private String databaseStructure;
+        private PromptTemplate promptTemplate;
+        private ChatLanguageModel chatLanguageModel;
+        private Integer maxRetries;
+
+        SqlDatabaseContentRetrieverBuilder() {
+        }
+
+        public SqlDatabaseContentRetrieverBuilder dataSource(DataSource dataSource) {
+            this.dataSource = dataSource;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder sqlDialect(String sqlDialect) {
+            this.sqlDialect = sqlDialect;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder databaseStructure(String databaseStructure) {
+            this.databaseStructure = databaseStructure;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder promptTemplate(PromptTemplate promptTemplate) {
+            this.promptTemplate = promptTemplate;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
+            this.chatLanguageModel = chatLanguageModel;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public SqlDatabaseContentRetriever build() {
+            return new SqlDatabaseContentRetriever(this.dataSource, this.sqlDialect, this.databaseStructure, this.promptTemplate, this.chatLanguageModel, this.maxRetries);
+        }
+
+        public String toString() {
+            return "SqlDatabaseContentRetriever.SqlDatabaseContentRetrieverBuilder(dataSource=" + this.dataSource + ", sqlDialect=" + this.sqlDialect + ", databaseStructure=" + this.databaseStructure + ", promptTemplate=" + this.promptTemplate + ", chatLanguageModel=" + this.chatLanguageModel + ", maxRetries=" + this.maxRetries + ")";
+        }
     }
 }

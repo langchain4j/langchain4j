@@ -272,7 +272,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    private static long getBoundedLongValue(
+    public static long getBoundedLongValue(
             Object argument, String parameterName, Class<?> parameterType, long minValue, long maxValue) {
         double doubleValue = getNonFractionalDoubleValue(argument, parameterName, parameterType);
         checkBounds(doubleValue, parameterName, parameterType, minValue, maxValue);

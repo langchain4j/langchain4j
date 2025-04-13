@@ -136,18 +136,6 @@ public class UserMessage implements ChatMessage {
         return contents.size() == 1 && contents.get(0) instanceof TextContent;
     }
 
-    /**
-     * {@link UserMessage} can contain not just a single {@code String text}, but also multiple {@link Content}s.
-     * Therefore, this method is deprecated. Please use {@link #singleText()} if you only expect a single text,
-     * or use {@link #contents()} otherwise.
-     *
-     * @deprecated Use {@link #singleText()} or {@link #contents()} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public String text() {
-        return singleText();
-    }
-
     @Override
     public ChatMessageType type() {
         return USER;

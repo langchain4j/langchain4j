@@ -211,22 +211,22 @@ public class AnthropicChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder temperature(double temperature) {
+        public AnthropicChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        public AnthropicChatModelBuilder topP(double topP) {
+        public AnthropicChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
-        public AnthropicChatModelBuilder topK(int topK) {
+        public AnthropicChatModelBuilder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
-        public AnthropicChatModelBuilder maxTokens(int maxTokens) {
+        public AnthropicChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
@@ -236,12 +236,12 @@ public class AnthropicChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder cacheSystemMessages(boolean cacheSystemMessages) {
+        public AnthropicChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
             this.cacheSystemMessages = cacheSystemMessages;
             return this;
         }
 
-        public AnthropicChatModelBuilder cacheTools(boolean cacheTools) {
+        public AnthropicChatModelBuilder cacheTools(Boolean cacheTools) {
             this.cacheTools = cacheTools;
             return this;
         }
@@ -251,7 +251,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder thinkingBudgetTokens(int thinkingBudgetTokens) {
+        public AnthropicChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
             return this;
         }
@@ -261,17 +261,17 @@ public class AnthropicChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder maxRetries(int maxRetries) {
+        public AnthropicChatModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public AnthropicChatModelBuilder logRequests(boolean logRequests) {
+        public AnthropicChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        public AnthropicChatModelBuilder logResponses(boolean logResponses) {
+        public AnthropicChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }

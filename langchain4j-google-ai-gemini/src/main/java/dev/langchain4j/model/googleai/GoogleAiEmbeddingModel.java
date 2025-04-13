@@ -1,13 +1,11 @@
 package dev.langchain4j.model.googleai;
 
-import com.google.gson.Gson;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -20,9 +18,9 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 @Experimental
-@Slf4j
 public class GoogleAiEmbeddingModel implements EmbeddingModel {
     private static final int MAX_NUMBER_OF_SEGMENTS_PER_BATCH = 100;
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiEmbeddingModel.class);
 
     private final GeminiService geminiService;
 
@@ -33,7 +31,6 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
     private final String titleMetadataKey;
     private final Integer outputDimensionality;
 
-    @Builder
     public GoogleAiEmbeddingModel(
             String modelName,
             String apiKey,
@@ -60,6 +57,10 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
         boolean logRequestsAndResponses1 = logRequestsAndResponses != null && logRequestsAndResponses;
 
         this.geminiService = new GeminiService(logRequestsAndResponses1 ? log : null, timeout1);
+    }
+
+    public static GoogleAiEmbeddingModelBuilder builder() {
+        return new GoogleAiEmbeddingModelBuilder();
     }
 
     @Override
@@ -149,5 +150,67 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
         CLUSTERING,
         QUESTION_ANSWERING,
         FACT_VERIFICATION
+    }
+
+    public static class GoogleAiEmbeddingModelBuilder {
+        private String modelName;
+        private String apiKey;
+        private Integer maxRetries;
+        private TaskType taskType;
+        private String titleMetadataKey;
+        private Integer outputDimensionality;
+        private Duration timeout;
+        private Boolean logRequestsAndResponses;
+
+        GoogleAiEmbeddingModelBuilder() {
+        }
+
+        public GoogleAiEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder taskType(TaskType taskType) {
+            this.taskType = taskType;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder titleMetadataKey(String titleMetadataKey) {
+            this.titleMetadataKey = titleMetadataKey;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder outputDimensionality(Integer outputDimensionality) {
+            this.outputDimensionality = outputDimensionality;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModel build() {
+            return new GoogleAiEmbeddingModel(this.modelName, this.apiKey, this.maxRetries, this.taskType, this.titleMetadataKey, this.outputDimensionality, this.timeout, this.logRequestsAndResponses);
+        }
+
+        public String toString() {
+            return "GoogleAiEmbeddingModel.GoogleAiEmbeddingModelBuilder(modelName=" + this.modelName + ", apiKey=" + this.apiKey + ", maxRetries=" + this.maxRetries + ", taskType=" + this.taskType + ", titleMetadataKey=" + this.titleMetadataKey + ", outputDimensionality=" + this.outputDimensionality + ", timeout=" + this.timeout + ", logRequestsAndResponses=" + this.logRequestsAndResponses + ")";
+        }
     }
 }

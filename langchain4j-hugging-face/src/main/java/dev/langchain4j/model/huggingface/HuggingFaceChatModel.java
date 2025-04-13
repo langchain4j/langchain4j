@@ -6,6 +6,8 @@ import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -120,7 +122,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     private Response<AiMessage> generate(List<ChatMessage> messages) {
 
         TextGenerationRequest request = TextGenerationRequest.builder()
-                .inputs(messages.stream().map(ChatMessage::text).collect(joining("\n")))
+                .inputs(messages.stream().map(HuggingFaceChatModel::toText).collect(joining("\n")))
                 .parameters(Parameters.builder()
                         .temperature(temperature)
                         .maxNewTokens(maxNewTokens)
@@ -132,6 +134,18 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         TextGenerationResponse textGenerationResponse = client.chat(request);
 
         return Response.from(AiMessage.from(textGenerationResponse.getGeneratedText()));
+    }
+
+    private static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
     }
 
     public static Builder builder() {

@@ -6,8 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
-import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.LinkedList;
@@ -19,14 +18,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static java.util.Collections.singletonList;
 
-@Slf4j
 public class GoogleAiGeminiTokenizer implements Tokenizer {
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiGeminiTokenizer.class);
     private final GeminiService geminiService;
     private final String modelName;
     private final String apiKey;
     private final Integer maxRetries;
 
-    @Builder
     GoogleAiGeminiTokenizer(
             String modelName,
             String apiKey,
@@ -41,6 +39,10 @@ public class GoogleAiGeminiTokenizer implements Tokenizer {
                 getOrDefault(logRequestsAndResponses, false) ? log : null,
                 timeout != null ? timeout : Duration.ofSeconds(60)
         );
+    }
+
+    public static GoogleAiGeminiTokenizerBuilder builder() {
+        return new GoogleAiGeminiTokenizerBuilder();
     }
 
     @Override
@@ -99,5 +101,49 @@ public class GoogleAiGeminiTokenizer implements Tokenizer {
     private int estimateTokenCount(GeminiCountTokensRequest countTokensRequest) {
         GeminiCountTokensResponse countTokensResponse = withRetry(() -> this.geminiService.countTokens(this.modelName, this.apiKey, countTokensRequest), this.maxRetries);
         return countTokensResponse.getTotalTokens();
+    }
+
+    public static class GoogleAiGeminiTokenizerBuilder {
+        private String modelName;
+        private String apiKey;
+        private Boolean logRequestsAndResponses;
+        private Duration timeout;
+        private Integer maxRetries;
+
+        GoogleAiGeminiTokenizerBuilder() {
+        }
+
+        public GoogleAiGeminiTokenizerBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public GoogleAiGeminiTokenizerBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiGeminiTokenizerBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiGeminiTokenizerBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public GoogleAiGeminiTokenizerBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public GoogleAiGeminiTokenizer build() {
+            return new GoogleAiGeminiTokenizer(this.modelName, this.apiKey, this.logRequestsAndResponses, this.timeout, this.maxRetries);
+        }
+
+        public String toString() {
+            return "GoogleAiGeminiTokenizer.GoogleAiGeminiTokenizerBuilder(modelName=" + this.modelName + ", apiKey=" + this.apiKey + ", logRequestsAndResponses=" + this.logRequestsAndResponses + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ")";
+        }
     }
 }

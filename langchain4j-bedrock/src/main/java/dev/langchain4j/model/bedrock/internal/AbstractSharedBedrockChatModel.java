@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -77,24 +79,21 @@ public abstract class AbstractSharedBedrockChatModel {
      * @return string
      */
     protected String chatMessageToString(ChatMessage message) {
-        switch (message.type()) {
-            case SYSTEM:
-                return message.text();
-            case USER:
-                return humanPrompt + " " + message.text();
-            case AI:
-                return assistantPrompt + " " + message.text();
-            case TOOL_EXECUTION_RESULT:
-                throw new IllegalArgumentException("Tool execution results are not supported for Bedrock models");
+        if (message instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (message instanceof UserMessage userMessage) {
+            return humanPrompt + " " + userMessage.singleText();
+        } else if (message instanceof AiMessage aiMessage) {
+            return assistantPrompt + " " + aiMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + message.type());
         }
-
-        throw new IllegalArgumentException("Unknown message type: " + message.type());
     }
 
     protected String convertMessagesToAwsBody(List<ChatMessage> messages) {
         final String context = messages.stream()
                 .filter(message -> message.type() == ChatMessageType.SYSTEM)
-                .map(ChatMessage::text)
+                .map(message -> ((SystemMessage) message).text())
                 .collect(joining("\n"));
 
         final String userMessages = messages.stream()

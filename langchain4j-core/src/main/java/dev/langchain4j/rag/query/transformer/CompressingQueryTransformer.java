@@ -93,8 +93,8 @@ public class CompressingQueryTransformer implements QueryTransformer {
     }
 
     protected String format(ChatMessage message) {
-        if (message instanceof UserMessage) {
-            return "User: " + message.text();
+        if (message instanceof UserMessage userMessage) {
+            return "User: " + userMessage.singleText();
         } else if (message instanceof AiMessage aiMessage) {
             if (aiMessage.hasToolExecutionRequests()) {
                 return null;

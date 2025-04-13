@@ -1,15 +1,14 @@
 package dev.langchain4j.model.vertexai;
 
-import static dev.langchain4j.model.vertexai.SchemaHelper.fromClass;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Type;
+import org.junit.jupiter.api.Test;
+
 import java.util.Arrays;
 import java.util.Collections;
-import lombok.Data;
-import lombok.Getter;
-import org.junit.jupiter.api.Test;
+
+import static dev.langchain4j.model.vertexai.SchemaHelper.fromClass;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class SchemaHelperTest {
 
@@ -87,7 +86,6 @@ class SchemaHelperTest {
                 .isEqualTo(Type.STRING);
     }
 
-    @Getter
     enum Sentiment {
         POSITIVE(1.0),
         NEUTRAL(0.0),
@@ -97,11 +95,53 @@ class SchemaHelperTest {
         Sentiment(double val) {
             this.value = val;
         }
+
+        public double getValue() {
+            return this.value;
+        }
     }
 
-    @Data
     static class SentimentClassification {
         private Sentiment sentiment;
+
+        public SentimentClassification() {
+        }
+
+        public Sentiment getSentiment() {
+            return this.sentiment;
+        }
+
+        public void setSentiment(Sentiment sentiment) {
+            this.sentiment = sentiment;
+        }
+
+        public boolean equals(final Object o) {
+            if (o == this) return true;
+            if (!(o instanceof SentimentClassification)) return false;
+            final SentimentClassification other = (SentimentClassification) o;
+            if (!other.canEqual((Object) this)) return false;
+            final Object this$sentiment = this.getSentiment();
+            final Object other$sentiment = other.getSentiment();
+            if (this$sentiment == null ? other$sentiment != null : !this$sentiment.equals(other$sentiment))
+                return false;
+            return true;
+        }
+
+        protected boolean canEqual(final Object other) {
+            return other instanceof SentimentClassification;
+        }
+
+        public int hashCode() {
+            final int PRIME = 59;
+            int result = 1;
+            final Object $sentiment = this.getSentiment();
+            result = result * PRIME + ($sentiment == null ? 43 : $sentiment.hashCode());
+            return result;
+        }
+
+        public String toString() {
+            return "SchemaHelperTest.SentimentClassification(sentiment=" + this.getSentiment() + ")";
+        }
     }
 
     @Test

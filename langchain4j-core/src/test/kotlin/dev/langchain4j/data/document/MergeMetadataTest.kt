@@ -6,7 +6,7 @@ import assertk.assertions.isNotSameInstanceAs
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
-class MergeMetadataTest {
+internal class MergeMetadataTest {
     @Test
     fun `merge should combine unique metadata from both objects`() {
         val metadata1 =

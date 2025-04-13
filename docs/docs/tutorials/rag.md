@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -252,11 +252,13 @@ and update it in the `EmbeddingStore` as well to keep it in sync.
 
 - `Metadata.from(Map)` creates `Metadata` from a `Map`
 - `Metadata.put(String key, String value)` / `put(String, int)` / etc., adds an entry to the `Metadata`
+- `Metadata.putAll(Map)` adds multiple entries to the `Metadata`
 - `Metadata.getString(String key)` / `getInteger(String key)` / etc., returns a value of the `Metadata` entry, casting it to the required type
 - `Metadata.containsKey(String key)` checks whether `Metadata` contains an entry with the specified key
 - `Metadata.remove(String key)` removes an entry from the `Metadata` by key
 - `Metadata.copy()` returns a copy of the `Metadata`
 - `Metadata.toMap()` converts `Metadata` into a `Map`
+- `Metadata.merge(Metadata)` merges the current `Metadata` with another `Metadata`
 </details>
 
 ### Document Loader
@@ -569,7 +571,7 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
 
     // adding a name of the Document to each TextSegment to improve the quality of search
     .textSegmentTransformer(textSegment -> TextSegment.from(
-            textSegment.metadata("file_name") + "\n" + textSegment.text(),
+            textSegment.metadata().getString("file_name") + "\n" + textSegment.text(),
             textSegment.metadata()
     ))
 
@@ -789,7 +791,7 @@ Please refer to the `AzureAiSearchContentRetriever` Javadoc for more information
 `Neo4jContentRetriever` is an integration with the [Neo4j](https://neo4j.com/) graph database.
 It converts natural language queries into Neo4j Cypher queries
 and retrieves relevant information by running these queries in Neo4j.
-It can be found in the `langchain4j-neo4j` module.
+It can be found in the `langchain4j-community-neo4j-retriever` module.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).

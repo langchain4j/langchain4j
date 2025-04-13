@@ -104,6 +104,9 @@ Or, you can use BOM to manage dependencies consistently:
 - `QwenLanguageModel`
 - `QwenStreamingLanguageModel`
 
+`langchain4j-dashscope` Provide text generation image model
+- `WanxImageModel`
+
 ### `QwenChatModel`
 
 `QwenChatModel` has following parameters to configure when you initialize it:
@@ -159,6 +162,19 @@ ChatLanguageModel qwenModel = QwenChatModel.builder()
                     .maxTokens(4096)
                     .stops(List.of("Hello"))
                     .build();
+```
+
+
+How to call text to generate pictures:
+
+```java
+WanxImageModel wanxImageModel = WanxImageModel.builder()
+                    .modelName("wanx2.1-t2i-plus") 
+                    .apiKey("阿里云百炼apikey")     
+                    .build();
+Response<Image> response = wanxImageModel.generate("美女");
+System.out.println(response.content().url());
+
 ```
 
 ### Spring Boot

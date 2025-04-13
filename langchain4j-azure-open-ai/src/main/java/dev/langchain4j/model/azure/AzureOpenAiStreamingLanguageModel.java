@@ -12,10 +12,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -53,9 +50,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
-public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel, TokenCountEstimator {
-
-    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingLanguageModel.class);
+public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel {
 
     private OpenAIClient client;
     private final String deploymentName;
@@ -261,7 +256,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             Double frequencyPenalty) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
+        this.tokenizer = getOrDefault(tokenizer, () -> new AzureOpenAiTokenizer("gpt-3.5-turbo"));
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -317,11 +312,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         if (content != null) {
             handler.onNext(content);
         }
-    }
-
-    @Override
-    public int estimateTokenCount(String prompt) {
-        return tokenizer.estimateTokenCountInText(prompt);
     }
 
     public static Builder builder() {

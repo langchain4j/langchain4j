@@ -1,11 +1,5 @@
 package dev.langchain4j.model.jina;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
-
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
@@ -15,9 +9,15 @@ import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
 import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+
 import java.time.Duration;
 import java.util.List;
-import lombok.Builder;
+
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
 
 /**
  * An implementation of an {@link EmbeddingModel} that uses
@@ -32,7 +32,6 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxRetries;
     private final Boolean lateChunking;
 
-    @Builder
     public JinaEmbeddingModel(
             String baseUrl,
             String apiKey,
@@ -54,6 +53,10 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.lateChunking = getOrDefault(lateChunking, false);
     }
 
+    public static JinaEmbeddingModelBuilder builder() {
+        return new JinaEmbeddingModelBuilder();
+    }
+
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
@@ -71,5 +74,67 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         TokenUsage tokenUsage = new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
         return Response.from(embeddings, tokenUsage);
+    }
+
+    public static class JinaEmbeddingModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private String modelName;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Boolean lateChunking;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        JinaEmbeddingModelBuilder() {
+        }
+
+        public JinaEmbeddingModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public JinaEmbeddingModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public JinaEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public JinaEmbeddingModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public JinaEmbeddingModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public JinaEmbeddingModelBuilder lateChunking(Boolean lateChunking) {
+            this.lateChunking = lateChunking;
+            return this;
+        }
+
+        public JinaEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public JinaEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public JinaEmbeddingModel build() {
+            return new JinaEmbeddingModel(this.baseUrl, this.apiKey, this.modelName, this.timeout, this.maxRetries, this.lateChunking, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "JinaEmbeddingModel.JinaEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", lateChunking=" + this.lateChunking + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+        }
     }
 }

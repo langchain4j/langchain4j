@@ -16,9 +16,4 @@ public record DefaultDocument(String text, Metadata metadata) implements Documen
     public DefaultDocument(String text) {
         this(text, new Metadata());
     }
-
-    @Override
-    public String metadata(String key) {
-        return metadata.get(key);
-    }
 }

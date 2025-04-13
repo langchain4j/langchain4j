@@ -90,7 +90,7 @@ class TencentCosDocumentLoaderIT {
 
         assertThat(documents.get(1).text()).isEqualTo(TEST_CONTENT);
         assertThat(documents.get(1).metadata().toMap()).hasSize(1);
-        assertThat(documents.get(1).metadata("source")).isEqualTo(String.format("cos://%s/%s", TEST_BUCKET, TEST_KEY));
+        assertThat(documents.get(1).metadata().getString("source")).isEqualTo(String.format("cos://%s/%s", TEST_BUCKET, TEST_KEY));
     }
 
     @Test

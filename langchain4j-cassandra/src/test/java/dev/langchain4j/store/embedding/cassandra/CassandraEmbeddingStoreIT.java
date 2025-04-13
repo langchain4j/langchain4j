@@ -6,24 +6,25 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.slf4j.Logger;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
 
     protected static final String KEYSPACE = "langchain4j";
     protected static final String TEST_INDEX = "test_embedding_store";
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(CassandraEmbeddingStoreIT.class);
 
     CassandraEmbeddingStore embeddingStore;
 
@@ -55,7 +56,12 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         String id = embeddingStore().add(sourceEmbedding, sourceTextSegment);
         assertThat(id != null && !id.isEmpty()).isTrue();
 
-        List<EmbeddingMatch<TextSegment>> embeddingMatches = embeddingStore.findRelevant(sourceEmbedding, 10);
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(sourceEmbedding)
+                .maxResults(10)
+                .build();
+
+        List<EmbeddingMatch<TextSegment>> embeddingMatches = embeddingStore.search(searchRequest).matches();
         assertThat(embeddingMatches).hasSize(1);
 
         EmbeddingMatch<TextSegment> embeddingMatch = embeddingMatches.get(0);
@@ -75,9 +81,13 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         String id = embeddingStore().add(sourceEmbedding, sourceTextSegment);
         assertThat(id != null && !id.isEmpty()).isTrue();
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(sourceEmbedding)
+                .maxResults(10)
+                .build();
+
         // Should be found with no filter
-        List<EmbeddingMatch<TextSegment>> matchesAnnOnly = embeddingStore
-                .findRelevant(sourceEmbedding, 10);
+        List<EmbeddingMatch<TextSegment>> matchesAnnOnly = embeddingStore.search(searchRequest).matches();
         assertThat(matchesAnnOnly).hasSize(1);
 
         // Should retrieve if user is god

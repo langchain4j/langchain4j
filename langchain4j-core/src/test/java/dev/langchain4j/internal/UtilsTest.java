@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -16,6 +17,7 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -131,14 +133,6 @@ class UtilsTest {
         assertThat(Utils.isNullOrEmpty((Iterable<?>) emptyList())).isTrue();
         assertThat(Utils.isNullOrEmpty((Iterable<?>) Collections.singletonList("abc")))
                 .isFalse();
-    }
-
-    @Test
-    @SuppressWarnings("deprecation")
-    void is_collection_empty() {
-        assertThat(Utils.isCollectionEmpty(null)).isTrue();
-        assertThat(Utils.isCollectionEmpty(emptyList())).isTrue();
-        assertThat(Utils.isCollectionEmpty(Collections.singletonList("abc"))).isFalse();
     }
 
     @Test
@@ -279,5 +273,45 @@ class UtilsTest {
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a")).isEqualTo("https://example.com/a/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/")).isEqualTo("https://example.com/a/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/b")).isEqualTo("https://example.com/a/b/");
+    }
+
+    @Test
+    void shouldThrowNullPointerExceptionForNullInput() {
+        assertThat(toStringValueMap(null)).isNull();
+    }
+
+    @Test
+    void shouldReturnEmptyMapForEmptyInput() {
+        Map<String, Object> input = new HashMap<>();
+        Map<String, String> result = toStringValueMap(input);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldConvertValuesToString() {
+        Map<String, Object> input = new HashMap<>();
+        input.put("int", 42);
+        input.put("double", 3.14);
+        input.put("boolean", true);
+        input.put("string", "hello");
+
+        Map<String, String> result = toStringValueMap(input);
+
+        assertThat(result)
+                .containsEntry("int", "42")
+                .containsEntry("double", "3.14")
+                .containsEntry("boolean", "true")
+                .containsEntry("string", "hello");
+    }
+
+    @Test
+    void shouldHandleNullValuesCorrectly() {
+        Map<String, Object> input = new HashMap<>();
+        input.put("key1", null);
+
+        Map<String, String> result = toStringValueMap(input);
+
+        assertThat(result).containsEntry("key1", null);
     }
 }

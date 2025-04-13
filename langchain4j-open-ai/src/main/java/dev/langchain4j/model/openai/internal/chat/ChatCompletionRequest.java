@@ -456,10 +456,6 @@ public final class ChatCompletionRequest {
             return stop(asList(stop));
         }
 
-        /**
-         * @deprecated use {@link #maxCompletionTokens(Integer)} instead
-         */
-        @Deprecated
         public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;

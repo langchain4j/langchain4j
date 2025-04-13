@@ -72,7 +72,7 @@ public class InternalAzureOpenAiOfficialTestHelper {
                     .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                     .modelName(CHAT_MODEL_NAME)
                     .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
-                    .strictJsonSchema(true)
+                    .strictJsonSchema(false)
                     .build();
 
             AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA = OpenAiOfficialChatModel.builder()

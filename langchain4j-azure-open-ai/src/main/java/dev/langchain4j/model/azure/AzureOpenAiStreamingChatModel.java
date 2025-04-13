@@ -36,7 +36,6 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -91,7 +90,7 @@ import reactor.core.publisher.Flux;
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
-public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
+public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel {
 
     private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingChatModel.class);
 
@@ -413,10 +412,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             List<ChatModelListener> listeners,
-            Set<Capability> capabilities) {
+            Set<Capability> capabilities) { // TODO capabilities are not used
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
+        this.tokenizer = getOrDefault(tokenizer, () -> new AzureOpenAiTokenizer("gpt-3.5-turbo"));
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -667,11 +666,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     @Override
     public ModelProvider provider() {
         return AZURE_OPEN_AI;
-    }
-
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
     }
 
     public static Builder builder() {

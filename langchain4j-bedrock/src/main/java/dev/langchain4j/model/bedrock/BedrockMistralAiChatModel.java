@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -128,16 +129,13 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
         promptBuilder.append("<s>");
 
         for (ChatMessage message : messages) {
-          switch (message.type()) {
-            case USER:
-              promptBuilder.append("[INST] ").append(message.text()).append(" [/INST]");
-              break;
-            case AI:
-              promptBuilder.append(" ").append(message.text()).append(" ");
-              break;
-            default:
-              throw new IllegalArgumentException("Bedrock Mistral AI does not support the message type: " + message.type());
-          }
+            if (message instanceof UserMessage userMessage) {
+                promptBuilder.append("[INST] ").append(userMessage.singleText()).append(" [/INST]");
+            } else if (message instanceof AiMessage aiMessage) {
+                promptBuilder.append(" ").append(aiMessage.text()).append(" ");
+            } else {
+                throw new IllegalArgumentException("Unsupported message type: " + message.type());
+            }
         }
 
         promptBuilder.append("</s>");

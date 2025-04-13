@@ -23,7 +23,6 @@ import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0125;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0125_PREVIEW;
@@ -40,17 +39,6 @@ public class OpenAiTokenizer implements Tokenizer {
     private final String modelName;
     private final Optional<Encoding> encoding;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-    /**
-     * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-3.5-turbo" model.
-     * <s>It should be suitable for all current OpenAI models, as they all use the same cl100k_base encoding.</s>
-     *
-     * @deprecated Please use other constructors and specify the model name explicitly.
-     */
-    @Deprecated(forRemoval = true)
-    public OpenAiTokenizer() {
-        this(GPT_3_5_TURBO.toString());
-    }
 
     /**
      * Creates an instance of the {@code OpenAiTokenizer} for a given {@link OpenAiChatModelName}.

@@ -23,6 +23,6 @@ class UrlDocumentLoaderTest implements WithAssertions {
         Document document = UrlDocumentLoader.load(url, new TextDocumentParser());
 
         assertThat(document.text()).isEqualTo("test\ncontent");
-        assertThat(document.metadata("url")).isEqualTo(url);
+        assertThat(document.metadata().getString("url")).isEqualTo(url);
     }
 }

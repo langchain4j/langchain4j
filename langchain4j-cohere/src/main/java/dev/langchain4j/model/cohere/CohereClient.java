@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
-import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
@@ -29,7 +28,6 @@ class CohereClient {
     private final CohereApi cohereApi;
     private final String authorizationHeader;
 
-    @Builder
     CohereClient(String baseUrl, String apiKey, Duration timeout, Proxy proxy, Boolean logRequests, Boolean logResponses) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
@@ -57,6 +55,10 @@ class CohereClient {
 
         this.cohereApi = retrofit.create(CohereApi.class);
         this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
+    }
+
+    public static CohereClientBuilder builder() {
+        return new CohereClientBuilder();
     }
 
     EmbedResponse embed(EmbedRequest request) {
@@ -94,5 +96,55 @@ class CohereClient {
         String body = response.errorBody().string();
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
+    }
+
+    public static class CohereClientBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private Duration timeout;
+        private Proxy proxy;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        CohereClientBuilder() {
+        }
+
+        public CohereClientBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public CohereClientBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public CohereClientBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public CohereClientBuilder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public CohereClientBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public CohereClientBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public CohereClient build() {
+            return new CohereClient(this.baseUrl, this.apiKey, this.timeout, this.proxy, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "CohereClient.CohereClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+        }
     }
 }

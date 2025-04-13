@@ -27,7 +27,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     private static final String COLLECTION_NAME = "test_collection";
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.4.20");
+    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.5.8");
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(milvus.getEndpoint())

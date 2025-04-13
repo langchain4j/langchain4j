@@ -93,9 +93,6 @@ class MetadataTest implements WithAssertions {
         assertThat(Metadata.from("foo", "bar")).isEqualTo(new Metadata().put("foo", "bar"));
 
         assertThat(Metadata.metadata("foo", "bar")).isEqualTo(new Metadata().put("foo", "bar"));
-
-        assertThat(Metadata.from("foo", 2)).isEqualTo(new Metadata().put("foo", "2"));
-        assertThat(Metadata.metadata("foo", 2)).isEqualTo(new Metadata().put("foo", "2"));
     }
 
     @Test
@@ -369,5 +366,20 @@ class MetadataTest implements WithAssertions {
     void contains_key() {
         assertThat(new Metadata().containsKey("key")).isFalse();
         assertThat(new Metadata().put("key", "value").containsKey("key")).isTrue();
+    }
+
+    @Test
+    void putAll() {
+        assertThat(new Metadata().putAll(Map.of("k1", "v1", "k2", "v2")).toMap())
+                .isEqualTo(Map.of("k1", "v1", "k2", "v2"));
+
+        assertThat(new Metadata().put("k1", "v1").putAll(Map.of("k1", "v2")).toMap())
+                .isEqualTo(Map.of("k1", "v2"));
+
+        assertThatThrownBy(() -> new Metadata().putAll(new HashMap<>() {{ put("k", null); }}))
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> new Metadata().putAll(Map.of("k", new Object())))
+                .isExactlyInstanceOf(IllegalArgumentException.class);
     }
 }

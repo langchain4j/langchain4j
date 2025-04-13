@@ -6,7 +6,6 @@ import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.time.Duration;
 
@@ -28,7 +27,6 @@ public class LocalAiLanguageModel implements LanguageModel {
     private final Integer maxTokens;
     private final Integer maxRetries;
 
-    @Builder
     public LocalAiLanguageModel(String baseUrl,
                                 String modelName,
                                 Double temperature,
@@ -85,9 +83,72 @@ public class LocalAiLanguageModel implements LanguageModel {
     }
 
     public static class LocalAiLanguageModelBuilder {
+        private String baseUrl;
+        private String modelName;
+        private Double temperature;
+        private Double topP;
+        private Integer maxTokens;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
         public LocalAiLanguageModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public LocalAiLanguageModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public LocalAiLanguageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public LocalAiLanguageModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public LocalAiLanguageModelBuilder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public LocalAiLanguageModelBuilder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public LocalAiLanguageModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public LocalAiLanguageModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public LocalAiLanguageModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public LocalAiLanguageModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public LocalAiLanguageModel build() {
+            return new LocalAiLanguageModel(this.baseUrl, this.modelName, this.temperature, this.topP, this.maxTokens, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "LocalAiLanguageModel.LocalAiLanguageModelBuilder(baseUrl=" + this.baseUrl + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", topP=" + this.topP + ", maxTokens=" + this.maxTokens + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

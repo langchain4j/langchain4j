@@ -24,7 +24,7 @@ class MetadataTest {
         Metadata metadata = Metadata.from(userMessage, chatMemoryId, chatMemory);
 
         // then
-        assertThat(metadata.userMessage()).isSameAs(userMessage);
+        assertThat(metadata.chatMessage()).isSameAs(userMessage);
 
         assertThat(metadata.chatMemoryId()).isSameAs(chatMemoryId);
 
@@ -71,7 +71,7 @@ class MetadataTest {
         // then
         assertThat(toString)
                 .isEqualTo("Metadata { "
-                        + "userMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, "
+                        + "chatMessage = UserMessage { name = null contents = [TextContent { text = \"user message\" }] }, "
                         + "chatMemoryId = 42, "
                         + "chatMemory = [UserMessage { name = null contents = [TextContent { text = \"Hello\" }] }, AiMessage { text = \"Hi, how can I help you today?\" toolExecutionRequests = null }] "
                         + "}");

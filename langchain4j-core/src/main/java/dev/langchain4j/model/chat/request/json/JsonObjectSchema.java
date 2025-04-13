@@ -59,39 +59,13 @@ public class JsonObjectSchema implements JsonSchemaElement {
     public static class Builder {
 
         private String description;
-        private Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
+        private final Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         private List<String> required = new ArrayList<>();
         private Boolean additionalProperties;
         private Map<String, JsonSchemaElement> definitions;
 
         public Builder description(String description) {
             this.description = description;
-            return this;
-        }
-
-        /**
-         * Sets the properties of this JSON object.
-         * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
-         *
-         * @deprecated since it has the misleading side effect of deleting all other properties eventually added so far.
-         * Use {@link #addProperties(Map)} instead.
-         *
-         * @see #addProperties(Map)
-         * @see #addProperty(String, JsonSchemaElement)
-         * @see #addStringProperty(String)
-         * @see #addStringProperty(String, String)
-         * @see #addIntegerProperty(String)
-         * @see #addIntegerProperty(String, String)
-         * @see #addNumberProperty(String)
-         * @see #addNumberProperty(String, String)
-         * @see #addBooleanProperty(String)
-         * @see #addBooleanProperty(String, String)
-         * @see #addEnumProperty(String, List)
-         * @see #addEnumProperty(String, List, String)
-         */
-        @Deprecated(forRemoval = true)
-        public Builder properties(Map<String, JsonSchemaElement> properties) {
-            this.properties = properties;
             return this;
         }
 

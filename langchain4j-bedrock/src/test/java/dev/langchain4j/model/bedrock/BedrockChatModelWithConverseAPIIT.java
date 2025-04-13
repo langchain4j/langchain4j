@@ -1,5 +1,13 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -14,20 +22,12 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithConverseAPIIT {
@@ -54,9 +54,8 @@ class BedrockChatModelWithConverseAPIIT {
     @Test
     void should_call_multiple_functions() {
 
-        ChatLanguageModel model = BedrockChatModel.builder()
-                .modelId("us.amazon.nova-micro-v1:0")
-                .build();
+        ChatLanguageModel model =
+                BedrockChatModel.builder().modelId("us.amazon.nova-micro-v1:0").build();
 
         UserMessage userMessage = userMessage(
                 "Give three numbers, ordered by size: the sum of two plus two, the square of four, and finally the cube of eight.");
@@ -92,7 +91,7 @@ class BedrockChatModelWithConverseAPIIT {
                 .messages(userMessage)
                 .toolSpecifications(toolSpecifications)
                 .build();
-        
+
         ChatResponse response = model.chat(request);
 
         AiMessage aiMessage = response.aiMessage();
@@ -158,5 +157,42 @@ class BedrockChatModelWithConverseAPIIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("Gemini");
+    }
+
+    @Test
+    void should_reason() {
+
+        // given
+        ChatLanguageModel model = BedrockChatModel.builder()
+                .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+                .defaultRequestParameters(BedrockChatRequestParameters.builder()
+                        .enableReasoning(1024L)
+                        .build())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
+    }
+
+    @Test
+    void should_fail_if_reasoning_enabled() {
+
+        // given
+        ChatLanguageModel model = BedrockChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .defaultRequestParameters(BedrockChatRequestParameters.builder()
+                        .enableReasoning(1024L)
+                        .build())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when then
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> model.chat(userMessage));
     }
 }

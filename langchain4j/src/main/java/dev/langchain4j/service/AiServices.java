@@ -26,7 +26,6 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -131,11 +130,8 @@ import java.util.function.Function;
  */
 public abstract class AiServices<T> {
 
-    protected static final String DEFAULT = "default";
-
     protected final AiServiceContext context;
 
-    private boolean retrieverSet = false;
     private boolean contentRetrieverSet = false;
     private boolean retrievalAugmentorSet = false;
 
@@ -252,8 +248,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
-        context.chatMemories = new ConcurrentHashMap<>();
-        context.chatMemories.put(DEFAULT, chatMemory);
+        context.initChatMemories(chatMemory);
         return this;
     }
 
@@ -278,8 +273,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
-        context.chatMemories = new ConcurrentHashMap<>();
-        context.chatMemoryProvider = chatMemoryProvider;
+        context.initChatMemories(chatMemoryProvider);
         return this;
     }
 
@@ -349,6 +343,11 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
     /**
      * Configures the strategy to be used when the LLM hallucinates a tool name (i.e., attempts to call a nonexistent tool).
      *
@@ -359,29 +358,6 @@ public abstract class AiServices<T> {
     public AiServices<T> hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
         context.toolService.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
-        return this;
-    }
-
-    /**
-     * @param retriever The retriever to be used by the AI Service.
-     * @return builder
-     * @deprecated Use {@link #contentRetriever(ContentRetriever)}
-     * (e.g. {@link EmbeddingStoreContentRetriever}) instead.
-     * <br>
-     * Configures a retriever that will be invoked on every method call to fetch relevant information
-     * related to the current user message from an underlying source (e.g., embedding store).
-     * This relevant information is automatically injected into the message sent to the LLM.
-     */
-    @Deprecated(forRemoval = true)
-    public AiServices<T> retriever(Retriever<TextSegment> retriever) {
-        if (contentRetrieverSet || retrievalAugmentorSet) {
-            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
-        }
-        if (retriever != null) {
-            AiServices<T> withContentRetriever = contentRetriever(retriever.toContentRetriever());
-            retrieverSet = true;
-            return withContentRetriever;
-        }
         return this;
     }
 
@@ -399,7 +375,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> contentRetriever(ContentRetriever contentRetriever) {
-        if (retrieverSet || retrievalAugmentorSet) {
+        if (retrievalAugmentorSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         contentRetrieverSet = true;
@@ -416,7 +392,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
-        if (retrieverSet || contentRetrieverSet) {
+        if (contentRetrieverSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         retrievalAugmentorSet = true;

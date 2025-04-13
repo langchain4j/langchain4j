@@ -17,8 +17,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -35,26 +34,30 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 
 @Experimental
-@Slf4j
 public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implements StreamingChatLanguageModel {
 
-    @Builder
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiGeminiStreamingChatModel.class);
+
     public GoogleAiGeminiStreamingChatModel(
-        String apiKey, String modelName,
-        Double temperature, Integer topK, Double topP,
-        Integer maxOutputTokens, Duration timeout,
-        ResponseFormat responseFormat,
-        List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
-        Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
-        Boolean logRequestsAndResponses,
-        List<GeminiSafetySetting> safetySettings,
-        List<ChatModelListener> listeners,
-        Integer maxRetries
+            String apiKey, String modelName,
+            Double temperature, Integer topK, Double topP,
+            Integer maxOutputTokens, Duration timeout,
+            ResponseFormat responseFormat,
+            List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
+            Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
+            Boolean logRequestsAndResponses,
+            List<GeminiSafetySetting> safetySettings,
+            List<ChatModelListener> listeners,
+            Integer maxRetries
     ) {
         super(apiKey, modelName, temperature, topK, topP, maxOutputTokens, timeout,
-            responseFormat, stopSequences, toolConfig, allowCodeExecution,
-            includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
-            listeners, maxRetries);
+                responseFormat, stopSequences, toolConfig, allowCodeExecution,
+                includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
+                listeners, maxRetries);
+    }
+
+    public static GoogleAiGeminiStreamingChatModelBuilder builder() {
+        return new GoogleAiGeminiStreamingChatModelBuilder();
     }
 
     @Override
@@ -106,7 +109,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                           List<ToolSpecification> toolSpecifications,
                           ResponseFormat responseFormat,
                           StreamingResponseHandler<AiMessage> handler
-                          ) {
+    ) {
         ChatRequestParameters parameters = ChatRequestParameters.builder().build();
         GeminiGenerateContentRequest request = createGenerateContentRequest(messages, toolSpecifications, getOrDefault(responseFormat, this.responseFormat), parameters);
         ChatRequest listenerRequest = createListenerRequest(null, messages, toolSpecifications, parameters);
@@ -126,8 +129,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         try {
             Stream<GeminiGenerateContentResponse> contentStream = withRetryMappingExceptions(
-                () -> this.geminiService.generateContentStream(this.modelName, this.apiKey, request),
-                maxRetries);
+                    () -> this.geminiService.generateContentStream(this.modelName, this.apiKey, request),
+                    maxRetries);
 
             contentStream.forEach(partialResponse -> {
                 Optional<String> text = responseBuilder.append(partialResponse);
@@ -155,7 +158,27 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     }
 
     public static class GoogleAiGeminiStreamingChatModelBuilder {
-        public GoogleAiGeminiStreamingChatModelBuilder toolConfig(GeminiMode mode, String... allowedFunctionNames){
+        private String apiKey;
+        private String modelName;
+        private Double temperature;
+        private Integer topK;
+        private Double topP;
+        private Integer maxOutputTokens;
+        private Duration timeout;
+        private ResponseFormat responseFormat;
+        private List<String> stopSequences;
+        private GeminiFunctionCallingConfig toolConfig;
+        private Boolean allowCodeExecution;
+        private Boolean includeCodeExecutionOutput;
+        private Boolean logRequestsAndResponses;
+        private List<GeminiSafetySetting> safetySettings;
+        private List<ChatModelListener> listeners;
+        private Integer maxRetries;
+
+        GoogleAiGeminiStreamingChatModelBuilder() {
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder toolConfig(GeminiMode mode, String... allowedFunctionNames) {
             this.toolConfig = new GeminiFunctionCallingConfig(mode, Arrays.asList(allowedFunctionNames));
             return this;
         }
@@ -165,6 +188,94 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                     .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue())
                     ).collect(Collectors.toList());
             return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder topK(Integer topK) {
+            this.topK = topK;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder maxOutputTokens(Integer maxOutputTokens) {
+            this.maxOutputTokens = maxOutputTokens;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder stopSequences(List<String> stopSequences) {
+            this.stopSequences = stopSequences;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder toolConfig(GeminiFunctionCallingConfig toolConfig) {
+            this.toolConfig = toolConfig;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder allowCodeExecution(Boolean allowCodeExecution) {
+            this.allowCodeExecution = allowCodeExecution;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder includeCodeExecutionOutput(Boolean includeCodeExecutionOutput) {
+            this.includeCodeExecutionOutput = includeCodeExecutionOutput;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder safetySettings(List<GeminiSafetySetting> safetySettings) {
+            this.safetySettings = safetySettings;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModel build() {
+            return new GoogleAiGeminiStreamingChatModel(this.apiKey, this.modelName, this.temperature, this.topK, this.topP, this.maxOutputTokens, this.timeout, this.responseFormat, this.stopSequences, this.toolConfig, this.allowCodeExecution, this.includeCodeExecutionOutput, this.logRequestsAndResponses, this.safetySettings, this.listeners, this.maxRetries);
+        }
+
+        public String toString() {
+            return "GoogleAiGeminiStreamingChatModel.GoogleAiGeminiStreamingChatModelBuilder(apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", topK=" + this.topK + ", topP=" + this.topP + ", maxOutputTokens=" + this.maxOutputTokens + ", timeout=" + this.timeout + ", responseFormat=" + this.responseFormat + ", stopSequences=" + this.stopSequences + ", toolConfig=" + this.toolConfig + ", allowCodeExecution=" + this.allowCodeExecution + ", includeCodeExecutionOutput=" + this.includeCodeExecutionOutput + ", logRequestsAndResponses=" + this.logRequestsAndResponses + ", safetySettings=" + this.safetySettings + ", listeners=" + this.listeners + ", maxRetries=" + this.maxRetries + ")";
         }
     }
 }

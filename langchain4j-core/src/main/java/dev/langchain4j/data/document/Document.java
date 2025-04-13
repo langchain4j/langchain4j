@@ -37,20 +37,6 @@ public interface Document {
     Metadata metadata();
 
     /**
-     * Looks up the metadata value for the given key.
-     *
-     * @param key the key to look up.
-     * @return the metadata value for the given key, or null if the key is not present.
-     * @deprecated as of 0.31.0, use {@link #metadata()} and then {@link Metadata#getString(String)},
-     * {@link Metadata#getInteger(String)}, {@link Metadata#getLong(String)}, {@link Metadata#getFloat(String)},
-     * {@link Metadata#getDouble(String)} instead.
-     */
-    @Deprecated(forRemoval = true)
-    default String metadata(String key) {
-        return metadata().get(key);
-    }
-
-    /**
      * Builds a {@link TextSegment} from this document.
      *
      * @return a {@link TextSegment}

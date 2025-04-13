@@ -29,7 +29,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -683,34 +682,6 @@ class GoogleAiGeminiChatModelIT {
 
         // then
         assertThat(chatResponse.aiMessage().hasToolExecutionRequests()).isFalse();
-    }
-
-    @Test
-    void should_count_tokens() {
-        // given
-        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .build();
-
-        // when
-        int countedTokens = gemini.estimateTokenCount("What is the capital of France?");
-
-        // then
-        assertThat(countedTokens).isGreaterThan(0);
-
-        // when
-        List<ChatMessage> messageList = Arrays.asList(
-                SystemMessage.from("You are a helpful geography teacher"),
-                UserMessage.from("What is the capital of Germany?"),
-                AiMessage.from("Berlin"),
-                UserMessage.from("Thank you!"),
-                AiMessage.from("You're welcome!"));
-        int listOfMsgTokenCount = gemini.estimateTokenCount(messageList);
-
-        // then
-        assertThat(listOfMsgTokenCount).isGreaterThan(0);
     }
 
     static class Transactions {

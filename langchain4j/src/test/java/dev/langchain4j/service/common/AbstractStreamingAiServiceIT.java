@@ -1,5 +1,6 @@
 package dev.langchain4j.service.common;
 
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -23,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * This test makes sure that all {@link StreamingChatLanguageModel} implementations behave consistently
@@ -86,6 +89,44 @@ public abstract class AbstractStreamingAiServiceIT {
                 eq(ChatRequest.builder().messages(UserMessage.from(userMessage)).build()),
                 any(StreamingChatResponseHandler.class)
         );
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_execute_tool_without_arguments(StreamingChatLanguageModel model) throws Exception {
+
+        // given
+        class Tools {
+
+            @Tool
+            LocalDate currentDate() {
+                return LocalDate.of(2019, 1, 7);
+            }
+        }
+
+        Tools tools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatLanguageModel(model)
+                .tools(tools)
+                .build();
+
+        // when
+        CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
+
+        assistant.chat("What is the date today?")
+                .onPartialResponse(ignored -> {})
+                .onError(futureChatResponse::completeExceptionally)
+                .onCompleteResponse(futureChatResponse::complete)
+                .start();
+
+        ChatResponse chatResponse = futureChatResponse.get(30, SECONDS);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("2019");
+
+        verify(tools).currentDate();
+        verifyNoMoreInteractions(tools);
     }
 
     // TODO test threads

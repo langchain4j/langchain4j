@@ -1,12 +1,11 @@
 package dev.langchain4j.model.mistralai.common;
 
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
+
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
-
 import java.util.List;
-
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
 
 class MistralAiChatModelIT extends AbstractChatModelIT {
 
@@ -20,9 +19,7 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(
-                MISTRAL_CHAT_MODEL
-        );
+        return List.of(MISTRAL_CHAT_MODEL);
     }
 
     @Override
@@ -50,15 +47,6 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO implement
-    }
-
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // TODO implement
@@ -76,6 +64,11 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean assertResponseModel() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // TODO implement
     }
 }

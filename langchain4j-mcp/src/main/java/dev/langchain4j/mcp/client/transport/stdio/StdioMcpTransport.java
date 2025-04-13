@@ -87,6 +87,13 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
+    public void checkHealth() {
+        if (!process.isAlive()) {
+            throw new IllegalStateException("Process is not alive");
+        }
+    }
+
+    @Override
     public void close() throws IOException {
         process.destroy();
     }
@@ -106,6 +113,10 @@ public class StdioMcpTransport implements McpTransport {
             future.completeExceptionally(e);
         }
         return future;
+    }
+
+    public Process getProcess() {
+        return process;
     }
 
     public static class Builder {

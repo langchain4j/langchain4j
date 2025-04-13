@@ -33,7 +33,7 @@ public abstract class WebSearchContentRetrieverIT {
                             assertThat(content.textSegment().text())
                                     .containsIgnoringCase("weather")
                                     .containsIgnoringCase("New York");
-                            assertThat(content.textSegment().metadata().get("url"))
+                            assertThat(content.textSegment().metadata().getString("url"))
                                     .startsWith("https://");
                         }
                 );

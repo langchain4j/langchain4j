@@ -31,7 +31,6 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.jlama.spi.JlamaStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Builder;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -50,7 +49,6 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
     private final Integer maxTokens;
     private final UUID id = UUID.randomUUID();
 
-    @Builder
     public JlamaStreamingChatModel(Path modelCachePath,
                                    String modelName,
                                    String authToken,
@@ -140,15 +138,15 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
         PromptSupport.Builder promptBuilder = model.promptSupport().get().builder();
         for (ChatMessage message : messages) {
             switch (message.type()) {
-                case SYSTEM -> promptBuilder.addSystemMessage(((SystemMessage)message).text());
+                case SYSTEM -> promptBuilder.addSystemMessage(((SystemMessage) message).text());
                 case USER -> {
                     StringBuilder finalMessage = new StringBuilder();
-                    UserMessage userMessage = (UserMessage)message;
+                    UserMessage userMessage = (UserMessage) message;
                     for (Content content : userMessage.contents()) {
                         if (content.type() != ContentType.TEXT)
                             throw new UnsupportedOperationException("Unsupported content type: " + content.type());
 
-                        finalMessage.append(((TextContent)content).text());
+                        finalMessage.append(((TextContent) content).text());
                     }
                     promptBuilder.addUserMessage(finalMessage.toString());
                 }
@@ -164,7 +162,7 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
                         }
                 }
                 case TOOL_EXECUTION_RESULT -> {
-                    ToolExecutionResultMessage toolMessage = (ToolExecutionResultMessage)message;
+                    ToolExecutionResultMessage toolMessage = (ToolExecutionResultMessage) message;
                     ToolResult result = ToolResult.from(toolMessage.toolName(), toolMessage.id(), toolMessage.text());
                     promptBuilder.addToolResult(result);
                 }
@@ -198,9 +196,72 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     public static class JlamaStreamingChatModelBuilder {
+        private Path modelCachePath;
+        private String modelName;
+        private String authToken;
+        private Integer threadCount;
+        private Boolean quantizeModelAtRuntime;
+        private Path workingDirectory;
+        private DType workingQuantizedType;
+        private Float temperature;
+        private Integer maxTokens;
+
         public JlamaStreamingChatModelBuilder() {
             // This is public, so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public JlamaStreamingChatModelBuilder modelCachePath(Path modelCachePath) {
+            this.modelCachePath = modelCachePath;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder authToken(String authToken) {
+            this.authToken = authToken;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder threadCount(Integer threadCount) {
+            this.threadCount = threadCount;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder quantizeModelAtRuntime(Boolean quantizeModelAtRuntime) {
+            this.quantizeModelAtRuntime = quantizeModelAtRuntime;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder workingDirectory(Path workingDirectory) {
+            this.workingDirectory = workingDirectory;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder workingQuantizedType(DType workingQuantizedType) {
+            this.workingQuantizedType = workingQuantizedType;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder temperature(Float temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public JlamaStreamingChatModel build() {
+            return new JlamaStreamingChatModel(this.modelCachePath, this.modelName, this.authToken, this.threadCount, this.quantizeModelAtRuntime, this.workingDirectory, this.workingQuantizedType, this.temperature, this.maxTokens);
+        }
+
+        public String toString() {
+            return "JlamaStreamingChatModel.JlamaStreamingChatModelBuilder(modelCachePath=" + this.modelCachePath + ", modelName=" + this.modelName + ", authToken=" + this.authToken + ", threadCount=" + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", workingDirectory=" + this.workingDirectory + ", workingQuantizedType=" + this.workingQuantizedType + ", temperature=" + this.temperature + ", maxTokens=" + this.maxTokens + ")";
         }
     }
 }

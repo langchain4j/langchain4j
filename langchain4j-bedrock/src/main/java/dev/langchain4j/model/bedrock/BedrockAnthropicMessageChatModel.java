@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -457,7 +458,7 @@ public class BedrockAnthropicMessageChatModel
     private String getAnthropicSystemPrompt(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(message -> message.type() == ChatMessageType.SYSTEM)
-                .map(ChatMessage::text)
+                .map(message -> ((SystemMessage) message).text())
                 .collect(joining("\n"));
     }
 
