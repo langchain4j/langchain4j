@@ -39,6 +39,7 @@ import com.azure.core.http.policy.RetryOptions;
 import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -51,12 +52,15 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -75,6 +79,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -87,6 +92,7 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
 
 class InternalGitHubModelHelper {
@@ -148,7 +154,8 @@ class InternalGitHubModelHelper {
     }
 
     public static ModelServiceVersion getModelServiceVersion(ModelServiceVersion serviceVersion) {
-        return getOrDefault(serviceVersion, ModelServiceVersion.getLatest());
+        // todo temporarily use V2024_08_01_PREVIEW because of the bug in ai inference api, see https://github.com/Azure/azure-sdk-for-java/issues/44962
+        return getOrDefault(serviceVersion, ModelServiceVersion.V2024_08_01_PREVIEW);
     }
 
     private static HttpClient getHttpClient(HttpClientOptions clientOptions) {
@@ -466,48 +473,14 @@ class InternalGitHubModelHelper {
                                 + jsonSchema.rootElement().getClass());
             }
             return new ChatCompletionsResponseFormatJsonSchema(new ChatCompletionsResponseFormatJsonSchemaDefinition(
-                    jsonSchema.name(), toJsonSchemaDefinition(jsonSchema.rootElement())).setStrict(strict));
+                    jsonSchema.name(), toJsonSchemaDefinition(jsonSchema.rootElement(), strict)).setStrict(strict));
         }
     }
 
-    static Map<String, BinaryData> toJsonSchemaDefinition(JsonSchemaElement jsonSchemaElement) {
+    static Map<String, BinaryData> toJsonSchemaDefinition(JsonSchemaElement jsonSchemaElement, boolean strict) {
+        final Map<String, Object> map = toMap(jsonSchemaElement, strict);
         Map<String, BinaryData> result = new HashMap<>();
-        if (jsonSchemaElement instanceof JsonStringSchema jsonStringSchema) {
-            result.put("type", BinaryData.fromString("\"string\""));
-            result.put("description", BinaryData.fromString(jsonStringSchema.description()));
-        } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
-            result.put("type", BinaryData.fromString("\"integer\""));
-            result.put("description", BinaryData.fromString(jsonIntegerSchema.description()));
-        } else if (jsonSchemaElement instanceof JsonNumberSchema jsonNumberSchema) {
-            result.put("type", BinaryData.fromString("\"number\""));
-            result.put("description", BinaryData.fromString(jsonNumberSchema.description()));
-        } else if (jsonSchemaElement instanceof JsonBooleanSchema jsonBooleanSchema) {
-            result.put("type", BinaryData.fromString("\"boolean\""));
-            result.put("description", BinaryData.fromString(jsonBooleanSchema.description()));
-        } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
-            result.put("type", BinaryData.fromString("\"string\""));
-            result.put("enum", BinaryData.fromObject(jsonEnumSchema.enumValues()));
-            result.put("description", BinaryData.fromString(jsonEnumSchema.description()));
-        } else if (jsonSchemaElement instanceof JsonArraySchema jsonArraySchema) {
-            result.put("type", BinaryData.fromString("\"array\""));
-            result.put(
-                    "items",
-                    BinaryData.fromObject(toJsonSchemaDefinition(jsonArraySchema.items())));
-            result.put("description", BinaryData.fromString(jsonArraySchema.description()));
-        } else if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
-            Map<String, JsonSchemaElement> properties = jsonObjectSchema.properties();
-            Map<String, BinaryData> azureProperties = new LinkedHashMap<>();
-            properties.forEach(
-                    (key, value) -> azureProperties.put(key, BinaryData.fromObject(toJsonSchemaDefinition((value)))));
-            result.put("type", BinaryData.fromString("\"object\""));
-            result.put("properties", BinaryData.fromObject(azureProperties));
-            result.put("required", BinaryData.fromObject(jsonObjectSchema.required()));
-            result.put(
-                    "additionalProperties",
-                    BinaryData.fromObject(jsonObjectSchema.additionalProperties()));
-        } else {
-            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement);
-        }
+        map.forEach((key, value) -> result.put(key, BinaryData.fromObject(value)));
         return result;
     }
 }
