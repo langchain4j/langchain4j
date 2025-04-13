@@ -1,18 +1,5 @@
 package dev.langchain4j.model.github;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.ModelProvider.GITHUB_MODELS;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.*;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-
 import com.azure.ai.inference.ChatCompletionsClient;
 import com.azure.ai.inference.ModelServiceVersion;
 import com.azure.ai.inference.models.ChatCompletions;
@@ -28,7 +15,10 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
@@ -38,6 +28,8 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.github.spi.GitHubModelsChatModelBuilderFactory;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -46,8 +38,28 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ModelProvider.GITHUB_MODELS;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.aiMessageFrom;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.contentFilterManagement;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createListenerRequest;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createListenerResponse;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.finishReasonFrom;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.setupChatCompletionsBuilder;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.toAzureAiMessages;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.toChatCompletionsResponseFormat;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.toToolChoice;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.toToolDefinitions;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.tokenUsageFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a language model, hosted on GitHub Models, that has a chat completion interface, such as gpt-4o.
