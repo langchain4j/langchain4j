@@ -18,7 +18,6 @@ public enum GitHubModelsChatModelName {
 
     AI21_JAMBA_1_5_LARGE("ai21-jamba-1.5-large", "ai21"),
     AI21_JAMBA_1_5_MINI("ai21-jamba-1.5-mini", "ai21"),
-    AI21_JAMBA_INSTRUCT("ai21-jamba-instruct", "ai21"),
 
     COHERE_COMMAND_R("cohere-command-r", "cohere"),
     COHERE_COMMAND_R_PLUS("cohere-command-r-plus", "cohere"),
@@ -32,7 +31,10 @@ public enum GitHubModelsChatModelName {
     MISTRAL_NEMO("Mistral-nemo", "mistral"),
     MISTRAL_LARGE("Mistral-large", "mistral"),
     MISTRAL_LARGE_2407("Mistral-large-2407", "mistral"),
-    MISTRAL_SMALL("Mistral-small", "mistral");
+    MISTRAL_SMALL("Mistral-small", "mistral"),
+
+    DEEPSEEK_V3_0324("DeepSeek-V3-0324", "DeepSeek-V3"),
+    DEEPDEEK_V3("DeepSeek-V3", "DeepSeek-V3");
 
     private final String modelName;
     private final String modelType;
