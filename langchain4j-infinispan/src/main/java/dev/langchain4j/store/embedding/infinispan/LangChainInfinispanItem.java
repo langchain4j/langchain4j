@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.infinispan;
 
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -10,5 +11,5 @@ import java.util.Set;
  * @param text, associated text
  * @param metadata, additional set of metadata
  */
-public record LangChainInfinispanItem(String id, float[] embedding, String text, Set<LangChainMetadata> metadata) {}
-
+public record LangChainInfinispanItem(
+        String id, float[] embedding, String text, Set<LangChainMetadata> metadata, Map<String, Object> metadataMap) {}
