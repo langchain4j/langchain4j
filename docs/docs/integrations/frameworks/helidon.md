@@ -6,7 +6,7 @@ sidebar_position: 9
 
 [Helidon](https://helidon.io/) provides a LangChain4j integration module that simplifies building AI-driven applications while leveraging Helidon’s programming model and style.
 
-Helidon’s LangChain4j integration provides the following advantages instead of using LangChain4j library directly:
+Helidon’s LangChain4j integration provides the following advantages instead of adding LangChain4j's library manually:
 
 - Integration with Helidon Inject
     - Automatically creates and registers selected LangChain4j components in the Helidon service registry based on configuration.
