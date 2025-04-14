@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -153,8 +154,8 @@ public class DefaultMcpClient implements McpClient {
     public String executeTool(ToolExecutionRequest executionRequest) {
         ObjectNode arguments = null;
         try {
-            String args =executionRequest.arguments();
-            if(args ==null || args.trim().isEmpty()) {
+            String args = executionRequest.arguments();
+            if (isNullOrBlank(args)) {
                 args = "{}";
             }
             arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
