@@ -2,31 +2,31 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.util.Objects;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
-import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Represents the parameter passed to {@link InputGuardrail#validate(InputGuardrailParams)}.
+ * Represents the parameter passed to {@link InputGuardrail#validate(InputGuardrailRequest)}.
  *
  * @param userMessage
  *            The user message
  * @param commonParams
  *            The common params shared between types of guardrails
  */
-public record InputGuardrailParams(UserMessage userMessage, CommonGuardrailParams commonParams)
-        implements GuardrailParams<InputGuardrailParams> {
+public record InputGuardrailRequest(UserMessage userMessage, CommonGuardrailParams commonParams)
+        implements GuardrailRequest<InputGuardrailRequest> {
 
-    public InputGuardrailParams {
+    public InputGuardrailRequest {
         ensureNotNull(userMessage, "userMessage");
         ensureNotNull(commonParams, "commonParams");
     }
 
     @Override
-    public InputGuardrailParams withText(@Nullable String text) {
-        return new InputGuardrailParams(rewriteUserMessage(text), this.commonParams);
+    public InputGuardrailRequest withText(@Nullable String text) {
+        return new InputGuardrailRequest(rewriteUserMessage(text), this.commonParams);
     }
 
     public UserMessage rewriteUserMessage(@Nullable String text) {

@@ -9,7 +9,7 @@ import com.example.SingletonClassInstanceFactory;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailException;
-import dev.langchain4j.guardrail.InputGuardrailParams;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -179,7 +179,7 @@ class InputGuardrailValidationTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger(0);
 
         @Override
-        public InputGuardrailResult validate(InputGuardrailParams params) {
+        public InputGuardrailResult validate(InputGuardrailRequest params) {
             spy.incrementAndGet();
             var messages = Optional.ofNullable(params.commonParams().chatMemory())
                     .map(ChatMemory::messages)

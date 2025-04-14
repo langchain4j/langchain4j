@@ -2,16 +2,16 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.util.Map;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationResult;
-import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Represents the parameter passed to {@link Guardrail#validate(GuardrailParams)}} in order to validate an interaction
+ * Represents the parameter passed to {@link Guardrail#validate(GuardrailRequest)}} in order to validate an interaction
  * between a user and the LLM.
  */
-public interface GuardrailParams<P extends GuardrailParams<P>> {
+public interface GuardrailRequest<P extends GuardrailRequest<P>> {
     /**
      * Represents the common parameters shared across guardrail checks when validating interactions
      * between a user and a language model. This record encapsulates the chat memory, user message

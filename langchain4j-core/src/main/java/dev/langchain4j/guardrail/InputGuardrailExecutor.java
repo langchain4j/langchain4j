@@ -11,7 +11,7 @@ import org.jspecify.annotations.Nullable;
  */
 public non-sealed class InputGuardrailExecutor
         extends AbstractGuardrailExecutor<
-                InputGuardrailsConfig, InputGuardrailParams, InputGuardrailResult, InputGuardrail, Failure> {
+                InputGuardrailsConfig, InputGuardrailRequest, InputGuardrailResult, InputGuardrail, Failure> {
 
     protected InputGuardrailExecutor(InputGuardrailsConfig config, @Nullable List<InputGuardrail> guardrails) {
         super(config, guardrails);
@@ -42,13 +42,13 @@ public non-sealed class InputGuardrailExecutor
     }
 
     /**
-     * Execeutes the {@link InputGuardrail}s on the given {@link InputGuardrailParams}.
+     * Execeutes the {@link InputGuardrail}s on the given {@link InputGuardrailRequest}.
      *
-     * @param params     The {@link InputGuardrailParams} to validate
+     * @param params     The {@link InputGuardrailRequest} to validate
      * @return The {@link InputGuardrailResult} of the validation
      */
     @Override
-    public InputGuardrailResult execute(InputGuardrailParams params) {
+    public InputGuardrailResult execute(InputGuardrailRequest params) {
         var result = executeGuardrails(params);
 
         if (!result.isSuccess()) {
@@ -79,7 +79,7 @@ public non-sealed class InputGuardrailExecutor
      * Extends {@link GuardrailExecutorBuilder} for the specific types:
      * - Configuration type: {@link InputGuardrailsConfig}
      * - Result type: {@link InputGuardrailResult}
-     * - Parameter type: {@link InputGuardrailParams}
+     * - Parameter type: {@link InputGuardrailRequest}
      * - Guardrail type: {@link InputGuardrail}
      *
      * Provides the {@code build()} method to create an {@link InputGuardrailExecutor} instance.
@@ -88,7 +88,7 @@ public non-sealed class InputGuardrailExecutor
             extends GuardrailExecutorBuilder<
                     InputGuardrailsConfig,
                     InputGuardrailResult,
-                    InputGuardrailParams,
+        InputGuardrailRequest,
                     InputGuardrail,
                     InputGuardrailExecutorBuilder> {
         public InputGuardrailExecutorBuilder() {

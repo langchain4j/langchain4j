@@ -11,7 +11,7 @@ import java.util.List;
  * @param <C>
  *            The type of {@link GuardrailsConfig} to use for configuration
  * @param <P>
- *            The type of {@link GuardrailParams} to validate
+ *            The type of {@link GuardrailRequest} to validate
  * @param <R>
  *            The type of {@link GuardrailResult} to return
  * @param <G>
@@ -19,7 +19,7 @@ import java.util.List;
  */
 public sealed interface GuardrailExecutor<
                 C extends GuardrailsConfig,
-                P extends GuardrailParams,
+                P extends GuardrailRequest,
                 R extends GuardrailResult<R>,
                 G extends Guardrail<P, R>>
         permits AbstractGuardrailExecutor {
@@ -38,7 +38,7 @@ public sealed interface GuardrailExecutor<
 
     /**
      * Executes the provided guardrails on the given parameters.
-     * @param params The {@link GuardrailParams} to validate
+     * @param params The {@link GuardrailRequest} to validate
      * @return The {@link GuardrailResult} of the validation
      */
     R execute(P params);

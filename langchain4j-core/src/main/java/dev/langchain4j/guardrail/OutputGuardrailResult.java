@@ -146,18 +146,18 @@ public record OutputGuardrailResult(
     }
 
     /**
-     * Gets the response computed from the combination of the original {@link Response} in the {@link OutputGuardrailParams}
+     * Gets the response computed from the combination of the original {@link Response} in the {@link OutputGuardrailRequest}
      * and this result
      * @param params The output guardrail params
      * @param <T> The type of response
-     * @return A response computed from the combination of the original {@link Response} in the {@link OutputGuardrailParams}
+     * @return A response computed from the combination of the original {@link Response} in the {@link OutputGuardrailRequest}
      * and this result
      */
-    public <T> T response(OutputGuardrailParams params) {
+    public <T> T response(OutputGuardrailRequest params) {
         return (T) Optional.ofNullable(successfulResult()).orElseGet(() -> createResponse(params));
     }
 
-    private Response<AiMessage> createResponse(OutputGuardrailParams params) {
+    private Response<AiMessage> createResponse(OutputGuardrailRequest params) {
         var response = params.responseFromLLM();
         var aiMessage = response.aiMessage();
         var newAiMessage = aiMessage;

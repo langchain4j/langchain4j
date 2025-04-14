@@ -18,7 +18,7 @@ import org.jspecify.annotations.Nullable;
  */
 public non-sealed class OutputGuardrailExecutor
         extends AbstractGuardrailExecutor<
-                OutputGuardrailsConfig, OutputGuardrailParams, OutputGuardrailResult, OutputGuardrail, Failure> {
+                OutputGuardrailsConfig, OutputGuardrailRequest, OutputGuardrailResult, OutputGuardrail, Failure> {
 
     public static final String MAX_RETRIES_MESSAGE_TEMPLATE =
             """
@@ -34,13 +34,13 @@ public non-sealed class OutputGuardrailExecutor
     }
 
     /**
-     * Executes the {@link OutputGuardrail}s on the given {@link OutputGuardrailParams}.
+     * Executes the {@link OutputGuardrail}s on the given {@link OutputGuardrailRequest}.
      *
-     * @param params     The {@link OutputGuardrailParams} to validate
+     * @param params     The {@link OutputGuardrailRequest} to validate
      * @return The {@link OutputGuardrailResult} of the validation
      */
     @Override
-    public OutputGuardrailResult execute(OutputGuardrailParams params) {
+    public OutputGuardrailResult execute(OutputGuardrailRequest params) {
         OutputGuardrailResult result = null;
         var accumulatedParams = params;
         var attempt = 0;
@@ -81,7 +81,7 @@ public non-sealed class OutputGuardrailExecutor
             }
 
             attempt++;
-            accumulatedParams = new OutputGuardrailParams(
+            accumulatedParams = new OutputGuardrailRequest(
                     response, accumulatedParams.chatExecutor(), accumulatedParams.commonParams());
         }
 
@@ -144,7 +144,7 @@ public non-sealed class OutputGuardrailExecutor
      * Extends {@link GuardrailExecutorBuilder} for the specific types:
      * - Configuration type: {@link OutputGuardrailsConfig}
      * - Result type: {@link OutputGuardrailResult}
-     * - Parameter type: {@link OutputGuardrailParams}
+     * - Parameter type: {@link OutputGuardrailRequest}
      * - Guardrail type: {@link OutputGuardrail}
      *
      * Provides the {@code build()} method to create an {@link OutputGuardrailExecutor} instance.
@@ -153,7 +153,7 @@ public non-sealed class OutputGuardrailExecutor
             extends GuardrailExecutorBuilder<
                     OutputGuardrailsConfig,
                     OutputGuardrailResult,
-                    OutputGuardrailParams,
+        OutputGuardrailRequest,
                     OutputGuardrail,
                     OutputGuardrailExecutorBuilder> {
 

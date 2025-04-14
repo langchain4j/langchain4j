@@ -17,7 +17,7 @@ import org.jspecify.annotations.Nullable;
  *     A failed guardrail will stop further processing of any other input guardrails.
  * </p>
  */
-public interface InputGuardrail extends Guardrail<InputGuardrailParams, InputGuardrailResult> {
+public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGuardrailResult> {
     /**
      * Validates the {@code user message} that will be sent to the LLM.
      * <p>
@@ -41,7 +41,7 @@ public interface InputGuardrail extends Guardrail<InputGuardrailParams, InputGua
      *            the parameters, including the user message, the memory, and the augmentation result.
      */
     @Override
-    default InputGuardrailResult validate(InputGuardrailParams params) {
+    default InputGuardrailResult validate(InputGuardrailRequest params) {
         ensureNotNull(params, "params");
         return validate(params.userMessage());
     }

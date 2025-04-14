@@ -8,7 +8,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
-import dev.langchain4j.guardrail.OutputGuardrailParams;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -80,7 +80,7 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger(0);
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailParams params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
             int v = spy.incrementAndGet();
             var messages = params.commonParams().chatMemory().messages();
 
@@ -124,7 +124,7 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger(0);
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailParams params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
             int v = spy.incrementAndGet();
             var messages = params.commonParams().chatMemory().messages();
 

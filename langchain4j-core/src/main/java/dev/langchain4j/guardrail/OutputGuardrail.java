@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * The maximum number of retries is configurable, defaulting to {@link dev.langchain4j.guardrail.config.OutputGuardrailsConfig#MAX_RETRIES_DEFAULT}.
  */
-public interface OutputGuardrail extends Guardrail<OutputGuardrailParams, OutputGuardrailResult> {
+public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, OutputGuardrailResult> {
     /**
      * Validates the response from the LLM.
      *
@@ -35,7 +35,7 @@ public interface OutputGuardrail extends Guardrail<OutputGuardrailParams, Output
      *            the parameters, including the response from the LLM, the memory, and the augmentation result.
      */
     @Override
-    default OutputGuardrailResult validate(OutputGuardrailParams params) {
+    default OutputGuardrailResult validate(OutputGuardrailRequest params) {
         return validate(params.responseFromLLM().aiMessage());
     }
 

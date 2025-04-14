@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.guardrail.GuardrailParams.CommonGuardrailParams;
+import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.response.ChatResponse;

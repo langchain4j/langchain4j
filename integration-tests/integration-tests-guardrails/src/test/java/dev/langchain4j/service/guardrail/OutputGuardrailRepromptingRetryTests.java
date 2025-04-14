@@ -7,7 +7,7 @@ import com.example.SingletonClassInstanceFactory;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
-import dev.langchain4j.guardrail.OutputGuardrailParams;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -94,7 +94,7 @@ class OutputGuardrailRepromptingRetryTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger(0);
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailParams params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
             spy.incrementAndGet();
             return retry("Retry");
         }
@@ -112,7 +112,7 @@ class OutputGuardrailRepromptingRetryTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger(0);
 
         @Override
-        public OutputGuardrailResult validate(OutputGuardrailParams params) {
+        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
             int v = spy.incrementAndGet();
             return reprompt("Retry", "reprompt");
         }

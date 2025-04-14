@@ -5,7 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.classloading.ClassInstanceLoader;
 import dev.langchain4j.classloading.ClassMetadataProvider;
 import dev.langchain4j.guardrail.Guardrail;
-import dev.langchain4j.guardrail.GuardrailParams;
+import dev.langchain4j.guardrail.GuardrailRequest;
 import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailExecutor;
@@ -186,7 +186,7 @@ final class GuardrailServiceBuilder implements Builder {
         return new DefaultGuardrailService(this.aiServiceClass, inputGuardrailsByMethod, outputGuardrailsByMethod);
     }
 
-    private static <P extends GuardrailParams, R extends GuardrailResult<R>, G extends Guardrail<P, R>>
+    private static <P extends GuardrailRequest, R extends GuardrailResult<R>, G extends Guardrail<P, R>>
             List<G> getNonAnnotationBasedClassLevelGuardrails(
                     List<G> guardrails, List<Class<? extends G>> guardrailClasses) {
         ensureNotNull(guardrails, "guardrails");
@@ -200,7 +200,7 @@ final class GuardrailServiceBuilder implements Builder {
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    private static <P extends GuardrailParams, R extends GuardrailResult<R>, G extends Guardrail<P, R>>
+    private static <P extends GuardrailRequest, R extends GuardrailResult<R>, G extends Guardrail<P, R>>
             G getGuardrailClassInstance(Class<G> guardrailClass) {
         ensureNotNull(guardrailClass, "guardrailClass");
         return ClassInstanceLoader.getClassInstance(guardrailClass);

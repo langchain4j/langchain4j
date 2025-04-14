@@ -6,7 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.guardrail.GuardrailParams.CommonGuardrailParams;
+import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;

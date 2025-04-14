@@ -12,9 +12,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.guardrail.GuardrailParams.CommonGuardrailParams;
-import dev.langchain4j.guardrail.InputGuardrailParams;
-import dev.langchain4j.guardrail.OutputGuardrailParams;
+import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -339,7 +339,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             UserMessage userMessage,
             CommonGuardrailParams commonGuardrailParams) {
 
-        var inputGuardrailParams = new InputGuardrailParams(userMessage, commonGuardrailParams);
+        var inputGuardrailParams = new InputGuardrailRequest(userMessage, commonGuardrailParams);
         return guardrailService.executeGuardrails(method, inputGuardrailParams);
     }
 
@@ -350,7 +350,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             ChatExecutor chatExecutor,
             CommonGuardrailParams commonGuardrailParams) {
 
-        var outputGuardrailParams = new OutputGuardrailParams(responseFromLLM, chatExecutor, commonGuardrailParams);
+        var outputGuardrailParams = new OutputGuardrailRequest(responseFromLLM, chatExecutor, commonGuardrailParams);
         return guardrailService.executeGuardrails(method, outputGuardrailParams);
     }
 

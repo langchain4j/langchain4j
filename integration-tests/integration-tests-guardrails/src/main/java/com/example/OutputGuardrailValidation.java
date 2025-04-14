@@ -1,13 +1,13 @@
 package com.example;
 
 import dev.langchain4j.guardrail.OutputGuardrail;
-import dev.langchain4j.guardrail.OutputGuardrailParams;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import java.util.Map;
 
 public class OutputGuardrailValidation implements OutputGuardrail {
     private static final OutputGuardrailValidation INSTANCE = new OutputGuardrailValidation();
-    private OutputGuardrailParams params;
+    private OutputGuardrailRequest params;
 
     private OutputGuardrailValidation() {}
 
@@ -15,7 +15,7 @@ public class OutputGuardrailValidation implements OutputGuardrail {
         return INSTANCE;
     }
 
-    public OutputGuardrailResult validate(OutputGuardrailParams params) {
+    public OutputGuardrailResult validate(OutputGuardrailRequest params) {
         this.params = params;
         return success();
     }

@@ -5,11 +5,11 @@ package dev.langchain4j.guardrail;
  * output of the model to ensure that they are safe and meet the expectations of the model.
  *
  * @param <P>
- *            The type of the {@link GuardrailParams}
+ *            The type of the {@link GuardrailRequest}
  * @param <R>
  *            The type of the {@link GuardrailResult}
  */
-public interface Guardrail<P extends GuardrailParams, R extends GuardrailResult<R>> {
+public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult<R>> {
     /**
      * Validate the interaction between the model and the user in one of the two directions.
      *

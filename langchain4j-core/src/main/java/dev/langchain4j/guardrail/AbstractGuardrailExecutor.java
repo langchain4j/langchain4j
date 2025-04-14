@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
  * @param <C>
  *            The type of {@link GuardrailsConfig} to use for configuration
  * @param <P>
- *            The type of {@link GuardrailParams} to validate
+ *            The type of {@link GuardrailRequest} to validate
  * @param <R>
  *            The type of {@link GuardrailResult} to return
  * @param <G>
@@ -25,7 +25,7 @@ import org.jspecify.annotations.Nullable;
  */
 public abstract sealed class AbstractGuardrailExecutor<
                 C extends GuardrailsConfig,
-                P extends GuardrailParams<P>,
+                P extends GuardrailRequest<P>,
                 R extends GuardrailResult<R>,
                 G extends Guardrail<P, R>,
                 F extends Failure>
@@ -77,7 +77,7 @@ public abstract sealed class AbstractGuardrailExecutor<
      * <p>
      *     If any kind of {@link Exception} is thrown during validation, it will be wrapped in a {@link GuardrailException}.
      * </p>
-     * @param params The {@link GuardrailParams} to validate
+     * @param params The {@link GuardrailRequest} to validate
      * @param guardrail The {@link Guardrail} to evaluate against
      * @throws GuardrailException If any kind of {@link Exception} is thrown during validation
      * @return The {@link GuardrailResult} of the validation
@@ -150,7 +150,7 @@ public abstract sealed class AbstractGuardrailExecutor<
      * @param <C>
      *            The type of {@link GuardrailsConfig} to use for configuration
      * @param <P>
-     *            The type of {@link GuardrailParams} to validate
+     *            The type of {@link GuardrailRequest} to validate
      * @param <R>
      *            The type of {@link GuardrailResult} to return
      * @param <G>
@@ -166,7 +166,7 @@ public abstract sealed class AbstractGuardrailExecutor<
     public abstract static sealed class GuardrailExecutorBuilder<
                     C extends GuardrailsConfig,
                     R extends GuardrailResult<R>,
-                    P extends GuardrailParams<P>,
+                    P extends GuardrailRequest<P>,
                     G extends Guardrail<P, R>,
                     B extends GuardrailExecutorBuilder<C, R, P, G, B>>
             permits InputGuardrailExecutor.InputGuardrailExecutorBuilder,

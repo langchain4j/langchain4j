@@ -4,11 +4,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailExecutor;
-import dev.langchain4j.guardrail.InputGuardrailParams;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailExecutor;
-import dev.langchain4j.guardrail.OutputGuardrailParams;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +47,7 @@ public abstract class AbstractGuardrailService implements GuardrailService {
 
     @Override
     public <MethodKey> InputGuardrailResult executeInputGuardrails(
-            @Nullable MethodKey method, InputGuardrailParams params) {
+            @Nullable MethodKey method, InputGuardrailRequest params) {
         return Optional.ofNullable(method)
                 .map(this.inputGuardrails::get)
                 .map(executor -> executor.execute(params))
@@ -56,7 +56,7 @@ public abstract class AbstractGuardrailService implements GuardrailService {
 
     @Override
     public <MethodKey> OutputGuardrailResult executeOutputGuardrails(
-            @Nullable MethodKey method, OutputGuardrailParams params) {
+            @Nullable MethodKey method, OutputGuardrailRequest params) {
         return Optional.ofNullable(method)
                 .map(this.outputGuardrails::get)
                 .map(executor -> executor.execute(params))

@@ -6,7 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.guardrail.GuardrailParams.CommonGuardrailParams;
+import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;

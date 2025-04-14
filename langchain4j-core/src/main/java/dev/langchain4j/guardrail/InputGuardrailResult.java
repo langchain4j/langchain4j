@@ -69,13 +69,13 @@ public record InputGuardrailResult(Result result, @Nullable String successfulTex
     }
 
     /**
-     * Gets the {@link UserMessage} computed from the combination of the original {@link UserMessage} in the {@link InputGuardrailParams}
+     * Gets the {@link UserMessage} computed from the combination of the original {@link UserMessage} in the {@link InputGuardrailRequest}
      * and this result
      * @param params The input guardrail params
-     * @return A {@link UserMessage} computed from the combination of the original {@link UserMessage} in the {@link InputGuardrailParams}
+     * @return A {@link UserMessage} computed from the combination of the original {@link UserMessage} in the {@link InputGuardrailRequest}
      *      * and this result
      */
-    public UserMessage userMessage(InputGuardrailParams params) {
+    public UserMessage userMessage(InputGuardrailRequest params) {
         return hasRewrittenResult() ? params.rewriteUserMessage(successfulText()) : params.userMessage();
     }
 

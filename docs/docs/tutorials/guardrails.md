@@ -54,12 +54,12 @@ Input guardrails are implemented by implementing the [`InputGuardrail`](https://
 
 ```java
 InputGuardrailResult validate(UserMessage userMessage);
-InputGuardrailResult validate(InputGuardrailParams params);
+InputGuardrailResult validate(InputGuardrailRequest params);
 ```
 
 The first variant is used for simple guardrails, or when the guardrail only needs access to the [`UserMessage`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/data/message/UserMessage.java).
 
-The second variant is for more complex guardrails that need more information, such as the chat memory/history, user message template, augmentation results, or variables that were passed to the template. See [`InputGuardrailParams`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/InputGuardrailParams.java) for more information.
+The second variant is for more complex guardrails that need more information, such as the chat memory/history, user message template, augmentation results, or variables that were passed to the template. See [`InputGuardrailRequest`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/InputGuardrailRequest.java) for more information.
 
 Some examples of things you could do:
 - Check that there are enough documents in the augmentation results
@@ -236,12 +236,12 @@ Similar to input guardrails, output guardrails are implemented by implementing t
 
 ```java
 OutputGuardrailResult validate(AiMessage responseFromLLM);
-OutputGuardrailResult validate(OutputGuardrailParams params);
+OutputGuardrailResult validate(OutputGuardrailRequest params);
 ```
 
 The first variant is used for simple guardrails, or when the guardrail only needs access to the resulting [`AiMessage`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/data/message/AiMessage.java).
 
-The second variant is for more complex guardrails that need more information, such as the entire chat response, chat memory/history, user message template, or variables that were passed to the template. See [`OutputGuardrailParams`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/OutputGuardrailParams.java) for more information.
+The second variant is for more complex guardrails that need more information, such as the entire chat response, chat memory/history, user message template, or variables that were passed to the template. See [`OutputGuardrailRequest`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/OutputGuardrailRequest.java) for more information.
 
 Some examples of things you could do:
 - Ensure the output format is correct (i.e. it is a JSON document with the correct schema)

@@ -2,10 +2,10 @@ package dev.langchain4j.service.guardrail;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
-import dev.langchain4j.guardrail.InputGuardrailParams;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
-import dev.langchain4j.guardrail.OutputGuardrailParams;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Method;
@@ -34,7 +34,7 @@ public interface GuardrailService {
      * If no guardrails are associated with the method, a successful result is returned by default.
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> InputGuardrailResult executeInputGuardrails(@Nullable MethodKey method, InputGuardrailParams params);
+    <MethodKey> InputGuardrailResult executeInputGuardrails(@Nullable MethodKey method, InputGuardrailRequest params);
 
     /**
      * Executes the input guardrails associated with the given method and parameters,
@@ -48,7 +48,7 @@ public interface GuardrailService {
      *         a potentially rewritten user message is returned. If no guardrails are
      *         associated with the method, the original user message is returned.
      */
-    default <MethodKey> UserMessage executeGuardrails(@Nullable MethodKey method, InputGuardrailParams params) {
+    default <MethodKey> UserMessage executeGuardrails(@Nullable MethodKey method, InputGuardrailRequest params) {
         return executeInputGuardrails(method, params).userMessage(params);
     }
 
@@ -61,7 +61,7 @@ public interface GuardrailService {
      * If no guardrails are associated with the method, a successful result is returned by default.
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> OutputGuardrailResult executeOutputGuardrails(@Nullable MethodKey method, OutputGuardrailParams params);
+    <MethodKey> OutputGuardrailResult executeOutputGuardrails(@Nullable MethodKey method, OutputGuardrailRequest params);
 
     /**
      * Executes the guardrails associated with a given method and parameters, returning the appropriate response.
@@ -72,7 +72,7 @@ public interface GuardrailService {
      * @param params The parameters to validate against the output guardrails. Must not be null.
      * @return A {@link ChatResponse} that encapsulates the output of executing the guardrails based on the provided parameters.
      */
-    default <MethodKey, T> T executeGuardrails(@Nullable MethodKey method, OutputGuardrailParams params) {
+    default <MethodKey, T> T executeGuardrails(@Nullable MethodKey method, OutputGuardrailRequest params) {
         return executeOutputGuardrails(method, params).response(params);
     }
 
