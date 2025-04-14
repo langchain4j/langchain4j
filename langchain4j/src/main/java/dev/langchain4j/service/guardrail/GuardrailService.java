@@ -61,7 +61,8 @@ public interface GuardrailService {
      * If no guardrails are associated with the method, a successful result is returned by default.
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> OutputGuardrailResult executeOutputGuardrails(@Nullable MethodKey method, OutputGuardrailRequest params);
+    <MethodKey> OutputGuardrailResult executeOutputGuardrails(
+            @Nullable MethodKey method, OutputGuardrailRequest params);
 
     /**
      * Executes the guardrails associated with a given method and parameters, returning the appropriate response.

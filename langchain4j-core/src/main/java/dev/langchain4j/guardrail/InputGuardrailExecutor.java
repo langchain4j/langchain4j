@@ -88,7 +88,7 @@ public non-sealed class InputGuardrailExecutor
             extends GuardrailExecutorBuilder<
                     InputGuardrailsConfig,
                     InputGuardrailResult,
-        InputGuardrailRequest,
+                    InputGuardrailRequest,
                     InputGuardrail,
                     InputGuardrailExecutorBuilder> {
         public InputGuardrailExecutorBuilder() {

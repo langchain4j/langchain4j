@@ -2,10 +2,10 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.Optional;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.Optional;
 
 /**
  * Represents the parameter passed to {@link OutputGuardrail#validate(OutputGuardrailRequest)}.
@@ -87,8 +87,7 @@ public final class OutputGuardrailRequest implements GuardrailRequest<OutputGuar
         private ChatExecutor chatExecutor;
         private GuardrailRequestParams requestParams;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         /**
          * Sets the response from the LLM.

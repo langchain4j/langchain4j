@@ -2,12 +2,12 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.data.message.UserMessage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import dev.langchain4j.data.message.UserMessage;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -21,7 +21,8 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
     private final @Nullable String successfulText;
     private final List<@NonNull Failure> failures;
 
-    private InputGuardrailResult(Result result, @Nullable String successfulText, @Nullable List<@NonNull Failure> failures) {
+    private InputGuardrailResult(
+            Result result, @Nullable String successfulText, @Nullable List<@NonNull Failure> failures) {
         this.result = ensureNotNull(result, "result");
         this.successfulText = successfulText;
         this.failures = Optional.ofNullable(failures).orElseGet(List::of);
@@ -99,9 +100,9 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         InputGuardrailResult that = (InputGuardrailResult) o;
-        return result == that.result &&
-               Objects.equals(successfulText, that.successfulText) &&
-               Objects.equals(failures, that.failures);
+        return result == that.result
+                && Objects.equals(successfulText, that.successfulText)
+                && Objects.equals(failures, that.failures);
     }
 
     @Override

@@ -18,7 +18,8 @@ import org.jspecify.annotations.Nullable;
  * @see InputGuardrailResult
  * @see OutputGuardrailResult
  */
-public sealed interface GuardrailResult<GR extends GuardrailResult<GR>> permits InputGuardrailResult, OutputGuardrailResult {
+public sealed interface GuardrailResult<GR extends GuardrailResult<GR>>
+        permits InputGuardrailResult, OutputGuardrailResult {
     /**
      * The possible results of a guardrails validation.
      */

@@ -2,14 +2,14 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.output.Response;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.output.Response;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -24,7 +24,11 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     private final Object successfulResult;
     private final List<@NonNull Failure> failures;
 
-    private OutputGuardrailResult(Result result, @Nullable String successfulText, @Nullable Object successfulResult, @Nullable List<@NonNull Failure> failures) {
+    private OutputGuardrailResult(
+            Result result,
+            @Nullable String successfulText,
+            @Nullable Object successfulResult,
+            @Nullable List<@NonNull Failure> failures) {
         this.result = ensureNotNull(result, "result");
         this.successfulText = successfulText;
         this.successfulResult = successfulResult;
@@ -145,10 +149,10 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         OutputGuardrailResult that = (OutputGuardrailResult) o;
-        return result == that.result &&
-               Objects.equals(successfulText, that.successfulText) &&
-               Objects.equals(successfulResult, that.successfulResult) &&
-               Objects.equals(failures, that.failures);
+        return result == that.result
+                && Objects.equals(successfulText, that.successfulText)
+                && Objects.equals(successfulResult, that.successfulResult)
+                && Objects.equals(failures, that.failures);
     }
 
     @Override
@@ -216,7 +220,12 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
         private final boolean retry;
         private final @Nullable String reprompt;
 
-        Failure(String message, @Nullable Throwable cause, @Nullable Class<? extends Guardrail> guardrailClass, boolean retry, @Nullable String reprompt) {
+        Failure(
+                String message,
+                @Nullable Throwable cause,
+                @Nullable Class<? extends Guardrail> guardrailClass,
+                boolean retry,
+                @Nullable String reprompt) {
             this.message = ensureNotNull(message, "message");
             this.cause = cause;
             this.guardrailClass = guardrailClass;

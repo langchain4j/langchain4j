@@ -2,10 +2,10 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.Objects;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /**

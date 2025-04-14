@@ -1,10 +1,10 @@
 package dev.langchain4j.guardrail;
 
-import java.util.List;
-import java.util.stream.Collectors;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -156,7 +156,7 @@ public non-sealed class OutputGuardrailExecutor
             extends GuardrailExecutorBuilder<
                     OutputGuardrailsConfig,
                     OutputGuardrailResult,
-        OutputGuardrailRequest,
+                    OutputGuardrailRequest,
                     OutputGuardrail,
                     OutputGuardrailExecutorBuilder> {
 
