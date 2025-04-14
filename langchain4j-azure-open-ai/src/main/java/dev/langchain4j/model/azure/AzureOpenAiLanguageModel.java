@@ -10,10 +10,8 @@ import com.azure.ai.openai.models.CompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.ProxyOptions;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.Collections;
@@ -49,13 +47,12 @@ import org.slf4j.LoggerFactory;
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
-public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
+public class AzureOpenAiLanguageModel implements LanguageModel {
 
     private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiLanguageModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
-    private final Tokenizer tokenizer;
     private final Integer maxTokens;
     private final Double temperature;
     private final Double topP;
@@ -71,7 +68,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
     public AzureOpenAiLanguageModel(
             OpenAIClient client,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -86,7 +82,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -106,7 +101,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             String serviceVersion,
             String apiKey,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -127,7 +121,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -156,7 +149,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             String serviceVersion,
             KeyCredential keyCredential,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -177,7 +169,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -206,7 +197,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             String serviceVersion,
             TokenCredential tokenCredential,
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -227,7 +217,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
         this(
                 deploymentName,
-                tokenizer,
                 maxTokens,
                 temperature,
                 topP,
@@ -253,7 +242,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
     private AzureOpenAiLanguageModel(
             String deploymentName,
-            Tokenizer tokenizer,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -267,7 +255,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             Integer bestOf) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -306,11 +293,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         );
     }
 
-    @Override
-    public int estimateTokenCount(String prompt) {
-        return tokenizer.estimateTokenCountInText(prompt);
-    }
-
     public static Builder builder() {
         for (AzureOpenAiLanguageModelBuilderFactory factory :
                 loadFactories(AzureOpenAiLanguageModelBuilderFactory.class)) {
@@ -327,7 +309,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
         private String deploymentName;
-        private Tokenizer tokenizer;
         private Integer maxTokens;
         private Double temperature;
         private Double topP;
@@ -411,11 +392,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
          */
         public Builder deploymentName(String deploymentName) {
             this.deploymentName = deploymentName;
-            return this;
-        }
-
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 
@@ -523,7 +499,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                             serviceVersion,
                             tokenCredential,
                             deploymentName,
-                            tokenizer,
                             maxTokens,
                             temperature,
                             topP,
@@ -547,7 +522,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                             serviceVersion,
                             keyCredential,
                             deploymentName,
-                            tokenizer,
                             maxTokens,
                             temperature,
                             topP,
@@ -571,7 +545,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                         serviceVersion,
                         apiKey,
                         deploymentName,
-                        tokenizer,
                         maxTokens,
                         temperature,
                         topP,
@@ -593,7 +566,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                 return new AzureOpenAiLanguageModel(
                         openAIClient,
                         deploymentName,
-                        tokenizer,
                         maxTokens,
                         temperature,
                         topP,

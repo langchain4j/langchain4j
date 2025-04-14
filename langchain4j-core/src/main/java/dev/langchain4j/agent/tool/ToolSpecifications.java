@@ -143,6 +143,7 @@ public class ToolSpecifications {
                 parameter.getType(),
                 parameter.getParameterizedType(),
                 description,
+                true,
                 visited
         );
     }

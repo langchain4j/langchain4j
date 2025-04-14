@@ -32,7 +32,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -41,7 +41,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -175,12 +175,7 @@ OpenAiChatModel.builder()
     .strictJsonSchema(true)
     .build();
 ```
-In this case AI Service will not append "You must answer strictly in the following JSON format: ..." string
-to the end of the last `UserMessage`, but will create a JSON schema from the given POJO and pass it to the LLM.
-Please note that this works only when method return type is a POJO.
-If the return type is something else, (like an `enum` or a `List<String>`),
-the old behaviour is applied (with "You must answer strictly ...").
-Other return types will be supported in the near future.
+In this case AI Service will automatically generate a JSON schema from the given POJO and pass it to the LLM.
 
 ## Creating `OpenAiStreamingChatModel`
 
@@ -268,15 +263,9 @@ langchain4j.open-ai.moderation-model.timeout=...
 
 ## Creating `OpenAiTokenizer`
 
-### Plain Java
 ```java
-Tokenizer tokenizer = new OpenAiTokenizer();
-// or
-Tokenizer tokenizer = new OpenAiTokenizer("gpt-4o");
+Tokenizer tokenizer = new OpenAiTokenizer("gpt-4o-mini");
 ```
-
-### Spring Boot
-The `OpenAiTokenizer` bean is created automatically by the Spring Boot starter.
 
 
 ## HTTP Client

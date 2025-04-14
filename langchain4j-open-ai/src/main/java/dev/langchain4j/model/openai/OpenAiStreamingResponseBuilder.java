@@ -57,7 +57,7 @@ public class OpenAiStreamingResponseBuilder {
             this.id.set(partialResponse.id());
         }
         if (partialResponse.created() != null) {
-            this.created.set(Long.valueOf(partialResponse.created()));
+            this.created.set(partialResponse.created());
         }
         if (!isNullOrBlank(partialResponse.model())) {
             this.model.set(partialResponse.model());

@@ -38,7 +38,7 @@ public class OpenAiModerationModel implements ModerationModel {
 
     public OpenAiModerationModel(OpenAiModerationModelBuilder builder) {
 
-        if ("demo".equals(builder.apiKey)) {
+        if ("demo".equals(builder.apiKey) && !"http://langchain4j.dev/demo/openai/v1".equals(builder.baseUrl)) {
             // TODO remove before releasing 1.0.0
             throw new RuntimeException("""
                     If you wish to continue using the 'demo' key, please specify the base URL explicitly:
@@ -113,16 +113,6 @@ public class OpenAiModerationModel implements ModerationModel {
         } else {
             throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
         }
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiModerationModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
     }
 
     public static OpenAiModerationModelBuilder builder() {

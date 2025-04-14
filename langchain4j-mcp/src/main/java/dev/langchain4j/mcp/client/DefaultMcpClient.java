@@ -22,6 +22,7 @@ import dev.langchain4j.mcp.client.protocol.McpListPromptsRequest;
 import dev.langchain4j.mcp.client.protocol.McpListResourceTemplatesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.client.protocol.McpPingRequest;
 import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
@@ -33,14 +34,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO: currently we request a new list of tools every time, so we should
-// add support for the `ToolListChangedNotification` message, and then we can
-// cache the list
 public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
@@ -53,6 +52,7 @@ public class DefaultMcpClient implements McpClient {
     private final Duration toolExecutionTimeout;
     private final Duration resourcesTimeout;
     private final Duration promptsTimeout;
+    private final Duration pingTimeout;
     private final JsonNode RESULT_TIMEOUT;
     private final String toolExecutionTimeoutErrorMessage;
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
@@ -61,6 +61,9 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicReference<List<McpResource>> resourceRefs = new AtomicReference<>();
     private final AtomicReference<List<McpResourceTemplate>> resourceTemplateRefs = new AtomicReference<>();
     private final AtomicReference<List<McpPrompt>> promptRefs = new AtomicReference<>();
+    private final AtomicReference<List<ToolSpecification>> toolListRefs = new AtomicReference<>();
+    private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
+    private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -71,10 +74,12 @@ public class DefaultMcpClient implements McpClient {
         resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
         promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
         logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
+        pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
         toolExecutionTimeoutErrorMessage =
                 getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
         RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
-        messageHandler = new McpOperationHandler(pendingOperations, transport, logHandler::handleLogMessage);
+        messageHandler = new McpOperationHandler(
+                pendingOperations, transport, logHandler::handleLogMessage, () -> toolListOutOfDate.set(true));
         ((ObjectNode) RESULT_TIMEOUT)
                 .putObject("result")
                 .putArray("content")
@@ -120,19 +125,28 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<ToolSpecification> listTools() {
-        McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
-        CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
-        JsonNode result = null;
-        try {
-            result = resultFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
+        if (toolListOutOfDate.get()) {
+            CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
+            if (updateInProgress != null) {
+                // if an update is already in progress, wait for it to finish
+                toolListUpdateInProgress.get();
+                return toolListRefs.get();
+            } else {
+                // if no update is in progress, start one
+                CompletableFuture<Void> update = new CompletableFuture<>();
+                this.toolListUpdateInProgress.set(update);
+                try {
+                    obtainToolList();
+                } finally {
+                    update.complete(null);
+                    toolListOutOfDate.set(false);
+                    toolListUpdateInProgress.set(null);
+                }
+                return toolListRefs.get();
+            }
+        } else {
+            return toolListRefs.get();
         }
-
-        return ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                (ArrayNode) result.get("result").get("tools"));
     }
 
     @Override
@@ -215,11 +229,43 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
+    public void checkHealth() {
+        transport.checkHealth();
+        long operationId = idGenerator.getAndIncrement();
+        McpPingRequest ping = new McpPingRequest(operationId);
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(ping);
+            resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
     public List<McpResourceTemplate> listResourceTemplates() {
         if (resourceTemplateRefs.get() == null) {
             obtainResourceTemplateList();
         }
         return resourceTemplateRefs.get();
+    }
+
+    private synchronized void obtainToolList() {
+        McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
+        CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
+        JsonNode result = null;
+        try {
+            result = resultFuture.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operation.getId());
+        }
+
+        final List<ToolSpecification> toolList = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
+                (ArrayNode) result.get("result").get("tools"));
+        toolListRefs.set(toolList);
     }
 
     private synchronized void obtainResourceList() {
@@ -297,6 +343,7 @@ public class DefaultMcpClient implements McpClient {
         private String protocolVersion;
         private Duration toolExecutionTimeout;
         private Duration resourcesTimeout;
+        private Duration pingTimeout;
         private Duration promptsTimeout;
         private McpLogMessageHandler logHandler;
 
@@ -381,6 +428,17 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder logHandler(McpLogMessageHandler logHandler) {
             this.logHandler = logHandler;
+            return this;
+        }
+
+        /**
+         * The timeout to apply when waiting for a ping response.
+         * Currently, this is only used in the health check - if the
+         * server does not send a pong within this timeframe, the health
+         * check will fail. The timeout is 10 seconds.
+         */
+        public Builder pingTimeout(Duration pingTimeout) {
+            this.pingTimeout = pingTimeout;
             return this;
         }
 
