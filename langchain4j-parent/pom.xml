@@ -57,7 +57,7 @@
         <elastic.version>8.15.3</elastic.version>
         <github-api.version>1.318</github-api.version>
         <httpclient5.version>5.2.1</httpclient5.version>
-        <infinispan.version>15.0.14.Final</infinispan.version>
+        <infinispan.version>15.2.5.Final</infinispan.version>
         <jackson.version>2.19.2</jackson.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
