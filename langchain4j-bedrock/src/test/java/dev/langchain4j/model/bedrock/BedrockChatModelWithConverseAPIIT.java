@@ -166,7 +166,7 @@ class BedrockChatModelWithConverseAPIIT {
         ChatLanguageModel model = BedrockChatModel.builder()
                 .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .enableReasoning(1024L)
+                        .enableReasoning(1024)
                         .build())
                 .build();
 
@@ -186,7 +186,7 @@ class BedrockChatModelWithConverseAPIIT {
         ChatLanguageModel model = BedrockChatModel.builder()
                 .modelId("us.amazon.nova-lite-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .enableReasoning(1024L)
+                        .enableReasoning(1024)
                         .build())
                 .build();
 

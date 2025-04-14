@@ -64,7 +64,7 @@ class OpenAiToolSpecificationIT {
 
         UserMessage userMessage = UserMessage.from(
                 """
-                        Call function1 with param1=[3, null, 'abc',true].
+                        Call function1 with param1=[3, null, 'abc', true].
                         """);
 
         ChatRequest chatRequest = ChatRequest.builder()
