@@ -10,7 +10,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -47,7 +47,7 @@ class AnthropicChatModelIT {
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
-    ChatLanguageModel model = AnthropicChatModel.builder()
+    ChatModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
@@ -55,7 +55,7 @@ class AnthropicChatModelIT {
             .logResponses(true)
             .build();
 
-    ChatLanguageModel visionModel = AnthropicChatModel.builder()
+    ChatModel visionModel = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
@@ -91,7 +91,7 @@ class AnthropicChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .logRequests(true)
@@ -183,7 +183,7 @@ class AnthropicChatModelIT {
         // given
         int maxTokens = 3;
 
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .maxTokens(maxTokens)
@@ -224,7 +224,7 @@ class AnthropicChatModelIT {
         // given
         List<String> stopSequences = singletonList("World");
 
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .stopSequences(stopSequences)
@@ -248,7 +248,7 @@ class AnthropicChatModelIT {
     void should_cache_system_message() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .beta("prompt-caching-2024-07-31")
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
@@ -283,7 +283,7 @@ class AnthropicChatModelIT {
     void should_cache_multiple_system_messages() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .beta("prompt-caching-2024-07-31")
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
@@ -320,7 +320,7 @@ class AnthropicChatModelIT {
     void should_fail_if_more_than_four_system_message_with_cache() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .beta("prompt-caching-2024-07-31")
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
@@ -347,7 +347,7 @@ class AnthropicChatModelIT {
     void all_parameters() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
@@ -377,7 +377,7 @@ class AnthropicChatModelIT {
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
                 .maxTokens(1)
@@ -401,7 +401,7 @@ class AnthropicChatModelIT {
         // given
         String modelNameString = modelName.toString();
 
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelNameString)
                 .maxTokens(1)
@@ -431,7 +431,7 @@ class AnthropicChatModelIT {
     void should_execute_a_tool_then_answer() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -595,7 +595,7 @@ class AnthropicChatModelIT {
     void should_execute_multiple_tools_in_parallel_then_answer() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -665,7 +665,7 @@ class AnthropicChatModelIT {
     void should_answer_with_thinking() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_7_SONNET_20250219)
                 .thinkingType("enabled")

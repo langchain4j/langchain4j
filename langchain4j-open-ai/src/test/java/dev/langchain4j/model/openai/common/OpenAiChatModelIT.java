@@ -3,7 +3,8 @@ package dev.langchain4j.model.openai.common;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -41,7 +42,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(
                 defaultModelBuilder()
                         .build(),
@@ -61,7 +62,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected ChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiChatModel.OpenAiChatModelBuilder openAiChatModelBuilder = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -104,7 +105,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
-        ChatLanguageModel chatModel = defaultModelBuilder()
+        ChatModel chatModel = defaultModelBuilder()
                 .maxTokens(20) // to save tokens
                 .build();
 
@@ -134,7 +135,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
                 .messages(UserMessage.from("How much is 2+2 and 3+3?"));
 
-        ChatLanguageModel chatModel = defaultModelBuilder()
+        ChatModel chatModel = defaultModelBuilder()
                 .build();
 
         // when parallelToolCalls = true
@@ -181,7 +182,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         MockHttpClient mockHttpClient = new MockHttpClient();
 
-        ChatLanguageModel chatModel = defaultModelBuilder()
+        ChatModel chatModel = defaultModelBuilder()
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .maxRetries(1) // it will fail, so no need to retry
                 .build();
@@ -212,7 +213,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .maxOutputTokens(maxOutputTokens)
                 .build();
 
-        ChatLanguageModel chatModel = defaultModelBuilder()
+        ChatModel chatModel = defaultModelBuilder()
                 .defaultRequestParameters(parameters)
                 .build();
 
@@ -291,7 +292,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         MockHttpClient mockHttpClient = new MockHttpClient();
 
-        ChatLanguageModel chatModel = defaultModelBuilder()
+        ChatModel chatModel = defaultModelBuilder()
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .customHeaders(customHeaders)
                 .maxRetries(1) // it will fail, so no need to retry

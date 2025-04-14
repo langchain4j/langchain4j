@@ -4,7 +4,8 @@ import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -13,7 +14,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class AnthropicChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
-    protected ChatLanguageModel createModel(ChatModelListener listener) {
+    protected ChatModel createModel(ChatModelListener listener) {
         return AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName())
@@ -32,7 +33,7 @@ class AnthropicChatModelListenerIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected ChatModel createFailingModel(ChatModelListener listener) {
         return AnthropicChatModel.builder()
                 .apiKey("banana")
                 .modelName(modelName())

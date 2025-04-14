@@ -1,6 +1,6 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 
 import java.util.Map;
 import java.util.Objects;
@@ -10,7 +10,7 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
 /**
  * Represents a custom message.
- * Can be used only with {@link ChatLanguageModel} implementations that support this type of message.
+ * Can be used only with {@link ChatModel} implementations that support this type of message.
  */
 public class CustomMessage implements ChatMessage {
 

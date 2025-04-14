@@ -1,6 +1,7 @@
 package dev.langchain4j.model.github;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -14,7 +15,7 @@ import static java.util.Collections.singletonList;
 class GitHubModelsAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return singletonList(
                 GitHubModelsChatModel.builder()
                         .gitHubToken(System.getenv("GITHUB_TOKEN"))

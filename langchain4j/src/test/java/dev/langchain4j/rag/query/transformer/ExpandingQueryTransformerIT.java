@@ -1,6 +1,6 @@
 package dev.langchain4j.rag.query.transformer;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -19,7 +19,7 @@ class ExpandingQueryTransformerIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_expand_query(ChatLanguageModel model) {
+    void should_expand_query(ChatModel model) {
 
         // given
         Query query = Query.from("Tell me about dogs");

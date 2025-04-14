@@ -2,8 +2,7 @@ package dev.langchain4j.model.openaiofficial.openai;
 
 import static dev.langchain4j.model.openaiofficial.openai.InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 
-import com.openai.models.ChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
@@ -15,12 +14,12 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return InternalOpenAiOfficialTestHelper.chatModelsNormalAndJsonStrict();
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected ChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .defaultRequestParameters(parameters);
@@ -33,7 +32,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return ChatModel.GPT_4O_2024_11_20.toString();
+        return com.openai.models.ChatModel.GPT_4O_2024_11_20.toString();
     }
 
     @Override

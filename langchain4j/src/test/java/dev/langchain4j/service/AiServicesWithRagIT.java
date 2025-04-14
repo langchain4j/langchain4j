@@ -8,7 +8,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -87,7 +87,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_content_retriever(ChatLanguageModel model) {
+    void should_use_content_retriever(ChatModel model) {
 
         // given
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
@@ -97,7 +97,7 @@ class AiServicesWithRagIT {
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .contentRetriever(contentRetriever)
                 .build();
 
@@ -110,7 +110,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_content_retriever_and_chat_memory(ChatLanguageModel model) {
+    void should_use_content_retriever_and_chat_memory(ChatModel model) {
 
         // given
         ContentRetriever contentRetriever = spy(EmbeddingStoreContentRetriever.builder()
@@ -126,7 +126,7 @@ class AiServicesWithRagIT {
         chatMemory.add(aiMessage);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .contentRetriever(contentRetriever)
                 .chatMemory(chatMemory)
                 .build();
@@ -157,7 +157,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_content_retriever_and_chat_memory_provider(ChatLanguageModel model) {
+    void should_use_content_retriever_and_chat_memory_provider(ChatModel model) {
 
         // given
         ContentRetriever contentRetriever = spy(EmbeddingStoreContentRetriever.builder()
@@ -167,7 +167,7 @@ class AiServicesWithRagIT {
                 .build());
 
         MultiUserAssistant assistant = AiServices.builder(MultiUserAssistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .contentRetriever(contentRetriever)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
@@ -191,7 +191,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_query_transformer_and_content_retriever(ChatLanguageModel model) {
+    void should_use_query_transformer_and_content_retriever(ChatModel model) {
 
         // given
         QueryTransformer queryTransformer = new ExpandingQueryTransformer(model);
@@ -203,7 +203,7 @@ class AiServicesWithRagIT {
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryTransformer(queryTransformer)
                         .contentRetriever(contentRetriever)
@@ -219,7 +219,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_query_router_and_content_retriever(ChatLanguageModel model) {
+    void should_use_query_router_and_content_retriever(ChatModel model) {
 
         // given
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
@@ -239,7 +239,7 @@ class AiServicesWithRagIT {
         QueryRouter queryRouter = new LanguageModelQueryRouter(model, retrieverToDescription);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryRouter(queryRouter)
                         .build())
@@ -255,7 +255,7 @@ class AiServicesWithRagIT {
     @Disabled("TODO fix")
     @ParameterizedTest
     @MethodSource("models")
-    void should_not_route_when_query_is_ambiguous(ChatLanguageModel model) {
+    void should_not_route_when_query_is_ambiguous(ChatModel model) {
 
         // given
         String query = "Hey what's up?";
@@ -267,7 +267,7 @@ class AiServicesWithRagIT {
         QueryRouter queryRouter = new LanguageModelQueryRouter(model, retrieverToDescription);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryRouter(queryRouter)
                         .build())
@@ -284,7 +284,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_route_to_all_retrievers_when_query_is_ambiguous(ChatLanguageModel model) {
+    void should_route_to_all_retrievers_when_query_is_ambiguous(ChatModel model) {
 
         // given
         String query = "Hey what's up?";
@@ -300,13 +300,13 @@ class AiServicesWithRagIT {
         retrieverToDescription.put(contentRetriever, "car rental company terms of use");
 
         QueryRouter queryRouter = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryRouter(queryRouter)
                         .build())
@@ -325,7 +325,7 @@ class AiServicesWithRagIT {
     @Disabled("Fixed in https://github.com/langchain4j/langchain4j/pull/2311")
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_when_query_is_ambiguous(ChatLanguageModel model) {
+    void should_fail_when_query_is_ambiguous(ChatModel model) {
 
         // given
         String query = "Hey what's up?";
@@ -341,13 +341,13 @@ class AiServicesWithRagIT {
         retrieverToDescription.put(contentRetriever, "car rental company terms of use");
 
         QueryRouter queryRouter = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryRouter(queryRouter)
                         .build())
@@ -362,7 +362,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_content_retriever_and_content_aggregator(ChatLanguageModel model) {
+    void should_use_content_retriever_and_content_aggregator(ChatModel model) {
 
         // given
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
@@ -376,7 +376,7 @@ class AiServicesWithRagIT {
         ContentAggregator contentAggregator = new ReRankingContentAggregator(scoringModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .contentRetriever(contentRetriever)
                         .contentAggregator(contentAggregator)
@@ -392,7 +392,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_all_rag_components(ChatLanguageModel model) {
+    void should_use_all_rag_components(ChatModel model) {
 
         // given
         QueryTransformer queryTransformer = new ExpandingQueryTransformer(model);
@@ -418,7 +418,7 @@ class AiServicesWithRagIT {
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryTransformer(queryTransformer)
                         .queryRouter(queryRouter)
@@ -440,7 +440,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_dynamicFilter_by_user_id(ChatLanguageModel model) {
+    void should_use_dynamicFilter_by_user_id(ChatModel model) {
 
         // given
         TextSegment user1Info = TextSegment.from("My favorite color is green", metadata("userId", "1"));
@@ -460,7 +460,7 @@ class AiServicesWithRagIT {
                 .build();
 
         PersonalizedAssistant personalizedAssistant = AiServices.builder(PersonalizedAssistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .contentRetriever(contentRetriever)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
@@ -480,7 +480,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_static_metadata_filter(ChatLanguageModel model) {
+    void should_use_static_metadata_filter(ChatModel model) {
 
         // given
         TextSegment catsArticle = TextSegment.from("cats", metadata("animal", "cat"));
@@ -499,7 +499,7 @@ class AiServicesWithRagIT {
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .contentRetriever(contentRetriever)
                 .build();
 
@@ -517,7 +517,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_content_retriever_and_return_sources_inside_result(ChatLanguageModel model) {
+    void should_use_content_retriever_and_return_sources_inside_result(ChatModel model) {
 
         // given
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
@@ -527,7 +527,7 @@ class AiServicesWithRagIT {
                 .build();
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .contentRetriever(contentRetriever)
                 .build();
 

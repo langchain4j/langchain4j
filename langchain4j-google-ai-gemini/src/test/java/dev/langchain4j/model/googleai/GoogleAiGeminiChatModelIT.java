@@ -723,7 +723,7 @@ class GoogleAiGeminiChatModelIT {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .tools(spyTransactions)
                 .chatMemory(chatMemory)
-                .chatLanguageModel(gemini)
+                .chatModel(gemini)
                 .build();
 
         // then

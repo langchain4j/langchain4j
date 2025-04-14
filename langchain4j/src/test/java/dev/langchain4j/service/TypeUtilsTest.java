@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -96,13 +96,13 @@ class TypeUtilsTest {
     @Test
     void listNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException =
                 assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
                                 ListNoParametrizedTypeInvalidServiceDefinition.class)
-                        .chatLanguageModel(stubModel)
+                        .chatModel(stubModel)
                         .build());
 
         // Then
@@ -118,13 +118,13 @@ class TypeUtilsTest {
     @Test
     void setNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException =
                 assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
                                 SetNoParametrizedTypeInvalidServiceDefinition.class)
-                        .chatLanguageModel(stubModel)
+                        .chatModel(stubModel)
                         .build());
 
         // Then
@@ -140,13 +140,13 @@ class TypeUtilsTest {
     @Test
     void resultNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException =
                 assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
                                 ResultNoParametrizedTypeInvalidServiceDefinition.class)
-                        .chatLanguageModel(stubModel)
+                        .chatModel(stubModel)
                         .build());
 
         // Then
@@ -162,13 +162,13 @@ class TypeUtilsTest {
     @Test
     void resultListNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException =
                 assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
                                 ResultListNoParametrizedTypeInvalidServiceDefinition.class)
-                        .chatLanguageModel(stubModel)
+                        .chatModel(stubModel)
                         .build());
 
         // Then
@@ -184,12 +184,12 @@ class TypeUtilsTest {
     @Test
     void listWildcardTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException = assertThrows(
                 IllegalArgumentException.class, () -> AiServices.builder(ListWildcardTypeInvalidServiceDefinition.class)
-                        .chatLanguageModel(stubModel)
+                        .chatModel(stubModel)
                         .build());
 
         // Then
@@ -205,13 +205,13 @@ class TypeUtilsTest {
     @Test
     void resultListWildcardTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException =
                 assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
                                 ResultListWildcardTypeInvalidServiceDefinition.class)
-                        .chatLanguageModel(stubModel)
+                        .chatModel(stubModel)
                         .build());
 
         // Then
@@ -227,13 +227,13 @@ class TypeUtilsTest {
     @Test
     void resultListTypeParamTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException =
                 assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
                                 ResultListTypeParamTypeInvalidServiceDefinition.class)
-                        .chatLanguageModel(stubModel)
+                        .chatModel(stubModel)
                         .build());
 
         // Then

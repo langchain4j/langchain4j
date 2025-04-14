@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -59,11 +59,11 @@ class AiServicesBuilderTest {
 
     @Test
     void should_raise_an_error_when_tools_are_classes() {
-        ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(Assistant.class)
-                        .chatLanguageModel(chatLanguageModel)
+                        .chatModel(chatModel)
                         .tools(HelloWorld.class)
                         .build());
     }

@@ -57,12 +57,12 @@ to make it easier with some auto-configuration:
 
 ```java
 import com.openai.models.ChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 
 // ....
 
-ChatLanguageModel model = OpenAiOfficialChatModel.builder()
+ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl(System.getenv("OPENAI_BASE_URL"))
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName(ChatModel.GPT_4O_MINI)
@@ -74,7 +74,7 @@ ChatLanguageModel model = OpenAiOfficialChatModel.builder()
 The OpenAI `baseUrl` (`https://api.openai.com/v1`) is the default, so you can omit it:
 
 ```java
-ChatLanguageModel model = OpenAiOfficialChatModel.builder()
+ChatModel model = OpenAiOfficialChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName(ChatModel.GPT_4O_MINI)
         .build();
@@ -87,7 +87,7 @@ ChatLanguageModel model = OpenAiOfficialChatModel.builder()
 For Azure OpenAI, setting a `baseUrl` is mandatory, and Azure OpenAI will be automatically detected if that URL ends with `openai.azure.com`:
 
 ```java
-ChatLanguageModel model = OpenAiOfficialChatModel.builder()
+ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .modelName(ChatModel.GPT_4O_MINI)
@@ -97,7 +97,7 @@ ChatLanguageModel model = OpenAiOfficialChatModel.builder()
 If you want to force the usage of Azure OpenAI, you can also use the `isAzure()` method:
 
 ```java
-ChatLanguageModel model = OpenAiOfficialChatModel.builder()
+ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .isAzure(true)
@@ -144,7 +144,7 @@ When no API key is configured, LangChain4j will then automatically use passwordl
 For GitHub Models, you can use the default `baseUrl` (`https://models.inference.ai.azure.com`):
 
 ```java
-ChatLanguageModel model = OpenAiOfficialChatModel.builder()
+ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl("https://models.inference.ai.azure.com")
         .apiKey(System.getenv("GITHUB_TOKEN"))
         .modelName(ChatModel.GPT_4O_MINI)
@@ -154,7 +154,7 @@ ChatLanguageModel model = OpenAiOfficialChatModel.builder()
 Or you can use the `isGitHubModels()` method to force the usage of GitHub Models, which will automatically set the `baseUrl`:
 
 ```java
-ChatLanguageModel model = OpenAiOfficialChatModel.builder()
+ChatModel model = OpenAiOfficialChatModel.builder()
         .apiKey(System.getenv("GITHUB_TOKEN"))
         .modelName(ChatModel.GPT_4O_MINI)
         .isGitHubModels(true)
@@ -164,7 +164,7 @@ ChatLanguageModel model = OpenAiOfficialChatModel.builder()
 As GitHub Models are usually configured using the `GITHUB_TOKEN` environment variable, which is automatically filled up when using GitHub Actions or GitHub Codespaces, it will be automatically detected:
 
 ```java
-ChatLanguageModel model = OpenAiOfficialChatModel.builder()
+ChatModel model = OpenAiOfficialChatModel.builder()
         .modelName(ChatModel.GPT_4O_MINI)
         .isGitHubModels(true)
         .build();
@@ -174,7 +174,7 @@ This last configuration is easier to use, and more secure as the `GITHUB_TOKEN` 
 
 ## Using the models
 
-In the previous section, an `OpenAiOfficialChatModel` object was created, which implements the `ChatLanguageModel` interface.
+In the previous section, an `OpenAiOfficialChatModel` object was created, which implements the `ChatModel` interface.
 
 It can be either used by an [AI Service](https://docs.langchain4j.dev/tutorials/spring-boot-integration/#langchain4j-spring-boot-starter) or used directly in a Java application.
 
@@ -182,17 +182,17 @@ In this example, it is autowired as a Spring Bean:
 
 ```java
 @RestController
-class ChatLanguageModelController {
+class ChatModelController {
 
-    ChatLanguageModel chatLanguageModel;
+    ChatModel chatModel;
 
-    ChatLanguageModelController(ChatLanguageModel chatLanguageModel) {
-        this.chatLanguageModel = chatLanguageModel;
+    ChatModelController(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @GetMapping("/model")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.chat(message);
+        return chatModel.chat(message);
     }
 }
 ```
@@ -244,7 +244,7 @@ This section is for streaming mode, which allows for real-time chat with the mod
 This is similar to the non-streaming mode, but you need to use the `OpenAiOfficialStreamingChatModel` class instead of `OpenAiOfficialChatModel`:
 
 ```java
-StreamingChatLanguageModel model = OpenAiOfficialStreamingChatModel.builder()
+StreamingChatModel model = OpenAiOfficialStreamingChatModel.builder()
         .baseUrl(System.getenv("OPENAI_BASE_URL"))
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName(ChatModel.GPT_4O_MINI)

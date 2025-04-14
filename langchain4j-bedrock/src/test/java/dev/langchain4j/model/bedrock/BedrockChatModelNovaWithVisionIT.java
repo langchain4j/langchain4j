@@ -6,7 +6,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -21,7 +22,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(AWS_NOVA_LITE, AWS_NOVA_PRO);
     }
 
@@ -36,7 +37,7 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected ChatModel createModelWith(ChatRequestParameters parameters) {
         return BedrockChatModel.builder()
                 .defaultRequestParameters(parameters)
                 // force a working model with stopSequence parameter for @Tests
@@ -66,7 +67,7 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsStopSequencesParameter")
-    protected void should_respect_stopSequences_in_chat_request(ChatLanguageModel model) {
+    protected void should_respect_stopSequences_in_chat_request(ChatModel model) {
 
         // given
         List<String> stopSequences = List.of("Hello", " Hello");

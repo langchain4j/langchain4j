@@ -8,7 +8,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
@@ -25,7 +26,7 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 
-public class HuggingFaceChatModel implements ChatLanguageModel {
+public class HuggingFaceChatModel implements ChatModel {
 
     private final HuggingFaceClient client;
     private final Double temperature;

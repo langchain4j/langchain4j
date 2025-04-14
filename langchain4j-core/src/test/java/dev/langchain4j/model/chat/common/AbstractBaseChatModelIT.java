@@ -18,8 +18,8 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -43,12 +43,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Contains all the common tests that every {@link ChatLanguageModel}
- * and {@link StreamingChatLanguageModel} must successfully pass.
- * This ensures that {@link ChatLanguageModel} implementations are interchangeable among themselves,
- * as are {@link StreamingChatLanguageModel} implementations.
+ * Contains all the common tests that every {@link ChatModel}
+ * and {@link StreamingChatModel} must successfully pass.
+ * This ensures that {@link ChatModel} implementations are interchangeable among themselves,
+ * as are {@link StreamingChatModel} implementations.
  *
- * @param <M> The type of the model: either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel}
+ * @param <M> The type of the model: either {@link ChatModel} or {@link StreamingChatModel}
  */
 @TestInstance(PER_CLASS)
 public abstract class AbstractBaseChatModelIT<M> {
@@ -135,7 +135,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
         }
 
-        if (model instanceof StreamingChatLanguageModel) {
+        if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(1);
@@ -311,7 +311,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
         }
 
-        if (model instanceof StreamingChatLanguageModel) {
+        if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
@@ -355,7 +355,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
         }
 
-        if (model instanceof StreamingChatLanguageModel) {
+        if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
@@ -604,7 +604,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
         }
 
-        if (model instanceof StreamingChatLanguageModel) {
+        if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
@@ -643,7 +643,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
         }
 
-        if (model instanceof StreamingChatLanguageModel) {
+        if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
             assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
             if (assertTimesOnPartialResponseWasCalled()) {
@@ -948,7 +948,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
         }
 
-        if (model instanceof StreamingChatLanguageModel) {
+        if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
@@ -988,7 +988,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
         }
 
-        if (model instanceof StreamingChatLanguageModel) {
+        if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
             assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
             assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);

@@ -20,14 +20,14 @@ import static dev.langchain4j.model.ModelProvider.OTHER;
 /**
  * Represents a language model that has a chat API.
  *
- * @see StreamingChatLanguageModel
+ * @see StreamingChatModel
  */
-public interface ChatLanguageModel {
+public interface ChatModel {
 
     /**
      * This is the main API to interact with the chat model.
      * A temporary default implementation of this method is necessary
-     * until all {@link ChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     * until all {@link ChatModel} implementations adopt it. It should be removed once that occurs.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link ChatResponse}, containing all the outputs from the LLM

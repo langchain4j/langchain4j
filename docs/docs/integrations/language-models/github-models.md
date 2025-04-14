@@ -70,7 +70,7 @@ Create a `GitHubModelsChatModelConfiguration` Spring Bean:
 ```Java
 package com.example.demo.configuration.github;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.github.GitHubModelsChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -85,7 +85,7 @@ public class GitHubModelsChatModelConfiguration {
     private String gitHubToken;
 
     @Bean
-    ChatLanguageModel gitHubModelsChatLanguageModel() {
+    ChatModel gitHubModelsChatModel() {
         return GitHubModelsChatModel.builder()
                 .gitHubToken(gitHubToken)
                 .modelName("gpt-4o-mini")
@@ -101,17 +101,17 @@ or autowired where needed, for example:
 
 ```java
 @RestController
-class ChatLanguageModelController {
+class ChatModelController {
 
-    ChatLanguageModel chatLanguageModel;
+    ChatModel chatModel;
 
-    ChatLanguageModelController(ChatLanguageModel chatLanguageModel) {
-        this.chatLanguageModel = chatLanguageModel;
+    ChatModelController(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @GetMapping("/model")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.chat(message);
+        return chatModel.chat(message);
     }
 }
 ```
@@ -134,7 +134,7 @@ Create a `GitHubModelsStreamingChatModelConfiguration` Spring Bean:
 ```Java
 package com.example.demo.configuration.github;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.github.GitHubModelsChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -149,7 +149,7 @@ public class GitHubModelsStreamingChatModelConfiguration {
     private String gitHubToken;
 
     @Bean
-    GitHubModelsStreamingChatModel gitHubModelsStreamingChatLanguageModel() {
+    GitHubModelsStreamingChatModel gitHubModelsStreamingChatModel() {
         return GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName("gpt-4o-mini")

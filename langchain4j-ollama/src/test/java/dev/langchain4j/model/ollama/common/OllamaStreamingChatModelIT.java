@@ -1,6 +1,6 @@
 package dev.langchain4j.model.ollama.common;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
@@ -70,7 +70,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<StreamingChatModel> models() {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_TOOLS,
                 OPEN_AI_CHAT_MODEL_WITH_TOOLS
@@ -79,7 +79,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<StreamingChatLanguageModel> modelsSupportingImageInputs() {
+    protected List<StreamingChatModel> modelsSupportingImageInputs() {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_VISION,
                 OPEN_AI_CHAT_MODEL_WITH_VISION
@@ -88,7 +88,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_modelName_is_not_supported(StreamingChatLanguageModel model) {
+    protected void should_fail_if_modelName_is_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
             return;
         }
@@ -96,7 +96,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(StreamingChatLanguageModel model) {
+    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
             return;
         }
@@ -104,7 +104,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_stopSequences_parameter_is_not_supported(StreamingChatLanguageModel model) {
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
             return;
         }
@@ -112,7 +112,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(StreamingChatLanguageModel model) {
+    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }
@@ -120,7 +120,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_JSON_response_format_is_not_supported(StreamingChatLanguageModel model) {
+    protected void should_fail_if_JSON_response_format_is_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
             return;
         }
@@ -128,7 +128,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(StreamingChatLanguageModel model) {
+    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
             return;
         }
@@ -137,7 +137,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     @Disabled("enable after validation is implemented in OllamaStreamingChatModel")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatLanguageModel model) {
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
             return;
         }

@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.filter.builder.sql;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -103,22 +103,22 @@ public class LanguageModelSqlFilterBuilder {
                     "```sql"
     );
 
-    protected final ChatLanguageModel chatLanguageModel;
+    protected final ChatModel chatModel;
     protected final TableDefinition tableDefinition;
     protected final String createTableStatement;
     protected final PromptTemplate promptTemplate;
     protected final SqlFilterParser sqlFilterParser;
 
-    public LanguageModelSqlFilterBuilder(ChatLanguageModel chatLanguageModel,
+    public LanguageModelSqlFilterBuilder(ChatModel chatModel,
                                          TableDefinition tableDefinition) {
-        this(chatLanguageModel, tableDefinition, DEFAULT_PROMPT_TEMPLATE, new SqlFilterParser());
+        this(chatModel, tableDefinition, DEFAULT_PROMPT_TEMPLATE, new SqlFilterParser());
     }
 
-    private LanguageModelSqlFilterBuilder(ChatLanguageModel chatLanguageModel,
+    private LanguageModelSqlFilterBuilder(ChatModel chatModel,
                                           TableDefinition tableDefinition,
                                           PromptTemplate promptTemplate,
                                           SqlFilterParser sqlFilterParser) {
-        this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
+        this.chatModel = ensureNotNull(chatModel, "chatModel");
         this.tableDefinition = ensureNotNull(tableDefinition, "tableDefinition");
         this.createTableStatement = format(tableDefinition);
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
@@ -133,7 +133,7 @@ public class LanguageModelSqlFilterBuilder {
 
         Prompt prompt = createPrompt(query);
 
-        ChatResponse response = chatLanguageModel.chat(prompt.toUserMessage());
+        ChatResponse response = chatModel.chat(prompt.toUserMessage());
 
         String generatedSql = response.aiMessage().text();
 
@@ -232,7 +232,7 @@ public class LanguageModelSqlFilterBuilder {
     }
 
     public static class LanguageModelSqlFilterBuilderBuilder {
-        private ChatLanguageModel chatLanguageModel;
+        private ChatModel chatModel;
         private TableDefinition tableDefinition;
         private PromptTemplate promptTemplate;
         private SqlFilterParser sqlFilterParser;
@@ -240,8 +240,8 @@ public class LanguageModelSqlFilterBuilder {
         LanguageModelSqlFilterBuilderBuilder() {
         }
 
-        public LanguageModelSqlFilterBuilderBuilder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
-            this.chatLanguageModel = chatLanguageModel;
+        public LanguageModelSqlFilterBuilderBuilder chatModel(ChatModel chatModel) {
+            this.chatModel = chatModel;
             return this;
         }
 
@@ -261,11 +261,11 @@ public class LanguageModelSqlFilterBuilder {
         }
 
         public LanguageModelSqlFilterBuilder build() {
-            return new LanguageModelSqlFilterBuilder(this.chatLanguageModel, this.tableDefinition, this.promptTemplate, this.sqlFilterParser);
+            return new LanguageModelSqlFilterBuilder(this.chatModel, this.tableDefinition, this.promptTemplate, this.sqlFilterParser);
         }
 
         public String toString() {
-            return "LanguageModelSqlFilterBuilder.LanguageModelSqlFilterBuilderBuilder(chatLanguageModel=" + this.chatLanguageModel + ", tableDefinition=" + this.tableDefinition + ", promptTemplate=" + this.promptTemplate + ", sqlFilterParser=" + this.sqlFilterParser + ")";
+            return "LanguageModelSqlFilterBuilder.LanguageModelSqlFilterBuilderBuilder(chatModel=" + this.chatModel + ", tableDefinition=" + this.tableDefinition + ", promptTemplate=" + this.promptTemplate + ", sqlFilterParser=" + this.sqlFilterParser + ")";
         }
     }
 }

@@ -1,7 +1,7 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
 import com.openai.models.ChatModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
@@ -13,7 +13,7 @@ import static java.util.Collections.singletonList;
 class OpenAiOfficialStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
 
     @Override
-    protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
+    protected StreamingChatModel createModel(ChatModelListener listener) {
         return OpenAiOfficialStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName())
@@ -30,7 +30,7 @@ class OpenAiOfficialStreamingChatModelListenerIT extends StreamingChatModelListe
     }
 
     @Override
-    protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected StreamingChatModel createFailingModel(ChatModelListener listener) {
         return OpenAiOfficialStreamingChatModel.builder()
                 .apiKey("banana")
                 .modelName(modelName())
