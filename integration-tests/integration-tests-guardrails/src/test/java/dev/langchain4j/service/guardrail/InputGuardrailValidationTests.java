@@ -181,7 +181,7 @@ class InputGuardrailValidationTests extends BaseGuardrailTests {
         @Override
         public InputGuardrailResult validate(InputGuardrailRequest params) {
             spy.incrementAndGet();
-            var messages = Optional.ofNullable(params.commonParams().chatMemory())
+            var messages = Optional.ofNullable(params.requestParams().chatMemory())
                     .map(ChatMemory::messages)
                     .orElseGet(List::of);
 

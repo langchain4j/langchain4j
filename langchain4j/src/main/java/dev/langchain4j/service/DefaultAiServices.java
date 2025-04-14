@@ -8,11 +8,29 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import java.io.InputStream;
+import java.lang.reflect.Array;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.memory.ChatMemory;
@@ -37,24 +55,6 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
-import java.io.InputStream;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Scanner;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
@@ -163,8 +163,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
-                        var commonGuardrailParam = new CommonGuardrailParams(
-                                chatMemory, augmentationResult, userMessageTemplate, variables);
+                        var commonGuardrailParam = GuardrailRequestParams.builder()
+                                .chatMemory(chatMemory)
+                                .augmentationResult(augmentationResult)
+                                .userMessageTemplate(userMessageTemplate)
+                                .variables(variables)
+                                .build();
 
                         // Invoke input guardrails
                         userMessage = invokeInputGuardrails(
@@ -337,10 +341,13 @@ class DefaultAiServices<T> extends AiServices<T> {
             GuardrailService guardrailService,
             Method method,
             UserMessage userMessage,
-            CommonGuardrailParams commonGuardrailParams) {
+            GuardrailRequestParams commonGuardrailParams) {
 
-        var inputGuardrailParams = new InputGuardrailRequest(userMessage, commonGuardrailParams);
-        return guardrailService.executeGuardrails(method, inputGuardrailParams);
+        var inputGuardrailRequest = InputGuardrailRequest.builder()
+                .userMessage(userMessage)
+                .commonParams(commonGuardrailParams)
+                .build();
+        return guardrailService.executeGuardrails(method, inputGuardrailRequest);
     }
 
     private <T> T invokeOutputGuardrails(
@@ -348,10 +355,14 @@ class DefaultAiServices<T> extends AiServices<T> {
             Method method,
             ChatResponse responseFromLLM,
             ChatExecutor chatExecutor,
-            CommonGuardrailParams commonGuardrailParams) {
+            GuardrailRequestParams commonGuardrailParams) {
 
-        var outputGuardrailParams = new OutputGuardrailRequest(responseFromLLM, chatExecutor, commonGuardrailParams);
-        return guardrailService.executeGuardrails(method, outputGuardrailParams);
+        var outputGuardrailRequest = OutputGuardrailRequest.builder()
+                .responseFromLLM(responseFromLLM)
+                .chatExecutor(chatExecutor)
+                .requestParams(commonGuardrailParams)
+                .build();
+        return guardrailService.executeGuardrails(method, outputGuardrailRequest);
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {

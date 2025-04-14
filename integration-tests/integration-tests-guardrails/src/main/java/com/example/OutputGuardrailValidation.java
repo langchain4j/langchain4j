@@ -25,10 +25,10 @@ public class OutputGuardrailValidation implements OutputGuardrail {
     }
 
     public String spyUserMessageTemplate() {
-        return params.commonParams().userMessageTemplate();
+        return params.requestParams().userMessageTemplate();
     }
 
     public Map<String, Object> spyVariables() {
-        return params.commonParams().variables();
+        return params.requestParams().variables();
     }
 }

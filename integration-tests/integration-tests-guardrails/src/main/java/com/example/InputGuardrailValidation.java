@@ -25,7 +25,7 @@ public class InputGuardrailValidation implements InputGuardrail {
     }
 
     public String spyUserMessageTemplate() {
-        return params.commonParams().userMessageTemplate();
+        return params.requestParams().userMessageTemplate();
     }
 
     public String spyUserMessageText() {
@@ -33,6 +33,6 @@ public class InputGuardrailValidation implements InputGuardrail {
     }
 
     public Map<String, Object> spyVariables() {
-        return params.commonParams().variables();
+        return params.requestParams().variables();
     }
 }

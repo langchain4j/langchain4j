@@ -2,38 +2,33 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.output.Response;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.output.Response;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
  * The result of the validation of an {@link OutputGuardrail}
- *
- * @param result
- *            The result of the output guardrail validation.
- * @param successfulText
- *            The successful text
- * @param successfulResult
- *            The successful result
- * @param failures
- *            The list of failures, empty if the validation succeeded.
  */
-public record OutputGuardrailResult(
-        Result result, @Nullable String successfulText, @Nullable Object successfulResult, List<Failure> failures)
-        implements GuardrailResult<OutputGuardrailResult> {
-
+public final class OutputGuardrailResult implements GuardrailResult<OutputGuardrailResult> {
     private static final OutputGuardrailResult SUCCESS = new OutputGuardrailResult();
 
-    public OutputGuardrailResult {
-        ensureNotNull(result, "result");
-        failures = Optional.ofNullable(failures).orElseGet(List::of);
+    private final Result result;
+    private final String successfulText;
+    private final Object successfulResult;
+    private final List<@NonNull Failure> failures;
+
+    private OutputGuardrailResult(Result result, @Nullable String successfulText, @Nullable Object successfulResult, @Nullable List<@NonNull Failure> failures) {
+        this.result = ensureNotNull(result, "result");
+        this.successfulText = successfulText;
+        this.successfulResult = successfulResult;
+        this.failures = Optional.ofNullable(failures).orElseGet(List::of);
     }
 
     private OutputGuardrailResult() {
@@ -145,16 +140,32 @@ public record OutputGuardrailResult(
         return asString();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        OutputGuardrailResult that = (OutputGuardrailResult) o;
+        return result == that.result &&
+               Objects.equals(successfulText, that.successfulText) &&
+               Objects.equals(successfulResult, that.successfulResult) &&
+               Objects.equals(failures, that.failures);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(result, successfulText, successfulResult, failures);
+    }
+
     /**
      * Gets the response computed from the combination of the original {@link Response} in the {@link OutputGuardrailRequest}
      * and this result
-     * @param params The output guardrail params
+     * @param request The output guardrail request
      * @param <T> The type of response
      * @return A response computed from the combination of the original {@link Response} in the {@link OutputGuardrailRequest}
      * and this result
      */
-    public <T> T response(OutputGuardrailRequest params) {
-        return (T) Optional.ofNullable(successfulResult()).orElseGet(() -> createResponse(params));
+    public <T> T response(OutputGuardrailRequest request) {
+        return (T) Optional.ofNullable(successfulResult).orElseGet(() -> createResponse(request));
     }
 
     private Response<AiMessage> createResponse(OutputGuardrailRequest params) {
@@ -172,48 +183,60 @@ public record OutputGuardrailResult(
                 newAiMessage,
                 response.metadata().tokenUsage(),
                 response.metadata().finishReason(),
-                params.commonParams().variables());
+                params.requestParams().variables());
+    }
+
+    @Override
+    public Result result() {
+        return result;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <F extends GuardrailResult.Failure> List<@NonNull F> failures() {
+        return (List<F>) failures;
+    }
+
+    @Override
+    public String successfulText() {
+        return successfulText;
+    }
+
+    public Object successfulResult() {
+        return successfulResult;
     }
 
     /**
      * Represents an output guardrail failure
-     *
-     * @param message
-     *            The failure message
-     * @param cause
-     *            The cause of the failure
-     * @param guardrailClass
-     *            The class that produced the failure
-     * @param retry
-     *            Whether the failure is intended to force a retry
-     * @param reprompt
-     *            The reprompt
      */
-    public record Failure(
-            String message,
-            @Nullable Throwable cause,
-            @Nullable Class<? extends Guardrail> guardrailClass,
-            boolean retry,
-            @Nullable String reprompt)
-            implements GuardrailResult.Failure {
+    public static final class Failure implements GuardrailResult.Failure {
+        private final String message;
+        private final @Nullable Throwable cause;
+        private final @Nullable Class<? extends Guardrail> guardrailClass;
+        private final boolean retry;
+        private final @Nullable String reprompt;
 
-        public Failure {
-            ensureNotNull(message, "message");
+        Failure(String message, @Nullable Throwable cause, @Nullable Class<? extends Guardrail> guardrailClass, boolean retry, @Nullable String reprompt) {
+            this.message = ensureNotNull(message, "message");
+            this.cause = cause;
+            this.guardrailClass = guardrailClass;
+            this.retry = retry;
+            this.reprompt = reprompt;
         }
 
-        public Failure(String message) {
+        Failure(String message) {
             this(message, null);
         }
 
-        public Failure(String message, @Nullable Throwable cause) {
+        Failure(String message, @Nullable Throwable cause) {
             this(message, cause, false);
         }
 
-        public Failure(String message, @Nullable Throwable cause, boolean retry) {
+        Failure(String message, @Nullable Throwable cause, boolean retry) {
             this(message, cause, null, retry, null);
         }
 
-        public Failure(String message, @Nullable Throwable cause, boolean retry, @Nullable String reprompt) {
+        Failure(String message, @Nullable Throwable cause, boolean retry, @Nullable String reprompt) {
             this(message, cause, null, retry, reprompt);
         }
 
@@ -221,6 +244,23 @@ public record OutputGuardrailResult(
         public Failure withGuardrailClass(Class<? extends Guardrail> guardrailClass) {
             ensureNotNull(guardrailClass, "guardrailClass");
             return new Failure(message(), cause(), guardrailClass, this.retry, this.reprompt);
+        }
+
+        @Override
+        public String message() {
+            return message;
+        }
+
+        @Override
+        @Nullable
+        public Throwable cause() {
+            return cause;
+        }
+
+        @Override
+        @Nullable
+        public Class<? extends Guardrail> guardrailClass() {
+            return guardrailClass;
         }
 
         /**
@@ -240,6 +280,15 @@ public record OutputGuardrailResult(
         @Override
         public String toString() {
             return asString();
+        }
+
+        public boolean retry() {
+            return retry;
+        }
+
+        @Nullable
+        public String reprompt() {
+            return reprompt;
         }
     }
 }

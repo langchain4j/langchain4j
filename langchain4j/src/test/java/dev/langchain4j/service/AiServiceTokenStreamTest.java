@@ -4,16 +4,16 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.rag.content.Content;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.rag.content.Content;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -119,7 +119,12 @@ class AiServiceTokenStreamTest {
                 .retrievedContents(content)
                 .context(context)
                 .memoryId(memoryId)
-                .commonGuardrailParams(new CommonGuardrailParams(null, null, "", Map.of()))
+                .commonGuardrailParams(GuardrailRequestParams.builder()
+                        .chatMemory(null)
+                        .augmentationResult(null)
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .build())
                 .build());
     }
 }

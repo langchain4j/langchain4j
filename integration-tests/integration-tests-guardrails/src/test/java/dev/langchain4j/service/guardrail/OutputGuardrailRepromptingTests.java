@@ -82,7 +82,7 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
         @Override
         public OutputGuardrailResult validate(OutputGuardrailRequest params) {
             int v = spy.incrementAndGet();
-            var messages = params.commonParams().chatMemory().messages();
+            var messages = params.requestParams().chatMemory().messages();
 
             if (v == 1) {
                 ChatMessage last = messages.get(messages.size() - 1);
@@ -126,7 +126,7 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
         @Override
         public OutputGuardrailResult validate(OutputGuardrailRequest params) {
             int v = spy.incrementAndGet();
-            var messages = params.commonParams().chatMemory().messages();
+            var messages = params.requestParams().chatMemory().messages();
 
             if (v == 1) {
                 ChatMessage last = messages.get(messages.size() - 1);

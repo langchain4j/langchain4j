@@ -6,7 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -32,7 +32,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
-    private final CommonGuardrailParams commonGuardrailParams;
+    private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
 
     private Consumer<String> partialResponseHandler;

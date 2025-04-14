@@ -2,30 +2,29 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.data.message.UserMessage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import dev.langchain4j.data.message.UserMessage;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
  * The result of the validation of an {@link InputGuardrail}
- *
- * @param result
- *            The result of the input guardrail validation
- * @param failures
- *            The list of failures, empty if the validation succeeded
  */
-public record InputGuardrailResult(Result result, @Nullable String successfulText, @Nullable List<Failure> failures)
-        implements GuardrailResult<InputGuardrailResult> {
-
+public final class InputGuardrailResult implements GuardrailResult<InputGuardrailResult> {
     private static final InputGuardrailResult SUCCESS = new InputGuardrailResult();
 
-    public InputGuardrailResult {
-        ensureNotNull(result, "result");
-        failures = Optional.ofNullable(failures).orElseGet(List::of);
+    private final Result result;
+    private final @Nullable String successfulText;
+    private final List<@NonNull Failure> failures;
+
+    private InputGuardrailResult(Result result, @Nullable String successfulText, @Nullable List<@NonNull Failure> failures) {
+        this.result = ensureNotNull(result, "result");
+        this.successfulText = successfulText;
+        this.failures = Optional.ofNullable(failures).orElseGet(List::of);
     }
 
     private InputGuardrailResult() {
@@ -64,6 +63,22 @@ public record InputGuardrailResult(Result result, @Nullable String successfulTex
     }
 
     @Override
+    public Result result() {
+        return result;
+    }
+
+    @Override
+    public String successfulText() {
+        return successfulText;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <F extends GuardrailResult.Failure> List<@NonNull F> failures() {
+        return (List<F>) failures;
+    }
+
+    @Override
     public String toString() {
         return asString();
     }
@@ -79,29 +94,40 @@ public record InputGuardrailResult(Result result, @Nullable String successfulTex
         return hasRewrittenResult() ? params.rewriteUserMessage(successfulText()) : params.userMessage();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        InputGuardrailResult that = (InputGuardrailResult) o;
+        return result == that.result &&
+               Objects.equals(successfulText, that.successfulText) &&
+               Objects.equals(failures, that.failures);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(result, successfulText, failures);
+    }
+
     /**
      * Represents an input guardrail failure
-     *
-     * @param message
-     *            The failure message
-     * @param cause
-     *            The cause of the failure
-     * @param guardrailClass
-     *            The class that produced the failure
      */
-    public record Failure(
-            String message, @Nullable Throwable cause, @Nullable Class<? extends Guardrail> guardrailClass)
-            implements GuardrailResult.Failure {
+    public static final class Failure implements GuardrailResult.Failure {
+        private final String message;
+        private final @Nullable Throwable cause;
+        private final @Nullable Class<? extends Guardrail> guardrailClass;
 
-        public Failure {
-            ensureNotNull(message, "message");
+        Failure(String message, @Nullable Throwable cause, @Nullable Class<? extends Guardrail> guardrailClass) {
+            this.message = ensureNotNull(message, "message");
+            this.cause = cause;
+            this.guardrailClass = guardrailClass;
         }
 
-        public Failure(String message) {
-            this(message, null);
+        Failure(String message) {
+            this(message, null, null);
         }
 
-        public Failure(String message, @Nullable Throwable cause) {
+        Failure(String message, @Nullable Throwable cause) {
             this(message, cause, null);
         }
 
@@ -111,9 +137,27 @@ public record InputGuardrailResult(Result result, @Nullable String successfulTex
          * @param guardrailClass
          *            The guardrail class
          */
+        @Override
         public Failure withGuardrailClass(Class<? extends Guardrail> guardrailClass) {
             ensureNotNull(guardrailClass, "guardrailClass");
             return new Failure(this.message, this.cause, guardrailClass);
+        }
+
+        @Override
+        public String message() {
+            return message;
+        }
+
+        @Override
+        @Nullable
+        public Throwable cause() {
+            return cause;
+        }
+
+        @Override
+        @Nullable
+        public Class<? extends Guardrail> guardrailClass() {
+            return guardrailClass;
         }
 
         @Override

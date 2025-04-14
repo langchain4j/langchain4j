@@ -6,7 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
@@ -25,7 +25,7 @@ public class AiServiceTokenStreamParameters {
     private final Object memoryId;
 
     @Nullable
-    private final CommonGuardrailParams commonGuardrailParams;
+    private final GuardrailRequestParams commonGuardrailParams;
 
     @Nullable
     private final Object methodKey;
@@ -88,11 +88,11 @@ public class AiServiceTokenStreamParameters {
      * Retrieves the common parameters shared across guardrail checks for validating interactions
      * between a user and a language model, if available.
      *
-     * @return the {@link CommonGuardrailParams} containing chat memory, user message template,
+     * @return the {@link GuardrailRequestParams} containing chat memory, user message template,
      * and additional variables required for guardrail processing, or null if not set.
      */
     @Nullable
-    public CommonGuardrailParams commonGuardrailParams() {
+    public GuardrailRequestParams commonGuardrailParams() {
         return commonGuardrailParams;
     }
 
@@ -125,7 +125,7 @@ public class AiServiceTokenStreamParameters {
         private List<Content> retrievedContents;
         private AiServiceContext context;
         private Object memoryId;
-        private CommonGuardrailParams commonGuardrailParams;
+        private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
 
         protected Builder() {}
@@ -199,12 +199,12 @@ public class AiServiceTokenStreamParameters {
         /**
          * Sets the common guardrail parameters for validating interactions between a user and a language model.
          *
-         * @param commonGuardrailParams an instance of {@link CommonGuardrailParams} containing the shared parameters
+         * @param commonGuardrailParams an instance of {@link GuardrailRequestParams} containing the shared parameters
          *                              required for guardrail checks, such as chat memory, user message template,
          *                              and additional variables.
          * @return this builder instance.
          */
-        public Builder commonGuardrailParams(CommonGuardrailParams commonGuardrailParams) {
+        public Builder commonGuardrailParams(GuardrailRequestParams commonGuardrailParams) {
             this.commonGuardrailParams = commonGuardrailParams;
             return this;
         }

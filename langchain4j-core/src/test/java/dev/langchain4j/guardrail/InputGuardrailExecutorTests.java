@@ -6,7 +6,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -187,9 +186,17 @@ class InputGuardrailExecutorTests {
     }
 
     public static InputGuardrailRequest from(UserMessage userMessage) {
-        var newCommonParams = new CommonGuardrailParams(null, null, "", Map.of());
+        var newCommonParams = GuardrailRequestParams.builder()
+                .chatMemory(null)
+                .augmentationResult(null)
+                .userMessageTemplate("")
+                .variables(Map.of())
+                .build();
 
-        return new InputGuardrailRequest(userMessage, newCommonParams);
+        return InputGuardrailRequest.builder()
+                .userMessage(userMessage)
+                .commonParams(newCommonParams)
+                .build();
     }
 
     private static class FatalInputGuardrail extends FailureInputGuardrail<FatalInputGuardrail> {

@@ -1,10 +1,10 @@
 package dev.langchain4j.guardrail;
 
+import java.util.List;
+import java.util.stream.Collectors;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -66,7 +66,7 @@ public non-sealed class OutputGuardrailExecutor
             }
 
             // If we get here we know it is some kind of retry
-            var chatMemory = accumulatedParams.commonParams().chatMemory();
+            var chatMemory = accumulatedParams.requestParams().chatMemory();
 
             if (chatMemory != null) {
                 result.getReprompt().map(UserMessage::from).ifPresent(chatMemory::add);
@@ -81,13 +81,16 @@ public non-sealed class OutputGuardrailExecutor
             }
 
             attempt++;
-            accumulatedParams = new OutputGuardrailRequest(
-                    response, accumulatedParams.chatExecutor(), accumulatedParams.commonParams());
+            accumulatedParams = OutputGuardrailRequest.builder()
+                    .responseFromLLM(response)
+                    .chatExecutor(accumulatedParams.chatExecutor())
+                    .requestParams(accumulatedParams.requestParams())
+                    .build();
         }
 
         if (attempt == maxAttempts) {
             var failureMessages = result.failures().stream()
-                    .map(OutputGuardrailResult.Failure::message)
+                    .map(GuardrailResult.Failure::message)
                     .collect(Collectors.joining(System.lineSeparator()));
 
             throw new OutputGuardrailException(MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages));

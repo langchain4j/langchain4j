@@ -8,7 +8,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.guardrail.GuardrailRequest.CommonGuardrailParams;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatExecutor;
@@ -39,7 +39,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final ChatExecutor chatExecutor;
 
     @Nullable
-    private final CommonGuardrailParams commonGuardrailParams;
+    private final GuardrailRequestParams commonGuardrailParams;
 
     @Nullable
     private final Object methodKey;
@@ -68,7 +68,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             TokenUsage tokenUsage,
             List<ToolSpecification> toolSpecifications,
             Map<String, ToolExecutor> toolExecutors,
-            @Nullable CommonGuardrailParams commonGuardrailParams,
+            @Nullable GuardrailRequestParams commonGuardrailParams,
             @Nullable Object methodKey) {
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
@@ -153,14 +153,18 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
                 // Invoke output guardrails
                 if (commonGuardrailParams != null) {
-                    var newCommonParams = new CommonGuardrailParams(
-                            getMemory(),
-                            commonGuardrailParams.augmentationResult(),
-                            commonGuardrailParams.userMessageTemplate(),
-                            commonGuardrailParams.variables());
+                    var newCommonParams = GuardrailRequestParams.builder()
+                            .chatMemory(getMemory())
+                            .augmentationResult(commonGuardrailParams.augmentationResult())
+                            .userMessageTemplate(commonGuardrailParams.userMessageTemplate())
+                            .variables(commonGuardrailParams.variables())
+                            .build();
 
-                    var outputGuardrailParams =
-                            new OutputGuardrailRequest(finalChatResponse, chatExecutor, newCommonParams);
+                    var outputGuardrailParams = OutputGuardrailRequest.builder()
+                            .responseFromLLM(finalChatResponse)
+                            .chatExecutor(chatExecutor)
+                            .requestParams(newCommonParams)
+                            .build();
                     Response<AiMessage> response =
                             context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
                     finalChatResponse = finalChatResponse.toBuilder()

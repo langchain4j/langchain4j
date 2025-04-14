@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -17,7 +18,7 @@ import org.jspecify.annotations.Nullable;
  * @see InputGuardrailResult
  * @see OutputGuardrailResult
  */
-public interface GuardrailResult<GR extends GuardrailResult<GR>> {
+public sealed interface GuardrailResult<GR extends GuardrailResult<GR>> permits InputGuardrailResult, OutputGuardrailResult {
     /**
      * The possible results of a guardrails validation.
      */
@@ -43,7 +44,7 @@ public interface GuardrailResult<GR extends GuardrailResult<GR>> {
     /**
      * The message and the cause of the failure of a single validation.
      */
-    interface Failure {
+    sealed interface Failure permits InputGuardrailResult.Failure, OutputGuardrailResult.Failure {
         /**
          * Build a failure from a specific {@link Guardrail} class
          */
@@ -86,7 +87,7 @@ public interface GuardrailResult<GR extends GuardrailResult<GR>> {
     /**
      * @return The list of failures eventually resulting from a set of validations.
      */
-    <F extends Failure> List<F> failures();
+    <F extends Failure> List<@NonNull F> failures();
 
     /**
      * The message of the successful result
