@@ -9,16 +9,14 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.listener.ListenersUtil;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,20 +43,14 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     private BedrockStreamingChatModel(Builder builder) {
         super(builder);
         this.client = isNull(builder.client)
-                ? createClient(
-                        getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
+                ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
                 : builder.client;
     }
 
     @Override
-    public void chat(final ChatRequest chatRequest, final StreamingChatResponseHandler handler) {
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+    public void doChat(final ChatRequest chatRequest, final StreamingChatResponseHandler handler) {
         final ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(
                 chatRequest.messages(), chatRequest.parameters().toolSpecifications(), chatRequest.parameters());
-        ChatRequest finalChatRequest = ChatRequest.builder()
-                .messages(chatRequest.messages())
-                .parameters(this.defaultRequestParameters.overrideWith(chatRequest.parameters()))
-                .build();
 
         ConverseResponseFromStreamBuilder converseResponseBuilder = ConverseResponseFromStreamBuilder.builder();
         final ConverseStreamResponseHandler built = ConverseStreamResponseHandler.builder()
@@ -75,25 +67,24 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             converseResponseBuilder.append(chunk);
                             final ChatResponse completeResponse =
                                     chatResponseFrom(converseResponseBuilder.build(), converseStreamRequest.modelId());
-                            ListenersUtil.onResponse(
-                                    completeResponse, finalChatRequest, this.provider(), attributes, listeners);
                             handler.onCompleteResponse(completeResponse);
                         })
                         .onMessageStart(converseResponseBuilder::append)
                         .onMessageStop(converseResponseBuilder::append)
                         .build())
-                .onError(error -> {
-                    handler.onError(error);
-                    ListenersUtil.onError(error, finalChatRequest, this.provider(), attributes, listeners);
-                })
+                .onError(handler::onError)
                 .build();
 
-        ListenersUtil.onRequest(finalChatRequest, this.provider(), attributes, listeners);
         try {
             this.client.converseStream(converseStreamRequest, built).get();
         } catch (ExecutionException | InterruptedException e) {
             log.error("Can't invoke '{}': {}", modelId, e.getCause().getMessage());
         }
+    }
+
+    @Override
+    public BedrockChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     private ConverseStreamRequest buildConverseStreamRequest(
@@ -123,6 +114,11 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         .modelName(modelId)
                         .build())
                 .build();
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
     }
 
     @Override
