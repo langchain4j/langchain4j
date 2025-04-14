@@ -1,4 +1,4 @@
-package dev.langchain4j.service.common.openai;
+package dev.langchain4j.model.openai.common;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
