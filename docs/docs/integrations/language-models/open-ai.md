@@ -261,10 +261,10 @@ langchain4j.open-ai.moderation-model.timeout=...
 ```
 
 
-## Creating `OpenAiTokenizer`
+## Creating `OpenAiTokenCountEstimator`
 
 ```java
-Tokenizer tokenizer = new OpenAiTokenizer("gpt-4o-mini");
+TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator("gpt-4o-mini");
 ```
 
 

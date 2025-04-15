@@ -145,7 +145,7 @@ public interface IAiService {
   /* TokenWindowChatMemory
     which also operates as a sliding window but focuses on keeping the N most recent tokens, evicting older messages as needed. Messages are indivisible.
     If a message doesn't fit, it is evicted completely.
-    MessageWindowChatMemory requires a Tokenizer to count the tokens in each ChatMessage.
+    MessageWindowChatMemory requires a TokenCountEstimator to count the tokens in each ChatMessage.
   */
   ChatMemory chatMemory = MessageWindowChatMemory.builder()
           .maxMessages(10)

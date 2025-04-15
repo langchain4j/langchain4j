@@ -1,9 +1,10 @@
-package dev.langchain4j.model.azure;
+package dev.langchain4j.model.openai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
+import com.knuddels.jtokkit.api.IntArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -13,74 +14,68 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_0301;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0125_PREVIEW;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_1106_PREVIEW;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_TURBO;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_PREVIEW;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0125;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_1106;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0125_PREVIEW;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIEW;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW;
 
 /**
  * This class can be used to estimate the cost (in tokens) before calling OpenAI or when using streaming.
  * Magic numbers present in this class were found empirically while testing.
  * There are integration tests in place that are making sure that the calculations here are very close to that of OpenAI.
  */
-public class AzureOpenAiTokenizer implements Tokenizer {
+public class OpenAiTokenCountEstimator implements TokenCountEstimator {
 
     private final String modelName;
     private final Optional<Encoding> encoding;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for the "gpt-3.5-turbo" model.
-     *
-     * @deprecated Please use other constructors and specify the model name explicitly.
+     * Creates an instance of the {@code OpenAiTokenCountEstimator} for a given {@link OpenAiChatModelName}.
      */
-    @Deprecated(forRemoval = true)
-    public AzureOpenAiTokenizer() {
-        this(GPT_3_5_TURBO.modelType());
+    public OpenAiTokenCountEstimator(OpenAiChatModelName modelName) {
+        this(modelName.toString());
     }
 
     /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for a given {@link AzureOpenAiChatModelName}.
+     * Creates an instance of the {@code OpenAiTokenCountEstimator} for a given {@link OpenAiEmbeddingModelName}.
      */
-    public AzureOpenAiTokenizer(AzureOpenAiChatModelName modelName) {
-        this(modelName.modelType());
+    public OpenAiTokenCountEstimator(OpenAiEmbeddingModelName modelName) {
+        this(modelName.toString());
     }
 
     /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for a given {@link AzureOpenAiEmbeddingModelName}.
+     * Creates an instance of the {@code OpenAiTokenCountEstimator} for a given {@link OpenAiLanguageModelName}.
      */
-    public AzureOpenAiTokenizer(AzureOpenAiEmbeddingModelName modelName) {
-        this(modelName.modelType());
+    public OpenAiTokenCountEstimator(OpenAiLanguageModelName modelName) {
+        this(modelName.toString());
     }
 
     /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for a given {@link AzureOpenAiLanguageModelName}.
+     * Creates an instance of the {@code OpenAiTokenCountEstimator} for a given model name.
      */
-    public AzureOpenAiTokenizer(AzureOpenAiLanguageModelName modelName) {
-        this(modelName.modelType());
-    }
-
-    /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for a given model name.
-     */
-    public AzureOpenAiTokenizer(String modelName) {
+    public OpenAiTokenCountEstimator(String modelName) {
         this.modelName = ensureNotBlank(modelName, "modelName");
-        // If the model is unknown, we should NOT fail fast during the creation of AzureOpenAiTokenizer.
-        // Doing so would cause the failure of every OpenAI***Model that uses this tokenizer.
+        // If the model is unknown, we should NOT fail fast during the creation of OpenAiTokenCountEstimator.
+        // Doing so would cause the failure of every OpenAI***Model that uses this token count estimator.
         // This is done to account for situations when a new OpenAI model is available,
         // but JTokkit does not yet support it.
-        this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
+        if (modelName.startsWith("o1") || modelName.startsWith("o3")) {
+            // temporary fix until https://github.com/knuddelsgmbh/jtokkit/pull/118 is released
+            this.encoding = Encodings.newLazyEncodingRegistry().getEncoding("o200k_base");
+        } else {
+            this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
+        }
     }
 
     public int estimateTokenCountInText(String text) {
@@ -125,7 +120,7 @@ public class AzureOpenAiTokenizer implements Tokenizer {
             }
         }
 
-        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW.toString())) {
+        if (userMessage.name() != null) {
             tokenCount += extraTokensPerName();
             tokenCount += estimateTokenCountInText(userMessage.name());
         }
@@ -180,7 +175,7 @@ public class AzureOpenAiTokenizer implements Tokenizer {
     }
 
     private int extraTokensPerMessage() {
-        if (modelName.equals(GPT_3_5_TURBO_0301.modelName())) {
+        if (modelName.equals("gpt-3.5-turbo-0301")) {
             return 4;
         } else {
             return 3;
@@ -188,7 +183,7 @@ public class AzureOpenAiTokenizer implements Tokenizer {
     }
 
     private int extraTokensPerName() {
-        if (modelName.equals(GPT_3_5_TURBO_0301.toString())) {
+        if (modelName.equals("gpt-3.5-turbo-0301")) {
             return -1; // if there's a name, the role is omitted
         } else {
             return 1;
@@ -206,6 +201,27 @@ public class AzureOpenAiTokenizer implements Tokenizer {
         return tokenCount;
     }
 
+    public List<Integer> encode(String text) {
+        return encoding.orElseThrow(unknownModelException())
+                .encodeOrdinary(text).boxed();
+    }
+
+    public List<Integer> encode(String text, int maxTokensToEncode) {
+        return encoding.orElseThrow(unknownModelException())
+                .encodeOrdinary(text, maxTokensToEncode).getTokens().boxed();
+    }
+
+    public String decode(List<Integer> tokens) {
+
+        IntArrayList intArrayList = new IntArrayList();
+        for (Integer token : tokens) {
+            intArrayList.add(token);
+        }
+
+        return encoding.orElseThrow(unknownModelException())
+                .decode(intArrayList);
+    }
+
     private Supplier<IllegalArgumentException> unknownModelException() {
         return () -> illegalArgument("Model '%s' is unknown to jtokkit", modelName);
     }
@@ -215,12 +231,13 @@ public class AzureOpenAiTokenizer implements Tokenizer {
     }
 
     private boolean isOneOfLatestGpt3Models() {
+        // TODO add GPT_3_5_TURBO once it points to GPT_3_5_TURBO_1106
         return modelName.equals(GPT_3_5_TURBO_1106.toString())
-                || modelName.equals(GPT_3_5_TURBO.toString());
+                || modelName.equals(GPT_3_5_TURBO_0125.toString());
     }
 
     private boolean isOneOfLatestGpt4Models() {
-        return modelName.equals(GPT_4_TURBO.toString())
+        return modelName.equals(GPT_4_TURBO_PREVIEW.toString())
                 || modelName.equals(GPT_4_1106_PREVIEW.toString())
                 || modelName.equals(GPT_4_0125_PREVIEW.toString());
     }

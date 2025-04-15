@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -55,7 +56,7 @@ class AzureOpenAiStreamingChatModelIT {
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .useAsyncClient(useAsyncClient)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
+                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -116,7 +117,7 @@ class AzureOpenAiStreamingChatModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
+                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -173,7 +174,7 @@ class AzureOpenAiStreamingChatModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
+                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -286,7 +287,7 @@ class AzureOpenAiStreamingChatModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
+                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -405,14 +406,17 @@ class AzureOpenAiStreamingChatModelIT {
     }
 
     @Test
-    void tools_should_work_without_tokenizer() {
+    void tools_should_work_without_tokenCountEstimator() {
 
         // given
+        TokenCountEstimator tokenCountEstimator = null;
+
         StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName("gpt-4o")
                 .logRequestsAndResponses(true)
+                .tokenCountEstimator(tokenCountEstimator)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is 2+2?");
