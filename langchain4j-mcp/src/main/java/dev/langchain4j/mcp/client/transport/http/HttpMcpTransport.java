@@ -99,6 +99,11 @@ public class HttpMcpTransport implements McpTransport {
         }
     }
 
+    @Override
+    public void checkHealth() {
+        // no transport-specific checks right now
+    }
+
     private CompletableFuture<JsonNode> execute(Request request, Long id) {
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         if (id != null) {

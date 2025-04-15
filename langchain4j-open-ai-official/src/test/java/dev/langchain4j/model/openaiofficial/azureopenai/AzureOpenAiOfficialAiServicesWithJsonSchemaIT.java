@@ -1,12 +1,14 @@
 package dev.langchain4j.model.openaiofficial.azureopenai;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.service.AiServicesWithJsonSchemaIT;
+import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA;
+
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
-class AzureOpenAiOfficialAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
+class AzureOpenAiOfficialAiServicesWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
@@ -16,5 +18,10 @@ class AzureOpenAiOfficialAiServicesWithJsonSchemaIT extends AiServicesWithJsonSc
     @Override
     protected boolean supportsRecursion() {
         return true;
+    }
+
+    @Override
+    protected boolean isStrictJsonSchemaEnabled(ChatLanguageModel model) {
+        return model == AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA;
     }
 }
