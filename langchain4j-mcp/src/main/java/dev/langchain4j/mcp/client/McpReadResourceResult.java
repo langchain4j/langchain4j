@@ -1,5 +1,8 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -10,7 +13,8 @@ public class McpReadResourceResult {
 
     private final List<McpResourceContents> contents;
 
-    public McpReadResourceResult(List<McpResourceContents> contents) {
+    @JsonCreator
+    public McpReadResourceResult(@JsonProperty("contents") List<McpResourceContents> contents) {
         this.contents = contents;
     }
 

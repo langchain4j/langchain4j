@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 
@@ -13,7 +15,11 @@ public final class McpImageContent implements McpPromptContent {
     private final String data;
     private final String mimeType;
 
-    public McpImageContent(String data, String mimeType) {
+    @JsonCreator
+    public McpImageContent(
+            @JsonProperty("data") String data,
+            @JsonProperty("mimeType") String mimeType
+    ) {
         this.data = data;
         this.mimeType = mimeType;
     }

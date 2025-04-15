@@ -1,5 +1,8 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Objects;
 
 /**
@@ -11,7 +14,12 @@ public class McpPromptArgument {
     private final String description;
     private final boolean required;
 
-    public McpPromptArgument(String name, String description, boolean required) {
+    @JsonCreator
+    public McpPromptArgument(
+            @JsonProperty("name") String name,
+            @JsonProperty("description") String description,
+            @JsonProperty("required") boolean required
+    ) {
         this.name = name;
         this.description = description;
         this.required = required;
