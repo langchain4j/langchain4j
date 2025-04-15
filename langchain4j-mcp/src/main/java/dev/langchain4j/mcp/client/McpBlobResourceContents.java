@@ -1,5 +1,8 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Base64;
 import java.util.Objects;
 
@@ -20,7 +23,12 @@ public final class McpBlobResourceContents implements McpResourceContents {
         return new McpBlobResourceContents(uri, Base64.getMimeEncoder().encodeToString(blob), null);
     }
 
-    public McpBlobResourceContents(String uri, String blob, String mimeType) {
+    @JsonCreator
+    public McpBlobResourceContents(
+            @JsonProperty("uri") String uri,
+            @JsonProperty("blob") String blob,
+            @JsonProperty("mimeType") String mimeType
+    ) {
         if (uri == null) {
             throw new IllegalArgumentException("uri must not be null");
         }
