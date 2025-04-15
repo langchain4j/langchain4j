@@ -2,8 +2,8 @@ package dev.langchain4j.model.openaiofficial.github;
 
 import static dev.langchain4j.model.openaiofficial.github.InternalGitHubOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 
-import com.openai.models.ChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
@@ -15,12 +15,12 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class GitHubOpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return InternalGitHubOpenAiOfficialTestHelper.chatModelsNormalAndJsonStrict();
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected ChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
                 .apiKey(System.getenv("GITHUB_TOKEN"))
                 .isGitHubModels(true)
@@ -34,7 +34,7 @@ class GitHubOpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return ChatModel.GPT_4O_2024_11_20.toString();
+        return com.openai.models.ChatModel.GPT_4O_2024_11_20.toString();
     }
 
     @Override

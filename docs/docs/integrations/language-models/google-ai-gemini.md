@@ -35,7 +35,7 @@ Check the list of [available models](https://ai.google.dev/gemini-api/docs/model
 The usual `chat(...)` methods are available:
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     ...
@@ -47,7 +47,7 @@ String response = gemini.chat("Hello Gemini!");
 As well, as the `ChatResponse chat(ChatRequest req)` method:
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .build();
@@ -63,7 +63,7 @@ String response = chatResponse.aiMessage().text();
 ### Configuring
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .temperature(1.0)
@@ -87,7 +87,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.
 The response must be handled by a `StreamingChatResponseHandler`. 
 ```java
-StreamingChatLanguageModel gemini = GoogleAiGeminiStreamingChatModel.builder()
+StreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-1.5-flash")
         .build();
@@ -153,7 +153,7 @@ interface WeatherAssistant {
 WeatherForecastService weatherForecastService =
     new WeatherForecastService();
 
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .temperature(0.0)
@@ -161,7 +161,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 
 WeatherAssistant weatherAssistant =
     AiServices.builder(WeatherAssistant.class)
-        .chatLanguageModel(gemini)
+        .chatModel(gemini)
         .tools(weatherForecastService)
         .build();
 
@@ -201,7 +201,7 @@ interface WeatherForecastAssistant {
 
 // Let's extract the data:
 
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .responseFormat(ResponseFormat.JSON) // this is required to enable structured outputs feature
@@ -209,7 +209,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 
 WeatherForecastAssistant forecastAssistant =
     AiServices.builder(WeatherForecastAssistant.class)
-        .chatLanguageModel(gemini)
+        .chatModel(gemini)
         .build();
 
 WeatherForecast forecast = forecastAssistant.extract("""
@@ -254,7 +254,7 @@ ResponseFormat responseFormat = ResponseFormat.builder()
                 .build())
         .build();
 
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-1.5-flash")
         .responseFormat(responseFormat)
@@ -272,7 +272,7 @@ JsonSchema jsonSchema = JsonSchemas.jsonSchemaFrom(TripItinerary.class).get();
 
 Let's have a look at an example to define a JSON schema for a recipe when calling the `GoogleAiGeminiChatModel`:
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-1.5-flash")
         .build();
@@ -294,7 +294,7 @@ System.out.println(chatResponse.aiMessage().text());
 You can force Gemini to reply in JSON:
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .responseFormat(ResponseFormat.JSON)
@@ -317,7 +317,7 @@ Beyond function calling, Google AI Gemini allows to create and execute Python co
 This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .allowCodeExecution(true)
@@ -405,7 +405,7 @@ String base64Text = b64encoder.encodeToString(readBytes(
 String base64Img = b64encoder.encodeToString(readBytes(
   "https://avatars.githubusercontent.com/u/132277850?v=4"));
 
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .build();

@@ -17,7 +17,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -32,7 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 
 public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
-        implements StreamingChatLanguageModel {
+        implements StreamingChatModel {
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 

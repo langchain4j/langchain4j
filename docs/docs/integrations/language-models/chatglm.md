@@ -56,14 +56,14 @@ Or, you can use BOM to manage dependencies consistently:
 You can instantiate `ChatGlmChatModel` using following code:
 
 ```java
-ChatLanguageModel model = ChatGlmChatModel.builder()
+ChatModel model = ChatGlmChatModel.builder()
         .baseUrl(System.getenv("CHATGLM_BASE_URL"))
         .logRequests(true)
         .logResponses(true)
         .build();
 ```
 
-Now you can use it like a normal `ChatLanguageModel`.
+Now you can use it like a normal `ChatModel`.
 
 :::note
 `ChatGlmChatModel` does not support Function Calling and Structured Output. see [index](index.md)

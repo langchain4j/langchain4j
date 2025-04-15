@@ -9,7 +9,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -50,7 +50,7 @@ class AzureOpenAiStreamingChatModelIT {
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -110,7 +110,7 @@ class AzureOpenAiStreamingChatModelIT {
             client = InternalAzureOpenAiHelper.setupSyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, System.getenv("AZURE_OPENAI_KEY"), Duration.ofSeconds(30), 5, null, true, null, null);
         }
 
-        StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .openAIAsyncClient(asyncClient)
                 .openAIClient(client)
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -140,7 +140,7 @@ class AzureOpenAiStreamingChatModelIT {
     @ValueSource(strings = {"gpt-4o"})
     void should_use_json_format(String deploymentName) {
 
-        StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -169,7 +169,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -282,7 +282,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -408,7 +408,7 @@ class AzureOpenAiStreamingChatModelIT {
     void tools_should_work_without_tokenizer() {
 
         // given
-        StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName("gpt-4o")

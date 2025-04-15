@@ -5,7 +5,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
@@ -28,7 +29,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * WorkerAI Chat model.
  * <a href="https://developers.cloudflare.com/api/operations/workers-ai-post-run-model">...</a>
  */
-public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLanguageModel {
+public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatModel {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(WorkersAiChatModel.class);
 

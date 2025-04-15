@@ -16,7 +16,7 @@ import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -54,7 +54,7 @@ class BedrockChatModelWithConverseAPIIT {
     @Test
     void should_call_multiple_functions() {
 
-        ChatLanguageModel model =
+        ChatModel model =
                 BedrockChatModel.builder().modelId("us.amazon.nova-micro-v1:0").build();
 
         UserMessage userMessage = userMessage(
@@ -145,7 +145,7 @@ class BedrockChatModelWithConverseAPIIT {
     void should_accept_PDF_documents() {
 
         // given
-        ChatLanguageModel model =
+        ChatModel model =
                 BedrockChatModel.builder().modelId("us.amazon.nova-lite-v1:0").build();
         UserMessage msg = UserMessage.from(
                 PdfFileContent.from(
@@ -163,7 +163,7 @@ class BedrockChatModelWithConverseAPIIT {
     void should_reason() {
 
         // given
-        ChatLanguageModel model = BedrockChatModel.builder()
+        ChatModel model = BedrockChatModel.builder()
                 .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
                         .enableReasoning(1024)
@@ -183,7 +183,7 @@ class BedrockChatModelWithConverseAPIIT {
     void should_fail_if_reasoning_enabled() {
 
         // given
-        ChatLanguageModel model = BedrockChatModel.builder()
+        ChatModel model = BedrockChatModel.builder()
                 .modelId("us.amazon.nova-lite-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
                         .enableReasoning(1024)

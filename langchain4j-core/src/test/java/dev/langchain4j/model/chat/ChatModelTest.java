@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-class ChatLanguageModelTest implements WithAssertions {
+class ChatModelTest implements WithAssertions {
 
-    public static class UpperCaseEchoModel implements ChatLanguageModel {
+    public static class UpperCaseEchoModel implements ChatModel {
 
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
@@ -28,7 +28,7 @@ class ChatLanguageModelTest implements WithAssertions {
 
     @Test
     void generate() {
-        ChatLanguageModel model = new UpperCaseEchoModel();
+        ChatModel model = new UpperCaseEchoModel();
 
         assertThat(model.chat("how are you?")).isEqualTo("HOW ARE YOU?");
 

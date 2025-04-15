@@ -21,7 +21,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
  * Represents a Google Vertex AI Gemini language model with a stream chat completion interface, such as gemini-pro.
  * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/model-reference/gemini">here</a>.
  */
-public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageModel, Closeable {
+public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Closeable {
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;

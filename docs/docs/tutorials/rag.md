@@ -185,13 +185,13 @@ interface Assistant {
     String chat(String userMessage);
 }
 
-ChatLanguageModel chatModel = OpenAiChatModel.builder()
+ChatModel chatModel = OpenAiChatModel.builder()
     .apiKey(System.getenv("OPENAI_API_KEY"))
     .modelName(GPT_4_O_MINI)
     .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(chatModel)
+    .chatModel(chatModel)
     .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
     .contentRetriever(EmbeddingStoreContentRetriever.from(embeddingStore))
     .build();
@@ -596,7 +596,7 @@ ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
     .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .contentRetriever(contentRetriever)
     .build();
 ```

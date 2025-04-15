@@ -12,7 +12,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -105,7 +106,7 @@ public class ToolService {
             ChatResponse chatResponse,
             ChatRequestParameters parameters,
             List<ChatMessage> messages,
-            ChatLanguageModel chatModel,
+            ChatModel chatModel,
             ChatMemory chatMemory,
             Object memoryId,
             Map<String, ToolExecutor> toolExecutors) {

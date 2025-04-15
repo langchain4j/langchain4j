@@ -75,12 +75,12 @@ The chat models allow you to generate human-like responses with a model fined-tu
 Create a class and add the following code.
 
 ```java
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        ChatLanguageModel model = MistralAiChatModel.builder()
+        ChatModel model = MistralAiChatModel.builder()
                 .apiKey(ApiKeys.MISTRALAI_API_KEY)
                 .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
                 .build();
@@ -234,14 +234,14 @@ interface PaymentTransactionAgent {
 
 ```java
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModelName;
 import dev.langchain4j.service.AiServices;
 
 public class PaymentDataAssistantApp {
 
-    ChatLanguageModel mistralAiModel = MistralAiChatModel.builder()
+    ChatModel mistralAiModel = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
             .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST) // Also you can use MistralAiChatModelName.OPEN_MIXTRAL_8X22B as open source model
             .logRequests(true)
@@ -255,7 +255,7 @@ public class PaymentDataAssistantApp {
 
         // STEP 2: User asks the agent and AiServices call to the functions
         PaymentTransactionAgent agent = AiServices.builder(PaymentTransactionAgent.class)
-                .chatLanguageModel(mistralAiModel)
+                .chatModel(mistralAiModel)
                 .tools(paymentTool)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .build();
@@ -278,7 +278,7 @@ You can also use the JSON mode to get the response in JSON format. To do this, y
 Syncronous example:
 
 ```java
-ChatLanguageModel model = MistralAiChatModel.builder()
+ChatModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
                 .responseFormat(ResponseFormat.JSON)
                 .build();
@@ -292,7 +292,7 @@ System.out.println(json); // {"transactionId":"T123","status":"paid"}
 Streaming example:
 
 ```java
-StreamingChatLanguageModel streamingModel = MistralAiStreamingChatModel.builder()
+StreamingChatModel streamingModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
                 .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
                 .build();
@@ -335,7 +335,7 @@ The documentation for using Structured Outputs in LangChain4j is available [here
 If desired, the model may be configured with a default JSON Schema that will be used as fallback if no schema is provided in the request.
 
 ```java
-ChatLanguageModel model = MistralAiChatModel.builder()
+ChatModel model = MistralAiChatModel.builder()
         .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
         .modelName(MISTRAL_SMALL_LATEST)
         .supportedCapabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA)) // Enable structured outputs
@@ -362,7 +362,7 @@ Guardrails are a way to limit the behavior of the model to prevent it from gener
 Syncronous example:
 
 ```java
-ChatLanguageModel model = MistralAiChatModel.builder()
+ChatModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .safePrompt(true)
                 .build();
@@ -374,7 +374,7 @@ String response = model.chat(userMessage);
 Streaming example:
 
 ```java
-StreamingChatLanguageModel streamingModel = MistralAiStreamingChatModel.builder()
+StreamingChatModel streamingModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .safePrompt(true)
                 .build();

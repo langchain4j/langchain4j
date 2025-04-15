@@ -2,7 +2,8 @@ package dev.langchain4j.model.bedrock;
 
 import static java.util.Collections.singletonList;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.List;
 class BedrockChatModelListenerWithConverseIT extends ChatModelListenerIT {
 
     @Override
-    protected ChatLanguageModel createModel(ChatModelListener listener) {
+    protected ChatModel createModel(ChatModelListener listener) {
         return BedrockChatModel.builder()
                 .modelId("us.amazon.nova-lite-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
@@ -30,7 +31,7 @@ class BedrockChatModelListenerWithConverseIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected ChatModel createFailingModel(ChatModelListener listener) {
         return BedrockChatModel.builder()
                 .modelId("banana")
                 .listeners(singletonList(listener))

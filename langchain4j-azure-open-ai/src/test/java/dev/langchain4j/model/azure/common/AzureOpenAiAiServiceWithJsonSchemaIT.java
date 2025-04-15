@@ -1,7 +1,7 @@
 package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import org.junit.jupiter.api.AfterEach;
 
@@ -33,7 +33,7 @@ class AzureOpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSche
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(model, modelWithStrictJsonSchema);
     }
 
@@ -43,7 +43,7 @@ class AzureOpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSche
     }
 
     @Override
-    protected boolean isStrictJsonSchemaEnabled(ChatLanguageModel model) {
+    protected boolean isStrictJsonSchemaEnabled(ChatModel model) {
         return model == modelWithStrictJsonSchema;
     }
 

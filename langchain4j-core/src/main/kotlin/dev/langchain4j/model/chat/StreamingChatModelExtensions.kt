@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import org.slf4j.LoggerFactory
 
-private val logger = LoggerFactory.getLogger(StreamingChatLanguageModel::class.java)
+private val logger = LoggerFactory.getLogger(StreamingChatModel::class.java)
 
 /**
  * Represents different types of replies that can be received from an AI language model during streaming.
@@ -18,7 +18,7 @@ private val logger = LoggerFactory.getLogger(StreamingChatLanguageModel::class.j
  *
  * @author Konstantin Pavlov
  */
-public sealed interface StreamingChatLanguageModelReply {
+public sealed interface StreamingChatModelReply {
     /**
      * Represents a partial response received from an AI language model during a streaming interaction.
      *
@@ -32,7 +32,7 @@ public sealed interface StreamingChatLanguageModelReply {
      */
     public data class PartialResponse(
         val partialResponse: String
-    ) : StreamingChatLanguageModelReply
+    ) : StreamingChatModelReply
 
     /**
      * Represents a final completion response received from the AI language model
@@ -46,7 +46,7 @@ public sealed interface StreamingChatLanguageModelReply {
      */
     public data class CompleteResponse(
         val response: ChatResponse
-    ) : StreamingChatLanguageModelReply
+    ) : StreamingChatModelReply
 
     /**
      * Represents an error that occurred during the streaming process
@@ -59,11 +59,11 @@ public sealed interface StreamingChatLanguageModelReply {
      */
     public data class Error(
         val cause: Throwable
-    ) : StreamingChatLanguageModelReply
+    ) : StreamingChatModelReply
 }
 
 /**
- * Converts a streaming chat language model into a Kotlin [Flow] of [StreamingChatLanguageModelReply]
+ * Converts a streaming chat model into a Kotlin [Flow] of [StreamingChatModelReply]
  * events. This extension function provides a coroutine-friendly way to consume streaming responses
  * from the language model.
  *
@@ -74,15 +74,15 @@ public sealed interface StreamingChatLanguageModelReply {
  * @param block A lambda with receiver on [ChatRequestBuilder] used to configure
  * the [dev.langchain4j.model.chat.request.ChatRequest] by adding messages and/or setting parameters.
  *
- * @return A [Flow] of [StreamingChatLanguageModelReply], which emits different
+ * @return A [Flow] of [StreamingChatModelReply], which emits different
  * types of replies during the chat interaction, including partial responses,
  * final responses, and errors.
  *
  * @author Konstantin Pavlov
  */
-public fun StreamingChatLanguageModel.chatFlow(
+public fun StreamingChatModel.chatFlow(
     block: ChatRequestBuilder.() -> Unit
-): Flow<StreamingChatLanguageModelReply> =
+): Flow<StreamingChatModelReply> =
     callbackFlow {
         val model = this@chatFlow
         val chatRequest = chatRequest(block)
@@ -94,7 +94,7 @@ public fun StreamingChatLanguageModel.chatFlow(
                         "Received partialResponse: {}",
                         token
                     )
-                    trySend(StreamingChatLanguageModelReply.PartialResponse(token))
+                    trySend(StreamingChatModelReply.PartialResponse(token))
                 }
 
                 override fun onCompleteResponse(completeResponse: ChatResponse) {
@@ -103,7 +103,7 @@ public fun StreamingChatLanguageModel.chatFlow(
                         "Received completeResponse: {}",
                         completeResponse
                     )
-                    trySend(StreamingChatLanguageModelReply.CompleteResponse(completeResponse))
+                    trySend(StreamingChatModelReply.CompleteResponse(completeResponse))
                     close()
                 }
 
@@ -113,7 +113,7 @@ public fun StreamingChatLanguageModel.chatFlow(
                         error.message,
                         error
                     )
-                    trySend(StreamingChatLanguageModelReply.Error(error))
+                    trySend(StreamingChatModelReply.Error(error))
                     close(error)
                 }
             }

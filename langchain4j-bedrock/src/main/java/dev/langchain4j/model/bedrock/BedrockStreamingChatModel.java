@@ -8,7 +8,7 @@ import static java.util.Objects.nonNull;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -32,7 +32,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamRespon
  *
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
  */
-public class BedrockStreamingChatModel extends AbstractBedrockChatModel implements StreamingChatLanguageModel {
+public class BedrockStreamingChatModel extends AbstractBedrockChatModel implements StreamingChatModel {
     private static final Logger log = LoggerFactory.getLogger(BedrockStreamingChatModel.class);
     private final BedrockRuntimeAsyncClient client;
 

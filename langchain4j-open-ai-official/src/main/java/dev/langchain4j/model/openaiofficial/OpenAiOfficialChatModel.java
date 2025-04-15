@@ -8,13 +8,12 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
-import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -26,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel implements ChatLanguageModel {
+public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel implements ChatModel {
 
     public OpenAiOfficialChatModel(Builder builder) {
 
@@ -189,7 +188,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
             return this;
         }
 
-        public Builder modelName(ChatModel modelName) {
+        public Builder modelName(com.openai.models.ChatModel modelName) {
             this.modelName = modelName.toString();
             return this;
         }

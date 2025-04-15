@@ -152,7 +152,7 @@ public interface IAiService {
           .build();
 
   IAiService assistant = AiServices.builder(IAiService.class)
-          .chatLanguageModel(model) // the model
+          .chatModel(model) // the model
           .chatMemory(chatMemory)  // memory
           .build();
         String answer = assistant.chat("Hello,my name is xiaoyu");
@@ -180,7 +180,7 @@ public interface IAiService {
           .modelName("Yi-34B-Chat")
           .build();
   IAiService assistant = AiServices.builder(IAiService.class)
-          .chatLanguageModel(model)         // the model
+          .chatModel(model)         // the model
           .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10)) // chatMemory
           .build();
 
@@ -231,7 +231,7 @@ class PersistentChatMemoryStore implements ChatMemoryStore {
 
 class PersistentChatMemoryTest{
   public void test(){
-    QianfanChatModel chatLanguageModel = QianfanChatModel.builder()
+    QianfanChatModel chatModel = QianfanChatModel.builder()
             .apiKey("apiKey")
             .secretKey("secretKey")
             .modelName("Yi-34B-Chat")
@@ -243,7 +243,7 @@ class PersistentChatMemoryTest{
             .build();
     
     IAiService assistant = AiServices.builder(IAiService.class)
-            .chatLanguageModel(chatLanguageModel)
+            .chatModel(chatModel)
             .chatMemory(chatMemory)
             .build();
     
@@ -314,7 +314,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 - Use
 ```java
 
-  QianfanChatModel chatLanguageModel = QianfanChatModel.builder()
+  QianfanChatModel chatModel = QianfanChatModel.builder()
         .apiKey(API_KEY)
         .secretKey(SECRET_KEY)
         .modelName("Yi-34B-Chat")
@@ -326,7 +326,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
   EmbeddingStoreIngestor.ingest(documents, embeddingStore);
 
   IAiService assistant = AiServices.builder(IAiService.class)
-          .chatLanguageModel(chatLanguageModel)
+          .chatModel(chatModel)
           .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
           .contentRetriever(EmbeddingStoreContentRetriever.from(embeddingStore))
           .build();
