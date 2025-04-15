@@ -32,7 +32,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -97,7 +97,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
     private OpenAIClient client;
     private OpenAIAsyncClient asyncClient;
     private final String deploymentName;
-    private final Tokenizer tokenizer;
+    private final TokenCountEstimator tokenCountEstimator;
     private final Integer maxTokens;
     private final Double temperature;
     private final Double topP;
@@ -119,7 +119,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             OpenAIClient client,
             OpenAIAsyncClient asyncClient,
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -140,7 +140,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         this(
                 deploymentName,
-                tokenizer,
+                tokenCountEstimator,
                 maxTokens,
                 temperature,
                 topP,
@@ -172,7 +172,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             String serviceVersion,
             String apiKey,
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -200,7 +200,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         this(
                 deploymentName,
-                tokenizer,
+                tokenCountEstimator,
                 maxTokens,
                 temperature,
                 topP,
@@ -248,7 +248,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             String serviceVersion,
             KeyCredential keyCredential,
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -276,7 +276,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         this(
                 deploymentName,
-                tokenizer,
+                tokenCountEstimator,
                 maxTokens,
                 temperature,
                 topP,
@@ -323,7 +323,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             String serviceVersion,
             TokenCredential tokenCredential,
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -351,7 +351,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         this(
                 deploymentName,
-                tokenizer,
+                tokenCountEstimator,
                 maxTokens,
                 temperature,
                 topP,
@@ -395,7 +395,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
     private AzureOpenAiStreamingChatModel(
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -415,7 +415,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             Set<Capability> capabilities) { // TODO capabilities are not used
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenizer = getOrDefault(tokenizer, () -> new AzureOpenAiTokenizer("gpt-3.5-turbo"));
+        this.tokenCountEstimator = getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo"));
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -518,7 +518,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .setSeed(seed)
                 .setResponseFormat(chatCompletionsResponseFormat);
 
-        int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
+        int inputTokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
 
         if (toolThatMustBeExecuted != null) {
             options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
@@ -582,7 +582,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     handler.onError(throwable);
                 },
                 () -> {
-                    Response<AiMessage> response = responseBuilder.build(tokenizer);
+                    Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
                     ChatResponse listenerResponse =
                             createListenerResponse(responseId.get(), options.getModel(), response);
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
@@ -615,7 +615,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     responseId.set(chatCompletions.getId());
                 }
             });
-            Response<AiMessage> response = responseBuilder.build(tokenizer);
+            Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
             ChatResponse listenerResponse =
                     createListenerResponse(responseId.get(), options.getModel(), response);
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
@@ -684,7 +684,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
         private String deploymentName;
-        private Tokenizer tokenizer;
+        private TokenCountEstimator tokenCountEstimator;
         private Integer maxTokens;
         private Double temperature;
         private Double topP;
@@ -779,8 +779,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
+        public Builder tokenCountEstimator(TokenCountEstimator tokenCountEstimator) {
+            this.tokenCountEstimator = tokenCountEstimator;
             return this;
         }
 
@@ -942,7 +942,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                             serviceVersion,
                             tokenCredential,
                             deploymentName,
-                            tokenizer,
+                            tokenCountEstimator,
                             maxTokens,
                             temperature,
                             topP,
@@ -972,7 +972,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                             serviceVersion,
                             keyCredential,
                             deploymentName,
-                            tokenizer,
+                            tokenCountEstimator,
                             maxTokens,
                             temperature,
                             topP,
@@ -1002,7 +1002,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         serviceVersion,
                         apiKey,
                         deploymentName,
-                        tokenizer,
+                        tokenCountEstimator,
                         maxTokens,
                         temperature,
                         topP,
@@ -1031,7 +1031,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         openAIClient,
                         openAIAsyncClient,
                         deploymentName,
-                        tokenizer,
+                        tokenCountEstimator,
                         maxTokens,
                         temperature,
                         topP,

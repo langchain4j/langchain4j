@@ -6,7 +6,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import org.slf4j.Logger;
@@ -43,13 +43,13 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     private final Object id;
     private final Integer maxTokens;
-    private final Tokenizer tokenizer;
+    private final TokenCountEstimator tokenCountEstimator;
     private final ChatMemoryStore store;
 
     private TokenWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.maxTokens = ensureGreaterThanZero(builder.maxTokens, "maxTokens");
-        this.tokenizer = ensureNotNull(builder.tokenizer, "tokenizer");
+        this.tokenCountEstimator = ensureNotNull(builder.tokenCountEstimator, "tokenCountEstimator");
         this.store = ensureNotNull(builder.store(), "store");
     }
 
@@ -72,7 +72,7 @@ public class TokenWindowChatMemory implements ChatMemory {
             }
         }
         messages.add(message);
-        ensureCapacity(messages, maxTokens, tokenizer);
+        ensureCapacity(messages, maxTokens, tokenCountEstimator);
         store.updateMessages(id, messages);
     }
 
@@ -86,17 +86,17 @@ public class TokenWindowChatMemory implements ChatMemory {
     @Override
     public List<ChatMessage> messages() {
         List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
-        ensureCapacity(messages, maxTokens, tokenizer);
+        ensureCapacity(messages, maxTokens, tokenCountEstimator);
         return messages;
     }
 
-    private static void ensureCapacity(List<ChatMessage> messages, int maxTokens, Tokenizer tokenizer) {
+    private static void ensureCapacity(List<ChatMessage> messages, int maxTokens, TokenCountEstimator tokenCountEstimator) {
 
         if (messages.isEmpty()) {
             return;
         }
 
-        int currentTokenCount = tokenizer.estimateTokenCountInMessages(messages);
+        int currentTokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
         while (currentTokenCount > maxTokens && !messages.isEmpty()) {
 
             int messageToEvictIndex = 0;
@@ -108,7 +108,7 @@ public class TokenWindowChatMemory implements ChatMemory {
             }
 
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
-            int tokenCountOfEvictedMessage = tokenizer.estimateTokenCountInMessage(evictedMessage);
+            int tokenCountOfEvictedMessage = tokenCountEstimator.estimateTokenCountInMessage(evictedMessage);
             log.trace("Evicting the following message ({} tokens) to comply with the capacity requirement: {}",
                     tokenCountOfEvictedMessage, evictedMessage);
             currentTokenCount -= tokenCountOfEvictedMessage;
@@ -120,7 +120,7 @@ public class TokenWindowChatMemory implements ChatMemory {
                     // so we have to automatically evict orphan ToolExecutionResultMessage(s) if AiMessage was evicted
                     ChatMessage orphanToolExecutionResultMessage = messages.remove(messageToEvictIndex);
                     log.trace("Evicting orphan {}", orphanToolExecutionResultMessage);
-                    currentTokenCount -= tokenizer.estimateTokenCountInMessage(orphanToolExecutionResultMessage);
+                    currentTokenCount -= tokenCountEstimator.estimateTokenCountInMessage(orphanToolExecutionResultMessage);
                 }
             }
         }
@@ -139,7 +139,7 @@ public class TokenWindowChatMemory implements ChatMemory {
 
         private Object id = ChatMemoryService.DEFAULT;
         private Integer maxTokens;
-        private Tokenizer tokenizer;
+        private TokenCountEstimator tokenCountEstimator;
         private ChatMemoryStore store;
 
         /**
@@ -156,12 +156,12 @@ public class TokenWindowChatMemory implements ChatMemory {
          * @param maxTokens The maximum number of tokens to retain.
          *                  Chat memory will retain as many of the most recent messages as can fit into {@code maxTokens}.
          *                  Messages are indivisible. If an old message doesn't fit, it is evicted completely.
-         * @param tokenizer A {@link Tokenizer} responsible for counting tokens in the messages.
+         * @param tokenCountEstimator A {@link TokenCountEstimator} responsible for counting tokens in the messages.
          * @return builder
          */
-        public Builder maxTokens(Integer maxTokens, Tokenizer tokenizer) {
+        public Builder maxTokens(Integer maxTokens, TokenCountEstimator tokenCountEstimator) {
             this.maxTokens = maxTokens;
-            this.tokenizer = tokenizer;
+            this.tokenCountEstimator = tokenCountEstimator;
             return this;
         }
 
@@ -184,7 +184,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         }
     }
 
-    public static TokenWindowChatMemory withMaxTokens(int maxTokens, Tokenizer tokenizer) {
-        return builder().maxTokens(maxTokens, tokenizer).build();
+    public static TokenWindowChatMemory withMaxTokens(int maxTokens, TokenCountEstimator tokenCountEstimator) {
+        return builder().maxTokens(maxTokens, tokenCountEstimator).build();
     }
 }

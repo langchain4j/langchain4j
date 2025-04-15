@@ -2,7 +2,7 @@ package dev.langchain4j.model;
 
 import dev.langchain4j.data.message.ChatMessage;
 
-public class ExampleTestTokenizer implements Tokenizer {
+public class ExampleTestTokenCountEstimator implements TokenCountEstimator {
 
     @Override
     public int estimateTokenCountInText(String text) {

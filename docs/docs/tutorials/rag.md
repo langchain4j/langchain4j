@@ -567,7 +567,7 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
     })
 
     // splitting each Document into TextSegments of 1000 tokens each, with a 200-token overlap
-    .documentSplitter(DocumentSplitters.recursive(1000, 200, new OpenAiTokenizer()))
+    .documentSplitter(DocumentSplitters.recursive(1000, 200, new OpenAiTokenCountEstimator("gpt-4o-mini")))
 
     // adding a name of the Document to each TextSegment to improve the quality of search
     .textSegmentTransformer(textSegment -> TextSegment.from(

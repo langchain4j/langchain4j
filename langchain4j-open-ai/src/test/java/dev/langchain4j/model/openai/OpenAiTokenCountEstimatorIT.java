@@ -2,7 +2,7 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -31,9 +31,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-// TODO use exact model for Tokenizer (the one returned by LLM)
+// TODO use exact model for TokenCountEstimator (the one returned by LLM)
 @Disabled("this test is very long and expensive, we will need to set a schedule for it to run maybe 1 time per month")
-class OpenAiTokenizerIT {
+class OpenAiTokenCountEstimatorIT {
 
     // my API key does not have access to these models
     private static final Set<OpenAiChatModelName> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
@@ -67,10 +67,10 @@ class OpenAiTokenizerIT {
 
         int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
+        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(modelName.toString());
 
         // when
-        int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
+        int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
 
         // then
         assertThat(tokenCount).isEqualTo(expectedTokenCount);
@@ -132,10 +132,10 @@ class OpenAiTokenizerIT {
 
         int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
+        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(modelName.toString());
 
         // when
-        int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
+        int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
 
         // then
         assertThat(tokenCount).isCloseTo(expectedTokenCount, withPercentage(4));
@@ -348,10 +348,10 @@ class OpenAiTokenizerIT {
 
         int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
+        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(modelName.toString());
 
         // when
-        int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
+        int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
 
         // then
         assertThat(tokenCount).isCloseTo(expectedTokenCount, withPercentage(4));

@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 
 public class DocumentSplitters {
 
@@ -15,16 +15,16 @@ public class DocumentSplitters {
      * @param maxSegmentSizeInTokens The maximum size of the segment, defined in tokens.
      * @param maxOverlapSizeInTokens The maximum size of the overlap, defined in tokens.
      *                               Only full sentences are considered for the overlap.
-     * @param tokenizer              The tokenizer that is used to count tokens in the text.
+     * @param tokenCountEstimator    The {@code TokenCountEstimator} that is used to count tokens in the text.
      * @return recursive document splitter
      */
     public static DocumentSplitter recursive(int maxSegmentSizeInTokens,
                                              int maxOverlapSizeInTokens,
-                                             Tokenizer tokenizer) {
-        return new DocumentByParagraphSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer,
-                new DocumentByLineSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer,
-                        new DocumentBySentenceSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer,
-                                new DocumentByWordSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer)
+                                             TokenCountEstimator tokenCountEstimator) {
+        return new DocumentByParagraphSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator,
+                new DocumentByLineSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator,
+                        new DocumentBySentenceSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator,
+                                new DocumentByWordSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator)
                         )
                 )
         );
