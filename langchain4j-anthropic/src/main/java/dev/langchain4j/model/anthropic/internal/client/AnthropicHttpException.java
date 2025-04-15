@@ -1,6 +1,8 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
-public class AnthropicHttpException extends RuntimeException {
+import dev.langchain4j.exception.LangChain4jException;
+
+public class AnthropicHttpException extends LangChain4jException {
 
     private final Integer statusCode;
 
