@@ -15,6 +15,7 @@ public class SseEventListener extends EventSourceListener {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(SseEventListener.class);
+    private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
     private final boolean logEvents;
     // this will contain the POST url for sending commands to the server
     private final CompletableFuture<String> initializationFinished;
@@ -41,7 +42,7 @@ public class SseEventListener extends EventSourceListener {
     public void onEvent(EventSource eventSource, String id, String type, String data) {
         if (type.equals("message")) {
             if (logEvents) {
-                log.info("< {}", data);
+                trafficLog.info("< {}", data);
             }
             try {
                 JsonNode jsonNode = OBJECT_MAPPER.readTree(data);
