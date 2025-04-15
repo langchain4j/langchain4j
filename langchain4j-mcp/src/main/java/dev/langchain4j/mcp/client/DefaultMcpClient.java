@@ -65,6 +65,7 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicReference<List<ToolSpecification>> toolListRefs = new AtomicReference<>();
     private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
     private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
+    private final Duration reconnectInterval;
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -76,6 +77,7 @@ public class DefaultMcpClient implements McpClient {
         promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
         logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
         pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
+        reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
         toolExecutionTimeoutErrorMessage =
                 getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
         RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
@@ -87,6 +89,15 @@ public class DefaultMcpClient implements McpClient {
                 .addObject()
                 .put("type", "text")
                 .put("text", toolExecutionTimeoutErrorMessage);
+        transport.onFailure(() -> {
+            try {
+                TimeUnit.MILLISECONDS.sleep(reconnectInterval.toMillis());
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            log.info("Trying to reconnect...");
+            initialize();
+        });
         initialize();
     }
 
@@ -351,6 +362,7 @@ public class DefaultMcpClient implements McpClient {
         private Duration pingTimeout;
         private Duration promptsTimeout;
         private McpLogMessageHandler logHandler;
+        private Duration reconnectInterval;
 
         public Builder transport(McpTransport transport) {
             this.transport = transport;
@@ -444,6 +456,15 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder pingTimeout(Duration pingTimeout) {
             this.pingTimeout = pingTimeout;
+            return this;
+        }
+
+        /**
+         * The delay before attempting to reconnect after a failed connection.
+         * The default is 5 seconds.
+         */
+        public Builder reconnectInterval(Duration reconnectInterval) {
+            this.reconnectInterval = reconnectInterval;
             return this;
         }
 

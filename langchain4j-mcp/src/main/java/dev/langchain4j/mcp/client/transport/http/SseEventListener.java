@@ -19,12 +19,17 @@ public class SseEventListener extends EventSourceListener {
     // this will contain the POST url for sending commands to the server
     private final CompletableFuture<String> initializationFinished;
     private final McpOperationHandler messageHandler;
+    private final Runnable onFailure;
 
     public SseEventListener(
-            McpOperationHandler messageHandler, boolean logEvents, CompletableFuture initializationFinished) {
+            McpOperationHandler messageHandler,
+            boolean logEvents,
+            CompletableFuture initializationFinished,
+            Runnable onFailure) {
         this.messageHandler = messageHandler;
         this.logEvents = logEvents;
         this.initializationFinished = initializationFinished;
+        this.onFailure = onFailure;
     }
 
     @Override
@@ -65,6 +70,9 @@ public class SseEventListener extends EventSourceListener {
         }
         if (t != null && (t.getMessage() == null || !t.getMessage().contains("Socket closed"))) {
             log.warn("SSE channel failure", t);
+            if (onFailure != null) {
+                onFailure.run();
+            }
         }
     }
 
