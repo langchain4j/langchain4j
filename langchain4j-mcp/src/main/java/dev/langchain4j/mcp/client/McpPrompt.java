@@ -1,5 +1,8 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -14,7 +17,12 @@ public class McpPrompt {
     private final String description;
     private final List<McpPromptArgument> arguments;
 
-    public McpPrompt(String name, String description, List<McpPromptArgument> arguments) {
+    @JsonCreator
+    public McpPrompt(
+            @JsonProperty("name") String name,
+            @JsonProperty("description") String description,
+            @JsonProperty("arguments") List<McpPromptArgument> arguments
+    ) {
         this.name = name;
         this.description = description;
         this.arguments = arguments;

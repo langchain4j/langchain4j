@@ -17,10 +17,11 @@ public class McpResource {
 
     @JsonCreator
     public McpResource(
-            String uri,
-            String name,
-            String description,
-            String mimeType) {
+            @JsonProperty("uri") String uri,
+            @JsonProperty("name") String name,
+            @JsonProperty("description") String description,
+            @JsonProperty("mimeType") String mimeType
+    ) {
         this.uri = uri;
         this.name = name;
         this.description = description;
