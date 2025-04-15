@@ -3,10 +3,18 @@ package dev.langchain4j.mcp.client;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 
+import java.util.Objects;
+
 /**
  * The 'TextContent' object from the MCP protocol schema.
  */
-public record McpTextContent(String text) implements McpPromptContent {
+public final class McpTextContent implements McpPromptContent {
+
+    private final String text;
+
+    public McpTextContent(String text) {
+        this.text = text;
+    }
 
     @Override
     public Type type() {
@@ -16,5 +24,28 @@ public record McpTextContent(String text) implements McpPromptContent {
     @Override
     public Content toContent() {
         return TextContent.from(text);
+    }
+
+    public String text() {
+        return text;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) return true;
+        if (obj == null || obj.getClass() != this.getClass()) return false;
+        var that = (McpTextContent) obj;
+        return Objects.equals(this.text, that.text);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(text);
+    }
+
+    @Override
+    public String toString() {
+        return "McpTextContent[" +
+                "text=" + text + ']';
     }
 }

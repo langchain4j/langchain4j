@@ -9,15 +9,71 @@ import java.util.Objects;
 public class OpenAiTokenUsage extends TokenUsage {
 
     @Experimental
-    public record InputTokensDetails(
-            Integer cachedTokens
-    ) {
+    public static class InputTokensDetails {
+
+        private final Integer cachedTokens;
+
+        public InputTokensDetails(Integer cachedTokens) {
+            this.cachedTokens = cachedTokens;
+        }
+
+        public Integer cachedTokens() {
+            return cachedTokens;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) return true;
+            if (obj == null || obj.getClass() != this.getClass()) return false;
+            var that = (InputTokensDetails) obj;
+            return Objects.equals(this.cachedTokens, that.cachedTokens);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(cachedTokens);
+        }
+
+        @Override
+        public String toString() {
+            return "OpenAiTokenUsage.InputTokensDetails {" +
+                    " cachedTokens = " + cachedTokens +
+                    " }";
+        }
     }
 
     @Experimental
-    public record OutputTokensDetails(
-            Integer reasoningTokens
-    ) {
+    public static class OutputTokensDetails {
+
+        private final Integer reasoningTokens;
+
+        public OutputTokensDetails(Integer reasoningTokens) {
+            this.reasoningTokens = reasoningTokens;
+        }
+
+        public Integer reasoningTokens() {
+            return reasoningTokens;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) return true;
+            if (obj == null || obj.getClass() != this.getClass()) return false;
+            var that = (OutputTokensDetails) obj;
+            return Objects.equals(this.reasoningTokens, that.reasoningTokens);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(reasoningTokens);
+        }
+
+        @Override
+        public String toString() {
+            return "OpenAiTokenUsage.OutputTokensDetails {" +
+                    " reasoningTokens = " + reasoningTokens +
+                    " }";
+        }
     }
 
     private final InputTokensDetails inputTokensDetails;
@@ -56,13 +112,13 @@ public class OpenAiTokenUsage extends TokenUsage {
 
     @Override
     public String toString() {
-        return "OpenAiTokenUsage{" +
+        return "OpenAiTokenUsage {" +
                 " inputTokenCount = " + inputTokenCount() +
-                ", inputTokensDetails=" + inputTokensDetails +
+                ", inputTokensDetails = " + inputTokensDetails +
                 ", outputTokenCount = " + outputTokenCount() +
-                ", outputTokensDetails=" + outputTokensDetails +
+                ", outputTokensDetails = " + outputTokensDetails +
                 ", totalTokenCount = " + totalTokenCount() +
-                '}';
+                " }";
     }
 
     public static Builder builder() {

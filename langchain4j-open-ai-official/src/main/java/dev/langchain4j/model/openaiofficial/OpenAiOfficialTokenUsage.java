@@ -8,10 +8,72 @@ import java.util.Objects;
 public class OpenAiOfficialTokenUsage extends TokenUsage {
 
     @Experimental
-    public record InputTokensDetails(Long cachedTokens) {}
+    public static class InputTokensDetails {
+
+        private final Long cachedTokens;
+
+        public InputTokensDetails(Long cachedTokens) {
+            this.cachedTokens = cachedTokens;
+        }
+
+        public Long cachedTokens() {
+            return cachedTokens;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) return true;
+            if (obj == null || obj.getClass() != this.getClass()) return false;
+            var that = (InputTokensDetails) obj;
+            return Objects.equals(this.cachedTokens, that.cachedTokens);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(cachedTokens);
+        }
+
+        @Override
+        public String toString() {
+            return "OpenAiOfficialTokenUsage.InputTokensDetails {" +
+                    " cachedTokens = " + cachedTokens +
+                    " }";
+        }
+    }
 
     @Experimental
-    public record OutputTokensDetails(Long reasoningTokens) {}
+    public static class OutputTokensDetails {
+
+        private final Long reasoningTokens;
+
+        public OutputTokensDetails(Long reasoningTokens) {
+            this.reasoningTokens = reasoningTokens;
+        }
+
+        public Long reasoningTokens() {
+            return reasoningTokens;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) return true;
+            if (obj == null || obj.getClass() != this.getClass()) return false;
+            var that = (OutputTokensDetails) obj;
+            return Objects.equals(this.reasoningTokens, that.reasoningTokens);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(reasoningTokens);
+        }
+
+        @Override
+        public String toString() {
+            return "OpenAiOfficialTokenUsage.OutputTokensDetails {" +
+                    " reasoningTokens = " + reasoningTokens +
+                    " }";
+        }
+    }
 
     private final InputTokensDetails inputTokensDetails;
     private final OutputTokensDetails outputTokensDetails;
