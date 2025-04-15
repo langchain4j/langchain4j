@@ -249,6 +249,21 @@ public final class RetryUtils {
 
     /**
      * This method attempts to execute a given action up to a specified number of times with a 1-second delay.
+     * If the action fails on all attempts, it throws a RuntimeException.
+     *
+     * @param action      The action to be executed.
+     * @param maxAttempts The maximum number of attempts to execute the action.
+     * @throws RuntimeException if the action fails on all attempts.
+     */
+    public static void withRetry(Runnable action, int maxAttempts) {
+        DEFAULT_RETRY_POLICY.withRetry(() -> {
+            action.run();
+            return null;
+        }, maxAttempts);
+    }
+
+    /**
+     * This method attempts to execute a given action up to a specified number of times with a 1-second delay.
      * If the action fails, the Exception causing the failure will be mapped with the default {@link ExceptionMapper}.
      *
      * @param action      The action to be executed.

@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -40,9 +41,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO: currently we request a new list of tools every time, so we should
-// add support for the `ToolListChangedNotification` message, and then we can
-// cache the list
 public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
@@ -156,7 +154,11 @@ public class DefaultMcpClient implements McpClient {
     public String executeTool(ToolExecutionRequest executionRequest) {
         ObjectNode arguments = null;
         try {
-            arguments = OBJECT_MAPPER.readValue(executionRequest.arguments(), ObjectNode.class);
+            String args = executionRequest.arguments();
+            if (isNullOrBlank(args)) {
+                args = "{}";
+            }
+            arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

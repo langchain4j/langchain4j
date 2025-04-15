@@ -208,22 +208,22 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder temperature(double temperature) {
+        public AnthropicStreamingChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder topP(double topP) {
+        public AnthropicStreamingChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder topK(int topK) {
+        public AnthropicStreamingChatModelBuilder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder maxTokens(int maxTokens) {
+        public AnthropicStreamingChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
@@ -233,12 +233,12 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder cacheSystemMessages(boolean cacheSystemMessages) {
+        public AnthropicStreamingChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
             this.cacheSystemMessages = cacheSystemMessages;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder cacheTools(boolean cacheTools) {
+        public AnthropicStreamingChatModelBuilder cacheTools(Boolean cacheTools) {
             this.cacheTools = cacheTools;
             return this;
         }
@@ -248,7 +248,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder thinkingBudgetTokens(int thinkingBudgetTokens) {
+        public AnthropicStreamingChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
             return this;
         }
@@ -258,12 +258,12 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder logRequests(boolean logRequests) {
+        public AnthropicStreamingChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder logResponses(boolean logResponses) {
+        public AnthropicStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }

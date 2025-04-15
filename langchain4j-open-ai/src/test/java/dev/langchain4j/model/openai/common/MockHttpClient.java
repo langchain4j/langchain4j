@@ -1,4 +1,4 @@
-package dev.langchain4j.service.common.openai;
+package dev.langchain4j.model.openai.common;
 
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class MockHttpClient implements HttpClient {
+class MockHttpClient implements HttpClient {
 
     private final List<HttpRequest> requests = Collections.synchronizedList(new ArrayList<>());
 

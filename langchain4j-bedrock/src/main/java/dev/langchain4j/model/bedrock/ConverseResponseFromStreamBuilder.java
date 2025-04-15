@@ -51,7 +51,8 @@ class ConverseResponseFromStreamBuilder {
 
     public ConverseResponseFromStreamBuilder append(ContentBlockStopEvent contentBlockStopEvent) {
         if (nonNull(this.toolUseBlockBuilder)) {
-            toolUseBlockBuilder.input(documentFromJson(toolUseInputBuilder.toString()));
+            if (!toolUseInputBuilder.isEmpty())
+                toolUseBlockBuilder.input(documentFromJson(toolUseInputBuilder.toString()));
             this.toolUseBlocks.add(this.toolUseBlockBuilder.build());
 
             this.toolUseInputBuilder = new StringBuilder();
