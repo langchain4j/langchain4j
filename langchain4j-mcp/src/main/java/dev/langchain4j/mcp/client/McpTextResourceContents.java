@@ -1,5 +1,8 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Objects;
 
 /**
@@ -11,7 +14,12 @@ public final class McpTextResourceContents implements McpResourceContents {
     private final String text;
     private final String mimeType;
 
-    public McpTextResourceContents(String uri, String text, String mimeType) {
+    @JsonCreator
+    public McpTextResourceContents(
+            @JsonProperty("uri") String uri,
+            @JsonProperty("text") String text,
+            @JsonProperty("mimeType") String mimeType
+    ) {
         this.uri = uri;
         this.text = text;
         this.mimeType = mimeType;

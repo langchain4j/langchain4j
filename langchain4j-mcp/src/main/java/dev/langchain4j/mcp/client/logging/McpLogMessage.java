@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client.logging;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.Objects;
@@ -10,7 +12,12 @@ public class McpLogMessage {
     private final String logger;
     private final JsonNode data;
 
-    public McpLogMessage(McpLogLevel level, String logger, JsonNode data) {
+    @JsonCreator
+    public McpLogMessage(
+            @JsonProperty("level") McpLogLevel level,
+            @JsonProperty("logger") String logger,
+            @JsonProperty("data") JsonNode data
+    ) {
         this.level = level;
         this.logger = logger;
         this.data = data;

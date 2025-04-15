@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -17,7 +19,11 @@ public class McpPromptMessage {
     private final McpRole role;
     private final McpPromptContent content;
 
-    public McpPromptMessage(McpRole role, McpPromptContent content) {
+    @JsonCreator
+    public McpPromptMessage(
+            @JsonProperty("role") McpRole role,
+            @JsonProperty("content") McpPromptContent content
+    ) {
         this.role = role;
         this.content = content;
     }

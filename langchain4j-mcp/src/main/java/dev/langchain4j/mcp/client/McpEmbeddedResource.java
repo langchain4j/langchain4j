@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 
@@ -12,7 +14,8 @@ public final class McpEmbeddedResource implements McpPromptContent {
 
     private final McpResourceContents resource;
 
-    public McpEmbeddedResource(McpResourceContents resource) {
+    @JsonCreator
+    public McpEmbeddedResource(@JsonProperty("resource") McpResourceContents resource) {
         this.resource = resource;
     }
 
