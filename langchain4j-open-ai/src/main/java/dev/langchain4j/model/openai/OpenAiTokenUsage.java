@@ -1,24 +1,39 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.Objects;
 
-@Experimental
 public class OpenAiTokenUsage extends TokenUsage {
 
-    @Experimental
     public static class InputTokensDetails {
 
         private final Integer cachedTokens;
 
-        public InputTokensDetails(Integer cachedTokens) {
-            this.cachedTokens = cachedTokens;
+        public InputTokensDetails(Builder builder) {
+            this.cachedTokens = builder.cachedTokens;
         }
 
         public Integer cachedTokens() {
             return cachedTokens;
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static class Builder {
+
+            private Integer cachedTokens;
+
+            public Builder cachedTokens(Integer cachedTokens) {
+                this.cachedTokens = cachedTokens;
+                return this;
+            }
+
+            public InputTokensDetails build() {
+                return new InputTokensDetails(this);
+            }
         }
 
         @Override
@@ -42,17 +57,34 @@ public class OpenAiTokenUsage extends TokenUsage {
         }
     }
 
-    @Experimental
     public static class OutputTokensDetails {
 
         private final Integer reasoningTokens;
 
-        public OutputTokensDetails(Integer reasoningTokens) {
-            this.reasoningTokens = reasoningTokens;
+        public OutputTokensDetails(Builder builder) {
+            this.reasoningTokens = builder.reasoningTokens;
         }
 
         public Integer reasoningTokens() {
             return reasoningTokens;
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static class Builder {
+
+            private Integer reasoningTokens;
+
+            public Builder reasoningTokens(Integer reasoningTokens) {
+                this.reasoningTokens = reasoningTokens;
+                return this;
+            }
+
+            public OutputTokensDetails build() {
+                return new OutputTokensDetails(this);
+            }
         }
 
         @Override
@@ -85,12 +117,10 @@ public class OpenAiTokenUsage extends TokenUsage {
         this.outputTokensDetails = builder.outputTokensDetails;
     }
 
-    @Experimental
     public InputTokensDetails inputTokensDetails() {
         return inputTokensDetails;
     }
 
-    @Experimental
     public OutputTokensDetails outputTokensDetails() {
         return outputTokensDetails;
     }
@@ -138,7 +168,6 @@ public class OpenAiTokenUsage extends TokenUsage {
             return this;
         }
 
-        @Experimental
         public Builder inputTokensDetails(InputTokensDetails inputTokensDetails) {
             this.inputTokensDetails = inputTokensDetails;
             return this;
@@ -149,7 +178,6 @@ public class OpenAiTokenUsage extends TokenUsage {
             return this;
         }
 
-        @Experimental
         public Builder outputTokensDetails(OutputTokensDetails outputTokensDetails) {
             this.outputTokensDetails = outputTokensDetails;
             return this;

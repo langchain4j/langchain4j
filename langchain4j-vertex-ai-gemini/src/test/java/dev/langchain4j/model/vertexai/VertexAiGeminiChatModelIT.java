@@ -812,7 +812,7 @@ class VertexAiGeminiChatModelIT {
 
         // when
         UserMessage msg = UserMessage.from(
-                AudioContent.from("gs://cloud-samples-data/video/animals.mp4"),
+                VideoContent.from("gs://cloud-samples-data/video/animals.mp4"),
                 TextContent.from("What is in this video?"));
 
         // when

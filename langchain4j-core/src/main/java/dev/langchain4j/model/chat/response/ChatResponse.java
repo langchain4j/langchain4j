@@ -1,42 +1,38 @@
 package dev.langchain4j.model.chat.response;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import org.jspecify.annotations.NonNull;
 
 import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-@Experimental
 public class ChatResponse {
 
     private final AiMessage aiMessage;
     private final ChatResponseMetadata metadata;
 
-    protected ChatResponse(@NonNull Builder builder) {
+    protected ChatResponse(Builder builder) {
         this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
 
         ChatResponseMetadata.Builder<?> metadataBuilder = ChatResponseMetadata.builder();
-
+        if (builder.id != null) {
+            validate(builder, "id");
+            metadataBuilder.id(builder.id);
+        }
+        if (builder.modelName != null) {
+            validate(builder, "modelName");
+            metadataBuilder.modelName(builder.modelName);
+        }
         if (builder.tokenUsage != null) {
-            if (builder.metadata != null) {
-                throw new IllegalArgumentException(
-                        "Cannot set both 'metadata' and 'tokenUsage' on ChatResponse");
-            }
+            validate(builder, "tokenUsage");
             metadataBuilder.tokenUsage(builder.tokenUsage);
         }
-
         if (builder.finishReason != null) {
-            if (builder.metadata != null) {
-                throw new IllegalArgumentException(
-                        "Cannot set both 'metadata' and 'finishReason' on ChatResponse");
-            }
+            validate(builder, "finishReason");
             metadataBuilder.finishReason(builder.finishReason);
         }
-
         if (builder.metadata != null) {
             this.metadata = builder.metadata;
         } else {
@@ -48,17 +44,22 @@ public class ChatResponse {
         return aiMessage;
     }
 
-    @Experimental
     public ChatResponseMetadata metadata() {
         return metadata;
     }
 
-    // TODO deprecate
+    public String id() {
+        return metadata.id();
+    }
+
+    public String modelName() {
+        return metadata.modelName();
+    }
+
     public TokenUsage tokenUsage() {
         return metadata.tokenUsage();
     }
 
-    // TODO deprecate
     public FinishReason finishReason() {
         return metadata.finishReason();
     }
@@ -93,6 +94,9 @@ public class ChatResponse {
 
         private AiMessage aiMessage;
         private ChatResponseMetadata metadata;
+
+        private String id;
+        private String modelName;
         private TokenUsage tokenUsage;
         private FinishReason finishReason;
 
@@ -106,13 +110,21 @@ public class ChatResponse {
             return this;
         }
 
-        // TODO deprecate
+        public Builder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
         public Builder tokenUsage(TokenUsage tokenUsage) {
             this.tokenUsage = tokenUsage;
             return this;
         }
 
-        // TODO deprecate
         public Builder finishReason(FinishReason finishReason) {
             this.finishReason = finishReason;
             return this;
@@ -120,6 +132,12 @@ public class ChatResponse {
 
         public ChatResponse build() {
             return new ChatResponse(this);
+        }
+    }
+
+    private static void validate(Builder builder, String name) {
+        if (builder.metadata != null) {
+            throw new IllegalArgumentException("Cannot set both 'metadata' and '%s' on ChatResponse".formatted(name));
         }
     }
 }

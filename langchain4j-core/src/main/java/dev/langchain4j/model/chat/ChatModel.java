@@ -4,7 +4,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -15,6 +14,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.internal.ChatModelListenerUtils.onError;
+import static dev.langchain4j.internal.ChatModelListenerUtils.onRequest;
+import static dev.langchain4j.internal.ChatModelListenerUtils.onResponse;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
@@ -42,13 +44,13 @@ public interface ChatModel {
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-        ListenersUtil.onRequest(finalChatRequest, provider(), attributes, listeners);
+        onRequest(finalChatRequest, provider(), attributes, listeners);
         try {
             ChatResponse chatResponse = doChat(finalChatRequest);
-            ListenersUtil.onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
+            onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
             return chatResponse;
         } catch (Exception error) {
-            ListenersUtil.onError(error, finalChatRequest, provider(), attributes, listeners);
+            onError(error, finalChatRequest, provider(), attributes, listeners);
             throw error;
         }
     }

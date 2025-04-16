@@ -27,6 +27,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -234,17 +235,17 @@ class GoogleAiGeminiChatModelIT {
 
         // when
         ChatResponse response = gemini.chat(UserMessage.from(
-                AudioContent.from(
+                VideoContent.from(
                         new String(
                                 Base64.getEncoder()
                                         .encode( // TODO use local file
                                                 readBytes(
-                                                        "https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"))),
-                        "audio/mp3"),
-                TextContent.from("Give a summary of the audio")));
+                                                        "https://www.sample-videos.com/video321/mp4/480/big_buck_bunny_480p_1mb.mp4"))),
+                        "video/mp4"),
+                TextContent.from("Give a summary of the video")));
 
         // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("Pixel");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("rabbit");
     }
 
     @Test

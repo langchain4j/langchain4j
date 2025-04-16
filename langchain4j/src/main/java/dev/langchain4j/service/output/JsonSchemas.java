@@ -1,40 +1,23 @@
 package dev.langchain4j.service.output;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
-import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.Optional;
 
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
-import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
-@Experimental
 public class JsonSchemas {
-    // TODO remove? deprecate? update docu
 
     public static Optional<JsonSchema> jsonSchemaFrom(Type returnType) {
 
-        if (typeHasRawClass(returnType, Result.class)) {
-            returnType = resolveFirstGenericParameterType(returnType);
-        }
-
-        // TODO validate this earlier
-        if (returnType == void.class) {
-            throw illegalConfiguration("Return type of method '%s' cannot be void");
-        }
-
-        if (!isPojo(returnType)) {
+        if (!isPojo(returnType) || returnType == void.class) {
             return Optional.empty();
         }
 

@@ -1,13 +1,10 @@
 package dev.langchain4j.http.client.sse;
 
-import dev.langchain4j.Experimental;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-@Experimental
 public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     @Override
