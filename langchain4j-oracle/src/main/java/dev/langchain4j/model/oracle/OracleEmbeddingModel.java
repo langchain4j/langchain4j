@@ -66,11 +66,11 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.proxy = proxy;
     }
 
-    void setBatching(boolean batching) {
+    public void setBatching(boolean batching) {
         this.batching = batching;
     }
 
-    boolean getBatching() {
+    public boolean getBatching() {
         return this.batching;
     }
 
@@ -82,7 +82,8 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
      * @param onnxFile  ONNX file
      * @param modelName model name
      */
-    static boolean loadOnnxModel(Connection conn, String dir, String onnxFile, String modelName) throws SQLException {
+    public static boolean loadOnnxModel(Connection conn, String dir, String onnxFile, String modelName)
+            throws SQLException {
         boolean result = false;
 
         String query = "begin\n"
