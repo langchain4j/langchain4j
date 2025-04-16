@@ -341,7 +341,7 @@
             <dependency>
                 <groupId>org.apache.opennlp</groupId>
                 <artifactId>opennlp-tools</artifactId>
-                <version>1.9.4</version>
+                <version>2.5.3</version>
             </dependency>
 
             <dependency>
