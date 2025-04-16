@@ -42,4 +42,6 @@ public interface McpTransport extends Closeable {
      * that the server subprocess isn't alive anymore.
      */
     void checkHealth();
+
+    void onFailure(Runnable actionOnFailure);
 }

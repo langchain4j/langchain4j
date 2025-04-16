@@ -5,7 +5,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 import org.slf4j.Logger;
 
 import java.time.Duration;
@@ -18,14 +18,16 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static java.util.Collections.singletonList;
 
-public class GoogleAiGeminiTokenizer implements Tokenizer {
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiGeminiTokenizer.class);
+public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
+
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiGeminiTokenCountEstimator.class);
+
     private final GeminiService geminiService;
     private final String modelName;
     private final String apiKey;
     private final Integer maxRetries;
 
-    GoogleAiGeminiTokenizer(
+    GoogleAiGeminiTokenCountEstimator(
             String modelName,
             String apiKey,
             Boolean logRequestsAndResponses,
@@ -41,8 +43,8 @@ public class GoogleAiGeminiTokenizer implements Tokenizer {
         );
     }
 
-    public static GoogleAiGeminiTokenizerBuilder builder() {
-        return new GoogleAiGeminiTokenizerBuilder();
+    public static Builder builder() {
+        return new Builder();
     }
 
     @Override
@@ -103,47 +105,48 @@ public class GoogleAiGeminiTokenizer implements Tokenizer {
         return countTokensResponse.getTotalTokens();
     }
 
-    public static class GoogleAiGeminiTokenizerBuilder {
+    public static class Builder {
+
         private String modelName;
         private String apiKey;
         private Boolean logRequestsAndResponses;
         private Duration timeout;
         private Integer maxRetries;
 
-        GoogleAiGeminiTokenizerBuilder() {
+        Builder() {
         }
 
-        public GoogleAiGeminiTokenizerBuilder modelName(String modelName) {
+        public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
-        public GoogleAiGeminiTokenizerBuilder apiKey(String apiKey) {
+        public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
-        public GoogleAiGeminiTokenizerBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+        public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
             return this;
         }
 
-        public GoogleAiGeminiTokenizerBuilder timeout(Duration timeout) {
+        public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        public GoogleAiGeminiTokenizerBuilder maxRetries(Integer maxRetries) {
+        public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public GoogleAiGeminiTokenizer build() {
-            return new GoogleAiGeminiTokenizer(this.modelName, this.apiKey, this.logRequestsAndResponses, this.timeout, this.maxRetries);
+        public GoogleAiGeminiTokenCountEstimator build() {
+            return new GoogleAiGeminiTokenCountEstimator(this.modelName, this.apiKey, this.logRequestsAndResponses, this.timeout, this.maxRetries);
         }
 
         public String toString() {
-            return "GoogleAiGeminiTokenizer.GoogleAiGeminiTokenizerBuilder(modelName=" + this.modelName + ", apiKey=" + this.apiKey + ", logRequestsAndResponses=" + this.logRequestsAndResponses + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ")";
+            return "GoogleAiGeminiTokenCountEstimator.Builder(modelName=" + this.modelName + ", apiKey=" + this.apiKey + ", logRequestsAndResponses=" + this.logRequestsAndResponses + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ")";
         }
     }
 }

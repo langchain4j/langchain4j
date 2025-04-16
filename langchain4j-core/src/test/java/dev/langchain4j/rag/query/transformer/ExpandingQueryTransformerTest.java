@@ -108,7 +108,7 @@ class ExpandingQueryTransformerTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
 
         QueryTransformer transformer = ExpandingQueryTransformer.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .promptTemplate(promptTemplate)
                 .n(7)
                 .build();

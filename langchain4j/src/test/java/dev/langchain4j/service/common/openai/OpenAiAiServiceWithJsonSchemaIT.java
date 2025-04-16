@@ -1,6 +1,7 @@
 package dev.langchain4j.service.common.openai;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -39,7 +40,7 @@ class OpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT 
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(
                 modelWithStrictJsonSchema,
                 modelWithStrictJsonSchemaLegacy,
@@ -74,7 +75,7 @@ class OpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT 
     }
 
     @Override
-    protected boolean isStrictJsonSchemaEnabled(ChatLanguageModel model) {
+    protected boolean isStrictJsonSchemaEnabled(ChatModel model) {
         return model == modelWithStrictJsonSchema || model == modelWithStrictJsonSchemaLegacy;
     }
 }

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 
@@ -12,7 +13,7 @@ import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMA
 public class MistralAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         // TODO test both strict and non-strict
         return List.of(
                 MistralAiChatModel.builder()

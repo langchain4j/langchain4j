@@ -1,6 +1,6 @@
 package dev.langchain4j.service.common.openai;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 
@@ -20,7 +20,7 @@ class OpenAiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
     }
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<StreamingChatModel> models() {
         return List.of(
                 defaultStreamingModelBuilder().build()
                 // TODO more configs?

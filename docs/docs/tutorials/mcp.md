@@ -73,7 +73,7 @@ of an AI service builder:
 
 ```java
 Bot bot = AiServices.builder(Bot.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .toolProvider(toolProvider)
     .build();
 ```
@@ -171,7 +171,7 @@ Here's the implementation:
 ```java
 public static void main(String[] args) throws Exception {
 
-    ChatLanguageModel model = OpenAiChatModel.builder()
+    ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
         .logRequests(true)
@@ -192,7 +192,7 @@ public static void main(String[] args) throws Exception {
         .build();
 
     Bot bot = AiServices.builder(Bot.class)
-        .chatLanguageModel(model)
+        .chatModel(model)
         .toolProvider(toolProvider)
         .build();
 

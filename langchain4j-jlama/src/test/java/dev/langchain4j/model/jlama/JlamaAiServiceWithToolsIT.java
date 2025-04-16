@@ -1,6 +1,6 @@
 package dev.langchain4j.model.jlama;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -21,7 +21,7 @@ class JlamaAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     }
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return singletonList(
                 JlamaChatModel.builder()
                         .modelName("Qwen/Qwen2.5-1.5B-Instruct")
@@ -35,7 +35,7 @@ class JlamaAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @Test
     @Disabled("qwen2.5 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_list_of_POJOs_parameter(ChatLanguageModel model) {
+    protected void should_execute_tool_with_list_of_POJOs_parameter(ChatModel model) {
     }
 
     @Override

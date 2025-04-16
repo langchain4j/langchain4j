@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ class OllamaChatModelVisionIT extends AbstractOllamaVisionModelInfrastructure {
     void should_see_cat() {
 
         // given
-        ChatLanguageModel model = OllamaChatModel.builder()
+        ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(3))
                 .modelName(BAKLLAVA_MODEL)

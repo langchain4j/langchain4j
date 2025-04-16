@@ -4,7 +4,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -54,9 +54,9 @@ public abstract class AbstractAiServiceWithToolsIT {
     @Captor
     private ArgumentCaptor<ChatRequest> chatRequestCaptor;
 
-    protected abstract List<ChatLanguageModel> models();
+    protected abstract List<ChatModel> models();
 
-    protected List<ChatLanguageModel> modelsSupportingMapParametersInTools() {
+    protected List<ChatModel> modelsSupportingMapParametersInTools() {
         return models();
     }
 
@@ -85,7 +85,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_primitive_parameters(ChatLanguageModel model) {
+    void should_execute_tool_with_primitive_parameters(ChatModel model) {
 
         // given
         model = spy(model);
@@ -93,7 +93,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithPrimitiveParameters tool = spy(new ToolWithPrimitiveParameters());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -145,7 +145,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_execute_tool_with_pojo_with_primitives(ChatLanguageModel model) {
+    protected void should_execute_tool_with_pojo_with_primitives(ChatModel model) {
 
         // given
         model = spy(model);
@@ -153,7 +153,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithPojoParameter tool = spy(new ToolWithPojoParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -209,7 +209,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_execute_tool_with_pojo_with_nested_pojo(ChatLanguageModel model) {
+    protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel model) {
 
         // given
         model = spy(model);
@@ -217,7 +217,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithNestedPojoParameter tool = spy(new ToolWithNestedPojoParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -277,7 +277,7 @@ public abstract class AbstractAiServiceWithToolsIT {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsRecursion")
-    void should_execute_tool_with_pojo_with_recursion(ChatLanguageModel model) {
+    void should_execute_tool_with_pojo_with_recursion(ChatModel model) {
 
         // given
         model = spy(model);
@@ -285,7 +285,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithRecursion tool = spy(new ToolWithRecursion());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -331,7 +331,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_without_parameters(ChatLanguageModel model) {
+    void should_execute_tool_without_parameters(ChatModel model) {
 
         // given
         model = spy(model);
@@ -339,7 +339,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithoutParameters tools = spy(new ToolWithoutParameters());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tools)
                 .build();
 
@@ -397,7 +397,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_enum_parameter(ChatLanguageModel model) {
+    void should_execute_tool_with_enum_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -405,7 +405,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithEnumParameter tool = spy(new ToolWithEnumParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -453,7 +453,7 @@ public abstract class AbstractAiServiceWithToolsIT {
     @ParameterizedTest
     @MethodSource("modelsSupportingMapParametersInTools")
     @EnabledIf("supportsMapParameters")
-    void should_execute_tool_with_map_parameter(ChatLanguageModel model) {
+    void should_execute_tool_with_map_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -461,7 +461,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithMapParameter tool = spy(new ToolWithMapParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -513,7 +513,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_execute_tool_with_list_of_strings_parameter(ChatLanguageModel model) {
+    protected void should_execute_tool_with_list_of_strings_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -521,7 +521,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithListOfStringsParameter tool = spy(new ToolWithListOfStringsParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -574,7 +574,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_set_of_enums_parameter(ChatLanguageModel model) {
+    void should_execute_tool_with_set_of_enums_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -582,7 +582,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithSetOfEnumsParameter tool = spy(new ToolWithSetOfEnumsParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -627,7 +627,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_execute_tool_with_collection_of_integers_parameter(ChatLanguageModel model) {
+    protected void should_execute_tool_with_collection_of_integers_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -635,7 +635,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithCollectionOfIntegersParameter tool = spy(new ToolWithCollectionOfIntegersParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -687,7 +687,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_execute_tool_with_list_of_POJOs_parameter(ChatLanguageModel model) {
+    protected void should_execute_tool_with_list_of_POJOs_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -695,7 +695,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithListOfPojoParameter tool = spy(new ToolWithListOfPojoParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -753,7 +753,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_execute_tool_with_uuid_parameter(ChatLanguageModel model) {
+    protected void should_execute_tool_with_uuid_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -761,7 +761,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolWithUUIDParameter tool = spy(new ToolWithUUIDParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 

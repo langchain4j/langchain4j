@@ -1,6 +1,5 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
 
 import java.net.URI;
@@ -10,7 +9,6 @@ import static dev.langchain4j.data.message.ContentType.AUDIO;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-@Experimental
 public class AudioContent implements Content {
 
     private final Audio audio;
@@ -27,8 +25,8 @@ public class AudioContent implements Content {
      */
     public AudioContent(URI url) {
         this.audio = Audio.builder()
-            .url(ensureNotNull(url, "url"))
-            .build();
+                .url(ensureNotNull(url, "url"))
+                .build();
     }
 
     /**
@@ -44,12 +42,12 @@ public class AudioContent implements Content {
      * Create a new {@link AudioContent} from the given base64 data and mime type.
      *
      * @param base64Data the base64 data of the Audio.
-     * @param mimeType the mime type of the Audio.
+     * @param mimeType   the mime type of the Audio.
      */
     public AudioContent(String base64Data, String mimeType) {
         this.audio = Audio.builder()
-            .base64Data(ensureNotBlank(base64Data, "base64data"))
-            .mimeType(ensureNotBlank(mimeType, "mimeType")).build();
+                .base64Data(ensureNotBlank(base64Data, "base64data"))
+                .mimeType(ensureNotBlank(mimeType, "mimeType")).build();
     }
 
     /**
@@ -63,6 +61,7 @@ public class AudioContent implements Content {
 
     /**
      * Get the {@code Audio}.
+     *
      * @return the {@code Audio}.
      */
     public Audio audio() {
@@ -85,8 +84,8 @@ public class AudioContent implements Content {
     @Override
     public String toString() {
         return "AudioContent {" +
-            " audio = " + audio +
-            " }";
+                " audio = " + audio +
+                " }";
     }
 
     /**
@@ -113,7 +112,7 @@ public class AudioContent implements Content {
      * Create a new {@link AudioContent} from the given base64 data and mime type.
      *
      * @param base64Data the base64 data of the Audio.
-     * @param mimeType the mime type of the Audio.
+     * @param mimeType   the mime type of the Audio.
      * @return the new {@link AudioContent}.
      */
     public static AudioContent from(String base64Data, String mimeType) {

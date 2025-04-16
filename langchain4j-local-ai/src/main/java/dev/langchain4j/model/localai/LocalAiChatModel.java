@@ -4,7 +4,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
@@ -35,7 +36,7 @@ import static java.util.Collections.singletonList;
 /**
  * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
  */
-public class LocalAiChatModel implements ChatLanguageModel {
+public class LocalAiChatModel implements ChatModel {
 
     private final OpenAiClient client;
     private final String modelName;

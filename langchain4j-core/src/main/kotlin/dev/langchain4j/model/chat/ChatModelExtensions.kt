@@ -12,7 +12,7 @@ import kotlin.coroutines.CoroutineContext
 /**
  * Asynchronously processes a chat request using the language model within
  * a coroutine scope. This extension function provides a structured
- * concurrency wrapper around the synchronous [ChatLanguageModel.chat] method.
+ * concurrency wrapper around the synchronous [ChatModel.chat] method.
  *
  * Example usage:
  * ```kotlin
@@ -26,14 +26,14 @@ import kotlin.coroutines.CoroutineContext
  * @return [ChatResponse] containing the model's response and any additional
  *    metadata.
  * @throws Exception if the chat request fails or is interrupted.
- * @see ChatLanguageModel.chat(ChatRequest)
+ * @see ChatModel.chat(ChatRequest)
  * @see ChatRequest
  * @see ChatResponse
  * @author Konstantin Pavlov
  */
 @Experimental
 @JvmOverloads
-public suspend fun ChatLanguageModel.chatAsync(
+public suspend fun ChatModel.chatAsync(
     request: ChatRequest,
     coroutineContext: CoroutineContext = defaultCoroutineContext()
 ): ChatResponse {
@@ -71,7 +71,7 @@ public suspend fun ChatLanguageModel.chatAsync(
  */
 @Experimental
 @JvmOverloads
-public suspend fun ChatLanguageModel.chat(
+public suspend fun ChatModel.chat(
     requestBuilder: ChatRequest.Builder,
     coroutineContext: CoroutineContext = defaultCoroutineContext()
 ): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = requestBuilder.build())
@@ -80,7 +80,7 @@ public suspend fun ChatLanguageModel.chat(
  * Asynchronously processes a chat request by configuring a [ChatRequest]
  * using a provided builder block. This method facilitates the creation
  * of well-structured chat requests using a [ChatRequestBuilder] and
- * executes the request using the associated [ChatLanguageModel].
+ * executes the request using the associated [ChatModel].
  *
  * Example usage:
  * ```kotlin
@@ -102,13 +102,13 @@ public suspend fun ChatLanguageModel.chat(
  * @author Konstantin Pavlov
  */
 @Experimental
-public suspend fun ChatLanguageModel.chat(
+public suspend fun ChatModel.chat(
     coroutineContext: CoroutineContext = defaultCoroutineContext(),
     block: ChatRequestBuilder.() -> Unit
 ): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = chatRequest(block))
 
 @Experimental
-public suspend fun ChatLanguageModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse =
+public suspend fun ChatModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse =
     chatAsync(coroutineContext = defaultCoroutineContext(), request = chatRequest(block))
 
 /**

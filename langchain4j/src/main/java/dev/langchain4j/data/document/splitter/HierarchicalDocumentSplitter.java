@@ -4,7 +4,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,7 +37,7 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
     protected final int maxSegmentSize;
     protected final int maxOverlapSize;
-    protected final Tokenizer tokenizer;
+    protected final TokenCountEstimator tokenCountEstimator;
     protected final DocumentSplitter subSplitter;
 
     /**
@@ -68,12 +68,12 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
      *
      * @param maxSegmentSizeInTokens The maximum size of a segment in tokens.
      * @param maxOverlapSizeInTokens The maximum size of the overlap between segments in tokens.
-     * @param tokenizer              The tokenizer to use to estimate the number of tokens in a text.
+     * @param tokenCountEstimator    The {@code TokenCountEstimator} to use to estimate the number of tokens in a text.
      */
     protected HierarchicalDocumentSplitter(int maxSegmentSizeInTokens,
                                            int maxOverlapSizeInTokens,
-                                           Tokenizer tokenizer) {
-        this(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
+                                           TokenCountEstimator tokenCountEstimator) {
+        this(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, null);
     }
 
     /**
@@ -81,16 +81,16 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
      *
      * @param maxSegmentSizeInTokens The maximum size of a segment in tokens.
      * @param maxOverlapSizeInTokens The maximum size of the overlap between segments in tokens.
-     * @param tokenizer              The tokenizer to use to estimate the number of tokens in a text.
+     * @param tokenCountEstimator    The {@code TokenCountEstimator} to use to estimate the number of tokens in a text.
      * @param subSplitter            The sub-splitter to use when a single segment is too long.
      */
     protected HierarchicalDocumentSplitter(int maxSegmentSizeInTokens,
                                            int maxOverlapSizeInTokens,
-                                           Tokenizer tokenizer,
+                                           TokenCountEstimator tokenCountEstimator,
                                            DocumentSplitter subSplitter) {
         this.maxSegmentSize = ensureGreaterThanZero(maxSegmentSizeInTokens, "maxSegmentSize");
         this.maxOverlapSize = ensureBetween(maxOverlapSizeInTokens, 0, maxSegmentSize, "maxOverlapSize");
-        this.tokenizer = tokenizer;
+        this.tokenCountEstimator = tokenCountEstimator;
         this.subSplitter = subSplitter == null ? defaultSubSplitter() : subSplitter;
     }
 
@@ -161,8 +161,8 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
                         "The text \"%s...\" (%s %s long) doesn't fit into the maximum segment size (%s %s), " +
                                 "and there is no subSplitter defined to split it further.",
                         firstChars(part, 30),
-                        estimateSize(part), tokenizer == null ? "characters" : "tokens",
-                        maxSegmentSize, tokenizer == null ? "characters" : "tokens"
+                        estimateSize(part), tokenCountEstimator == null ? "characters" : "tokens",
+                        maxSegmentSize, tokenCountEstimator == null ? "characters" : "tokens"
 
                 ));
             }
@@ -216,15 +216,15 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
     /**
      * Estimates the size in the provided text.
      *
-     * <p>If a {@link Tokenizer} is provided, the number of tokens is estimated.
+     * <p>If a {@link TokenCountEstimator} is provided, the number of tokens is estimated.
      * Otherwise, the number of characters is estimated.
      *
      * @param text The text.
      * @return The estimated number of tokens.
      */
     int estimateSize(String text) {
-        if (tokenizer != null) {
-            return tokenizer.estimateTokenCountInText(text);
+        if (tokenCountEstimator != null) {
+            return tokenCountEstimator.estimateTokenCountInText(text);
         } else {
             return text.length();
         }

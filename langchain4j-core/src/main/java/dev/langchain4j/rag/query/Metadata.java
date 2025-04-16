@@ -35,14 +35,6 @@ public class Metadata {
     }
 
     /**
-     * @deprecated please use {@link #chatMessage()} instead
-     */
-    @Deprecated(forRemoval = true, since = "1.0.0-beta3")
-    public UserMessage userMessage() {
-        return (UserMessage) chatMessage;
-    }
-
-    /**
      * @return a chat memory ID. Present when {@link ChatMemory} is used. Can be used to distinguish between users.
      * See {@code @dev.langchain4j.service.MemoryId} annotation from a {@code dev.langchain4j:langchain4j} module.
      */

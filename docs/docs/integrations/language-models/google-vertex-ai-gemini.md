@@ -91,7 +91,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 
@@ -105,7 +105,7 @@ public class GeminiProVisionWithImageInput {
         "Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
     public static void main(String[] args) {
-        ChatLanguageModel visionModel = VertexAiGeminiChatModel.builder()
+        ChatModel visionModel = VertexAiGeminiChatModel.builder()
             .project(PROJECT_ID)
             .location(LOCATION)
             .modelName(MODEL_NAME)
@@ -216,7 +216,7 @@ Gemini is a `multimodal` model which accepts text, but also images, audio and vi
 ### Describing the content of an image
 
 ```java
-ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+ChatModel model = VertexAiGeminiChatModel.builder()
     .project(PROJECT_ID)
     .location(LOCATION)
     .modelName(GEMINI_1_5_PRO)
@@ -265,7 +265,7 @@ ChatResponse response = model.chat(message);
 ### Tool calling
 
 ```java
-ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+ChatModel model = VertexAiGeminiChatModel.builder()
         .project(PROJECT_ID)
         .location(LOCATION)
         .modelName(GEMINI_1_5_PRO)
@@ -322,7 +322,7 @@ interface Assistant {
 Calculator calculator = new Calculator();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatLanguageModel(model)
+        .chatModel(model)
         .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
         .tools(calculator)
         .build();

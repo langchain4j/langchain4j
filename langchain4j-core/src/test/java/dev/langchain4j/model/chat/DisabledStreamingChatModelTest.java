@@ -7,12 +7,12 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-class DisabledStreamingChatLanguageModelTest extends DisabledModelTest<StreamingChatLanguageModel> {
+class DisabledStreamingChatModelTest extends DisabledModelTest<StreamingChatModel> {
 
-    private final StreamingChatLanguageModel model = new DisabledStreamingChatLanguageModel();
+    private final StreamingChatModel model = new DisabledStreamingChatModel();
 
-    public DisabledStreamingChatLanguageModelTest() {
-        super(StreamingChatLanguageModel.class);
+    public DisabledStreamingChatModelTest() {
+        super(StreamingChatModel.class);
     }
 
     @Test

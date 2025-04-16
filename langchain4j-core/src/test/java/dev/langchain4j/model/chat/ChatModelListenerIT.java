@@ -55,7 +55,7 @@ import org.junit.jupiter.api.Test;
 public abstract class ChatModelListenerIT {
     // TODO move to "common" package
 
-    protected abstract ChatLanguageModel createModel(ChatModelListener listener);
+    protected abstract ChatModel createModel(ChatModelListener listener);
 
     protected abstract String modelName();
 
@@ -71,7 +71,7 @@ public abstract class ChatModelListenerIT {
         return 7;
     }
 
-    protected abstract ChatLanguageModel createFailingModel(ChatModelListener listener);
+    protected abstract ChatModel createFailingModel(ChatModelListener listener);
 
     protected abstract Class<? extends Exception> expectedExceptionClass();
 
@@ -84,7 +84,7 @@ public abstract class ChatModelListenerIT {
 
         AtomicReference<ChatResponse> chatResponseReference = new AtomicReference<>();
         AtomicInteger onResponseInvocations = new AtomicInteger();
-        AtomicReference<ChatLanguageModel> modelReference = new AtomicReference<>();
+        AtomicReference<ChatModel> modelReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
@@ -121,7 +121,7 @@ public abstract class ChatModelListenerIT {
             }
         };
 
-        ChatLanguageModel model = createModel(listener);
+        ChatModel model = createModel(listener);
         modelReference.set(model);
 
         UserMessage userMessage = UserMessage.from("hello");
@@ -199,7 +199,7 @@ public abstract class ChatModelListenerIT {
 
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
         AtomicInteger onErrorInvocations = new AtomicInteger();
-        AtomicReference<ChatLanguageModel> modelReference = new AtomicReference<>();
+        AtomicReference<ChatModel> modelReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
@@ -235,7 +235,7 @@ public abstract class ChatModelListenerIT {
             }
         };
 
-        ChatLanguageModel model = createFailingModel(listener);
+        ChatModel model = createFailingModel(listener);
         modelReference.set(model);
 
         String userMessage = "this message will fail";

@@ -307,13 +307,17 @@ public class InternalOpenAiHelper {
         PromptTokensDetails promptTokensDetails = openAiUsage.promptTokensDetails();
         InputTokensDetails inputTokensDetails = null;
         if (promptTokensDetails != null) {
-            inputTokensDetails = new InputTokensDetails(promptTokensDetails.cachedTokens());
+            inputTokensDetails = InputTokensDetails.builder()
+                    .cachedTokens(promptTokensDetails.cachedTokens())
+                    .build();
         }
 
         CompletionTokensDetails completionTokensDetails = openAiUsage.completionTokensDetails();
         OutputTokensDetails outputTokensDetails = null;
         if (completionTokensDetails != null) {
-            outputTokensDetails = new OutputTokensDetails(completionTokensDetails.reasoningTokens());
+            outputTokensDetails = OutputTokensDetails.builder()
+                    .reasoningTokens(completionTokensDetails.reasoningTokens())
+                    .build();
         }
 
         return OpenAiTokenUsage.builder()

@@ -6,7 +6,7 @@ import dev.langchain4j.data.message.ChatMessage;
  * Represents an interface for estimating the count of tokens in various text types such as a text, prompt, text segment, etc.
  * This can be useful when it's necessary to know in advance the cost of processing a specified text by the LLM.
  */
-public interface Tokenizer {
+public interface TokenCountEstimator {
 
     /**
      * Estimates the count of tokens in the given text.

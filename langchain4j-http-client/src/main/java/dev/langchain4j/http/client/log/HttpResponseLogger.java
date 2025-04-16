@@ -1,12 +1,10 @@
 package dev.langchain4j.http.client.log;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import org.slf4j.Logger;
 
 import static dev.langchain4j.http.client.log.HttpRequestLogger.format;
 
-@Experimental
 class HttpResponseLogger {
 
     static void log(Logger log, SuccessfulHttpResponse response) {

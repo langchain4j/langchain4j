@@ -6,8 +6,8 @@ import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
 import java.util.ArrayList;
@@ -108,11 +108,12 @@ class AiServiceTokenStreamTest {
     }
 
     private AiServiceTokenStream setupAiServiceTokenStream() {
-        StreamingChatLanguageModel streamingModel = mock(StreamingChatLanguageModel.class);
-        ChatLanguageModel chatLanguageModel = mock(ChatLanguageModel.class);
+        StreamingChatModel streamingModel = mock(StreamingChatModel.class);
+        ChatModel chatModel = mock(ChatModel.class);
+
         AiServiceContext context = new AiServiceContext(getClass());
         context.streamingChatModel = streamingModel;
-        context.chatModel = chatLanguageModel;
+        context.chatModel = chatModel;
 
         return new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
                 .messages(messages)
