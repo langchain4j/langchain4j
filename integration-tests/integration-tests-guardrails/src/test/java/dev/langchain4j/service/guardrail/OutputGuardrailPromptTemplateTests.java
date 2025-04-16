@@ -188,7 +188,7 @@ class OutputGuardrailPromptTemplateTests extends BaseGuardrailTests {
 
         static MyAiService create() {
             return AiServices.builder(MyAiService.class)
-                    .chatLanguageModel(new MyChatModel())
+                    .chatModel(new MyChatModel())
                     .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                     .outputGuardrails(OutputGuardrailValidation.getInstance())
                     .build();

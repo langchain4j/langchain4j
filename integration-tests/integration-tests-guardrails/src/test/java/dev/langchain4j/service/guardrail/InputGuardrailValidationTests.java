@@ -12,8 +12,8 @@ import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -128,8 +128,8 @@ class InputGuardrailValidationTests extends BaseGuardrailTests {
         String test(@MemoryId String name, @UserMessage String message);
 
         static MyAiService create() {
-            return createAiService(MyAiService.class, builder -> builder.chatLanguageModel(new MyChatModel())
-                    .streamingChatLanguageModel(new MyStreamingChatModel()));
+            return createAiService(MyAiService.class, builder -> builder.chatModel(new MyChatModel())
+                    .streamingChatModel(new MyStreamingChatModel()));
         }
     }
 
@@ -214,14 +214,14 @@ class InputGuardrailValidationTests extends BaseGuardrailTests {
         }
     }
 
-    public static class MyChatModel implements ChatLanguageModel {
+    public static class MyChatModel implements ChatModel {
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
             return ChatResponse.builder().aiMessage(AiMessage.from("Hi!")).build();
         }
     }
 
-    public static class MyStreamingChatModel implements StreamingChatLanguageModel {
+    public static class MyStreamingChatModel implements StreamingChatModel {
         @Override
         public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
             handler.onPartialResponse("Streaming hi");

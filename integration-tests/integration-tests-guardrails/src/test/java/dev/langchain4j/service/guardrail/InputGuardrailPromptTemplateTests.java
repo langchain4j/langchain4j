@@ -191,14 +191,14 @@ class InputGuardrailPromptTemplateTests {
 
         static <T extends Assistant> T create(Class<T> clazz) {
             return AiServices.builder(clazz)
-                    .chatLanguageModel(new MyChatModel())
+                    .chatModel(new MyChatModel())
                     .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                     .build();
         }
 
         static Assistant create() {
             return AiServices.builder(Assistant.class)
-                    .chatLanguageModel(new MyChatModel())
+                    .chatModel(new MyChatModel())
                     .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                     .inputGuardrails(List.of(InputGuardrailValidation.getInstance()))
                     .build();

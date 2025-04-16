@@ -13,7 +13,7 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.MemoryId;
@@ -110,7 +110,7 @@ class InputAndOutputGuardrailsTests extends BaseGuardrailTests {
         String outKoWithReprompt(@MemoryId String id, @UserMessage String message);
 
         static MyAiService create() {
-            return createAiService(MyAiService.class, builder -> builder.chatLanguageModel(new MyChatModel()));
+            return createAiService(MyAiService.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 
@@ -202,7 +202,7 @@ class InputAndOutputGuardrailsTests extends BaseGuardrailTests {
         }
     }
 
-    public static class MyChatModel implements ChatLanguageModel {
+    public static class MyChatModel implements ChatModel {
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
             return ChatResponse.builder().aiMessage(AiMessage.from("Hi!")).build();

@@ -21,7 +21,7 @@ class InputGuardrailRewritingTests extends BaseGuardrailTests {
         String test(@V("first") String first, @V("second") String second);
 
         static MyAiService create() {
-            return createAiService(MyAiService.class, builder -> builder.chatLanguageModel(new EchoChatModel()));
+            return createAiService(MyAiService.class, builder -> builder.chatModel(new EchoChatModel()));
         }
     }
 

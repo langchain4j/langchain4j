@@ -8,7 +8,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -93,7 +93,7 @@ class OutputGuardrailOnStreamedResponseValidationTests extends BaseGuardrailTest
 
         static MyAiService create() {
             return createAiService(
-                    MyAiService.class, builder -> builder.streamingChatLanguageModel(new MyStreamingChatModel()));
+                    MyAiService.class, builder -> builder.streamingChatModel(new MyStreamingChatModel()));
         }
     }
 
@@ -185,7 +185,7 @@ class OutputGuardrailOnStreamedResponseValidationTests extends BaseGuardrailTest
         }
     }
 
-    public static class MyStreamingChatModel implements StreamingChatLanguageModel {
+    public static class MyStreamingChatModel implements StreamingChatModel {
         @Override
         public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
             handler.onPartialResponse("Hi!");

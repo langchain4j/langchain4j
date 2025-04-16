@@ -2,11 +2,11 @@ package dev.langchain4j.service.guardrail;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessageType;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
-public class MyChatModel implements ChatLanguageModel {
+public class MyChatModel implements ChatModel {
     private static String getUserMessage(ChatRequest chatRequest) {
         return chatRequest.messages().stream()
                 .filter(message -> message.type() == ChatMessageType.USER)
