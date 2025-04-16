@@ -31,7 +31,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -61,7 +61,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
     public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-001";
 
-    StreamingChatLanguageModel model = VertexAiGeminiStreamingChatModel.builder()
+    StreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
@@ -129,7 +129,7 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_respect_maxOutputTokens() {
 
         // given
-        StreamingChatLanguageModel model = VertexAiGeminiStreamingChatModel.builder()
+        StreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -163,7 +163,7 @@ class VertexAiGeminiStreamingChatModelIT {
         GenerativeModel generativeModel = new GenerativeModel(GEMINI_1_5_PRO, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
-        StreamingChatLanguageModel model = new VertexAiGeminiStreamingChatModel(generativeModel, generationConfig);
+        StreamingChatModel model = new VertexAiGeminiStreamingChatModel(generativeModel, generationConfig);
 
         String userMessage = "What is the capital of Germany?";
 
@@ -394,7 +394,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         StreamingStockAssistant assistant = AiServices.builder(StreamingStockAssistant.class)
-                .streamingChatLanguageModel(model)
+                .streamingChatModel(model)
                 .chatMemory(chatMemory)
                 .tools(new StockInventory())
                 .build();

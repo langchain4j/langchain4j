@@ -9,7 +9,7 @@ import static java.util.Objects.nonNull;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -26,7 +26,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
  *
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
  */
-public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLanguageModel {
+public class BedrockChatModel extends AbstractBedrockChatModel implements ChatModel {
 
     private final BedrockRuntimeClient client;
 

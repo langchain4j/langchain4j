@@ -3,7 +3,7 @@ package dev.langchain4j.service;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 class AiServicesWithToolsWithoutMemoryIT {
 
     @Spy
-    ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
+    ChatModel chatModel = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -56,7 +56,7 @@ class AiServicesWithToolsWithoutMemoryIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .tools(calculator)
                 .build();
 
@@ -82,7 +82,7 @@ class AiServicesWithToolsWithoutMemoryIT {
     @Test
     void should_execute_multiple_tools_sequentially_then_answer() {
 
-        ChatLanguageModel chatLanguageModel = spy(OpenAiChatModel.builder()
+        ChatModel chatModel = spy(OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -96,7 +96,7 @@ class AiServicesWithToolsWithoutMemoryIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .tools(calculator)
                 .build();
 
@@ -126,7 +126,7 @@ class AiServicesWithToolsWithoutMemoryIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .tools(calculator)
                 .build();
 

@@ -46,7 +46,7 @@ Currently, LangChain4j offers 2 out-of-the-box implementations:
   which also operates as a sliding window but focuses on keeping the `N` most recent **tokens**,
   evicting older messages as needed.
   Messages are indivisible. If a message doesn't fit, it is evicted completely.
-  `TokenWindowChatMemory` requires a `Tokenizer` to count the tokens in each `ChatMessage`.
+  `TokenWindowChatMemory` requires a `TokenCountEstimator` to count the tokens in each `ChatMessage`.
 
 ## Persistence
 

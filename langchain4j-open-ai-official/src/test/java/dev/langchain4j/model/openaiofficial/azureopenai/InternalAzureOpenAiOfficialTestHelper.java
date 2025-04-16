@@ -2,10 +2,9 @@ package dev.langchain4j.model.openaiofficial.azureopenai;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
-import com.openai.models.ChatModel;
 import com.openai.models.images.ImageGenerateParams;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
@@ -28,8 +27,8 @@ public class InternalAzureOpenAiOfficialTestHelper {
 
     private static final Logger log = LoggerFactory.getLogger(InternalAzureOpenAiOfficialTestHelper.class);
 
-    public static final ChatModel CHAT_MODEL_NAME = ChatModel.GPT_4O_MINI;
-    public static final ChatModel CHAT_MODEL_NAME_ALTERNATE = ChatModel.GPT_4O;
+    public static final com.openai.models.ChatModel CHAT_MODEL_NAME = com.openai.models.ChatModel.GPT_4O_MINI;
+    public static final com.openai.models.ChatModel CHAT_MODEL_NAME_ALTERNATE = com.openai.models.ChatModel.GPT_4O;
     public static final com.openai.models.embeddings.EmbeddingModel EMBEDDING_MODEL_NAME =
             com.openai.models.embeddings.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
     public static final com.openai.models.images.ImageModel IMAGE_MODEL_NAME =
@@ -138,8 +137,8 @@ public class InternalAzureOpenAiOfficialTestHelper {
         }
     }
 
-    static List<ChatLanguageModel> chatModelsNormalAndJsonStrict() {
-        List<ChatLanguageModel> models = new ArrayList<>();
+    static List<ChatModel> chatModelsNormalAndJsonStrict() {
+        List<ChatModel> models = new ArrayList<>();
         if (AZURE_OPEN_AI_CHAT_MODEL != null) {
             models.add(AZURE_OPEN_AI_CHAT_MODEL);
         }
@@ -155,8 +154,8 @@ public class InternalAzureOpenAiOfficialTestHelper {
         return models;
     }
 
-    static List<ChatLanguageModel> chatModelsNormalAndStrictTools() {
-        List<ChatLanguageModel> models = new ArrayList<>();
+    static List<ChatModel> chatModelsNormalAndStrictTools() {
+        List<ChatModel> models = new ArrayList<>();
         if (AZURE_OPEN_AI_CHAT_MODEL != null) {
             models.add(AZURE_OPEN_AI_CHAT_MODEL);
         }
@@ -169,8 +168,8 @@ public class InternalAzureOpenAiOfficialTestHelper {
         return models;
     }
 
-    static List<ChatLanguageModel> chatModelsWithJsonResponse() {
-        List<ChatLanguageModel> models = new ArrayList<>();
+    static List<ChatModel> chatModelsWithJsonResponse() {
+        List<ChatModel> models = new ArrayList<>();
         if (AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA != null) {
             models.add(AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA);
         }
@@ -183,8 +182,8 @@ public class InternalAzureOpenAiOfficialTestHelper {
         return models;
     }
 
-    static List<StreamingChatLanguageModel> chatModelsStreamingNormalAndJsonStrict() {
-        List<StreamingChatLanguageModel> models = new ArrayList<>();
+    static List<StreamingChatModel> chatModelsStreamingNormalAndJsonStrict() {
+        List<StreamingChatModel> models = new ArrayList<>();
         if (AZURE_OPEN_AI_STREAMING_CHAT_MODEL != null) {
             models.add(AZURE_OPEN_AI_STREAMING_CHAT_MODEL);
         }

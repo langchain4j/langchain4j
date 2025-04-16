@@ -36,18 +36,18 @@ The `PROJECT_ID` field represents the variable you set when creating a new Googl
 ```java
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.VertexAiChatModel;
 
-public class ChatLanguageModel {
+public class ChatModelExample {
 
     private static final String PROJECT_ID = "YOUR-PROJECT-ID";
     // `chat-bison` means PaLM2 general purpose chat model
     private static final String MODEL_NAME = "chat-bison";
 
     public static void main(String[] args) {
-        ChatLanguageModel model = VertexAiChatModel.builder()
+        ChatModel model = VertexAiChatModel.builder()
             .endpoint("us-central1-aiplatform.googleapis.com:443")
             .location("us-central1")
             .publisher("google")

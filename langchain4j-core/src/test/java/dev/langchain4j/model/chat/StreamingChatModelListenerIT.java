@@ -57,7 +57,7 @@ import org.junit.jupiter.api.Test;
  */
 public abstract class StreamingChatModelListenerIT {
 
-    protected abstract StreamingChatLanguageModel createModel(ChatModelListener listener);
+    protected abstract StreamingChatModel createModel(ChatModelListener listener);
 
     protected abstract String modelName();
 
@@ -73,7 +73,7 @@ public abstract class StreamingChatModelListenerIT {
         return 7;
     }
 
-    protected abstract StreamingChatLanguageModel createFailingModel(ChatModelListener listener);
+    protected abstract StreamingChatModel createFailingModel(ChatModelListener listener);
 
     protected abstract Class<? extends Exception> expectedExceptionClass();
 
@@ -86,7 +86,7 @@ public abstract class StreamingChatModelListenerIT {
 
         AtomicReference<ChatResponse> chatResponseReference = new AtomicReference<>();
         AtomicInteger onResponseInvocations = new AtomicInteger();
-        AtomicReference<StreamingChatLanguageModel> modelReference = new AtomicReference<>();
+        AtomicReference<StreamingChatModel> modelReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
@@ -118,7 +118,7 @@ public abstract class StreamingChatModelListenerIT {
             }
         };
 
-        StreamingChatLanguageModel model = createModel(listener);
+        StreamingChatModel model = createModel(listener);
         modelReference.set(model);
 
         UserMessage userMessage = UserMessage.from("hello");
@@ -210,7 +210,7 @@ public abstract class StreamingChatModelListenerIT {
 
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
         AtomicInteger onErrorInvocations = new AtomicInteger();
-        AtomicReference<StreamingChatLanguageModel> modelReference = new AtomicReference<>();
+        AtomicReference<StreamingChatModel> modelReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
@@ -241,7 +241,7 @@ public abstract class StreamingChatModelListenerIT {
             }
         };
 
-        StreamingChatLanguageModel model = createFailingModel(listener);
+        StreamingChatModel model = createFailingModel(listener);
         modelReference.set(model);
 
         String userMessage = "this message will fail";

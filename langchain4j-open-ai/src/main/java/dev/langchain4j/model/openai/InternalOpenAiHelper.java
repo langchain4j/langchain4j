@@ -122,7 +122,7 @@ public class InternalOpenAiHelper {
                             .type(FUNCTION)
                             .function(FunctionCall.builder()
                                     .name(it.name())
-                                    .arguments(it.arguments())
+                                    .arguments(isNullOrBlank(it.arguments()) ? "{}" : it.arguments())
                                     .build())
                             .build())
                     .collect(toList());

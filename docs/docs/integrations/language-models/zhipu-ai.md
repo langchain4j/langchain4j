@@ -92,7 +92,7 @@ Same as `ZhipuAiChatModel`, except `maxRetries`.
 You can initialize `ZhipuAiChatModel` by using following code:
 
 ```java
-ChatLanguageModel qwenModel = ZhipuAiChatModel.builder()
+ChatModel qwenModel = ZhipuAiChatModel.builder()
                     .apiKey("You API key here")
                     .callTimeout(Duration.ofSeconds(60))
                     .connectTimeout(Duration.ofSeconds(60))
@@ -104,7 +104,7 @@ ChatLanguageModel qwenModel = ZhipuAiChatModel.builder()
 Or more custom for other parameters:
 
 ```java
-ChatLanguageModel qwenModel = ZhipuAiChatModel.builder()
+ChatModel qwenModel = ZhipuAiChatModel.builder()
                     .apiKey("You API key here")
                     .model("glm-4")
                     .temperature(0.6)

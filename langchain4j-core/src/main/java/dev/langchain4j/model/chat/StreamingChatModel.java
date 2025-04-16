@@ -21,15 +21,15 @@ import static dev.langchain4j.model.ModelProvider.OTHER;
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
  *
- * @see ChatLanguageModel
+ * @see ChatModel
  */
-public interface StreamingChatLanguageModel {
+public interface StreamingChatModel {
 
     /**
      * This is the main API to interact with the chat model.
      * <p>
      * A temporary default implementation of this method is necessary
-     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     * until all {@link StreamingChatModel} implementations adopt it. It should be removed once that occurs.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM

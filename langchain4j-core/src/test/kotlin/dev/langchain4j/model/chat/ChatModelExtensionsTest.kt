@@ -25,9 +25,9 @@ import kotlin.coroutines.CoroutineContext
 
 @ExtendWith(MockitoExtension::class)
 @TestInstance(Lifecycle.PER_CLASS)
-internal class ChatLanguageModelExtensionsTest {
+internal class ChatModelExtensionsTest {
     @Mock
-    private lateinit var chatLanguageModel: ChatLanguageModel
+    private lateinit var chatModel: ChatModel
 
     @Mock
     private lateinit var chatResponse: ChatResponse
@@ -54,9 +54,9 @@ internal class ChatLanguageModelExtensionsTest {
     @Test
     fun `chatAsync with ChatRequest should return ChatResponse`() =
         runTest {
-            whenever(chatLanguageModel.chat(chatRequest)).thenReturn(chatResponse)
+            whenever(chatModel.chat(chatRequest)).thenReturn(chatResponse)
 
-            val response = chatLanguageModel.chatAsync(chatRequest)
+            val response = chatModel.chatAsync(chatRequest)
 
             response shouldBe chatResponse
         }
@@ -64,13 +64,13 @@ internal class ChatLanguageModelExtensionsTest {
     @Test
     fun `chatAsync with custom dispatcher`() =
         runTest {
-            whenever(chatLanguageModel.chat(chatRequest)).thenReturn(chatResponse)
+            whenever(chatModel.chat(chatRequest)).thenReturn(chatResponse)
 
             // when
             val response =
-                chatLanguageModel.chatAsync(
+                chatModel.chatAsync(
                     request = chatRequest,
-                    coroutineContext = this@ChatLanguageModelExtensionsTest.coroutineContext
+                    coroutineContext = this@ChatModelExtensionsTest.coroutineContext
                 )
 
             // then
@@ -81,9 +81,9 @@ internal class ChatLanguageModelExtensionsTest {
     fun `chatAsync with ChatRequest Builder should return ChatResponse`() =
         runTest {
             whenever(chatRequestBuilder.build()).thenReturn(chatRequest)
-            whenever(chatLanguageModel.chat(chatRequest)).thenReturn(chatResponse)
+            whenever(chatModel.chat(chatRequest)).thenReturn(chatResponse)
 
-            val response = chatLanguageModel.chat(chatRequestBuilder)
+            val response = chatModel.chat(chatRequestBuilder)
 
             assertThat(response).isEqualTo(chatResponse)
         }
@@ -91,12 +91,12 @@ internal class ChatLanguageModelExtensionsTest {
     @Test
     fun `chat(_) with Type-safe builder should return ChatResponse`() =
         runTest {
-            whenever(chatLanguageModel.chat(chatRequestCaptor.capture()))
+            whenever(chatModel.chat(chatRequestCaptor.capture()))
                 .thenReturn(chatResponse)
 
             val userMessage = userMessage("Hello")
             val response =
-                chatLanguageModel.chat {
+                chatModel.chat {
                     messages += userMessage
                     parameters { }
                 }
@@ -108,12 +108,12 @@ internal class ChatLanguageModelExtensionsTest {
     @Test
     fun `chat(_) with Type-safe builder and custom dispatcher should return ChatResponse`() =
         runTest {
-            whenever(chatLanguageModel.chat(chatRequestCaptor.capture()))
+            whenever(chatModel.chat(chatRequestCaptor.capture()))
                 .thenReturn(chatResponse)
 
             val userMessage = userMessage("Hello")
             val response =
-                chatLanguageModel.chat(coroutineContext = coroutineContext) {
+                chatModel.chat(coroutineContext = coroutineContext) {
                     messages += userMessage
                     parameters { }
                 }

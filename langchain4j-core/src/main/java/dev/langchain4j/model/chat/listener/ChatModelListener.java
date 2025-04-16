@@ -1,12 +1,12 @@
 package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * A {@link ChatLanguageModel} listener that listens for requests, responses and errors.
+ * A {@link ChatModel} listener that listens for requests, responses and errors.
  */
 @Experimental
 public interface ChatModelListener {
