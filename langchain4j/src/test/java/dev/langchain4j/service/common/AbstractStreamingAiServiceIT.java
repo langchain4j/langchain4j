@@ -2,7 +2,7 @@ package dev.langchain4j.service.common;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -28,13 +28,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
- * This test makes sure that all {@link StreamingChatLanguageModel} implementations behave consistently
+ * This test makes sure that all {@link StreamingChatModel} implementations behave consistently
  * when used with {@link AiServices}.
  */
 @TestInstance(PER_CLASS)
 public abstract class AbstractStreamingAiServiceIT {
 
-    protected abstract List<StreamingChatLanguageModel> models();
+    protected abstract List<StreamingChatModel> models();
 
     interface Assistant {
 
@@ -43,13 +43,13 @@ public abstract class AbstractStreamingAiServiceIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_answer_simple_question(StreamingChatLanguageModel model) throws Exception {
+    void should_answer_simple_question(StreamingChatModel model) throws Exception {
 
         // given
         model = spy(model);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(model)
+                .streamingChatModel(model)
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();
@@ -93,7 +93,7 @@ public abstract class AbstractStreamingAiServiceIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_without_arguments(StreamingChatLanguageModel model) throws Exception {
+    void should_execute_tool_without_arguments(StreamingChatModel model) throws Exception {
 
         // given
         class Tools {
@@ -107,7 +107,7 @@ public abstract class AbstractStreamingAiServiceIT {
         Tools tools = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(model)
+                .streamingChatModel(model)
                 .tools(tools)
                 .build();
 

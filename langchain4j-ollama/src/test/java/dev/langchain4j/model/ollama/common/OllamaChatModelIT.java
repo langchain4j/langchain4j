@@ -1,6 +1,7 @@
 package dev.langchain4j.model.ollama.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
@@ -71,7 +72,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_TOOLS,
                 OPEN_AI_CHAT_MODEL_WITH_TOOLS
@@ -80,7 +81,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected List<ChatLanguageModel> modelsSupportingImageInputs() {
+    protected List<ChatModel> modelsSupportingImageInputs() {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_VISION,
                 OPEN_AI_CHAT_MODEL_WITH_VISION
@@ -89,7 +90,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_modelName_is_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_modelName_is_not_supported(ChatModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }
@@ -97,7 +98,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(ChatModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }
@@ -105,7 +106,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }
@@ -113,7 +114,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(ChatModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }
@@ -121,7 +122,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_JSON_response_format_is_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_JSON_response_format_is_not_supported(ChatModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }
@@ -129,7 +130,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(ChatModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }
@@ -138,7 +139,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     @Override
     @Disabled("enable after validation is implemented in OllamaChatModel")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(ChatModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }

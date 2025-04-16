@@ -19,7 +19,7 @@ The sentiment classification system categorizes input text into one of the follo
 
 ### **Implementation**
 ```java
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
@@ -27,7 +27,7 @@ import dev.langchain4j.service.UserMessage;
 public class SentimentClassification {
 
     // Initialize the chat model using OpenAI
-    static ChatLanguageModel chatLanguageModel = OpenAiChatModel.withApiKey("YOUR_OPENAI_API_KEY");
+    static ChatModel chatModel = OpenAiChatModel.withApiKey("YOUR_OPENAI_API_KEY");
 
     // Define the Sentiment enum
     enum Sentiment {
@@ -47,7 +47,7 @@ public class SentimentClassification {
     public static void main(String[] args) {
 
         // Create an AI-powered Sentiment Analyzer instance
-        SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, chatLanguageModel);
+        SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, chatModel);
 
         // Example Sentiment Analysis
         Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("I love this product!");
@@ -65,7 +65,7 @@ public class SentimentClassification {
 
 ### **1. Chat Model Initialization**
 ```java
-static ChatLanguageModel chatLanguageModel = OpenAiChatModel.withApiKey("YOUR_OPENAI_API_KEY");
+static ChatModel chatModel = OpenAiChatModel.withApiKey("YOUR_OPENAI_API_KEY");
 ```
 - Initializes the **OpenAI Chat Model** to process natural language text.
 - Replace `"YOUR_OPENAI_API_KEY"` with an actual OpenAI API key.
@@ -95,7 +95,7 @@ interface SentimentAnalyzer {
 
 ### **4. Creating an AI Service Instance**
 ```java
-SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, chatLanguageModel);
+SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, chatModel);
 ```
 - `AiServices.create()` dynamically implements the `SentimentAnalyzer` interface using the AI model.
 

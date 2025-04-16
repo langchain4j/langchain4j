@@ -1,6 +1,6 @@
 package dev.langchain4j.model.mistralai.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 
@@ -11,7 +11,7 @@ import static java.util.Collections.singletonList;
 class MistralAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return singletonList(
                 MistralAiChatModel.builder()
                         .apiKey(System.getenv("MISTRAL_AI_API_KEY"))

@@ -122,7 +122,7 @@ public class InternalOpenAiHelper {
                             .type(FUNCTION)
                             .function(FunctionCall.builder()
                                     .name(it.name())
-                                    .arguments(it.arguments())
+                                    .arguments(isNullOrBlank(it.arguments()) ? "{}" : it.arguments())
                                     .build())
                             .build())
                     .collect(toList());
@@ -307,13 +307,17 @@ public class InternalOpenAiHelper {
         PromptTokensDetails promptTokensDetails = openAiUsage.promptTokensDetails();
         InputTokensDetails inputTokensDetails = null;
         if (promptTokensDetails != null) {
-            inputTokensDetails = new InputTokensDetails(promptTokensDetails.cachedTokens());
+            inputTokensDetails = InputTokensDetails.builder()
+                    .cachedTokens(promptTokensDetails.cachedTokens())
+                    .build();
         }
 
         CompletionTokensDetails completionTokensDetails = openAiUsage.completionTokensDetails();
         OutputTokensDetails outputTokensDetails = null;
         if (completionTokensDetails != null) {
-            outputTokensDetails = new OutputTokensDetails(completionTokensDetails.reasoningTokens());
+            outputTokensDetails = OutputTokensDetails.builder()
+                    .reasoningTokens(completionTokensDetails.reasoningTokens())
+                    .build();
         }
 
         return OpenAiTokenUsage.builder()

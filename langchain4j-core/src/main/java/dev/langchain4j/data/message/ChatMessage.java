@@ -1,11 +1,11 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 
 /**
  * Represents a chat message.
- * Used together with {@link ChatLanguageModel} and {@link StreamingChatLanguageModel}.
+ * Used together with {@link ChatModel} and {@link StreamingChatModel}.
  *
  * @see SystemMessage
  * @see UserMessage

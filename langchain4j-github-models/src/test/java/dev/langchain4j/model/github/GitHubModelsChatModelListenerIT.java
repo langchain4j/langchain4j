@@ -1,7 +1,8 @@
 package dev.langchain4j.model.github;
 
 import com.azure.core.exception.ClientAuthenticationException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -12,7 +13,7 @@ import static java.util.Collections.singletonList;
 class GitHubModelsChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
-    protected ChatLanguageModel createModel(ChatModelListener listener) {
+    protected ChatModel createModel(ChatModelListener listener) {
         return GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName())
@@ -30,7 +31,7 @@ class GitHubModelsChatModelListenerIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected ChatModel createFailingModel(ChatModelListener listener) {
         return GitHubModelsChatModel.builder()
                 .gitHubToken("banana")
                 .modelName(modelName())

@@ -3,7 +3,7 @@ package dev.langchain4j.model.openaiofficial.azureopenai;
 import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 
 import com.openai.models.ChatModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
@@ -20,12 +20,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<StreamingChatModel> models() {
         return InternalAzureOpenAiOfficialTestHelper.chatModelsStreamingNormalAndJsonStrict();
     }
 
     @Override
-    protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialStreamingChatModel.Builder openAiChatModelBuilder = OpenAiOfficialStreamingChatModel.builder()
                 .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
@@ -60,7 +60,7 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsSingleImageInputAsPublicURL")
-    protected void should_accept_single_image_as_public_URL(StreamingChatLanguageModel model) {
+    protected void should_accept_single_image_as_public_URL(StreamingChatModel model) {
     }
 
     @Disabled("TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
@@ -68,7 +68,7 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsSingleImageInputAsBase64EncodedString")
-    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatLanguageModel model) {
+    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
     }
 
     @Disabled("TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
@@ -76,7 +76,7 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
-    protected void should_accept_multiple_images_as_public_URLs(StreamingChatLanguageModel model) {
+    protected void should_accept_multiple_images_as_public_URLs(StreamingChatModel model) {
     }
 
     @Disabled("TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
@@ -84,6 +84,6 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
-    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatLanguageModel model) {
+    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {
     }
 }

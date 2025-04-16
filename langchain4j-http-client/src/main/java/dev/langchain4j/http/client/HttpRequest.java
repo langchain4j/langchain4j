@@ -1,7 +1,5 @@
 package dev.langchain4j.http.client;
 
-import dev.langchain4j.Experimental;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +11,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
 
-@Experimental
 public class HttpRequest {
 
     private final HttpMethod method;

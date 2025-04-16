@@ -1,7 +1,5 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.Experimental;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -10,7 +8,6 @@ import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
-@Experimental
 public class JsonAnyOfSchema implements JsonSchemaElement {
 
     private final String description;
