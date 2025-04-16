@@ -45,7 +45,7 @@ public interface ChatExecutor {
      */
     class Builder {
         protected ChatRequest chatRequest;
-        protected ChatLanguageModel chatLanguageModel;
+        protected ChatModel chatModel;
 
         protected Builder() {}
 
@@ -63,14 +63,14 @@ public interface ChatExecutor {
         }
 
         /**
-         * Sets the {@link ChatLanguageModel} instance for the Builder.
-         * The {@link ChatLanguageModel} represents a language model that provides a chat API.
+         * Sets the {@link ChatModel} instance for the Builder.
+         * The {@link ChatModel} represents a language model that provides a chat API.
          *
-         * @param chatLanguageModel the {@link ChatLanguageModel} to be used by the Builder
+         * @param chatModel the {@link ChatModel} to be used by the Builder
          * @return the updated Builder instance
          */
-        public Builder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
-            this.chatLanguageModel = chatLanguageModel;
+        public Builder chatModel(ChatModel chatModel) {
+            this.chatModel = chatModel;
             return this;
         }
 

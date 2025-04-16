@@ -12,7 +12,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
@@ -167,9 +166,7 @@ public abstract class AiServices<T> {
      * @return An instance of the provided interface, implementing all its defined methods.
      */
     public static <T> T create(Class<T> aiService, StreamingChatModel streamingChatModel) {
-        return builder(aiService)
-                .streamingChatModel(streamingChatModel)
-                .build();
+        return builder(aiService).streamingChatModel(streamingChatModel).build();
     }
 
     /**

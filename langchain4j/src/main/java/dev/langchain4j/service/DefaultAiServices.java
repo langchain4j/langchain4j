@@ -27,6 +27,7 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
@@ -248,7 +249,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatExecutor chatExecutor = ChatExecutor.builder()
                                 .chatRequest(chatRequest)
-                                .chatLanguageModel(context.chatModel)
+                                .chatModel(context.chatModel)
                                 .build();
 
                         ChatResponse chatResponse = chatExecutor.execute();

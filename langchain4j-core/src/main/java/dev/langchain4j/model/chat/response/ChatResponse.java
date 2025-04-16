@@ -6,7 +6,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.Objects;
-import org.jspecify.annotations.NonNull;
 
 public class ChatResponse {
 

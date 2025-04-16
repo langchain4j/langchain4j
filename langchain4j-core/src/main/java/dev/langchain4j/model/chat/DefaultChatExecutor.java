@@ -12,11 +12,11 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A concrete implementation of the {@link ChatExecutor} interface that executes
- * chat requests using a specified {@link ChatLanguageModel}.
+ * chat requests using a specified {@link ChatModel}.
  *
  * This class utilizes a {@link ChatRequest} to encapsulate the input messages
  * and parameters and delegates the execution of the chat to the provided
- * {@link ChatLanguageModel}.
+ * {@link ChatModel}.
  *
  * Instances of this class are immutable and are typically instantiated using
  * the {@link Builder}.
@@ -24,11 +24,11 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 final class DefaultChatExecutor implements ChatExecutor {
     private final ChatRequest chatRequest;
-    private final ChatLanguageModel chatLanguageModel;
+    private final ChatModel chatModel;
 
     protected DefaultChatExecutor(Builder builder) {
         this.chatRequest = ensureNotNull(builder.chatRequest, "chatRequest");
-        this.chatLanguageModel = ensureNotNull(builder.chatLanguageModel, "chatLanguageModel");
+        this.chatModel = ensureNotNull(builder.chatModel, "chatModel");
     }
 
     @Override
@@ -45,6 +45,6 @@ final class DefaultChatExecutor implements ChatExecutor {
     }
 
     private ChatResponse execute(ChatRequest chatRequest) {
-        return this.chatLanguageModel.chat(chatRequest);
+        return this.chatModel.chat(chatRequest);
     }
 }
