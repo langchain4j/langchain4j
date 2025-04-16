@@ -62,7 +62,7 @@ These versions of the `chat` methods take one or multiple `ChatMessage`s as inpu
 `ChatMessage` is a base interface that represents a chat message.
 The next section will provide more details about chat messages.
 
-If you wish to customize the request (e.g., specify the temperature, tools or JSON schema, etc.),
+If you wish to customize the request (e.g., specify model name, temperature, tools, JSON schema, etc.),
 you can use the `chat(ChatRequest)` method:
 ```java
     ...
@@ -73,13 +73,23 @@ you can use the `chat(ChatRequest)` method:
 ```
 
 ```java
-ChatRequest request = ChatRequest.builder()
-    .messages(UserMessage.from())
-    .parameters(ChatRequestParameters.builder()
-        .temperature(0.5)
-        .toolSpecifications(toolSpecifications)
-        .build())
+ChatRequest chatRequest = ChatRequest.builder()
+    .messages(...)
+    .modelName(...)
+    .temperature(...)
+    .topP(...)
+    .topK(...)
+    .frequencyPenalty(...)
+    .presencePenalty(...)
+    .maxOutputTokens(...)
+    .stopSequences(...)
+    .toolSpecifications(...)
+    .toolChoice(...)
+    .responseFormat(...)
+    .parameters(...) // you can also set common or provider-specific parameters all at once
     .build();
+
+ChatResponse chatResponse = chatModel.chat(chatRequest);
 ```
 
 ### Types of `ChatMessage`

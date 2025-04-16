@@ -9,6 +9,7 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 @Experimental
 public class TextFile {
+
     private final URI url;
     private final String base64Data;
     private final String mimeType;
