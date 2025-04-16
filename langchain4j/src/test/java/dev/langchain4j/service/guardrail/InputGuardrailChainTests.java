@@ -7,7 +7,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailResult;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
@@ -44,14 +44,14 @@ class InputGuardrailChainTests {
 
     private static MyAiService createAiServiceWithClassNames() {
         return AiServices.builder(MyAiService.class)
-                .chatLanguageModel(new MyChatModel())
+                .chatModel(new MyChatModel())
                 .inputGuardrailClasses(FirstGuardrail.class, FailingGuardrail.class, SecondGuardrail.class)
                 .build();
     }
 
     private static MyAiService createAiServiceWithInstances() {
         return AiServices.builder(MyAiService.class)
-                .chatLanguageModel(new MyChatModel())
+                .chatModel(new MyChatModel())
                 .inputGuardrails(new FirstGuardrail(), new FailingGuardrail(), new SecondGuardrail())
                 .build();
     }
@@ -98,7 +98,7 @@ class InputGuardrailChainTests {
         }
     }
 
-    public static class MyChatModel implements ChatLanguageModel {
+    public static class MyChatModel implements ChatModel {
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
             return ChatResponse.builder().aiMessage(AiMessage.from("Hi!")).build();

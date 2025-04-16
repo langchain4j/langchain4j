@@ -11,7 +11,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
@@ -138,7 +138,7 @@ class AiServiceGuardrailTests {
 
         static Assistant createUsingClassNames() {
             return AiServices.builder(ClassLevelAssistant.class)
-                    .chatLanguageModel(new MyChatModel())
+                    .chatModel(new MyChatModel())
                     .inputGuardrailClasses(InputGuardrailSuccess.class)
                     .outputGuardrailClasses(OutputGuardrailFail.class)
                     .build();
@@ -146,7 +146,7 @@ class AiServiceGuardrailTests {
 
         static Assistant createUsingClassInstances() {
             return AiServices.builder(ClassLevelAssistant.class)
-                    .chatLanguageModel(new MyChatModel())
+                    .chatModel(new MyChatModel())
                     .inputGuardrails(new InputGuardrailSuccess())
                     .outputGuardrails(new OutputGuardrailFail())
                     .build();
@@ -170,7 +170,7 @@ class AiServiceGuardrailTests {
 
         static Assistant createUsingClassNames() {
             return AiServices.builder(SameMethodLevelAssistant.class)
-                    .chatLanguageModel(new MyChatModel())
+                    .chatModel(new MyChatModel())
                     .inputGuardrailClasses(InputGuardrailSuccess.class)
                     .outputGuardrailClasses(OutputGuardrailFail.class)
                     .build();
@@ -178,7 +178,7 @@ class AiServiceGuardrailTests {
 
         static Assistant createUsingClassInstances() {
             return AiServices.builder(SameMethodLevelAssistant.class)
-                    .chatLanguageModel(new MyChatModel())
+                    .chatModel(new MyChatModel())
                     .inputGuardrails(new InputGuardrailSuccess())
                     .outputGuardrails(new OutputGuardrailFail())
                     .build();
@@ -259,7 +259,7 @@ class AiServiceGuardrailTests {
         }
     }
 
-    public static class MyChatModel implements ChatLanguageModel {
+    public static class MyChatModel implements ChatModel {
         private static String getUserMessage(ChatRequest chatRequest) {
             return chatRequest.messages().stream()
                     .filter(message -> message.type() == ChatMessageType.USER)
