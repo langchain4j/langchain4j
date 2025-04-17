@@ -122,6 +122,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
+        if (assertChatResponseMetadataType()) {
+            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+        }
         if (assertResponseId()) {
             assertThat(chatResponseMetadata.id()).isNotBlank();
         }
@@ -1222,6 +1225,14 @@ public abstract class AbstractBaseChatModelIT<M> {
         return supportsSingleImageInputAsPublicURL();
     }
 
+    protected boolean assertChatResponseMetadataType() {
+        return true;
+    }
+
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
+        return ChatResponseMetadata.class;
+    }
+
     protected boolean assertResponseId() {
         return true;
     }
@@ -1250,17 +1261,22 @@ public abstract class AbstractBaseChatModelIT<M> {
         return true;
     }
 
-    static void assertTokenUsage(ChatResponseMetadata chatResponseMetadata) {
+    void assertTokenUsage(ChatResponseMetadata chatResponseMetadata) {
         assertTokenUsage(chatResponseMetadata, null);
     }
 
-    static void assertTokenUsage(ChatResponseMetadata chatResponseMetadata, Integer maxOutputTokens) {
+    void assertTokenUsage(ChatResponseMetadata chatResponseMetadata, Integer maxOutputTokens) {
         TokenUsage tokenUsage = chatResponseMetadata.tokenUsage();
+        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType());
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         if (maxOutputTokens != null) {
             assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
         }
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    protected Class<? extends TokenUsage> tokenUsageType() {
+        return TokenUsage.class;
     }
 }

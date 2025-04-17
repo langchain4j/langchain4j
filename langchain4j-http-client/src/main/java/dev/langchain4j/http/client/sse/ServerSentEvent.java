@@ -1,12 +1,9 @@
 package dev.langchain4j.http.client.sse;
 
-import dev.langchain4j.Experimental;
-
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
-@Experimental
 public class ServerSentEvent {
 
     private final String event;

@@ -1,7 +1,5 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.Experimental;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -182,7 +180,6 @@ public class UserMessage implements ChatMessage {
             return this;
         }
 
-        @Experimental
         public Builder addContent(Content content) {
             if (this.contents == null) {
                 this.contents = new ArrayList<>();

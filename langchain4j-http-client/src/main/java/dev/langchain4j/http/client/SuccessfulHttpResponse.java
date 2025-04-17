@@ -1,7 +1,5 @@
 package dev.langchain4j.http.client;
 
-import dev.langchain4j.Experimental;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +7,6 @@ import java.util.Map;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static java.util.Collections.emptyMap;
 
-@Experimental
 public class SuccessfulHttpResponse {
 
     private final int statusCode;

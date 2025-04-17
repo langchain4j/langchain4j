@@ -125,15 +125,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (completeResponseHandler != null) {
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
-                        .metadata(ChatResponseMetadata.builder()
-                                // TODO copy model-specific metadata
-                                .id(completeResponse.metadata().id())
-                                .modelName(completeResponse.metadata().modelName())
-                                .tokenUsage(TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage()))
-                                .finishReason(completeResponse.metadata().finishReason())
+                        .metadata(completeResponse.metadata().toBuilder()
+                                .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
                                 .build())
                         .build();
-                // TODO should completeResponseHandler accept all ChatResponses that happened?
                 completeResponseHandler.accept(finalChatResponse);
             }
         }

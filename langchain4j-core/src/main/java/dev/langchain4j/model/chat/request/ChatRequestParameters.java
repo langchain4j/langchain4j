@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
 import java.util.List;
@@ -11,7 +10,6 @@ import java.util.List;
  *
  * @see DefaultChatRequestParameters
  */
-@Experimental
 public interface ChatRequestParameters {
 
     String modelName();

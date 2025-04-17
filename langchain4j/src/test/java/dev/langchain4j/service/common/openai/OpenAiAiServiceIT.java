@@ -2,6 +2,8 @@ package dev.langchain4j.service.common.openai;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
 
 import java.util.List;
@@ -51,5 +53,10 @@ class OpenAiAiServiceIT extends AbstractAiServiceIT {
                         .build()
                 // TODO more configs?
         );
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType() {
+        return OpenAiTokenUsage.class;
     }
 }

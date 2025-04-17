@@ -1,6 +1,11 @@
-package dev.langchain4j.model.chat.listener;
+package dev.langchain4j.internal;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.slf4j.Logger;
@@ -9,11 +14,12 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 
-public class ListenersUtil {
+@Internal
+public class ChatModelListenerUtils {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ListenersUtil.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ChatModelListenerUtils.class);
 
-    private ListenersUtil() {
+    private ChatModelListenerUtils() {
     }
 
     public static void onRequest(ChatRequest chatRequest,
