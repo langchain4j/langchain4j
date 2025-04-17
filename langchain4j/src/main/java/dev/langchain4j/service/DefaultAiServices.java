@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -43,7 +44,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
@@ -59,63 +60,10 @@ class DefaultAiServices<T> extends AiServices<T> {
         super(context);
     }
 
-    static void validateParameters(Method method) {
-        Parameter[] parameters = method.getParameters();
-        if (parameters == null || parameters.length < 2) {
-            return;
-        }
-
-        for (Parameter parameter : parameters) {
-            V v = parameter.getAnnotation(V.class);
-            dev.langchain4j.service.UserMessage userMessage =
-                    parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
-            MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
-            UserName userName = parameter.getAnnotation(UserName.class);
-            if (v == null && userMessage == null && memoryId == null && userName == null) {
-                throw illegalConfiguration(
-                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage "
-                                + "or @UserName or @MemoryId",
-                        parameter.getName(), method.getName());
-            }
-        }
-    }
-
     public T build() {
 
         performBasicValidation();
-
-        if (!context.hasChatMemory() && ChatMemoryAccess.class.isAssignableFrom(context.aiServiceClass)) {
-            throw illegalConfiguration(
-                    "In order to have a service implementing ChatMemoryAccess, please configure the ChatMemoryProvider on the '%s'.",
-                    context.aiServiceClass.getName());
-        }
-
-        for (Method method : context.aiServiceClass.getMethods()) {
-            validateParameters(method);
-            if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
-                throw illegalConfiguration(
-                        "The @Moderate annotation is present, but the moderationModel is not set up. "
-                                + "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
-            }
-
-            Class<?> returnType = method.getReturnType();
-            if (returnType == void.class) {
-                throw illegalConfiguration("'%s' is not a supported return type of an AI Service method", returnType.getName());
-            }
-            if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
-                TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
-            }
-
-            if (!context.hasChatMemory()) {
-                for (Parameter parameter : method.getParameters()) {
-                    if (parameter.isAnnotationPresent(MemoryId.class)) {
-                        throw illegalConfiguration(
-                                "In order to use @MemoryId, please configure the ChatMemoryProvider on the '%s'.",
-                                context.aiServiceClass.getName());
-                    }
-                }
-            }
-        }
+        validate();
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
@@ -148,6 +96,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
+
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
@@ -195,7 +144,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .context(context)
                                     .memoryId(memoryId)
                                     .build());
-                            // TODO moderation
+                            // TODO implement moderation for streaming
                             if (returnType == TokenStream.class) {
                                 return tokenStream;
                             } else {
@@ -203,17 +152,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
 
-                        ResponseFormat responseFormat = null;
-                        if (supportsJsonSchema && jsonSchema.isPresent()) {
-                            responseFormat = ResponseFormat.builder()
-                                    .type(JSON)
-                                    .jsonSchema(jsonSchema.get())
-                                    .build();
-                        }
-
                         ChatRequestParameters parameters = ChatRequestParameters.builder()
                                 .toolSpecifications(toolServiceContext.toolSpecifications())
-                                .responseFormat(responseFormat)
+                                .responseFormat(jsonSchema.map(this::toResponseFormat).orElse(null))
                                 .build();
 
                         ChatRequest chatRequest = ChatRequest.builder()
@@ -250,6 +191,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
+                    private ResponseFormat toResponseFormat(JsonSchema jsonSchema) {
+                        return ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(jsonSchema)
+                                .build();
+                    }
+
                     private boolean canAdaptTokenStreamTo(Type returnType) {
                         for (TokenStreamAdapter tokenStreamAdapter : tokenStreamAdapters) {
                             if (tokenStreamAdapter.canAdaptTokenStreamTo(returnType)) {
@@ -276,13 +224,15 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private UserMessage appendOutputFormatInstructions(Type returnType, UserMessage userMessage) {
                         String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(returnType);
-                        String text = userMessage.singleText() + outputFormatInstructions;
-                        if (isNotNullOrBlank(userMessage.name())) {
-                            userMessage = UserMessage.from(userMessage.name(), text);
+                        if (isNullOrBlank(outputFormatInstructions)) {
+                            return userMessage;
                         } else {
-                            userMessage = UserMessage.from(text);
+                            String newText = userMessage.singleText() + outputFormatInstructions;
+                            return UserMessage.builder()
+                                    .name(userMessage.name())
+                                    .addContent(TextContent.from(newText))
+                                    .build();
                         }
-                        return userMessage;
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
@@ -299,6 +249,63 @@ class DefaultAiServices<T> extends AiServices<T> {
                 });
 
         return (T) proxyInstance;
+    }
+
+    private void validate() {
+
+        if (!context.hasChatMemory() && ChatMemoryAccess.class.isAssignableFrom(context.aiServiceClass)) {
+            throw illegalConfiguration(
+                    "In order to have a service implementing ChatMemoryAccess, please configure the ChatMemoryProvider on the '%s'.",
+                    context.aiServiceClass.getName());
+        }
+
+        for (Method method : context.aiServiceClass.getMethods()) {
+            validateParameters(method);
+            if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
+                throw illegalConfiguration(
+                        "The @Moderate annotation is present, but the moderationModel is not set up. "
+                                + "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
+            }
+
+            Class<?> returnType = method.getReturnType();
+            if (returnType == void.class) {
+                throw illegalConfiguration("'%s' is not a supported return type of an AI Service method", returnType.getName());
+            }
+            if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
+                TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
+            }
+
+            if (!context.hasChatMemory()) {
+                for (Parameter parameter : method.getParameters()) {
+                    if (parameter.isAnnotationPresent(MemoryId.class)) {
+                        throw illegalConfiguration(
+                                "In order to use @MemoryId, please configure the ChatMemoryProvider on the '%s'.",
+                                context.aiServiceClass.getName());
+                    }
+                }
+            }
+        }
+    }
+
+    static void validateParameters(Method method) {
+        Parameter[] parameters = method.getParameters();
+        if (parameters == null || parameters.length < 2) {
+            return;
+        }
+
+        for (Parameter parameter : parameters) {
+            V v = parameter.getAnnotation(V.class);
+            dev.langchain4j.service.UserMessage userMessage =
+                    parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
+            MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
+            UserName userName = parameter.getAnnotation(UserName.class);
+            if (v == null && userMessage == null && memoryId == null && userName == null) {
+                throw illegalConfiguration(
+                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage "
+                                + "or @UserName or @MemoryId",
+                        parameter.getName(), method.getName());
+            }
+        }
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
