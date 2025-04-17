@@ -1,8 +1,11 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import java.util.List;
 
 class BedrockChatModelListenerIT extends ChatModelListenerIT {
 
@@ -13,7 +16,7 @@ class BedrockChatModelListenerIT extends ChatModelListenerIT {
                 .temperature(temperature())
                 .topP(topP().floatValue())
                 .maxTokens(maxTokens())
-                .listeners(singletonList(listener))
+                .listeners(List.of(listener))
                 .build();
     }
 
@@ -26,7 +29,7 @@ class BedrockChatModelListenerIT extends ChatModelListenerIT {
     protected ChatModel createFailingModel(ChatModelListener listener) {
         return BedrockAnthropicMessageChatModel.builder()
                 .model("banana")
-                .listeners(singletonList(listener))
+                .listeners(List.of(listener))
                 .build();
     }
 

@@ -37,7 +37,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithRespo
 @Slf4j
 @Getter
 @SuperBuilder
-public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBedrockChatModel implements StreamingChatModel {
+public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBedrockChatModel
+        implements StreamingChatModel {
 
     private volatile BedrockRuntimeAsyncClient asyncClient;
 

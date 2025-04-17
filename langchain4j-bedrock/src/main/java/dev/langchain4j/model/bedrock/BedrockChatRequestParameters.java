@@ -1,13 +1,12 @@
 package dev.langchain4j.model.bedrock;
 
+import static java.util.Objects.nonNull;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-
 import java.util.HashMap;
 import java.util.Map;
-
-import static java.util.Objects.nonNull;
 
 @Experimental
 public class BedrockChatRequestParameters extends DefaultChatRequestParameters {

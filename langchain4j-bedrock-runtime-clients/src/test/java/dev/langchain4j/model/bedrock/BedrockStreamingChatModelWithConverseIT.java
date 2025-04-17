@@ -31,13 +31,8 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
     @Override
     protected List<StreamingChatModel> models() {
         return List.of(
-                //                TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_MICRO,
                 TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_LITE,
                 TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_PRO);
-        //                TestedModelsWithConverseAPI.STREAMING_AI_JAMBA_1_5_MINI,
-        //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU,
-        //                TestedModelsWithConverseAPI.STREAMING_COHERE_COMMAND_R_PLUS,
-        //                TestedModelsWithConverseAPI.STREAMING_MISTRAL_LARGE);
     }
 
     @Override
@@ -240,5 +235,4 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
             assertThat(toolExecutionRequest.arguments()).isNotEmpty();
         }
     }
-
 }
