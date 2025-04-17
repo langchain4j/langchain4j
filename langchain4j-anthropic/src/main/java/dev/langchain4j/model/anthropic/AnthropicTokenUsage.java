@@ -19,7 +19,7 @@ public class AnthropicTokenUsage extends TokenUsage {
     public AnthropicTokenUsage(Integer inputTokenCount,
                                Integer outputTokenCount,
                                Integer cacheCreationInputTokens,
-                               Integer cacheReadInputTokens) {
+                               Integer cacheReadInputTokens) { // TODO accept builder
         super(inputTokenCount, outputTokenCount);
         this.cacheCreationInputTokens = cacheCreationInputTokens;
         this.cacheReadInputTokens = cacheReadInputTokens;
@@ -42,7 +42,37 @@ public class AnthropicTokenUsage extends TokenUsage {
     public Integer cacheReadInputTokens() {
         return cacheReadInputTokens;
     }
-    
+
+    @Override
+    public AnthropicTokenUsage add(TokenUsage that) {
+        if (that == null) {
+            return this;
+        }
+
+        return new AnthropicTokenUsage(
+                sum(this.inputTokenCount(), that.inputTokenCount()),
+                sum(this.outputTokenCount(), that.outputTokenCount()),
+                addCacheCreationInputTokens(that),
+                addCacheReadInputTokens(that)
+        );
+    }
+
+    private Integer addCacheCreationInputTokens(TokenUsage that) {
+        Integer cacheCreationInputTokens = this.cacheCreationInputTokens();
+        if (that instanceof AnthropicTokenUsage anthropicTokenUsage) {
+            cacheCreationInputTokens = sum(cacheCreationInputTokens, anthropicTokenUsage.cacheCreationInputTokens());
+        }
+        return cacheCreationInputTokens;
+    }
+
+    private Integer addCacheReadInputTokens(TokenUsage that) {
+        Integer cacheReadInputTokens = this.cacheReadInputTokens();
+        if (that instanceof AnthropicTokenUsage anthropicTokenUsage) {
+            cacheReadInputTokens = sum(cacheReadInputTokens, anthropicTokenUsage.cacheReadInputTokens());
+        }
+        return cacheReadInputTokens;
+    }
+
     @Override
     public String toString() {
         return "AnthropicTokenUsage {" +

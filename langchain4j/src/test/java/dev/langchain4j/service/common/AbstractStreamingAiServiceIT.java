@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
@@ -73,22 +74,25 @@ public abstract class AbstractStreamingAiServiceIT {
         assertThat(answer).containsIgnoringCase("Berlin");
         assertThat(chatResponse.aiMessage().text()).isEqualTo(answer);
 
+        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
+        assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+
         if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            assertTokenUsage(chatResponseMetadata.tokenUsage());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
         }
 
         verify(model).chat(
                 eq(ChatRequest.builder().messages(UserMessage.from(userMessage)).build()),
                 any(StreamingChatResponseHandler.class)
         );
+    }
+
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
+        return ChatResponseMetadata.class;
     }
 
     @ParameterizedTest
@@ -115,7 +119,8 @@ public abstract class AbstractStreamingAiServiceIT {
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
 
         assistant.chat("What is the date today?")
-                .onPartialResponse(ignored -> {})
+                .onPartialResponse(ignored -> {
+                })
                 .onError(futureChatResponse::completeExceptionally)
                 .onCompleteResponse(futureChatResponse::complete)
                 .start();
@@ -127,6 +132,17 @@ public abstract class AbstractStreamingAiServiceIT {
 
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);
+
+        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
+        assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponseMetadata.tokenUsage());
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
+        }
     }
 
     // TODO test threads
@@ -134,6 +150,18 @@ public abstract class AbstractStreamingAiServiceIT {
 
     protected boolean assertTokenUsage() {
         return true;
+    }
+
+    private void assertTokenUsage(TokenUsage tokenUsage) {
+        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType());
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    protected Class<? extends TokenUsage> tokenUsageType() {
+        return TokenUsage.class;
     }
 
     protected boolean assertFinishReason() {

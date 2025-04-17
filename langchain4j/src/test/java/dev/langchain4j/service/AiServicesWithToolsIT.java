@@ -40,7 +40,6 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -102,7 +101,7 @@ class AiServicesWithToolsIT {
 
     interface Assistant {
 
-        Response<AiMessage> chat(String userMessage);
+        Result<String> chat(String userMessage);
     }
 
     static class TransactionService {
@@ -148,17 +147,17 @@ class AiServicesWithToolsIT {
 
         String userMessage = "What is the amounts of transaction T001?";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("11.1");
+        assertThat(result.content()).contains("11.1");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verifyNoMoreInteractions(transactionService);
@@ -216,17 +215,17 @@ class AiServicesWithToolsIT {
 
         String userMessage = "What are the amounts of transactions T001 and T002?";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("11.1", "22.2");
+        assertThat(result.content()).contains("11.1", "22.2");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verify(transactionService).getTransactionAmount("T002");
@@ -304,17 +303,17 @@ class AiServicesWithToolsIT {
 
         String userMessage = "What are the amounts of transactions T001 and T002? Call tools in parallel!";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("11.1", "22.2");
+        assertThat(result.content()).contains("11.1", "22.2");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verify(transactionService).getTransactionAmount("T002");
@@ -596,10 +595,10 @@ class AiServicesWithToolsIT {
                 .build();
 
         // when
-        Response<AiMessage> response = assistant.chat("What is the temperature in Munich now, in kelvin?");
+        Result<String> result = assistant.chat("What is the temperature in Munich now, in kelvin?");
 
         // then
-        assertThat(response.content().text()).contains("37");
+        assertThat(result.content()).contains("37");
 
         verify(weatherService).currentTemperature("Munich", Kelvin);
         verifyNoMoreInteractions(weatherService);
@@ -667,9 +666,9 @@ class AiServicesWithToolsIT {
                 .tools(queryService)
                 .build();
 
-        Response<AiMessage> response = assistant.chat("Give me the names of 3 users from India");
+        Result<String> result = assistant.chat("Give me the names of 3 users from India");
 
-        assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
+        assertThat(result.content()).contains("Amar", "Akbar", "Antony");
     }
 
     @ParameterizedTest
@@ -697,10 +696,10 @@ class AiServicesWithToolsIT {
                 .build();
 
         // when
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+        Result<String> result = assistant.chat("When does my booking 123-456 starts?");
 
         // then
-        assertThat(response.content().text()).contains("2027");
+        assertThat(result.content()).contains("2027");
     }
 
     static class BookingToolExecutor implements ToolExecutor {
@@ -743,8 +742,8 @@ class AiServicesWithToolsIT {
         assistant.chat("When does my holiday 123-456 starts?");
         verifyNoInteractions(toolExecutor); // user message does not contain word "booking"
 
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
-        assertThat(response.content().text()).contains("2027");
+        Result<String> result = assistant.chat("When does my booking 123-456 starts?");
+        assertThat(result.content()).contains("2027");
         verify(toolExecutor).execute(any(), any());
         verifyNoMoreInteractions(toolExecutor);
     }
@@ -784,8 +783,8 @@ class AiServicesWithToolsIT {
                 .tools(calculator)
                 .build();
 
-        var response = assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
-        assertThat(response.content().text()).contains("2028");
+        Result<String> result = assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
+        assertThat(result.content()).contains("2028");
 
         verify(calculator).xyz(2027);
         verifyNoMoreInteractions(calculator);
@@ -856,10 +855,10 @@ class AiServicesWithToolsIT {
                 .build();
 
         // when
-        Response<AiMessage> response = assistant.chat("What is the time now?");
+        Result<String> result = assistant.chat("What is the time now?");
 
         // then
-        assertThat(response.content().text()).contains("16:37:43");
+        assertThat(result.content()).contains("16:37:43");
     }
 
     interface AssistantReturningResult {
