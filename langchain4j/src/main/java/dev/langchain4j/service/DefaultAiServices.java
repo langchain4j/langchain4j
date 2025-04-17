@@ -14,7 +14,6 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
@@ -92,6 +91,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         for (Method method : context.aiServiceClass.getMethods()) {
+            validateParameters(method);
             if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
                 throw illegalConfiguration(
                         "The @Moderate annotation is present, but the moderationModel is not set up. "
@@ -140,8 +140,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         "Unknown method on ChatMemoryAccess class : " + method.getName());
                             };
                         }
-
-                        validateParameters(method);
 
                         final Object memoryId = findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT);
                         final ChatMemory chatMemory = context.hasChatMemory()
@@ -271,6 +269,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private boolean supportsJsonSchema() {
+                        // TODO add support for StreamingChatModel
                         return context.chatModel != null
                                 && context.chatModel.supportedCapabilities().contains(RESPONSE_FORMAT_JSON_SCHEMA);
                     }

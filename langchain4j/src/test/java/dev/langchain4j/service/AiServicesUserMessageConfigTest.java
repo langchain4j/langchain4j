@@ -1,11 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.service.AiServicesIT.chatRequest;
-import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
-
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -16,12 +10,19 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.tool.HallucinatedToolNameStrategy;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+
+import static dev.langchain4j.service.AiServicesIT.chatRequest;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesUserMessageConfigTest {
@@ -62,10 +63,6 @@ class AiServicesUserMessageConfigTest {
         String illegalChat1();
 
         String illegalChat2(@V("country") String country);
-
-        String illegalChat3(String userMessage, String country);
-
-        String illegalChat4(@UserMessage String userMessage, String country);
 
         @UserMessage
         String illegalChat5();
@@ -222,12 +219,13 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_3() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        interface AiService {
+
+            String illegalChat3(String userMessage, String country);
+        }
 
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat3("What is the capital of {{it}}?", "Germany"))
+        assertThatThrownBy(() -> AiServices.create(AiService.class, chatModel))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("Parameter 'arg0' of method 'illegalChat3' should be annotated "
                         + "with @V or @UserMessage or @UserName or @MemoryId");
@@ -237,12 +235,13 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_4() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(chatModel)
-                .build();
+        interface AiService {
+
+            String illegalChat4(@UserMessage String userMessage, String country);
+        }
 
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat4("What is the capital of {{it}}?", "Germany"))
+        assertThatThrownBy(() -> AiServices.create(AiService.class, chatModel))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("Parameter 'arg1' of method 'illegalChat4' should be annotated "
                         + "with @V or @UserMessage or @UserName or @MemoryId");

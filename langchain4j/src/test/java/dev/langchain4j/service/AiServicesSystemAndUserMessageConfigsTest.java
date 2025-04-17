@@ -135,14 +135,6 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // with systemMessageProvider
         @SystemMessage("This message should take precedence over the one provided by systemMessageProvider")
         String chat21(String userMessage);
-
-        // illegal
-
-        @SystemMessage("Given a name of a country, answer with {{answerInstructions}}")
-        String illegalChat1(@V("answerInstructions") String answerInstructions, String userMessage);
-
-        // with systemMessageProvider
-        String illegalChat2(@V("answerInstructions") String answerInstructions, String userMessage);
     }
 
     @Test
@@ -543,12 +535,14 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void illegal_system_message_configuration_1() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        interface AiService {
+
+            @SystemMessage("Given a name of a country, answer with {{answerInstructions}}")
+            String illegalChat1(@V("answerInstructions") String answerInstructions, String userMessage);
+        }
 
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat1("a name of it's capital", "Country: Germany"))
+        assertThatThrownBy(() -> AiServices.create(AiService.class, model))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("Parameter 'arg1' of method 'illegalChat1' should be annotated "
                         + "with @V or @UserMessage or @UserName or @MemoryId");
@@ -558,13 +552,13 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void illegal_system_message_configuration_2() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
-                .build();
+        interface AiService {
+
+            String illegalChat2(@V("answerInstructions") String answerInstructions, String userMessage);
+        }
 
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat2("a name of it's capital", "Country: Germany"))
+        assertThatThrownBy(() -> AiServices.create(AiService.class, model))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("Parameter 'arg1' of method 'illegalChat2' should be annotated "
                         + "with @V or @UserMessage or @UserName or @MemoryId");
