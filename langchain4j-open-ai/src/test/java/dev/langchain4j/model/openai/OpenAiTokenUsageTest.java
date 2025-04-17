@@ -202,10 +202,40 @@ class OpenAiTokenUsageTest {
                 .totalTokenCount(30)
                 .build();
 
-        TokenUsage standardTokenUsage = new TokenUsage(15, 25, 40);
+        TokenUsage tokenUsage = new TokenUsage(15, 25, 40);
 
         // when
-        OpenAiTokenUsage result = openAiTokenUsage.add(standardTokenUsage);
+        OpenAiTokenUsage result = openAiTokenUsage.add(tokenUsage);
+
+        // then
+        assertThat(result.inputTokenCount()).isEqualTo(25);
+        assertThat(result.outputTokenCount()).isEqualTo(45);
+        assertThat(result.totalTokenCount()).isEqualTo(70);
+        assertThat(result.inputTokensDetails()).isNotNull();
+        assertThat(result.inputTokensDetails().cachedTokens()).isEqualTo(5);
+        assertThat(result.outputTokensDetails()).isNotNull();
+        assertThat(result.outputTokensDetails().reasoningTokens()).isEqualTo(8);
+    }
+
+    @Test
+    void should_handle_adding_openai_token_usage_to_standard_token_usage() {
+        // given
+        OpenAiTokenUsage openAiTokenUsage = OpenAiTokenUsage.builder()
+                .inputTokenCount(10)
+                .inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
+                        .cachedTokens(5)
+                        .build())
+                .outputTokenCount(20)
+                .outputTokensDetails(OpenAiTokenUsage.OutputTokensDetails.builder()
+                        .reasoningTokens(8)
+                        .build())
+                .totalTokenCount(30)
+                .build();
+
+        TokenUsage tokenUsage = new TokenUsage(15, 25, 40);
+
+        // when
+        OpenAiTokenUsage result = (OpenAiTokenUsage) tokenUsage.add(openAiTokenUsage);
 
         // then
         assertThat(result.inputTokenCount()).isEqualTo(25);
