@@ -201,11 +201,12 @@ public class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new AnthropicTokenUsage(
-                anthropicUsage.inputTokens,
-                anthropicUsage.outputTokens,
-                anthropicUsage.cacheCreationInputTokens,
-                anthropicUsage.cacheReadInputTokens);
+        return AnthropicTokenUsage.builder()
+                .inputTokenCount(anthropicUsage.inputTokens)
+                .outputTokenCount(anthropicUsage.outputTokens)
+                .cacheCreationInputTokens(anthropicUsage.cacheCreationInputTokens)
+                .cacheReadInputTokens(anthropicUsage.cacheReadInputTokens)
+                .build();
     }
 
     public static FinishReason toFinishReason(String anthropicStopReason) {

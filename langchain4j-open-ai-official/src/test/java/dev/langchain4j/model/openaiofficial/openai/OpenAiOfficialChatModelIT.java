@@ -5,9 +5,14 @@ import static dev.langchain4j.model.openaiofficial.openai.InternalOpenAiOfficial
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import java.util.List;
+
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -40,5 +45,15 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         return OpenAiOfficialChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
+        return OpenAiOfficialChatResponseMetadata.class;
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType() {
+        return OpenAiOfficialTokenUsage.class;
     }
 }
