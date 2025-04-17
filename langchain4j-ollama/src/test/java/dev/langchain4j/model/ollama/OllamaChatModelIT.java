@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
-    ChatLanguageModel model = OllamaChatModel.builder()
+    ChatModel model = OllamaChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollama))
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
@@ -106,7 +106,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
     void should_generate_valid_json() {
 
         // given
-        ChatLanguageModel model = OllamaChatModel.builder()
+        ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
@@ -126,7 +126,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     @Test
     void should_return_set_capabilities() {
-        ChatLanguageModel model = OllamaChatModel.builder()
+        ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)

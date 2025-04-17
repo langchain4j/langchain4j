@@ -1,6 +1,6 @@
 package dev.langchain4j.model.vertexai.common;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 import org.junit.jupiter.api.AfterEach;
 
@@ -11,7 +11,7 @@ import static dev.langchain4j.model.vertexai.common.VertexAiGeminiStreamingChatM
 class VertexAiGeminiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<StreamingChatModel> models() {
         return List.of(VERTEX_AI_GEMINI_STREAMING_CHAT_MODEL);
     }
 

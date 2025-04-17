@@ -12,11 +12,10 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -33,13 +32,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 
 /**
- * AI Services is a high-level API of LangChain4j to interact with {@link ChatLanguageModel} and {@link StreamingChatLanguageModel}.
+ * AI Services is a high-level API of LangChain4j to interact with {@link ChatModel} and {@link StreamingChatModel}.
  * <p>
  * You can define your own API (a Java interface with one or more methods),
  * and {@code AiServices} will provide an implementation for it, hiding all the complexity from you.
@@ -145,11 +143,11 @@ public abstract class AiServices<T> {
      * For more complex cases, please use {@link #builder}.
      *
      * @param aiService         The class of the interface to be implemented.
-     * @param chatLanguageModel The chat model to be used under the hood.
+     * @param chatModel The chat model to be used under the hood.
      * @return An instance of the provided interface, implementing all its defined methods.
      */
-    public static <T> T create(Class<T> aiService, ChatLanguageModel chatLanguageModel) {
-        return builder(aiService).chatLanguageModel(chatLanguageModel).build();
+    public static <T> T create(Class<T> aiService, ChatModel chatModel) {
+        return builder(aiService).chatModel(chatModel).build();
     }
 
     /**
@@ -158,13 +156,13 @@ public abstract class AiServices<T> {
      * For more complex cases, please use {@link #builder}.
      *
      * @param aiService                  The class of the interface to be implemented.
-     * @param streamingChatLanguageModel The streaming chat model to be used under the hood.
+     * @param streamingChatModel The streaming chat model to be used under the hood.
      *                                   The return type of all methods should be {@link TokenStream}.
      * @return An instance of the provided interface, implementing all its defined methods.
      */
-    public static <T> T create(Class<T> aiService, StreamingChatLanguageModel streamingChatLanguageModel) {
+    public static <T> T create(Class<T> aiService, StreamingChatModel streamingChatModel) {
         return builder(aiService)
-                .streamingChatLanguageModel(streamingChatLanguageModel)
+                .streamingChatModel(streamingChatModel)
                 .build();
     }
 
@@ -185,14 +183,14 @@ public abstract class AiServices<T> {
     /**
      * Configures chat model that will be used under the hood of the AI Service.
      * <p>
-     * Either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel} should be configured,
+     * Either {@link ChatModel} or {@link StreamingChatModel} should be configured,
      * but not both at the same time.
      *
-     * @param chatLanguageModel Chat model that will be used under the hood of the AI Service.
+     * @param chatModel Chat model that will be used under the hood of the AI Service.
      * @return builder
      */
-    public AiServices<T> chatLanguageModel(ChatLanguageModel chatLanguageModel) {
-        context.chatModel = chatLanguageModel;
+    public AiServices<T> chatModel(ChatModel chatModel) {
+        context.chatModel = chatModel;
         return this;
     }
 
@@ -200,14 +198,14 @@ public abstract class AiServices<T> {
      * Configures streaming chat model that will be used under the hood of the AI Service.
      * The methods of the AI Service must return a {@link TokenStream} type.
      * <p>
-     * Either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel} should be configured,
+     * Either {@link ChatModel} or {@link StreamingChatModel} should be configured,
      * but not both at the same time.
      *
-     * @param streamingChatLanguageModel Streaming chat model that will be used under the hood of the AI Service.
+     * @param streamingChatModel Streaming chat model that will be used under the hood of the AI Service.
      * @return builder
      */
-    public AiServices<T> streamingChatLanguageModel(StreamingChatLanguageModel streamingChatLanguageModel) {
-        context.streamingChatModel = streamingChatLanguageModel;
+    public AiServices<T> streamingChatModel(StreamingChatModel streamingChatModel) {
+        context.streamingChatModel = streamingChatModel;
         return this;
     }
 
@@ -409,7 +407,7 @@ public abstract class AiServices<T> {
 
     protected void performBasicValidation() {
         if (context.chatModel == null && context.streamingChatModel == null) {
-            throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
+            throw illegalConfiguration("Please specify either chatModel or streamingChatModel");
         }
     }
 

@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
@@ -17,7 +17,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * A chain for conversing with a specified {@link ChatLanguageModel}
+ * A chain for conversing with a specified {@link ChatModel}
  * based on the information retrieved by a specified {@link ContentRetriever}.
  * Includes a default {@link ChatMemory} (a message window with maximum 10 messages), which can be overridden.
  * You can fully customize RAG behavior by providing an instance of a {@link RetrievalAugmentor},
@@ -27,15 +27,15 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class ConversationalRetrievalChain implements Chain<String, String> {
 
-    private final ChatLanguageModel chatLanguageModel;
+    private final ChatModel chatModel;
     private final ChatMemory chatMemory;
     private final RetrievalAugmentor retrievalAugmentor;
 
-    public ConversationalRetrievalChain(ChatLanguageModel chatLanguageModel,
+    public ConversationalRetrievalChain(ChatModel chatModel,
                                         ChatMemory chatMemory,
                                         ContentRetriever contentRetriever) {
         this(
-                chatLanguageModel,
+                chatModel,
                 chatMemory,
                 DefaultRetrievalAugmentor.builder()
                         .contentRetriever(contentRetriever)
@@ -43,10 +43,10 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         );
     }
 
-    public ConversationalRetrievalChain(ChatLanguageModel chatLanguageModel,
+    public ConversationalRetrievalChain(ChatModel chatModel,
                                         ChatMemory chatMemory,
                                         RetrievalAugmentor retrievalAugmentor) {
-        this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
+        this.chatModel = ensureNotNull(chatModel, "chatModel");
         this.chatMemory = getOrDefault(chatMemory, () -> MessageWindowChatMemory.withMaxMessages(10));
         this.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
     }
@@ -58,7 +58,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         userMessage = augment(userMessage);
         chatMemory.add(userMessage);
 
-        AiMessage aiMessage = chatLanguageModel.chat(chatMemory.messages()).aiMessage();
+        AiMessage aiMessage = chatModel.chat(chatMemory.messages()).aiMessage();
 
         chatMemory.add(aiMessage);
         return aiMessage.text();
@@ -80,12 +80,12 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
     public static class Builder {
 
-        private ChatLanguageModel chatLanguageModel;
+        private ChatModel chatModel;
         private ChatMemory chatMemory;
         private RetrievalAugmentor retrievalAugmentor;
 
-        public Builder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
-            this.chatLanguageModel = chatLanguageModel;
+        public Builder chatModel(ChatModel chatModel) {
+            this.chatModel = chatModel;
             return this;
         }
 
@@ -109,7 +109,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         }
 
         public ConversationalRetrievalChain build() {
-            return new ConversationalRetrievalChain(chatLanguageModel, chatMemory, retrievalAugmentor);
+            return new ConversationalRetrievalChain(chatModel, chatMemory, retrievalAugmentor);
         }
     }
 }

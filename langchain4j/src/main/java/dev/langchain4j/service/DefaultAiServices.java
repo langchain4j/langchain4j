@@ -30,8 +30,8 @@ import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
-import dev.langchain4j.service.tool.ToolExecutionContext;
-import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.service.tool.ToolServiceContext;
+import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.reflect.Array;
@@ -182,14 +182,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        ToolExecutionContext toolExecutionContext =
-                                context.toolService.executionContext(memoryId, userMessage);
+                        ToolServiceContext toolServiceContext =
+                                context.toolService.createContext(memoryId, userMessage);
 
                         if (streaming) {
                             TokenStream tokenStream = new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
-                                    .toolSpecifications(toolExecutionContext.toolSpecifications())
-                                    .toolExecutors(toolExecutionContext.toolExecutors())
+                                    .toolSpecifications(toolServiceContext.toolSpecifications())
+                                    .toolExecutors(toolServiceContext.toolExecutors())
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
                                     .context(context)
@@ -212,7 +212,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         ChatRequestParameters parameters = ChatRequestParameters.builder()
-                                .toolSpecifications(toolExecutionContext.toolSpecifications())
+                                .toolSpecifications(toolServiceContext.toolSpecifications())
                                 .responseFormat(responseFormat)
                                 .build();
 
@@ -225,28 +225,28 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
-                        ToolExecutionResult toolExecutionResult = context.toolService.executeInferenceAndToolsLoop(
+                        ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
                                 chatResponse,
                                 parameters,
                                 messages,
                                 context.chatModel,
                                 chatMemory,
                                 memoryId,
-                                toolExecutionContext.toolExecutors());
+                                toolServiceContext.toolExecutors());
 
-                        chatResponse = toolExecutionResult.chatResponse();
+                        chatResponse = toolServiceResult.chatResponse();
                         FinishReason finishReason = chatResponse.metadata().finishReason();
                         Response<AiMessage> response = Response.from(
-                                chatResponse.aiMessage(), toolExecutionResult.tokenUsageAccumulator(), finishReason);
+                                chatResponse.aiMessage(), toolServiceResult.tokenUsageAccumulator(), finishReason);
 
                         Object parsedResponse = serviceOutputParser.parse(response, returnType);
                         if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
-                                    .tokenUsage(toolExecutionResult.tokenUsageAccumulator())
+                                    .tokenUsage(toolServiceResult.tokenUsageAccumulator())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
                                     .finishReason(finishReason)
-                                    .toolExecutions(toolExecutionResult.toolExecutions())
+                                    .toolExecutions(toolServiceResult.toolExecutions())
                                     .build();
                         } else {
                             return parsedResponse;

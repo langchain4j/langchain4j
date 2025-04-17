@@ -94,6 +94,11 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
+    public void onFailure(Runnable actionOnFailure) {
+        // ignore, for stdio transport, we currently don't do reconnection attempts
+    }
+
+    @Override
     public void close() throws IOException {
         process.destroy();
     }

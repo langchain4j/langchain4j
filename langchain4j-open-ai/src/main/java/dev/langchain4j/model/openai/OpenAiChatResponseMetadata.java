@@ -1,11 +1,9 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 
 import java.util.Objects;
 
-@Experimental
 public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
     private final Long created;

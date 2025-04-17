@@ -31,7 +31,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRespon
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  * Supports caching {@link SystemMessage}s and {@link ToolSpecification}s.
  */
-public class AnthropicChatModel implements ChatLanguageModel {
+public class AnthropicChatModel implements ChatModel {
 
     private static final Logger log = LoggerFactory.getLogger(AnthropicChatModel.class);
 
@@ -211,22 +211,22 @@ public class AnthropicChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder temperature(double temperature) {
+        public AnthropicChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        public AnthropicChatModelBuilder topP(double topP) {
+        public AnthropicChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
-        public AnthropicChatModelBuilder topK(int topK) {
+        public AnthropicChatModelBuilder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
-        public AnthropicChatModelBuilder maxTokens(int maxTokens) {
+        public AnthropicChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
@@ -236,12 +236,12 @@ public class AnthropicChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder cacheSystemMessages(boolean cacheSystemMessages) {
+        public AnthropicChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
             this.cacheSystemMessages = cacheSystemMessages;
             return this;
         }
 
-        public AnthropicChatModelBuilder cacheTools(boolean cacheTools) {
+        public AnthropicChatModelBuilder cacheTools(Boolean cacheTools) {
             this.cacheTools = cacheTools;
             return this;
         }
@@ -251,7 +251,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder thinkingBudgetTokens(int thinkingBudgetTokens) {
+        public AnthropicChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
             return this;
         }
@@ -261,17 +261,17 @@ public class AnthropicChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public AnthropicChatModelBuilder maxRetries(int maxRetries) {
+        public AnthropicChatModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public AnthropicChatModelBuilder logRequests(boolean logRequests) {
+        public AnthropicChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        public AnthropicChatModelBuilder logResponses(boolean logResponses) {
+        public AnthropicChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }

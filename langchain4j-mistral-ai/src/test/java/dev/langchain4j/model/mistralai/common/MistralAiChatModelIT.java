@@ -2,14 +2,14 @@ package dev.langchain4j.model.mistralai.common;
 
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import java.util.List;
 
 class MistralAiChatModelIT extends AbstractChatModelIT {
 
-    static final ChatLanguageModel MISTRAL_CHAT_MODEL = MistralAiChatModel.builder()
+    static final ChatModel MISTRAL_CHAT_MODEL = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(OPEN_MIXTRAL_8X22B)
             .temperature(0.0)
@@ -18,7 +18,7 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(MISTRAL_CHAT_MODEL);
     }
 

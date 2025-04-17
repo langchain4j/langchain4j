@@ -9,16 +9,14 @@ import static java.util.Objects.nonNull;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.listener.ListenersUtil;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.concurrent.ConcurrentHashMap;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
@@ -28,7 +26,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
  *
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
  */
-public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLanguageModel {
+public class BedrockChatModel extends AbstractBedrockChatModel implements ChatModel {
 
     private final BedrockRuntimeClient client;
 
@@ -52,31 +50,25 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
     }
 
     @Override
-    public ChatResponse chat(ChatRequest request) {
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+    public ChatResponse doChat(ChatRequest request) {
         ConverseRequest convRequest = buildConverseRequest(
                 request.messages(), request.parameters().toolSpecifications(), request.parameters());
-        try {
-            ListenersUtil.onRequest(request, this.provider(), attributes, listeners);
-            ConverseResponse response = withRetryMappingExceptions(() -> client.converse(convRequest), this.maxRetries);
+        ConverseResponse response = withRetryMappingExceptions(() -> client.converse(convRequest), this.maxRetries);
 
-            final ChatResponse chatResponse = ChatResponse.builder()
-                    .aiMessage(aiMessageFrom(response))
-                    .metadata(ChatResponseMetadata.builder()
-                            .id(response.responseMetadata().requestId())
-                            .finishReason(finishReasonFrom(response.stopReason()))
-                            .tokenUsage(tokenUsageFrom(response.usage()))
-                            .modelName(convRequest.modelId())
-                            .build())
-                    .build();
+        return ChatResponse.builder()
+                .aiMessage(aiMessageFrom(response))
+                .metadata(ChatResponseMetadata.builder()
+                        .id(response.responseMetadata().requestId())
+                        .finishReason(finishReasonFrom(response.stopReason()))
+                        .tokenUsage(tokenUsageFrom(response.usage()))
+                        .modelName(convRequest.modelId())
+                        .build())
+                .build();
+    }
 
-            ListenersUtil.onResponse(chatResponse, request, this.provider(), attributes, listeners);
-            return chatResponse;
-
-        } catch (Exception e) {
-            ListenersUtil.onError(e, request, this.provider(), attributes, listeners);
-            throw e;
-        }
+    @Override
+    public BedrockChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     private ConverseRequest buildConverseRequest(
@@ -94,6 +86,11 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatLa
                 .toolConfig(extractToolConfigurationFrom(toolSpecs, parameters))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(parameters))
                 .build();
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
     }
 
     @Override

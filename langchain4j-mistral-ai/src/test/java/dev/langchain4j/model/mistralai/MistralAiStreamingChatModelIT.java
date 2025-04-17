@@ -18,7 +18,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -44,7 +44,7 @@ class MistralAiStreamingChatModelIT {
                     .build())
             .build();
 
-    StreamingChatLanguageModel ministral3b = MistralAiStreamingChatModel.builder()
+    StreamingChatModel ministral3b = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName("ministral-3b-latest")
             .temperature(0.0)
@@ -52,7 +52,7 @@ class MistralAiStreamingChatModelIT {
             .logResponses(true)
             .build();
 
-    StreamingChatLanguageModel defaultModel = MistralAiStreamingChatModel.builder()
+    StreamingChatModel defaultModel = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(OPEN_MISTRAL_7B)
             .temperature(0.1)
@@ -60,7 +60,7 @@ class MistralAiStreamingChatModelIT {
             .logResponses(true)
             .build();
 
-    StreamingChatLanguageModel openMixtral8x22BModel = MistralAiStreamingChatModel.builder()
+    StreamingChatModel openMixtral8x22BModel = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(OPEN_MIXTRAL_8X22B)
             .temperature(0.1)
@@ -96,7 +96,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_and_return_token_usage_and_finish_reason_length() {
 
         // given
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(OPEN_MISTRAL_7B)
                 .maxTokens(10)
@@ -127,7 +127,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_and_system_prompt_to_enforce_guardrails() {
 
         // given
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(OPEN_MISTRAL_7B)
                 .safePrompt(true)
@@ -185,7 +185,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_in_french_using_model_small_and_return_token_usage_and_finish_reason_stop() {
 
         // given - Mistral Small = Mistral-8X7B
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.1)
@@ -214,7 +214,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_in_spanish_using_model_small_and_return_token_usage_and_finish_reason_stop() {
 
         // given - Mistral Small = Mistral-8X7B
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.1)
@@ -243,7 +243,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_using_model_medium_and_return_token_usage_and_finish_reason_length() {
 
         // given - Mistral Medium = currently relies on an internal prototype model.
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_MEDIUM_LATEST)
                 .maxTokens(10)
@@ -517,7 +517,7 @@ class MistralAiStreamingChatModelIT {
 
         String expectedJson = "{\"transactionId\":\"T123\",\"status\":\"paid\"}";
 
-        StreamingChatLanguageModel mistralLargeStreamingModel = MistralAiStreamingChatModel.builder()
+        StreamingChatModel mistralLargeStreamingModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_LARGE_LATEST)
                 .temperature(0.1)
@@ -542,7 +542,7 @@ class MistralAiStreamingChatModelIT {
 
         String expectedJson = "{\"transactionId\":\"T123\",\"status\":\"paid\"}";
 
-        StreamingChatLanguageModel mistralSmallModel = MistralAiStreamingChatModel.builder()
+        StreamingChatModel mistralSmallModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.1)
@@ -572,7 +572,7 @@ class MistralAiStreamingChatModelIT {
     @Test
     void bugfix_1218_allow_blank() {
         // given
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0d)

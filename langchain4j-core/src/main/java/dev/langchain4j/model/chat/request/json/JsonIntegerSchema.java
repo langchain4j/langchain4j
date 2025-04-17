@@ -1,12 +1,9 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.Experimental;
-
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
-@Experimental
 public class JsonIntegerSchema implements JsonSchemaElement {
 
     private final String description;

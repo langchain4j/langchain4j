@@ -3,7 +3,7 @@ package dev.langchain4j.rag.query.transformer;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
@@ -25,7 +25,7 @@ class CompressingQueryTransformerIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_compress_query_and_chat_memory_into_single_query(ChatLanguageModel model) {
+    void should_compress_query_and_chat_memory_into_single_query(ChatModel model) {
 
         // given
         List<ChatMessage> chatMemory = asList(

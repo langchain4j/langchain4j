@@ -4,7 +4,7 @@ import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Typ
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
 
 import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import java.util.List;
 
@@ -18,7 +18,7 @@ class BedrockChatModelIT extends AbstractChatModelIT {
                     .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(
                 BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL
                 // TODO add more models from other providers

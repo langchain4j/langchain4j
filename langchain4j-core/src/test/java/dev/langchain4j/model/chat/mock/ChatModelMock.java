@@ -11,21 +11,21 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.RetryUtils;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.output.Response;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
 /**
- * An implementation of a {@link ChatLanguageModel} useful for unit testing.
+ * An implementation of a {@link ChatModel} useful for unit testing.
  * Always returns a static response and records all invocations for verification at the end of a test.
  * This implementation is experimental and subject to change in the future. It may utilize Mockito internally.
  */
-public class ChatModelMock implements ChatLanguageModel {
+public class ChatModelMock implements ChatModel {
 
     private final String staticResponse;
     private final RuntimeException exception;
