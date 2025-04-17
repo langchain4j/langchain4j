@@ -66,19 +66,19 @@ public class AnthropicTokenUsage extends TokenUsage {
     }
 
     private Integer addCacheCreationInputTokens(TokenUsage that) {
-        Integer cacheCreationInputTokens = this.cacheCreationInputTokens();
-        if (that instanceof AnthropicTokenUsage anthropicTokenUsage) {
-            cacheCreationInputTokens = sum(cacheCreationInputTokens, anthropicTokenUsage.cacheCreationInputTokens());
+        if (that instanceof AnthropicTokenUsage thatAnthropicTokenUsage) {
+            return sum(this.cacheCreationInputTokens, thatAnthropicTokenUsage.cacheCreationInputTokens);
+        } else {
+            return this.cacheCreationInputTokens;
         }
-        return cacheCreationInputTokens;
     }
 
     private Integer addCacheReadInputTokens(TokenUsage that) {
-        Integer cacheReadInputTokens = this.cacheReadInputTokens();
-        if (that instanceof AnthropicTokenUsage anthropicTokenUsage) {
-            cacheReadInputTokens = sum(cacheReadInputTokens, anthropicTokenUsage.cacheReadInputTokens());
+        if (that instanceof AnthropicTokenUsage thatAnthropicTokenUsage) {
+            return sum(this.cacheReadInputTokens, thatAnthropicTokenUsage.cacheReadInputTokens);
+        } else {
+            return this.cacheReadInputTokens;
         }
-        return cacheReadInputTokens;
     }
 
     @Override
