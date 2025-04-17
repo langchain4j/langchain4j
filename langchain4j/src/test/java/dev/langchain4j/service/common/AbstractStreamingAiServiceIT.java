@@ -75,7 +75,9 @@ public abstract class AbstractStreamingAiServiceIT {
         assertThat(chatResponse.aiMessage().text()).isEqualTo(answer);
 
         ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
-        assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+        if (assertChatResponseMetadataType()) {
+            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+        }
 
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponseMetadata.tokenUsage());
@@ -89,10 +91,6 @@ public abstract class AbstractStreamingAiServiceIT {
                 eq(ChatRequest.builder().messages(UserMessage.from(userMessage)).build()),
                 any(StreamingChatResponseHandler.class)
         );
-    }
-
-    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
-        return ChatResponseMetadata.class;
     }
 
     @ParameterizedTest
@@ -134,7 +132,9 @@ public abstract class AbstractStreamingAiServiceIT {
         verifyNoMoreInteractions(tools);
 
         ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
-        assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+        if (assertChatResponseMetadataType()) {
+            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+        }
 
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponseMetadata.tokenUsage());
@@ -147,6 +147,14 @@ public abstract class AbstractStreamingAiServiceIT {
 
     // TODO test threads
     // TODO all tests from sync, perhaps reuse the same test logic
+
+    protected boolean assertChatResponseMetadataType() {
+        return true;
+    }
+
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
+        return ChatResponseMetadata.class;
+    }
 
     protected boolean assertTokenUsage() {
         return true;

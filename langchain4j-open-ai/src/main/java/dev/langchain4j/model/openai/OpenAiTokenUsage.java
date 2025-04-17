@@ -39,34 +39,34 @@ public class OpenAiTokenUsage extends TokenUsage {
     }
 
     private InputTokensDetails addInputTokenDetails(TokenUsage that) {
-        if (that instanceof OpenAiTokenUsage openAiTokenUsage) {
+        if (that instanceof OpenAiTokenUsage thatOpenAiTokenUsage) {
             if (this.inputTokensDetails == null) {
-                return openAiTokenUsage.inputTokensDetails;
-            } else if (openAiTokenUsage.inputTokensDetails == null) {
+                return thatOpenAiTokenUsage.inputTokensDetails;
+            } else if (thatOpenAiTokenUsage.inputTokensDetails == null) {
                 return this.inputTokensDetails;
             } else {
                 return InputTokensDetails.builder()
-                        .cachedTokens(sum(this.inputTokensDetails.cachedTokens, openAiTokenUsage.inputTokensDetails.cachedTokens))
+                        .cachedTokens(sum(this.inputTokensDetails.cachedTokens, thatOpenAiTokenUsage.inputTokensDetails.cachedTokens))
                         .build();
             }
         } else {
-            return null;
+            return this.inputTokensDetails;
         }
     }
 
     private OutputTokensDetails addOutputTokensDetails(TokenUsage that) {
-        if (that instanceof OpenAiTokenUsage openAiTokenUsage) {
+        if (that instanceof OpenAiTokenUsage thatOpenAiTokenUsage) {
             if (this.outputTokensDetails == null) {
-                return openAiTokenUsage.outputTokensDetails;
-            } else if (openAiTokenUsage.outputTokensDetails == null) {
+                return thatOpenAiTokenUsage.outputTokensDetails;
+            } else if (thatOpenAiTokenUsage.outputTokensDetails == null) {
                 return this.outputTokensDetails;
             } else {
                 return OutputTokensDetails.builder()
-                        .reasoningTokens(sum(this.outputTokensDetails.reasoningTokens, openAiTokenUsage.outputTokensDetails.reasoningTokens))
+                        .reasoningTokens(sum(this.outputTokensDetails.reasoningTokens, thatOpenAiTokenUsage.outputTokensDetails.reasoningTokens))
                         .build();
             }
         } else {
-            return null;
+            return this.outputTokensDetails;
         }
     }
 

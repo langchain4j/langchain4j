@@ -58,7 +58,9 @@ public abstract class AbstractAiServiceIT {
         // then
         assertThat(result.content()).containsIgnoringCase("Berlin");
 
-        assertTokenUsage(result.tokenUsage());
+        if (assertTokenUsage()) {
+            assertTokenUsage(result.tokenUsage());
+        }
 
         if (assertFinishReason()) {
             assertThat(result.finishReason()).isEqualTo(STOP);
@@ -148,7 +150,9 @@ public abstract class AbstractAiServiceIT {
 //                .build());
 //        verifyNoMoreInteractions(model);
 
-        assertTokenUsage(result.tokenUsage());
+        if (assertTokenUsage()) {
+            assertTokenUsage(result.tokenUsage());
+        }
 
         if (assertToolInteractions()) {
             verify(weatherTools).getWeather("Munich");
@@ -168,11 +172,7 @@ public abstract class AbstractAiServiceIT {
         return supportsTools() && supportsJsonResponseFormatWithSchema();
     }
 
-    protected boolean assertFinishReason() {
-        return true;
-    }
-
-    protected boolean assertToolInteractions() {
+    protected boolean assertTokenUsage() {
         return true;
     }
 
@@ -186,5 +186,13 @@ public abstract class AbstractAiServiceIT {
 
     protected Class<? extends TokenUsage> tokenUsageType() {
         return TokenUsage.class;
+    }
+
+    protected boolean assertFinishReason() {
+        return true;
+    }
+
+    protected boolean assertToolInteractions() {
+        return true;
     }
 }

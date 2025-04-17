@@ -123,12 +123,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
             if (completeResponseHandler != null) {
-                ChatResponseMetadata finalMetadata = completeResponse.metadata().toBuilder()
-                        .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
-                        .build();
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
-                        .metadata(finalMetadata)
+                        .metadata(completeResponse.metadata().toBuilder()
+                                .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
+                                .build())
                         .build();
                 completeResponseHandler.accept(finalChatResponse);
             }

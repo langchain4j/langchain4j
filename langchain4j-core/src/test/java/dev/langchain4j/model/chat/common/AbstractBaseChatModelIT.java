@@ -122,7 +122,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
-        assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+        if (assertChatResponseMetadataType()) {
+            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+        }
         if (assertResponseId()) {
             assertThat(chatResponseMetadata.id()).isNotBlank();
         }
@@ -147,10 +149,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
-    }
-
-    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
-        return ChatResponseMetadata.class;
     }
 
     @ParameterizedTest
@@ -1225,6 +1223,14 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
         return supportsSingleImageInputAsPublicURL();
+    }
+
+    protected boolean assertChatResponseMetadataType() {
+        return true;
+    }
+
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
+        return ChatResponseMetadata.class;
     }
 
     protected boolean assertResponseId() {
