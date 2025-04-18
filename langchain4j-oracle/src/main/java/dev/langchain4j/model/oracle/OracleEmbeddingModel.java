@@ -75,7 +75,7 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     /**
-     * load an ONNX model into the database
+     * load an ONNX model located on the server into the database
      *
      * @param conn      connection
      * @param dir       directory alias from create directory
@@ -132,48 +132,40 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         if (!batching) {
             for (String input : inputs) {
-                String query = "select t.column_value as data from dbms_vector_chain.utl_to_embeddings(?, json(?)) t";
-                try (PreparedStatement stmt = conn.prepareStatement(query)) {
-                    stmt.setObject(1, input);
-                    stmt.setObject(2, pref);
-                    try (ResultSet rs = stmt.executeQuery()) {
-                        while (rs.next()) {
-                            String text = rs.getString("data");
-
-                            ObjectMapper mapper = new ObjectMapper();
-                            dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
-                                    mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
-                            Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.getVector()));
-                            embeddings.add(embedding);
-                        }
-                    }
-                }
+                embed(input, pref, embeddings);
             }
         } else {
             // createOracleArray needs to passed a Clob array since vector_array_t is a table of clob
             // if a String array is passed, will get ORA-17059: Failed to convert to internal representation
             List<Object> elements = toClobList(conn, inputs);
             Array arr = ((OracleConnection) conn).createOracleArray("SYS.VECTOR_ARRAY_T", elements.toArray());
-
-            String query = "select t.column_value as data from dbms_vector_chain.utl_to_embeddings(?, json(?)) t";
-            try (PreparedStatement stmt = conn.prepareStatement(query)) {
-                stmt.setObject(1, arr);
-                stmt.setObject(2, pref);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        String text = rs.getString("data");
-
-                        ObjectMapper mapper = new ObjectMapper();
-                        dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
-                                mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
-                        Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.getVector()));
-                        embeddings.add(embedding);
-                    }
-                }
-            }
+            embed(arr, pref, embeddings);
         }
 
         return Response.from(embeddings);
+    }
+
+    /**
+     * embed either a string or array
+     */
+    private void embed(Object obj, String pref, List<Embedding> embeddings)
+            throws SQLException, JsonProcessingException {
+        String query = "select t.column_value as data from dbms_vector_chain.utl_to_embeddings(?, json(?)) t";
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setObject(1, obj);
+            stmt.setObject(2, pref);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String text = rs.getString("data");
+
+                    ObjectMapper mapper = new ObjectMapper();
+                    dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
+                            mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
+                    Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.getVector()));
+                    embeddings.add(embedding);
+                }
+            }
+        }
     }
 
     private List<Object> toClobList(Connection conn, List<String> inputs) throws JsonProcessingException, SQLException {
