@@ -254,7 +254,8 @@ public class InternalOpenAiHelper {
             map.put("required", new ArrayList<>());
             if (strict) {
                 // When strict, additionalProperties must be false:
-                // See https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects?api-mode=chat#additionalproperties-false-must-always-be-set-in-objects
+                // See
+                // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects?api-mode=chat#additionalproperties-false-must-always-be-set-in-objects
                 map.put("additionalProperties", false);
             }
             return map;
@@ -360,11 +361,12 @@ public class InternalOpenAiHelper {
                         "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
-            dev.langchain4j.model.openai.internal.chat.JsonSchema openAiJsonSchema = dev.langchain4j.model.openai.internal.chat.JsonSchema.builder()
-                    .name(jsonSchema.name())
-                    .strict(strict)
-                    .schema(toMap(jsonSchema.rootElement(), strict))
-                    .build();
+            dev.langchain4j.model.openai.internal.chat.JsonSchema openAiJsonSchema =
+                    dev.langchain4j.model.openai.internal.chat.JsonSchema.builder()
+                            .name(jsonSchema.name())
+                            .strict(strict)
+                            .schema(toMap(jsonSchema.rootElement(), strict))
+                            .build();
             return dev.langchain4j.model.openai.internal.chat.ResponseFormat.builder()
                     .type(JSON_SCHEMA)
                     .jsonSchema(openAiJsonSchema)

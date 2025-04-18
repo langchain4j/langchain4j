@@ -19,6 +19,7 @@ public final class Delta {
 
     @JsonProperty
     private final String role;
+
     @JsonProperty
     private final String content;
 
