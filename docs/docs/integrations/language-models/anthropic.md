@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -43,6 +43,8 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .stopSequences(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
+    .thinkingType(...)
+    .thinkingBudgetTokens(...)
     .timeout(...)
     .maxRetries(...)
     .logRequests(...)
@@ -102,6 +104,30 @@ contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
 
 More info on caching can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
 
+## Thinking
+
+`AnthropicChatModel` and `AnthropicStreamingChatModel` have a **_limited_** support
+for [thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
+It can be enabled by setting the `thinkingType` and `thinkingBudgetTokens` parameters:
+```java
+ChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName(CLAUDE_3_7_SONNET_20250219)
+        .thinkingType("enabled")
+        .thinkingBudgetTokens(1024)
+        .maxTokens(1024 + 100)
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+```
+
+What is currently not supported:
+- It not possible to get the thinking content from the LC4j API. It is only visible in logs.
+- Thinking content is not [preserved](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#preserving-thinking-blocks) in the multi-turn conversations (with [memory](/tutorials/chat-memory))
+- etc
+
+More info on thinking can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
+
 ## Quarkus
 
 See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/anthropic.html).
@@ -113,7 +139,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 

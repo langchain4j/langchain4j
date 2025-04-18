@@ -18,8 +18,7 @@ import java.util.Objects;
 public final class Delta {
 
     @JsonProperty
-    private final Role role;
-
+    private final String role;
     @JsonProperty
     private final String content;
 
@@ -41,7 +40,7 @@ public final class Delta {
         this.functionCall = builder.functionCall;
     }
 
-    public Role role() {
+    public String role() {
         return role;
     }
 
@@ -107,7 +106,7 @@ public final class Delta {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static final class Builder {
 
-        private Role role;
+        private String role;
         private String content;
         private String reasoningContent;
         private List<ToolCall> toolCalls;
@@ -115,7 +114,7 @@ public final class Delta {
         @Deprecated
         private FunctionCall functionCall;
 
-        public Builder role(Role role) {
+        public Builder role(String role) {
             this.role = role;
             return this;
         }

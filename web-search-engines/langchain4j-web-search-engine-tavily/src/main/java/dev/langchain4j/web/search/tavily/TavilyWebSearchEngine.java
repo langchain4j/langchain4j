@@ -1,7 +1,10 @@
 package dev.langchain4j.web.search.tavily;
 
-import dev.langchain4j.web.search.*;
-import lombok.Builder;
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchInformationResult;
+import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchRequest;
+import dev.langchain4j.web.search.WebSearchResults;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -40,7 +43,6 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
     private final List<String> includeDomains;
     private final List<String> excludeDomains;
 
-    @Builder
     public TavilyWebSearchEngine(String baseUrl,
                                  String apiKey,
                                  Duration timeout,
@@ -59,6 +61,10 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
         this.includeRawContent = includeRawContent;
         this.includeDomains = copyIfNotNull(includeDomains);
         this.excludeDomains = copyIfNotNull(excludeDomains);
+    }
+
+    public static TavilyWebSearchEngineBuilder builder() {
+        return new TavilyWebSearchEngineBuilder();
     }
 
     @Override
@@ -105,6 +111,68 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
                 tavilySearchResult.getContent(),
                 tavilySearchResult.getRawContent(),
                 Collections.singletonMap("score", String.valueOf(tavilySearchResult.getScore())));
+    }
+
+    public static class TavilyWebSearchEngineBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private Duration timeout;
+        private String searchDepth;
+        private Boolean includeAnswer;
+        private Boolean includeRawContent;
+        private List<String> includeDomains;
+        private List<String> excludeDomains;
+
+        TavilyWebSearchEngineBuilder() {
+        }
+
+        public TavilyWebSearchEngineBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder searchDepth(String searchDepth) {
+            this.searchDepth = searchDepth;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder includeAnswer(Boolean includeAnswer) {
+            this.includeAnswer = includeAnswer;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder includeRawContent(Boolean includeRawContent) {
+            this.includeRawContent = includeRawContent;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder includeDomains(List<String> includeDomains) {
+            this.includeDomains = includeDomains;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder excludeDomains(List<String> excludeDomains) {
+            this.excludeDomains = excludeDomains;
+            return this;
+        }
+
+        public TavilyWebSearchEngine build() {
+            return new TavilyWebSearchEngine(this.baseUrl, this.apiKey, this.timeout, this.searchDepth, this.includeAnswer, this.includeRawContent, this.includeDomains, this.excludeDomains);
+        }
+
+        public String toString() {
+            return "TavilyWebSearchEngine.TavilyWebSearchEngineBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", searchDepth=" + this.searchDepth + ", includeAnswer=" + this.includeAnswer + ", includeRawContent=" + this.includeRawContent + ", includeDomains=" + this.includeDomains + ", excludeDomains=" + this.excludeDomains + ")";
+        }
     }
 }
 

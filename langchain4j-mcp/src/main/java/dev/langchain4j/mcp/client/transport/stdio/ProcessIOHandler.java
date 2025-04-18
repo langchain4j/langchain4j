@@ -5,7 +5,7 @@ import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.io.PrintStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,13 +14,16 @@ class ProcessIOHandler implements Runnable {
     private final Process process;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(ProcessIOHandler.class);
+    private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
     private final boolean logEvents;
     private final McpOperationHandler messageHandler;
+    private final PrintStream out;
 
     public ProcessIOHandler(Process process, McpOperationHandler messageHandler, boolean logEvents) {
         this.process = process;
         this.logEvents = logEvents;
         this.messageHandler = messageHandler;
+        this.out = new PrintStream(process.getOutputStream(), true);
     }
 
     @Override
@@ -29,7 +32,7 @@ class ProcessIOHandler implements Runnable {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (logEvents) {
-                    log.debug("< {}", line);
+                    trafficLog.debug("< {}", line);
                 }
                 messageHandler.handle(OBJECT_MAPPER.readTree(line));
             }
@@ -41,9 +44,8 @@ class ProcessIOHandler implements Runnable {
 
     public void submit(String message) throws IOException {
         if (logEvents) {
-            log.debug("> {}", message);
+            trafficLog.debug("> {}", message);
         }
-        process.getOutputStream().write((message + "\n").getBytes(StandardCharsets.UTF_8));
-        process.getOutputStream().flush();
+        out.println(message);
     }
 }

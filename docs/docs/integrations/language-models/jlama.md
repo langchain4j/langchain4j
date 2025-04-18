@@ -16,13 +16,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jlama</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 
 <dependency>
@@ -62,12 +62,12 @@ The chat models allow you to generate human-like responses with a model fined-tu
 Create a class and add the following code.
 
 ```java
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.jlama.JlamaChatModel;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        ChatLanguageModel model = JlamaChatLanguageModel.builder()
+        ChatModel model = JlamaChatModel.builder()
                 .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .build();
 
@@ -95,7 +95,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        StreamingChatLanguageModel model = JlamaStreamingChatLanguageModel.builder()
+        StreamingChatModel model = JlamaStreamingChatModel.builder()
                 .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .build();
 

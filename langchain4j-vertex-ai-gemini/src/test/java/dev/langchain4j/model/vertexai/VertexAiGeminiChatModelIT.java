@@ -16,15 +16,15 @@ import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.gson.Gson;
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
@@ -55,7 +55,7 @@ class VertexAiGeminiChatModelIT {
 
     public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-001";
 
-    ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+    ChatModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
@@ -63,7 +63,7 @@ class VertexAiGeminiChatModelIT {
             .logResponses(true)
             .build();
 
-    ChatLanguageModel imageModel = VertexAiGeminiChatModel.builder()
+    ChatModel imageModel = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
@@ -129,7 +129,7 @@ class VertexAiGeminiChatModelIT {
     void should_respect_maxOutputTokens() {
 
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -161,7 +161,7 @@ class VertexAiGeminiChatModelIT {
         GenerativeModel generativeModel = new GenerativeModel(GEMINI_1_5_PRO, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
-        ChatLanguageModel model = new VertexAiGeminiChatModel(generativeModel, generationConfig);
+        ChatModel model = new VertexAiGeminiChatModel(generativeModel, generationConfig);
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
@@ -290,7 +290,7 @@ class VertexAiGeminiChatModelIT {
     void should_accept_tools_for_function_calling() {
 
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -299,10 +299,10 @@ class VertexAiGeminiChatModelIT {
         ToolSpecification weatherToolSpec = ToolSpecification.builder()
                 .name("getWeatherForecast")
                 .description("Get the weather forecast for a location")
-                .addParameter(
-                        "location",
-                        JsonSchemaProperty.STRING,
-                        JsonSchemaProperty.description("the location to get the weather forecast for"))
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location", "the location to get the weather forecast for")
+                        .required("location")
+                        .build())
                 .build();
 
         List<ChatMessage> allMessages = new ArrayList<>();
@@ -342,7 +342,7 @@ class VertexAiGeminiChatModelIT {
     @RetryingTest(5)
     void should_handle_parallel_function_calls() {
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -355,10 +355,10 @@ class VertexAiGeminiChatModelIT {
         ToolSpecification stockInventoryToolSpec = ToolSpecification.builder()
                 .name("getProductInventory")
                 .description("Get the product inventory for a particular product ID")
-                .addParameter(
-                        "product_id",
-                        JsonSchemaProperty.STRING,
-                        JsonSchemaProperty.description("the ID of the product"))
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("product_id", "the ID of the product")
+                        .required("product_id")
+                        .build())
                 .build();
 
         List<ChatMessage> allMessages = new ArrayList<>();
@@ -429,7 +429,7 @@ class VertexAiGeminiChatModelIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .tools(calculator)
                 .build();
@@ -451,7 +451,7 @@ class VertexAiGeminiChatModelIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .tools(calculator)
                 .build();
@@ -480,7 +480,7 @@ class VertexAiGeminiChatModelIT {
         PetName petName = new PetName();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(petName)
                 .build();
 
@@ -555,7 +555,7 @@ class VertexAiGeminiChatModelIT {
         FunctionCallingService service = new FunctionCallingService();
 
         FunctionCallingAssistant assistant = AiServices.builder(FunctionCallingAssistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
                 .tools(service)
                 .build();
@@ -674,7 +674,7 @@ class VertexAiGeminiChatModelIT {
         Schema schema = SchemaHelper.fromClass(Artist.class);
 
         // when
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -704,7 +704,7 @@ class VertexAiGeminiChatModelIT {
     @Test
     void should_honor_subset_of_function_calls() {
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -717,8 +717,11 @@ class VertexAiGeminiChatModelIT {
         ToolSpecification adder = ToolSpecification.builder()
                 .description("adds two numbers")
                 .name("add")
-                .addParameter("a", JsonSchemaProperty.INTEGER)
-                .addParameter("b", JsonSchemaProperty.INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("a")
+                        .addIntegerProperty("b")
+                        .required("a", "b")
+                        .build())
                 .build();
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
@@ -740,7 +743,7 @@ class VertexAiGeminiChatModelIT {
     @Test
     void should_forbid_function_calls() {
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -752,8 +755,11 @@ class VertexAiGeminiChatModelIT {
         ToolSpecification adder = ToolSpecification.builder()
                 .description("adds two numbers")
                 .name("add")
-                .addParameter("a", JsonSchemaProperty.INTEGER)
-                .addParameter("b", JsonSchemaProperty.INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("a")
+                        .addIntegerProperty("b")
+                        .required("a", "b")
+                        .build())
                 .build();
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
@@ -806,7 +812,7 @@ class VertexAiGeminiChatModelIT {
 
         // when
         UserMessage msg = UserMessage.from(
-                AudioContent.from("gs://cloud-samples-data/video/animals.mp4"),
+                VideoContent.from("gs://cloud-samples-data/video/animals.mp4"),
                 TextContent.from("What is in this video?"));
 
         // when

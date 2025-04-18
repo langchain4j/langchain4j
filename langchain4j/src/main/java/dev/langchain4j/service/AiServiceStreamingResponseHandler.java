@@ -125,15 +125,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (completeResponseHandler != null) {
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
-                        .metadata(ChatResponseMetadata.builder()
-                                // TODO copy model-specific metadata
-                                .id(completeResponse.metadata().id())
-                                .modelName(completeResponse.metadata().modelName())
-                                .tokenUsage(TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage()))
-                                .finishReason(completeResponse.metadata().finishReason())
+                        .metadata(completeResponse.metadata().toBuilder()
+                                .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
                                 .build())
                         .build();
-                // TODO should completeResponseHandler accept all ChatResponses that happened?
                 completeResponseHandler.accept(finalChatResponse);
             }
         }
@@ -141,7 +136,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private void addToMemory(ChatMessage chatMessage) {
         if (context.hasChatMemory()) {
-            context.chatMemory(memoryId).add(chatMessage);
+            context.chatMemoryService.getOrCreateChatMemory(memoryId).add(chatMessage);
         } else {
             temporaryMemory.add(chatMessage);
         }
@@ -149,7 +144,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private List<ChatMessage> messagesToSend(Object memoryId) {
         return context.hasChatMemory()
-                ? context.chatMemory(memoryId).messages()
+                ? context.chatMemoryService.getOrCreateChatMemory(memoryId).messages()
                 : temporaryMemory;
     }
 

@@ -1,12 +1,9 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -24,9 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
@@ -42,10 +40,10 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
 /**
- * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+public class OpenAiChatModel implements ChatModel {
 
     private final OpenAiClient client;
     private final Integer maxRetries;
@@ -56,13 +54,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final Boolean strictJsonSchema;
     private final Boolean strictTools;
 
-    private final Tokenizer tokenizer;
-
     private final List<ChatModelListener> listeners;
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
 
-        if ("demo".equals(builder.apiKey)) {
+        if ("demo".equals(builder.apiKey) && !"http://langchain4j.dev/demo/openai/v1".equals(builder.baseUrl)) {
             // TODO remove before releasing 1.0.0
             throw new RuntimeException("""
                     If you wish to continue using the 'demo' key, please specify the base URL explicitly:
@@ -126,18 +122,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
-
-        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
-
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
-    }
-
-    /**
-     * @deprecated please use {@link #defaultRequestParameters()} and then {@link ChatRequestParameters#modelName()} instead
-     */
-    @Deprecated(forRemoval = true)
-    public String modelName() {
-        return defaultRequestParameters.modelName();
     }
 
     @Override
@@ -163,31 +148,23 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
-        try {
-            ChatCompletionResponse openAiResponse = withRetry(() ->
-                    client.chatCompletion(openAiRequest).execute(), maxRetries);
+        ChatCompletionResponse openAiResponse = withRetryMappingExceptions(() ->
+                client.chatCompletion(openAiRequest).execute(), maxRetries);
 
-            OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
-                    .id(openAiResponse.id())
-                    .modelName(openAiResponse.model())
-                    .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
-                    .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
-                    .created(openAiResponse.created().longValue())
-                    .serviceTier(openAiResponse.serviceTier())
-                    .systemFingerprint(openAiResponse.systemFingerprint())
-                    .build();
+        OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
+                .id(openAiResponse.id())
+                .modelName(openAiResponse.model())
+                .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
+                .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
+                .created(openAiResponse.created())
+                .serviceTier(openAiResponse.serviceTier())
+                .systemFingerprint(openAiResponse.systemFingerprint())
+                .build();
 
-            return ChatResponse.builder()
-                    .aiMessage(aiMessageFrom(openAiResponse))
-                    .metadata(responseMetadata)
-                    .build();
-        } catch (RuntimeException e) {
-            if (e.getCause() instanceof HttpException httpException) {
-                throw httpException;
-            } else {
-                throw e;
-            }
-        }
+        return ChatResponse.builder()
+                .aiMessage(aiMessageFrom(openAiResponse))
+                .metadata(responseMetadata)
+                .build();
     }
 
     @Override
@@ -196,18 +173,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default values for the model name and temperature will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
+    public ModelProvider provider() {
+        return OPEN_AI;
     }
 
     public static OpenAiChatModelBuilder builder() {
@@ -249,7 +216,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
 
@@ -414,11 +380,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         public OpenAiChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        public OpenAiChatModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 

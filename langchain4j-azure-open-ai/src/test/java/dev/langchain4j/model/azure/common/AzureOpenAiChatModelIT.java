@@ -1,13 +1,13 @@
 package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
 
 class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
@@ -29,18 +29,15 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
-        return List.of(
-                AZURE_OPEN_AI_CHAT_MODEL,
-                AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
-        );
+    protected List<ChatModel> models() {
+        return List.of(AZURE_OPEN_AI_CHAT_MODEL, AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA);
     }
 
     @Override
     @Disabled
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_single_image_as_public_URL(ChatLanguageModel model) {
+    protected void should_accept_single_image_as_public_URL(ChatModel model) {
         // TODO fix
     }
 
@@ -48,7 +45,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     @Disabled
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_public_URLs(ChatLanguageModel model) {
+    protected void should_accept_multiple_images_as_public_URLs(ChatModel model) {
         // TODO fix
     }
 
@@ -92,6 +89,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
+    @Override
     protected boolean assertFinishReason() {
         return false; // TODO implement
     }

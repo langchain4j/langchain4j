@@ -1,6 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 
@@ -11,7 +10,6 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.quoted;
 
-@Experimental
 public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
     private final Integer maxCompletionTokens;

@@ -5,7 +5,6 @@ import dev.langchain4j.web.search.WebSearchInformationResult;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
-import lombok.Builder;
 
 import java.net.URI;
 import java.time.Duration;
@@ -47,7 +46,6 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
      *                           <p>
      *                           Check <a href="https://www.searchapi.io">Search API</a> for more information on available parameters for each engine
      */
-    @Builder
     public SearchApiWebSearchEngine(String apiKey,
                                     String baseUrl,
                                     Duration timeout,
@@ -60,6 +58,10 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                 .timeout(getOrDefault(timeout, ofSeconds(30)))
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .build();
+    }
+
+    public static SearchApiWebSearchEngineBuilder builder() {
+        return new SearchApiWebSearchEngineBuilder();
     }
 
     /**
@@ -135,5 +137,49 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
     public static WebSearchEngine withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
+    }
+
+    public static class SearchApiWebSearchEngineBuilder {
+        private String apiKey;
+        private String baseUrl;
+        private Duration timeout;
+        private String engine;
+        private Map<String, Object> optionalParameters;
+
+        SearchApiWebSearchEngineBuilder() {
+        }
+
+        public SearchApiWebSearchEngineBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public SearchApiWebSearchEngineBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public SearchApiWebSearchEngineBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public SearchApiWebSearchEngineBuilder engine(String engine) {
+            this.engine = engine;
+            return this;
+        }
+
+        public SearchApiWebSearchEngineBuilder optionalParameters(Map<String, Object> optionalParameters) {
+            this.optionalParameters = optionalParameters;
+            return this;
+        }
+
+        public SearchApiWebSearchEngine build() {
+            return new SearchApiWebSearchEngine(this.apiKey, this.baseUrl, this.timeout, this.engine, this.optionalParameters);
+        }
+
+        public String toString() {
+            return "SearchApiWebSearchEngine.SearchApiWebSearchEngineBuilder(apiKey=" + this.apiKey + ", baseUrl=" + this.baseUrl + ", timeout=" + this.timeout + ", engine=" + this.engine + ", optionalParameters=" + this.optionalParameters + ")";
+        }
     }
 }

@@ -6,7 +6,7 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 public class OllamaModels {
@@ -35,7 +35,7 @@ public class OllamaModels {
     }
 
     public Response<List<OllamaModel>> availableModels() {
-        ModelsListResponse response = withRetry(client::listModels, maxRetries);
+        ModelsListResponse response = withRetryMappingExceptions(client::listModels, maxRetries);
         return Response.from(response.getModels());
     }
 
@@ -44,7 +44,7 @@ public class OllamaModels {
     }
 
     public Response<OllamaModelCard> modelCard(String modelName) {
-        OllamaModelCard response = withRetry(() -> client.showInformation(
+        OllamaModelCard response = withRetryMappingExceptions(() -> client.showInformation(
                 ShowModelInformationRequest.builder()
                         .name(modelName)
                         .build()
@@ -57,7 +57,7 @@ public class OllamaModels {
     }
 
     public void deleteModel(String ollamaModelName) {
-        withRetry(() -> client.deleteModel(
+        withRetryMappingExceptions(() -> client.deleteModel(
                 DeleteModelRequest.builder()
                         .name(ollamaModelName)
                         .build()
@@ -65,7 +65,7 @@ public class OllamaModels {
     }
 
     public Response<List<RunningOllamaModel>> runningModels() {
-        RunningModelsListResponse response = withRetry(client::listRunningModels, maxRetries);
+        RunningModelsListResponse response = withRetryMappingExceptions(client::listRunningModels, maxRetries);
         return Response.from(response.getModels());
     }
 

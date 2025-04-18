@@ -676,7 +676,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .tools(spyTransactions)
                 .chatMemory(chatMemory)
-                .streamingChatLanguageModel(gemini)
+                .streamingChatModel(gemini)
                 .build();
 
         // then

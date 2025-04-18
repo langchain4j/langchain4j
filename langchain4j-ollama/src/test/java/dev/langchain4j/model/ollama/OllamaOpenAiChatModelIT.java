@@ -2,11 +2,10 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
-import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
@@ -19,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class OllamaOpenAiChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
-    ChatLanguageModel model = OpenAiChatModel.builder()
+    ChatModel model = OpenAiChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)

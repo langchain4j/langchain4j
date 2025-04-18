@@ -2,11 +2,11 @@ package dev.langchain4j.model.bedrock.internal;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -28,13 +28,15 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamResponseHandler;
 
+import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
+
 /**
  * Bedrock Streaming chat model
  */
 @Slf4j
 @Getter
 @SuperBuilder
-public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBedrockChatModel implements StreamingChatLanguageModel {
+public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBedrockChatModel implements StreamingChatModel {
 
     private volatile BedrockRuntimeAsyncClient asyncClient;
 
@@ -87,9 +89,10 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                 .accept("application/json")
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, Collections.emptyList());
+        ChatRequest listenerRequest = createListenerRequest(request, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -112,14 +115,15 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                 .onEventStream(stream -> stream.subscribe(event -> event.accept(visitor)))
                 .onComplete(() -> {
                     Response<AiMessage> response = Response.from(new AiMessage(finalCompletion.toString()));
-                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    ChatResponse listenerResponse = createListenerResponse(
                             null,
                             null,
                             response
                     );
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                            modelListenerResponse,
-                            modelListenerRequest,
+                            listenerResponse,
+                            listenerRequest,
+                            provider(),
                             attributes
                     );
 
@@ -133,7 +137,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                     handler.onComplete(response);
                 })
                 .onError(throwable -> {
-                    listenerErrorResponse(throwable, modelListenerRequest, attributes);
+                    listenerErrorResponse(throwable, listenerRequest, provider(), attributes);
                     handler.onError(throwable);
                 })
                 .build();
@@ -168,5 +172,15 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                 .overrideConfiguration(c-> c.apiCallTimeout(timeout))
                 .build();
         return client;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return AMAZON_BEDROCK;
     }
 }

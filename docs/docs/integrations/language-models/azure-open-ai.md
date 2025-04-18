@@ -5,8 +5,16 @@ sidebar_position: 3
 # Azure OpenAI
 
 :::note
-If you are using Quarkus, please refer to the
-[Quarkus LangChain4j documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/openai.html#_azure_openai).
+
+This is the documentation for the `Azure OpenAI` integration, that uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+
+LangChain4j provides 4 different integrations with OpenAI for using chat models, and this is #3 :
+
+- [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
+- [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
+- [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
+
 :::
 
 Azure OpenAI provides language models from OpenAI (`gpt-4`, `gpt-4o`, etc.) hosted on Azure, using the [Azure OpenAI Java SDK](https://learn.microsoft.com/en-us/java/api/overview/azure/ai-openai-readme).
@@ -25,7 +33,7 @@ The `langchain4j-azure-open-ai` library is availlable on Maven Central.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -37,7 +45,7 @@ A Spring Boot starter is available to configure the `langchain4j-azure-open-ai` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -50,7 +58,7 @@ Before using any of the Azure OpenAI models, you need to [deploy](https://learn.
 ### Plain Java
 
 ```java
-ChatLanguageModel model = AzureOpenAiChatModel.builder()
+ChatModel model = AzureOpenAiChatModel.builder()
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .deploymentName("gpt-4o")
@@ -95,17 +103,17 @@ or autowired where needed, for example:
 
 ```java
 @RestController
-class ChatLanguageModelController {
+class ChatModelController {
 
-    ChatLanguageModel chatLanguageModel;
+    ChatModel chatModel;
 
-    ChatLanguageModelController(ChatLanguageModel chatLanguageModel) {
-        this.chatLanguageModel = chatLanguageModel;
+    ChatModelController(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @GetMapping("/model")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.chat(message);
+        return chatModel.chat(message);
     }
 }
 ```
@@ -127,7 +135,7 @@ For that, it is necessary to add the `azure-identity` dependency to the project.
 Then, you can create an `AzureOpenAiChatModel` using the [DefaultAzureCredentialBuilder](https://learn.microsoft.com/en-us/java/api/com.azure.identity.defaultazurecredentialbuilder?view=azure-java-stable) API:  
 
 ```java
-ChatLanguageModel model = AzureOpenAiChatModel.builder()
+ChatModel model = AzureOpenAiChatModel.builder()
         .deploymentName("gpt-4o")
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .tokenCredential(new DefaultAzureCredentialBuilder().build())
@@ -180,7 +188,7 @@ public class Demo {
         StockPriceService stockPriceService = new StockPriceService();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(stockPriceService)
                 .build();
 
@@ -203,7 +211,7 @@ The documentation for using Structured Outputs in LangChain4j is available [here
 The model needs to be configured with the `strictJsonSchema` parameter set to `true` in order to force the adherence to a JSON Schema:
 
 ```java
-ChatLanguageModel model = AzureOpenAiChatModel.builder()
+ChatModel model = AzureOpenAiChatModel.builder()
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .deploymentName("gpt-4o")
@@ -216,7 +224,7 @@ ChatLanguageModel model = AzureOpenAiChatModel.builder()
 If `strictJsonSchema` is set to `false` and you provide a JSON Schema, the model will still try to generate a response that adheres to the schema, but it will not fail if the response does not adhere to the schema. One reason to do this is for better performance.
 :::
 
-You can then use this model either with the high level `Assistant` API or the low level `ChatLanguageModel` API, as detailed below.
+You can then use this model either with the high level `Assistant` API or the low level `ChatModel` API, as detailed below.
 When using it with the high level `Assistant` API, configure `supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))` to enable structured outputs with a JSON schema.
 
 ### Using the high level `Assistant` API
@@ -254,13 +262,13 @@ This `Assistant` will make sure that the response adheres to a JSON schema corre
 String question = "Julien likes the colors blue, white and red";
 
 PersonAssistant assistant = AiServices.builder(PersonAssistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
 Person person = assistant.extractPerson(question);
 ```
 
-### Using the low level `ChatLanguageModel` API
+### Using the low level `ChatModel` API
 
 This is a similar process to the high level API, but this time the JSON schema needs to be configured manually, as well as mapping the JSON response to a Java object.
 
@@ -285,7 +293,7 @@ ChatRequest chatRequest = ChatRequest.builder()
         .build())
     .build();
 
-String answer = chatLanguageModel.chat(chatRequest).aiMessage().text();
+String answer = chatModel.chat(chatRequest).aiMessage().text();
 ```
 
 In this example, the `answer` will be:
@@ -304,7 +312,7 @@ This implementation is similar to the `AzureOpenAiChatModel` above, but it strea
 
 ### Plain Java
 ```java
-StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .deploymentName("gpt-4o")

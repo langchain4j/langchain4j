@@ -2,7 +2,11 @@ package dev.langchain4j.model.workersai;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
@@ -13,7 +17,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiChatCompletionRequest;
 import dev.langchain4j.model.workersai.spi.WorkersAiChatModelBuilderFactory;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,28 +29,25 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * WorkerAI Chat model.
  * <a href="https://developers.cloudflare.com/api/operations/workers-ai-post-run-model">...</a>
  */
-@Slf4j
-public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLanguageModel {
+public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatModel {
+
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(WorkersAiChatModel.class);
 
     /**
      * Constructor with Builder.
      *
-     * @param builder
-     *      builder.
+     * @param builder builder.
      */
     public WorkersAiChatModel(Builder builder) {
-       this(builder.accountId, builder.modelName, builder.apiToken);
+        this(builder.accountId, builder.modelName, builder.apiToken);
     }
 
     /**
      * Constructor with Builder.
      *
-     * @param accountId
-     *      account identifier
-     * @param modelName
-     *      model name
-     * @param apiToken
-     *     api token
+     * @param accountId account identifier
+     * @param modelName model name
+     * @param apiToken  api token
      */
     public WorkersAiChatModel(String accountId, String modelName, String apiToken) {
         super(accountId, modelName, apiToken);
@@ -55,8 +56,7 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLa
     /**
      * Builder access.
      *
-     * @return
-     *      builder instance
+     * @return builder instance
      */
     public static Builder builder() {
         for (WorkersAiChatModelBuilderFactory factory : loadFactories(WorkersAiChatModelBuilderFactory.class)) {
@@ -92,10 +92,8 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLa
         /**
          * Simple constructor.
          *
-         * @param accountId
-         *      account identifier.
-         * @return
-         *      self reference
+         * @param accountId account identifier.
+         * @return self reference
          */
         public Builder accountId(String accountId) {
             this.accountId = accountId;
@@ -159,30 +157,41 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLa
         req.setMessages(messages.stream()
                 .map(this::toMessage)
                 .collect(Collectors.toList()));
-        return new Response<>(new AiMessage(generate(req)),null, FinishReason.STOP);
+        return new Response<>(new AiMessage(generate(req)), null, FinishReason.STOP);
     }
 
     /**
      * Mapping ChatMessage to ChatTextGenerationRequest.Message
      *
-     * @param message
-     *      inbound message
-     * @return
-     *      message for request
+     * @param message inbound message
+     * @return message for request
      */
     private WorkersAiChatCompletionRequest.Message toMessage(ChatMessage message) {
         return new WorkersAiChatCompletionRequest.Message(
-               WorkersAiChatCompletionRequest.MessageRole.valueOf(message.type().name().toLowerCase()),
-                message.text());
+                WorkersAiChatCompletionRequest.MessageRole.valueOf(message.type().name().toLowerCase()),
+                toText(message)
+        );
+    }
+
+    private static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            return toolExecutionResultMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
     }
 
     /**
      * Invoke endpoint and process error.
      *
-     * @param req
-     *      request
-     * @return
-     *      text generated by the model
+     * @param req request
+     * @return text generated by the model
      */
     private String generate(WorkersAiChatCompletionRequest req) {
         try {

@@ -1,8 +1,5 @@
 package dev.langchain4j.model.jlama;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,9 +11,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.io.File;
 import java.util.ArrayList;
@@ -27,7 +25,7 @@ import org.junit.jupiter.api.Test;
 class JlamaStreamingChatModelToolsIT {
 
     static File tmpDir;
-    static StreamingChatLanguageModel model;
+    static StreamingChatModel model;
 
     @BeforeAll
     static void setup() {
@@ -45,15 +43,11 @@ class JlamaStreamingChatModelToolsIT {
     ToolSpecification weatherToolSpecification = ToolSpecification.builder()
             .name("get_current_temperature")
             .description("Gets the current temperature at a location")
-            .addParameter(
-                    "location",
-                    STRING,
-                    description("The location to get the temperature for, in the format \"City, Country\"."))
-            .addParameter(
-                    "unit",
-                    STRING,
-                    enums("celsius", "fahrenheit"),
-                    description("The unit to return the temperature in, e.g. 'celsius' or 'fahrenheit'"))
+            .parameters(JsonObjectSchema.builder()
+                    .addStringProperty("location", "The location to get the temperature for, in the format \"City, Country\".")
+                    .addEnumProperty("unit", List.of("celsius", "fahrenheit"), "The unit to return the temperature in, e.g. 'celsius' or 'fahrenheit'")
+                    .required()
+                    .build())
             .build();
 
     @Test
@@ -85,7 +79,7 @@ class JlamaStreamingChatModelToolsIT {
                 aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("get_current_temperature");
         assertThat(toolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"unit\": \"celsius\", \"location\": \"Paris, France\"}");
+                .isEqualToIgnoringWhitespace("{\"location\": \"Paris, France\", \"unit\": \"celsius\"}");
 
         // given
         ToolExecutionResultMessage toolExecutionResultMessage = from(

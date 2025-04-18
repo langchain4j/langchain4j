@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 import static dev.langchain4j.data.document.Document.URL;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 import static org.jsoup.internal.StringUtil.in;
@@ -68,8 +69,8 @@ public class HtmlToTextDocumentTransformer implements DocumentTransformer {
     @Override
     public Document transform(Document document) {
         String html = document.text();
-        String baseUrl = document.metadata(URL) != null ? document.metadata(URL) : "";
-        org.jsoup.nodes.Document jsoupDocument = Jsoup.parse(html, baseUrl);
+        String url = document.metadata().getString(URL);
+        org.jsoup.nodes.Document jsoupDocument = Jsoup.parse(html, getOrDefault(url, ""));
 
         String text;
         if (cssSelector != null) {
