@@ -57,6 +57,12 @@ public class OracleEmbeddingModelTest {
         textSegments.add(TextSegment.from("1,2,3"));
         Response<List<Embedding>> resp3 = embedder.embedAll(textSegments);
         assertThat(resp3.content().size()).isEqualTo(3);
+
+        // default is with batching enabled
+        // embed with batching disabled
+        embedder.setBatching(false);
+        Response<List<Embedding>> resp4 = embedder.embedAll(textSegments);
+        assertThat(resp4.content().size()).isEqualTo(3);
     }
 
     @Test
@@ -85,6 +91,12 @@ public class OracleEmbeddingModelTest {
         textSegments.add(TextSegment.from("1,2,3"));
         Response<List<Embedding>> resp3 = embedder.embedAll(textSegments);
         assertThat(resp3.content().size()).isEqualTo(3);
+
+        // default is with batching enabled
+        // embed with batching disabled
+        embedder.setBatching(false);
+        Response<List<Embedding>> resp4 = embedder.embedAll(textSegments);
+        assertThat(resp4.content().size()).isEqualTo(3);
     }
 
     @AfterEach
