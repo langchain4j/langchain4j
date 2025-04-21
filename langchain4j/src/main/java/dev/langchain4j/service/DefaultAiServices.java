@@ -277,7 +277,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return response;
                         }
 
-                        var parsedResponse = serviceOutputParser.parse(chatResponse, returnType);
+                        var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
 
                         if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()

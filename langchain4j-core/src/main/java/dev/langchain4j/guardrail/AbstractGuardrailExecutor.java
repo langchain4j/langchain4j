@@ -2,6 +2,7 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import org.jspecify.annotations.Nullable;
  * @param <F>
  *            The type of {@link Failure} to return
  */
+@Internal
 public abstract sealed class AbstractGuardrailExecutor<
                 C extends GuardrailsConfig,
                 P extends GuardrailRequest<P>,

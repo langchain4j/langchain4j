@@ -2,6 +2,7 @@ package dev.langchain4j.service.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailExecutor;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -26,6 +27,7 @@ import org.jspecify.annotations.Nullable;
  * guardrail logic for the methods of the associated AI service class, ensuring both input
  * and output constraints are applied automatically when methods are invoked.
  */
+@Internal
 public abstract class AbstractGuardrailService implements GuardrailService {
     private final Class<?> aiServiceClass;
     private final Map<Object, @Nullable InputGuardrailExecutor> inputGuardrails = new HashMap<>();

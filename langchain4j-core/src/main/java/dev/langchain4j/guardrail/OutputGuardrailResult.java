@@ -3,7 +3,7 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -161,18 +161,18 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     /**
-     * Gets the response computed from the combination of the original {@link Response} in the {@link OutputGuardrailRequest}
+     * Gets the response computed from the combination of the original {@link ChatResponse} in the {@link OutputGuardrailRequest}
      * and this result
      * @param request The output guardrail request
      * @param <T> The type of response
-     * @return A response computed from the combination of the original {@link Response} in the {@link OutputGuardrailRequest}
+     * @return A response computed from the combination of the original {@link ChatResponse} in the {@link OutputGuardrailRequest}
      * and this result
      */
     public <T> T response(OutputGuardrailRequest request) {
         return (T) Optional.ofNullable(successfulResult).orElseGet(() -> createResponse(request));
     }
 
-    private Response<AiMessage> createResponse(OutputGuardrailRequest params) {
+    private ChatResponse createResponse(OutputGuardrailRequest params) {
         var response = params.responseFromLLM();
         var aiMessage = response.aiMessage();
         var newAiMessage = aiMessage;
@@ -183,11 +183,7 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
                     : AiMessage.from(successfulText());
         }
 
-        return Response.from(
-                newAiMessage,
-                response.metadata().tokenUsage(),
-                response.metadata().finishReason(),
-                params.requestParams().variables());
+        return response.toBuilder().aiMessage(newAiMessage).build();
     }
 
     @Override
