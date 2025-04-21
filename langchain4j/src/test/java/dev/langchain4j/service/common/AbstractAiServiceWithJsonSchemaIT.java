@@ -1,6 +1,7 @@
 package dev.langchain4j.service.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -41,7 +42,7 @@ import static org.mockito.Mockito.verify;
 public abstract class AbstractAiServiceWithJsonSchemaIT {
     // TODO test the same for streaming models
 
-    protected abstract List<ChatLanguageModel> models();
+    protected abstract List<ChatModel> models();
 
 
     interface PersonExtractor1 {
@@ -59,7 +60,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_primitives(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_primitives(ChatModel model) {
 
         // given
         model = spy(model);
@@ -99,7 +100,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_missing_data(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_missing_data(ChatModel model) {
 
         interface PersonExtractor {
 
@@ -129,7 +130,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         }
 
         // given
-        ChatLanguageModel spyModel = spy(model);
+        ChatModel spyModel = spy(model);
 
         PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, spyModel);
 
@@ -190,7 +191,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         verify(spyModel).supportedCapabilities();
     }
 
-    protected boolean isStrictJsonSchemaEnabled(ChatLanguageModel model) {
+    protected boolean isStrictJsonSchemaEnabled(ChatModel model) {
         return false;
     }
 
@@ -213,7 +214,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_nested_pojo(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_nested_pojo(ChatModel model) {
 
         // given
         model = spy(model);
@@ -276,7 +277,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_enum(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_enum(ChatModel model) {
 
         // given
         model = spy(model);
@@ -322,7 +323,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_array_of_primitives(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_array_of_primitives(ChatModel model) {
 
         // given
         model = spy(model);
@@ -372,7 +373,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_list_of_primitives(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_list_of_primitives(ChatModel model) {
 
         // given
         model = spy(model);
@@ -422,7 +423,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_set_of_primitives(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_set_of_primitives(ChatModel model) {
 
         // given
         model = spy(model);
@@ -477,7 +478,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_array_of_pojos(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_array_of_pojos(ChatModel model) {
 
         // given
         model = spy(model);
@@ -536,7 +537,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_list_of_pojos(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_list_of_pojos(ChatModel model) {
 
         // given
         model = spy(model);
@@ -579,7 +580,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_set_of_pojos(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_set_of_pojos(ChatModel model) {
 
         record Pet(String name) {
         }
@@ -650,7 +651,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_array_of_enums(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_array_of_enums(ChatModel model) {
 
         // given
         model = spy(model);
@@ -712,7 +713,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_list_of_enums(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_list_of_enums(ChatModel model) {
 
         // given
         model = spy(model);
@@ -774,7 +775,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_set_of_enums(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_set_of_enums(ChatModel model) {
 
         // given
         model = spy(model);
@@ -832,7 +833,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_local_date_time_fields(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_local_date_time_fields(ChatModel model) {
 
         // given
         model = spy(model);
@@ -964,7 +965,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_return_result_with_pojo(ChatLanguageModel model) {
+    protected void should_return_result_with_pojo(ChatModel model) {
 
         // given
         interface PersonExtractor {
@@ -1024,7 +1025,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsRecursion")
-    void should_extract_pojo_with_recursion(ChatLanguageModel model) {
+    void should_extract_pojo_with_recursion(ChatModel model) {
 
         // given
         model = spy(model);
@@ -1098,7 +1099,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_pojo_with_uuid(ChatLanguageModel model) {
+    protected void should_extract_pojo_with_uuid(ChatModel model) {
 
         // given
         model = spy(model);
@@ -1141,7 +1142,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_boolean_primitive(ChatLanguageModel model) {
+    protected void should_extract_boolean_primitive(ChatModel model) {
 
         // given
         interface BooleanExtractor {
@@ -1180,7 +1181,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_boolean_boxed(ChatLanguageModel model) {
+    protected void should_extract_boolean_boxed(ChatModel model) {
 
         // given
         interface BooleanExtractor {
@@ -1219,7 +1220,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_int_primitive(ChatLanguageModel model) {
+    protected void should_extract_int_primitive(ChatModel model) {
 
         // given
         interface IntExtractor {
@@ -1259,7 +1260,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_int_boxed(ChatLanguageModel model) {
+    protected void should_extract_int_boxed(ChatModel model) {
 
         // given
         interface IntegerExtractor {
@@ -1299,7 +1300,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_long_primitive(ChatLanguageModel model) {
+    protected void should_extract_long_primitive(ChatModel model) {
 
         // given
         interface LongExtractor {
@@ -1339,7 +1340,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_long_boxed(ChatLanguageModel model) {
+    protected void should_extract_long_boxed(ChatModel model) {
 
         // given
         interface LongExtractor {
@@ -1379,7 +1380,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_float_primitive(ChatLanguageModel model) {
+    protected void should_extract_float_primitive(ChatModel model) {
 
         // given
         interface FloatExtractor {
@@ -1418,7 +1419,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_float_boxed(ChatLanguageModel model) {
+    protected void should_extract_float_boxed(ChatModel model) {
 
         // given
         interface FloatExtractor {
@@ -1457,7 +1458,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_double_primitive(ChatLanguageModel model) {
+    protected void should_extract_double_primitive(ChatModel model) {
 
         // given
         interface DoubleExtractor {
@@ -1496,7 +1497,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_double_boxed(ChatLanguageModel model) {
+    protected void should_extract_double_boxed(ChatModel model) {
 
         // given
         interface DoubleExtractor {
@@ -1537,7 +1538,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_list_of_pojo(ChatLanguageModel model) {
+    protected void should_extract_list_of_pojo(ChatModel model) {
 
         // given
         interface PeopleExtractor {
@@ -1599,7 +1600,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_return_result_with_list_of_pojo(ChatLanguageModel model) {
+    protected void should_return_result_with_list_of_pojo(ChatModel model) {
 
         // given
         interface PeopleExtractor {
@@ -1649,7 +1650,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_list_of_strings(ChatLanguageModel model) {
+    protected void should_extract_list_of_strings(ChatModel model) {
 
         // given
         interface ListOfStringsExtractor {
@@ -1697,7 +1698,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_set_of_strings(ChatLanguageModel model) {
+    protected void should_extract_set_of_strings(ChatModel model) {
 
         // given
         interface SetOfStringsExtractor {
@@ -1742,7 +1743,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_set_of_pojo(ChatLanguageModel model) {
+    protected void should_extract_set_of_pojo(ChatModel model) {
 
         // given
         interface PojoSetExtractor {
@@ -1813,7 +1814,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_enum(ChatLanguageModel model) {
+    protected void should_extract_enum(ChatModel model) {
 
         // given
         enum MaritalStatus {
@@ -1855,7 +1856,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_list_of_enums(ChatLanguageModel model) {
+    protected void should_extract_list_of_enums(ChatModel model) {
 
         // given
         enum MaritalStatus {
@@ -1904,7 +1905,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_extract_set_of_enums(ChatLanguageModel model) {
+    protected void should_extract_set_of_enums(ChatModel model) {
 
         // given
         enum Weather {

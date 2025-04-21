@@ -110,7 +110,7 @@ public class AnthropicMapper {
                                 ensureNotBlank(image.base64Data(), "base64Data"));
                     } else if (content instanceof PdfFileContent pdfFileContent) {
                         PdfFile pdfFile = pdfFileContent.pdfFile();
-                        return new AnthropicPdfContent(ensureNotBlank(pdfFile.base64Data(), "base64Data"));
+                        return new AnthropicPdfContent(pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"));
                     } else {
                         throw illegalArgument("Unknown content type: " + content);
                     }
@@ -201,11 +201,12 @@ public class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new AnthropicTokenUsage(
-                anthropicUsage.inputTokens,
-                anthropicUsage.outputTokens,
-                anthropicUsage.cacheCreationInputTokens,
-                anthropicUsage.cacheReadInputTokens);
+        return AnthropicTokenUsage.builder()
+                .inputTokenCount(anthropicUsage.inputTokens)
+                .outputTokenCount(anthropicUsage.outputTokens)
+                .cacheCreationInputTokens(anthropicUsage.cacheCreationInputTokens)
+                .cacheReadInputTokens(anthropicUsage.cacheReadInputTokens)
+                .build();
     }
 
     public static FinishReason toFinishReason(String anthropicStopReason) {

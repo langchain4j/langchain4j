@@ -3,7 +3,8 @@ package dev.langchain4j.model.openai.common;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AuthenticationException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -59,7 +60,7 @@ class OpenAiListenableChatModelIT { // TODO extract to ListenableChatModelIT
         // given
         TestChatModelListener listener = new TestChatModelListener();
 
-        ChatLanguageModel model = OpenAiChatModel.builder()
+        ChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -113,7 +114,7 @@ class OpenAiListenableChatModelIT { // TODO extract to ListenableChatModelIT
 
         TestChatModelListener listener = new TestChatModelListener();
 
-        ChatLanguageModel model = OpenAiChatModel.builder()
+        ChatModel model = OpenAiChatModel.builder()
                 .apiKey(incorrectApiKey)
                 .maxRetries(1)
                 .listeners(List.of(listener))

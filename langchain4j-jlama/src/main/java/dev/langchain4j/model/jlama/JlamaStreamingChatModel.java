@@ -21,7 +21,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
@@ -43,7 +43,7 @@ import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
 import static dev.langchain4j.model.jlama.Json.fromJson;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
+public class JlamaStreamingChatModel implements StreamingChatModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;

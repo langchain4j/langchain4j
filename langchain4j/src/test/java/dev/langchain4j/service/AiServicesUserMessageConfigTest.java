@@ -13,7 +13,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.tool.HallucinatedToolNameStrategy;
 import java.util.List;
@@ -27,11 +27,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AiServicesUserMessageConfigTest {
 
     @Spy
-    ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds("Berlin");
+    ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
 
     @AfterEach
     void afterEach() {
-        verifyNoMoreInteractionsFor(chatLanguageModel);
+        verifyNoMoreInteractionsFor(chatModel);
     }
 
     interface AiService {
@@ -81,13 +81,13 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
         assertThat(aiService.chat1("What is the capital of Germany?")).containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test
@@ -95,14 +95,14 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
         assertThat(aiService.chat2("What is the capital of Germany?")).containsIgnoringCase("Berlin");
 
-        verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test
@@ -110,14 +110,14 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
         assertThat(aiService.chat3("What is the capital of {{country}}?", "Germany"))
                 .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test
@@ -125,13 +125,13 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
         assertThat(aiService.chat4()).containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test
@@ -139,13 +139,13 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
         assertThat(aiService.chat5("Germany")).containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test
@@ -153,13 +153,13 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
         assertThat(aiService.chat6("Germany")).containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test
@@ -167,13 +167,13 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
         assertThat(aiService.chat7("capital", "Germany")).containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test
@@ -181,13 +181,13 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
         assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
     }
 
     @Test
@@ -195,7 +195,7 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
@@ -209,7 +209,7 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
@@ -223,7 +223,7 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
@@ -238,7 +238,7 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
@@ -253,7 +253,7 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
@@ -267,7 +267,7 @@ class AiServicesUserMessageConfigTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
         // when-then
@@ -292,13 +292,13 @@ class AiServicesUserMessageConfigTest {
     @Test
     void should_fail_on_hallucinated_tool_execution() {
 
-        ChatLanguageModel chatLanguageModel = new ChatModelMock(ignore -> AiMessage.from(
+        ChatModel chatModel = new ChatModelMock(ignore -> AiMessage.from(
                 ToolExecutionRequest.builder().id("id").name("unknown").build()));
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTool.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .chatMemory(chatMemory)
                 .tools(new HelloWorld())
                 .hallucinatedToolNameStrategy(HallucinatedToolNameStrategy.THROW_EXCEPTION)
@@ -314,7 +314,7 @@ class AiServicesUserMessageConfigTest {
     @Test
     void should_retry_on_hallucinated_tool_execution() {
 
-        ChatLanguageModel chatLanguageModel = new ChatModelMock(chatRequest -> {
+        ChatModel chatModel = new ChatModelMock(chatRequest -> {
             List<ToolExecutionResultMessage> toolResults = chatRequest.messages().stream()
                     .filter(ToolExecutionResultMessage.class::isInstance)
                     .map(ToolExecutionResultMessage.class::cast)
@@ -339,7 +339,7 @@ class AiServicesUserMessageConfigTest {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTool.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .chatMemory(chatMemory)
                 .tools(new HelloWorld())
                 .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(

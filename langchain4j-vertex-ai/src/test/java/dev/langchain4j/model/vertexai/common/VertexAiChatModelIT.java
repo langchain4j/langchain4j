@@ -1,6 +1,7 @@
 package dev.langchain4j.model.vertexai.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.vertexai.VertexAiChatModel;
 
@@ -11,7 +12,7 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(
                 VertexAiChatModel.builder()
                         .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))

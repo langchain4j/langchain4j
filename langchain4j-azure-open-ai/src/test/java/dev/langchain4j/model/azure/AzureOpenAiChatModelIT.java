@@ -15,7 +15,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -54,7 +54,7 @@ class AzureOpenAiChatModelIT {
     })
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop(String deploymentName) {
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -81,7 +81,7 @@ class AzureOpenAiChatModelIT {
     })
     void should_generate_answer_and_return_token_usage_and_finish_reason_length(String deploymentName) {
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI" +
                         "_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
@@ -110,7 +110,7 @@ class AzureOpenAiChatModelIT {
     })
     void should_execute_tool_forcefully_then_answer(String deploymentName) {
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -181,7 +181,7 @@ class AzureOpenAiChatModelIT {
             "gpt-4o"
     })
     void should_call_function_with_no_argument(String deploymentName) {
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -220,7 +220,7 @@ class AzureOpenAiChatModelIT {
     })
     void should_call_three_functions_in_parallel(String deploymentName) {
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -309,7 +309,7 @@ class AzureOpenAiChatModelIT {
             "gpt-4o"
     })
     void should_use_json_format(String deploymentName) {
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -335,7 +335,7 @@ class AzureOpenAiChatModelIT {
     })
     @Deprecated(forRemoval = true)
     void should_support_deprecated_json_format(String deploymentName) {
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -366,7 +366,7 @@ class AzureOpenAiChatModelIT {
         // given
         String modelNameString = modelName.toString();
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(modelNameString)
@@ -469,7 +469,7 @@ class AzureOpenAiChatModelIT {
                 .responseFormat(responseFormat)
                 .build();
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName("gpt-4o-mini")

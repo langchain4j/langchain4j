@@ -13,7 +13,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 
 import java.util.Map;
 import java.util.Optional;
@@ -34,50 +34,50 @@ import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_
  * Magic numbers present in this class were found empirically while testing.
  * There are integration tests in place that are making sure that the calculations here are very close to that of OpenAI.
  */
-public class AzureOpenAiTokenizer implements Tokenizer {
+public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
 
     private final String modelName;
     private final Optional<Encoding> encoding;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for the "gpt-3.5-turbo" model.
+     * Creates an instance of the {@code AzureOpenAiTokenCountEstimator} for the "gpt-3.5-turbo" model.
      *
      * @deprecated Please use other constructors and specify the model name explicitly.
      */
     @Deprecated(forRemoval = true)
-    public AzureOpenAiTokenizer() {
+    public AzureOpenAiTokenCountEstimator() {
         this(GPT_3_5_TURBO.modelType());
     }
 
     /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for a given {@link AzureOpenAiChatModelName}.
+     * Creates an instance of the {@code AzureOpenAiTokenCountEstimator} for a given {@link AzureOpenAiChatModelName}.
      */
-    public AzureOpenAiTokenizer(AzureOpenAiChatModelName modelName) {
+    public AzureOpenAiTokenCountEstimator(AzureOpenAiChatModelName modelName) {
         this(modelName.modelType());
     }
 
     /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for a given {@link AzureOpenAiEmbeddingModelName}.
+     * Creates an instance of the {@code AzureOpenAiTokenCountEstimator} for a given {@link AzureOpenAiEmbeddingModelName}.
      */
-    public AzureOpenAiTokenizer(AzureOpenAiEmbeddingModelName modelName) {
+    public AzureOpenAiTokenCountEstimator(AzureOpenAiEmbeddingModelName modelName) {
         this(modelName.modelType());
     }
 
     /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for a given {@link AzureOpenAiLanguageModelName}.
+     * Creates an instance of the {@code AzureOpenAiTokenCountEstimator} for a given {@link AzureOpenAiLanguageModelName}.
      */
-    public AzureOpenAiTokenizer(AzureOpenAiLanguageModelName modelName) {
+    public AzureOpenAiTokenCountEstimator(AzureOpenAiLanguageModelName modelName) {
         this(modelName.modelType());
     }
 
     /**
-     * Creates an instance of the {@code AzureOpenAiTokenizer} for a given model name.
+     * Creates an instance of the {@code AzureOpenAiTokenCountEstimator} for a given model name.
      */
-    public AzureOpenAiTokenizer(String modelName) {
+    public AzureOpenAiTokenCountEstimator(String modelName) {
         this.modelName = ensureNotBlank(modelName, "modelName");
-        // If the model is unknown, we should NOT fail fast during the creation of AzureOpenAiTokenizer.
-        // Doing so would cause the failure of every OpenAI***Model that uses this tokenizer.
+        // If the model is unknown, we should NOT fail fast during the creation of AzureOpenAiTokenCountEstimator.
+        // Doing so would cause the failure of every OpenAI***Model that uses this token count estimator.
         // This is done to account for situations when a new OpenAI model is available,
         // but JTokkit does not yet support it.
         this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);

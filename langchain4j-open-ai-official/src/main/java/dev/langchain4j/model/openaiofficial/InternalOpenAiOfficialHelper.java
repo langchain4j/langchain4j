@@ -497,8 +497,9 @@ class InternalOpenAiOfficialHelper {
         OpenAiOfficialTokenUsage.InputTokensDetails inputTokensDetails = null;
         if (promptTokensDetails.isPresent()
                 && promptTokensDetails.get().cachedTokens().isPresent()) {
-            inputTokensDetails = new OpenAiOfficialTokenUsage.InputTokensDetails(
-                    promptTokensDetails.get().cachedTokens().get());
+            inputTokensDetails = OpenAiOfficialTokenUsage.InputTokensDetails.builder()
+                    .cachedTokens(promptTokensDetails.get().cachedTokens().get())
+                    .build();
         }
 
         Optional<CompletionUsage.CompletionTokensDetails> completionTokensDetails =
@@ -506,8 +507,9 @@ class InternalOpenAiOfficialHelper {
         OpenAiOfficialTokenUsage.OutputTokensDetails outputTokensDetails = null;
         if (completionTokensDetails.isPresent()
                 && completionTokensDetails.get().reasoningTokens().isPresent()) {
-            outputTokensDetails = new OpenAiOfficialTokenUsage.OutputTokensDetails(
-                    completionTokensDetails.get().reasoningTokens().get());
+            outputTokensDetails = OpenAiOfficialTokenUsage.OutputTokensDetails.builder()
+                    .reasoningTokens(completionTokensDetails.get().reasoningTokens().get())
+                    .build();
         }
 
         return OpenAiOfficialTokenUsage.builder()

@@ -1,8 +1,8 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.azure;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -17,13 +17,15 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0125;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0125_PREVIEW;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIEW;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K_0613;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_1106;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0125_PREVIEW;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0613;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_1106_PREVIEW;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_32K;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_32K_0613;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_TURBO_2024_04_09;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_PREVIEW;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Collections.singletonList;
@@ -31,53 +33,56 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-// TODO use exact model for Tokenizer (the one returned by LLM)
+// TODO use exact model for TokenCountEstimator (the one returned by LLM)
 @Disabled("this test is very long and expensive, we will need to set a schedule for it to run maybe 1 time per month")
-class OpenAiTokenizerIT {
+class AzureOpenAiTokenCountEstimatorIT {
 
     // my API key does not have access to these models
-    private static final Set<OpenAiChatModelName> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
-            GPT_3_5_TURBO_0125,
+    private static final Set<AzureOpenAiChatModelName> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
+            GPT_3_5_TURBO_0613,
             GPT_4_32K,
             GPT_4_32K_0613
     ));
 
-    private static final Set<OpenAiChatModelName> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
+    private static final Set<AzureOpenAiChatModelName> MODELS_WITHOUT_TOOL_SUPPORT = new HashSet<>(asList(
+            GPT_4_0613,
+            GPT_4_VISION_PREVIEW
+    ));
+
+    private static final Set<AzureOpenAiChatModelName> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
             // TODO add GPT_3_5_TURBO once it points to GPT_3_5_TURBO_1106
             GPT_3_5_TURBO_1106,
-            GPT_3_5_TURBO_0125,
-            GPT_4_TURBO_PREVIEW,
+            GPT_4_TURBO_2024_04_09,
             GPT_4_1106_PREVIEW,
             GPT_4_0125_PREVIEW
     ));
 
     @ParameterizedTest
     @MethodSource
-    void should_count_tokens_in_messages(List<ChatMessage> messages, OpenAiChatModelName modelName) {
+    void should_count_tokens_in_messages(List<ChatMessage> messages, AzureOpenAiChatModelName modelName) {
 
         // given
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName)
-                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
-                .logRequests(true)
-                .logResponses(true)
+        AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(modelName.toString())
+                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .logRequestsAndResponses(true)
                 .build();
 
         int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
+        TokenCountEstimator tokenCountEstimator = new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo");
 
         // when
-        int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
+        int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
 
         // then
         assertThat(tokenCount).isEqualTo(expectedTokenCount);
     }
 
     static Stream<Arguments> should_count_tokens_in_messages() {
-        return stream(OpenAiChatModelName.values())
+        return stream(AzureOpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .flatMap(model -> Stream.of(
                         arguments(singletonList(systemMessage("Be friendly.")), model),
@@ -118,32 +123,32 @@ class OpenAiTokenizerIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_count_tokens_in_messages_with_single_tool(List<ChatMessage> messages, OpenAiChatModelName modelName) {
+    void should_count_tokens_in_messages_with_single_tool(List<ChatMessage> messages, AzureOpenAiChatModelName modelName) {
 
         // given
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName)
-                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
-                .logRequests(true)
-                .logResponses(true)
+        AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(modelName.toString())
+                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .logRequestsAndResponses(true)
                 .build();
 
         int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
+        TokenCountEstimator tokenCountEstimator = new AzureOpenAiTokenCountEstimator(modelName.name());
 
         // when
-        int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
+        int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
 
         // then
         assertThat(tokenCount).isCloseTo(expectedTokenCount, withPercentage(4));
     }
 
     static Stream<Arguments> should_count_tokens_in_messages_with_single_tool() {
-        return stream(OpenAiChatModelName.values())
+        return stream(AzureOpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
+                .filter(model -> !MODELS_WITHOUT_TOOL_SUPPORT.contains(model))
                 .flatMap(model -> Stream.of(
 
                         // various tool "name" lengths
@@ -335,30 +340,29 @@ class OpenAiTokenizerIT {
     @ParameterizedTest
     @MethodSource
     void should_count_tokens_in_messages_with_multiple_tools(List<ChatMessage> messages,
-                                                             OpenAiChatModelName modelName) {
+                                                             AzureOpenAiChatModelName modelName) {
         // given
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(modelName)
-                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
-                .logRequests(true)
-                .logResponses(true)
+        AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(modelName.toString())
+                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .logRequestsAndResponses(true)
                 .build();
 
         int expectedTokenCount = model.chat(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new OpenAiTokenizer(modelName.toString());
+        TokenCountEstimator tokenCountEstimator = new AzureOpenAiTokenCountEstimator(modelName.name());
 
         // when
-        int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
+        int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
 
         // then
         assertThat(tokenCount).isCloseTo(expectedTokenCount, withPercentage(4));
     }
 
     static Stream<Arguments> should_count_tokens_in_messages_with_multiple_tools() {
-        return stream(OpenAiChatModelName.values())
+        return stream(AzureOpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .filter(MODELS_WITH_PARALLEL_TOOL_SUPPORT::contains)
                 .flatMap(model -> Stream.of(

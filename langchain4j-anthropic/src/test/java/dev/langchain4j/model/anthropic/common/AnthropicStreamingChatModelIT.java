@@ -4,15 +4,18 @@ import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_
 import static java.lang.System.getenv;
 
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import java.util.List;
+
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final StreamingChatLanguageModel ANTHROPIC_STREAMING_CHAT_MODEL = AnthropicStreamingChatModel.builder()
+    static final StreamingChatModel ANTHROPIC_STREAMING_CHAT_MODEL = AnthropicStreamingChatModel.builder()
             .apiKey(getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .temperature(0.0)
@@ -21,7 +24,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<StreamingChatModel> models() {
         return List.of(ANTHROPIC_STREAMING_CHAT_MODEL);
     }
 
@@ -78,5 +81,10 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean assertResponseModel() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType() {
+        return AnthropicTokenUsage.class;
     }
 }

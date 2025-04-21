@@ -24,7 +24,7 @@ Amazon Bedrock offers two primary model invocation API operations for inference:
 - [Converse](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) – Amazon recommend using the Converse API as it provides consistent API, that works with all Amazon Bedrock models that support messages.
 - [InvokeModel](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-invoke.html) – Originally aimed at single calls to obtain a response to a single prompt.
 
-## ChatLanguageModel using ConverseAPI
+## ChatModel using ConverseAPI
 Guardrails is not supported by the current implementation.
 
 Supported models and their features can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
@@ -33,7 +33,7 @@ Models ids can be found [here](https://docs.aws.amazon.com/bedrock/latest/usergu
 
 ### Configuration
 ```java
-ChatLanguageModel model = BedrockChatModel.builder()
+ChatModel model = BedrockChatModel.builder()
         .modelId("us.amazon.nova-lite-v1:0")
         .region(...)
         .maxRetries(...)
@@ -61,7 +61,7 @@ parameters in additionalModelRequestFields.
 
 - [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockChatModelExample.java)
 
-## StreamingChatLanguageModel using ConverseAPI
+## StreamingChatModel using ConverseAPI
 Guardrails is not supported by the current implementation.
 
 Supported models and their features can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
@@ -70,7 +70,7 @@ Models ids can be found [here](https://docs.aws.amazon.com/bedrock/latest/usergu
 
 ### Configuration
 ```java
-StreamingChatLanguageModel model = BedrockStreamingChatModel.builder()
+StreamingChatModel model = BedrockStreamingChatModel.builder()
         .modelId("us.amazon.nova-lite-v1:0")
         .region(...)
         .maxRetries(...)
@@ -98,7 +98,7 @@ parameters in additionalModelRequestFields.
 
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
 
-## ChatLanguageModel using InvokeAPI
+## ChatModel using InvokeAPI
 
 ### AI21 Models
 - `BedrockAI21LabsChatModel` (deprecated, please use `BedrockChatModel`)
@@ -110,7 +110,7 @@ parameters in additionalModelRequestFields.
 
 Example:
 ```java
-ChatLanguageModel model = BedrockAnthropicMessageChatModel.builder()
+ChatModel model = BedrockAnthropicMessageChatModel.builder()
 .model("anthropic.claude-3-sonnet-20240229-v1:0")
 .build();
 ```

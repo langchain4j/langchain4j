@@ -13,9 +13,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-class StreamingChatLanguageModelTest implements WithAssertions {
+class StreamingChatModelTest implements WithAssertions {
 
-    public static class StreamingUpperCaseEchoModel implements StreamingChatLanguageModel {
+    public static class StreamingUpperCaseEchoModel implements StreamingChatModel {
 
         @Override
         public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
@@ -52,7 +52,7 @@ class StreamingChatLanguageModelTest implements WithAssertions {
 
     @Test
     void generate() {
-        StreamingChatLanguageModel model = new StreamingUpperCaseEchoModel();
+        StreamingChatModel model = new StreamingUpperCaseEchoModel();
 
         {
             List<ChatMessage> messages = new ArrayList<>();

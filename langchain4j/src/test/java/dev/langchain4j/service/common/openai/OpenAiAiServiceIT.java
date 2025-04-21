@@ -1,7 +1,9 @@
 package dev.langchain4j.service.common.openai;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
 
 import java.util.List;
@@ -23,7 +25,7 @@ class OpenAiAiServiceIT extends AbstractAiServiceIT {
     }
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(
                 defaultModelBuilder().build()
                 // TODO more configs?
@@ -31,7 +33,7 @@ class OpenAiAiServiceIT extends AbstractAiServiceIT {
     }
 
     @Override
-    protected List<ChatLanguageModel> modelsSupportingToolsAndJsonResponseFormatWithSchema() {
+    protected List<ChatModel> modelsSupportingToolsAndJsonResponseFormatWithSchema() {
         return List.of(
                 defaultModelBuilder()
                         .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
@@ -51,5 +53,10 @@ class OpenAiAiServiceIT extends AbstractAiServiceIT {
                         .build()
                 // TODO more configs?
         );
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType() {
+        return OpenAiTokenUsage.class;
     }
 }

@@ -2,9 +2,9 @@ package dev.langchain4j.model.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.ChatModelListenerUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -16,20 +16,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.internal.ChatModelListenerUtils.onRequest;
+import static dev.langchain4j.internal.ChatModelListenerUtils.onResponse;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
  *
- * @see ChatLanguageModel
+ * @see ChatModel
  */
-public interface StreamingChatLanguageModel {
+public interface StreamingChatModel {
 
     /**
      * This is the main API to interact with the chat model.
      * <p>
      * A temporary default implementation of this method is necessary
-     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     * until all {@link StreamingChatModel} implementations adopt it. It should be removed once that occurs.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
@@ -53,18 +55,18 @@ public interface StreamingChatLanguageModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                ListenersUtil.onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
+                onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ListenersUtil.onError(error, finalChatRequest, provider(), attributes, listeners);
+                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, listeners);
                 handler.onError(error);
             }
         };
 
-        ListenersUtil.onRequest(finalChatRequest, provider(), attributes, listeners);
+        onRequest(finalChatRequest, provider(), attributes, listeners);
         doChat(finalChatRequest, observingHandler);
     }
 

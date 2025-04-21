@@ -29,7 +29,7 @@ implementation 'dev.langchain4j:langchain4j-web-search-engine-searchapi:1.0.0-be
 
 ```java
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.service.AiServices;
@@ -64,7 +64,7 @@ public class SearchApiTool {
                 .engine("google")
                 .optionalParameters(optionalParameters)
                 .build();
-        ChatLanguageModel chatModel = OpenAiChatModel.builder()
+        ChatModel chatModel = OpenAiChatModel.builder()
                 .apiKey(OPENAI_API_KEY)
                 .modelName(OpenAiChatModelName.GPT_3_5_TURBO)
                 .logRequests(true)
@@ -73,7 +73,7 @@ public class SearchApiTool {
         WebSearchTool webTool = WebSearchTool.from(searchEngine);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatModel)
+                .chatModel(chatModel)
                 .tools(webTool)
                 .build();
 

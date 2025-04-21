@@ -6,7 +6,8 @@ import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
@@ -38,7 +39,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 @Getter
 @SuperBuilder
 public abstract class AbstractBedrockChatModel<T extends BedrockChatModelResponse>
-        extends AbstractSharedBedrockChatModel implements ChatLanguageModel {
+        extends AbstractSharedBedrockChatModel implements ChatModel {
 
     private volatile BedrockRuntimeClient client;
 

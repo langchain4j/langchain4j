@@ -75,7 +75,7 @@ class LanguageModelQueryRouterTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .build();
 
@@ -207,7 +207,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();
@@ -233,7 +233,7 @@ class LanguageModelQueryRouterTest {
 
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();
@@ -258,7 +258,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();
@@ -281,7 +281,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();
