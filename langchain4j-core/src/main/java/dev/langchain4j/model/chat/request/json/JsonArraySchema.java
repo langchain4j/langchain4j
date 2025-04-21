@@ -15,6 +15,7 @@ public class JsonArraySchema implements JsonSchemaElement {
         this.items = ensureNotNull(builder.items, "items");
     }
 
+    @Override
     public String description() {
         return description;
     }

@@ -24,6 +24,8 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIE
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K_0613;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.O3;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_2025_04_16;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Collections.singletonList;
@@ -37,9 +39,10 @@ class OpenAiTokenCountEstimatorIT {
 
     // my API key does not have access to these models
     private static final Set<OpenAiChatModelName> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
-            GPT_3_5_TURBO_0125,
             GPT_4_32K,
-            GPT_4_32K_0613
+            GPT_4_32K_0613,
+            O3,
+            O3_2025_04_16
     ));
 
     private static final Set<OpenAiChatModelName> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
@@ -52,7 +55,7 @@ class OpenAiTokenCountEstimatorIT {
     ));
 
     @ParameterizedTest
-    @MethodSource
+    @MethodSource("should_count_tokens_in_messages")
     void should_count_tokens_in_messages(List<ChatMessage> messages, OpenAiChatModelName modelName) {
 
         // given
@@ -60,7 +63,7 @@ class OpenAiTokenCountEstimatorIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName)
-                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(modelName.toString().startsWith("o") ? 100 : 1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
