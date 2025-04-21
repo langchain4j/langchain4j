@@ -14,7 +14,6 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -142,7 +141,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
                         .metadata(completeResponse.metadata().toBuilder()
-                                .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
+                                .tokenUsage(tokenUsage.add(
+                                        completeResponse.metadata().tokenUsage()))
                                 .build())
                         .build();
 
