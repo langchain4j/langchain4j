@@ -6,7 +6,6 @@ import dev.langchain4j.http.client.HttpClientTimeoutIT;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.CompletionException;
 
 class JdkHttpClientTimeoutIT extends HttpClientTimeoutIT {
 
@@ -20,22 +19,7 @@ class JdkHttpClientTimeoutIT extends HttpClientTimeoutIT {
     }
 
     @Override
-    protected Class<? extends Exception> expectedReadTimeoutExceptionTypeSync() {
-        return RuntimeException.class; // TODO unwrap
-    }
-
-    @Override
-    protected Class<? extends Exception> expectedReadTimeoutCauseExceptionTypeSync() {
-        return HttpTimeoutException.class;
-    }
-
-    @Override
-    protected Class<? extends Exception> expectedReadTimeoutExceptionTypeAsync() {
-        return CompletionException.class; // TODO unwrap
-    }
-
-    @Override
-    protected Class<? extends Exception> expectedReadTimeoutCauseExceptionTypeAsync() {
+    protected Class<? extends Exception> expectedReadTimeoutRootCauseExceptionType() {
         return HttpTimeoutException.class;
     }
 }

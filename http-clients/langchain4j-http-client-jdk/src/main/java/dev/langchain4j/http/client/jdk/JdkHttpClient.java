@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client.jdk;
 
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
@@ -52,6 +53,8 @@ public class JdkHttpClient implements HttpClient {
             }
 
             return fromJdkResponse(jdkResponse, jdkResponse.body());
+        } catch (HttpTimeoutException e) {
+            throw new TimeoutException(e);
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -80,8 +83,9 @@ public class JdkHttpClient implements HttpClient {
                     }
                 })
                 .exceptionally(throwable -> {
-                    if (throwable.getCause() instanceof HttpTimeoutException) {
-                        listener.onError(throwable);
+                    // TODO https://github.com/langchain4j/langchain4j/issues/2794
+                    if (throwable.getCause() instanceof HttpTimeoutException httpTimeoutException) {
+                        listener.onError(new TimeoutException(httpTimeoutException));
                     }
                     return null;
                 });
