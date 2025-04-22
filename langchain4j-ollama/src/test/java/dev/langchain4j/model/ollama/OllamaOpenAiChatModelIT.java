@@ -1,5 +1,9 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
@@ -7,10 +11,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import org.junit.jupiter.api.Test;
-
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests if Ollama can be used via OpenAI API (langchain4j-open-ai module)

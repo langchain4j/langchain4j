@@ -1,13 +1,13 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollama;
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-
-import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollama;
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static java.util.Collections.singletonList;
 
 public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
 
@@ -53,11 +53,6 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
 
     @Override
     protected boolean assertResponseId() {
-        return false;
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
         return false;
     }
 }
