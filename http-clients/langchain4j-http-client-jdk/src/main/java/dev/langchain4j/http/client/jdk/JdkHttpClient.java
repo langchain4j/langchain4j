@@ -19,6 +19,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.stream.Collectors.joining;
 
@@ -68,24 +69,26 @@ public class JdkHttpClient implements HttpClient {
                 .thenAccept(jdkResponse -> {
 
                     if (!isSuccessful(jdkResponse)) {
-                        listener.onError(new HttpException(jdkResponse.statusCode(), readBody(jdkResponse)));
+                        HttpException exception = new HttpException(jdkResponse.statusCode(), readBody(jdkResponse));
+                        ignoringExceptions(() -> listener.onError(exception));
                         return;
                     }
 
                     SuccessfulHttpResponse response = fromJdkResponse(jdkResponse, null);
-                    listener.onOpen(response);
+                    ignoringExceptions(() -> listener.onOpen(response));
 
                     try (InputStream inputStream = jdkResponse.body()) {
                         parser.parse(inputStream, listener);
-                        listener.onClose();
+                        ignoringExceptions(listener::onClose);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 })
                 .exceptionally(throwable -> {
-                    // TODO https://github.com/langchain4j/langchain4j/issues/2794
-                    if (throwable.getCause() instanceof HttpTimeoutException httpTimeoutException) {
-                        listener.onError(new TimeoutException(httpTimeoutException));
+                    if (throwable.getCause() instanceof HttpTimeoutException) {
+                        ignoringExceptions(() -> listener.onError(new TimeoutException(throwable)));
+                    } else {
+                        ignoringExceptions(() -> listener.onError(throwable));
                     }
                     return null;
                 });
