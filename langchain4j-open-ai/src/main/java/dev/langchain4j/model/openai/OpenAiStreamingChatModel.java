@@ -100,8 +100,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
-        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
-        this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.strictTools = getOrDefault(builder.strictTools, false);
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
     }
 

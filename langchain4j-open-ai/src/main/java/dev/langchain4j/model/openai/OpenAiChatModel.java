@@ -112,8 +112,8 @@ public class OpenAiChatModel implements ChatModel {
                 .build();
         this.responseFormat = builder.responseFormat;
         this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
-        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
-        this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.strictTools = getOrDefault(builder.strictTools, false);
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
     }
 
