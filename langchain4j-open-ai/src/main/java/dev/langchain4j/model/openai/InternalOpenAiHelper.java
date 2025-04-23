@@ -1,5 +1,23 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_OBJECT;
+import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_SCHEMA;
+import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.lang.String.format;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -42,31 +60,12 @@ import dev.langchain4j.model.openai.internal.shared.PromptTokensDetails;
 import dev.langchain4j.model.openai.internal.shared.Usage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
-import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_OBJECT;
-import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_SCHEMA;
-import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.lang.String.format;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 public class InternalOpenAiHelper {
 
@@ -179,7 +178,8 @@ public class InternalOpenAiHelper {
                 .type(ContentType.AUDIO)
                 .inputAudio(InputAudio.builder()
                         .data(ensureNotBlank(audioContent.audio().base64Data(), "audio.base64Data"))
-                        .format(extractSubtype(ensureNotBlank(audioContent.audio().mimeType(), "audio.mimeType")))
+                        .format(extractSubtype(
+                                ensureNotBlank(audioContent.audio().mimeType(), "audio.mimeType")))
                         .build())
                 .build();
     }
@@ -254,7 +254,8 @@ public class InternalOpenAiHelper {
             map.put("required", new ArrayList<>());
             if (strict) {
                 // When strict, additionalProperties must be false:
-                // See https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects?api-mode=chat#additionalproperties-false-must-always-be-set-in-objects
+                // See
+                // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects?api-mode=chat#additionalproperties-false-must-always-be-set-in-objects
                 map.put("additionalProperties", false);
             }
             return map;
@@ -264,6 +265,7 @@ public class InternalOpenAiHelper {
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
         AssistantMessage assistantMessage = response.choices().get(0).message();
         String text = assistantMessage.content();
+        String reasoningContent = assistantMessage.reasoningContent();
 
         List<ToolCall> toolCalls = assistantMessage.toolCalls();
         if (!isNullOrEmpty(toolCalls)) {
@@ -273,7 +275,7 @@ public class InternalOpenAiHelper {
                     .collect(toList());
             return isNullOrBlank(text)
                     ? AiMessage.from(toolExecutionRequests)
-                    : AiMessage.from(text, toolExecutionRequests);
+                    : AiMessage.from(text, reasoningContent, toolExecutionRequests);
         }
 
         FunctionCall functionCall = assistantMessage.functionCall();
@@ -284,10 +286,10 @@ public class InternalOpenAiHelper {
                     .build();
             return isNullOrBlank(text)
                     ? AiMessage.from(toolExecutionRequest)
-                    : AiMessage.from(text, singletonList(toolExecutionRequest));
+                    : AiMessage.from(text, reasoningContent, singletonList(toolExecutionRequest));
         }
 
-        return AiMessage.from(text);
+        return AiMessage.from(text, reasoningContent);
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ToolCall toolCall) {
@@ -333,22 +335,17 @@ public class InternalOpenAiHelper {
         if (openAiFinishReason == null) {
             return null;
         }
-        switch (openAiFinishReason) {
-            case "stop":
-                return STOP;
-            case "length":
-                return LENGTH;
-            case "tool_calls":
-            case "function_call":
-                return TOOL_EXECUTION;
-            case "content_filter":
-                return CONTENT_FILTER;
-            default:
-                return null;
-        }
+        return switch (openAiFinishReason) {
+            case "stop" -> STOP;
+            case "length" -> LENGTH;
+            case "tool_calls", "function_call" -> TOOL_EXECUTION;
+            case "content_filter" -> CONTENT_FILTER;
+            default -> null;
+        };
     }
 
-    static dev.langchain4j.model.openai.internal.chat.ResponseFormat toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
+    static dev.langchain4j.model.openai.internal.chat.ResponseFormat toOpenAiResponseFormat(
+            ResponseFormat responseFormat, Boolean strict) {
         if (responseFormat == null || responseFormat.type() == TEXT) {
             return null;
         }
@@ -364,11 +361,12 @@ public class InternalOpenAiHelper {
                         "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
-            dev.langchain4j.model.openai.internal.chat.JsonSchema openAiJsonSchema = dev.langchain4j.model.openai.internal.chat.JsonSchema.builder()
-                    .name(jsonSchema.name())
-                    .strict(strict)
-                    .schema(toMap(jsonSchema.rootElement(), strict))
-                    .build();
+            dev.langchain4j.model.openai.internal.chat.JsonSchema openAiJsonSchema =
+                    dev.langchain4j.model.openai.internal.chat.JsonSchema.builder()
+                            .name(jsonSchema.name())
+                            .strict(strict)
+                            .schema(toMap(jsonSchema.rootElement(), strict))
+                            .build();
             return dev.langchain4j.model.openai.internal.chat.ResponseFormat.builder()
                     .type(JSON_SCHEMA)
                     .jsonSchema(openAiJsonSchema)
