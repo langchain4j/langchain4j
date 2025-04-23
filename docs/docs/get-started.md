@@ -8,6 +8,8 @@ sidebar_position: 5
 If you are using Quarkus, see [Quarkus Integration](/tutorials/quarkus-integration/).
 
 If you are using Spring Boot, see [Spring Boot Integration](/tutorials/spring-boot-integration).
+
+If you are using Helidon, see [Helidon Integration](/tutorials/helidon-integration)
 :::
 
 LangChain4j offers integrations with many [LLM providers](/integrations/language-models/),
