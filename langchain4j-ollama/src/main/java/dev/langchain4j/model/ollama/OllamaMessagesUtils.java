@@ -16,7 +16,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 
@@ -89,7 +89,7 @@ class OllamaMessagesUtils {
         } else if (responseFormat == ResponseFormat.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
-            return toJson(JsonSchemaElementHelper.toMap(responseFormat.jsonSchema().rootElement()));
+            return toJson(JsonSchemaElementUtils.toMap(responseFormat.jsonSchema().rootElement()));
         }
     }
 

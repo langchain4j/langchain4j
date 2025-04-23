@@ -1,11 +1,14 @@
-package dev.langchain4j.model.chat.request.json;
+package dev.langchain4j.internal;
 
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonSchemaElementFrom;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -13,17 +16,17 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-class JsonSchemaElementHelperTest {
+class JsonSchemaElementUtilsTest {
 
     static class CustomClass {}
 
     @Test
     void is_custom_class() {
 
-        assertThat(JsonSchemaElementHelper.isCustomClass(CustomClass.class)).isTrue();
+        assertThat(JsonSchemaElementUtils.isCustomClass(CustomClass.class)).isTrue();
 
-        assertThat(JsonSchemaElementHelper.isCustomClass(Integer.class)).isFalse();
-        assertThat(JsonSchemaElementHelper.isCustomClass(LocalDateTime.class)).isFalse();
+        assertThat(JsonSchemaElementUtils.isCustomClass(Integer.class)).isFalse();
+        assertThat(JsonSchemaElementUtils.isCustomClass(LocalDateTime.class)).isFalse();
     }
 
     static class Order {

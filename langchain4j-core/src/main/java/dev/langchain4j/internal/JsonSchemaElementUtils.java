@@ -1,4 +1,4 @@
-package dev.langchain4j.model.chat.request.json;
+package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
 import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
@@ -9,6 +9,18 @@ import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.Internal;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -22,7 +34,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-public class JsonSchemaElementHelper {
+@Internal
+public class JsonSchemaElementUtils {
 
     private static final String DEFAULT_UUID_DESCRIPTION = "String in a UUID format";
 

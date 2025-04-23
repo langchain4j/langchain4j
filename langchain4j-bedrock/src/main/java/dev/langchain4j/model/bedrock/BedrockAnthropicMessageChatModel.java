@@ -27,7 +27,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -298,7 +298,7 @@ public class BedrockAnthropicMessageChatModel
     private Object toAnthropicToolParameters(ToolSpecification toolSpecification) {
 
         if (toolSpecification.parameters() != null) {
-            return JsonSchemaElementHelper.toMap(toolSpecification.parameters());
+            return JsonSchemaElementUtils.toMap(toolSpecification.parameters());
         } else {
             ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
             inputSchemaNode.put("type", "object");

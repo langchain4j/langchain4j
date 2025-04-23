@@ -56,7 +56,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_OBJECT;
 import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;

@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
 abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implements OutputParser<CT> {
