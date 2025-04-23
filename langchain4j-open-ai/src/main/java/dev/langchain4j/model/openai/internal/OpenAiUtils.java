@@ -1,5 +1,6 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.openai.internal;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -20,6 +21,8 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
@@ -68,13 +71,14 @@ import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
-public class InternalOpenAiHelper {
+@Internal
+public class OpenAiUtils {
 
-    static final String DEFAULT_OPENAI_URL = "https://api.openai.com/v1";
-    static final String DEFAULT_USER_AGENT = "langchain4j-openai";
+    public static final String DEFAULT_OPENAI_URL = "https://api.openai.com/v1";
+    public static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
-        return messages.stream().map(InternalOpenAiHelper::toOpenAiMessage).collect(toList());
+        return messages.stream().map(OpenAiUtils::toOpenAiMessage).collect(toList());
     }
 
     public static Message toOpenAiMessage(ChatMessage message) {
@@ -92,7 +96,7 @@ public class InternalOpenAiHelper {
             } else {
                 return dev.langchain4j.model.openai.internal.chat.UserMessage.builder()
                         .content(userMessage.contents().stream()
-                                .map(InternalOpenAiHelper::toOpenAiContent)
+                                .map(OpenAiUtils::toOpenAiContent)
                                 .collect(toList()))
                         .name(userMessage.name())
                         .build();
@@ -229,7 +233,7 @@ public class InternalOpenAiHelper {
      */
     @Deprecated
     public static List<Function> toFunctions(Collection<ToolSpecification> toolSpecifications) {
-        return toolSpecifications.stream().map(InternalOpenAiHelper::toFunction).collect(toList());
+        return toolSpecifications.stream().map(OpenAiUtils::toFunction).collect(toList());
     }
 
     /**
@@ -269,7 +273,7 @@ public class InternalOpenAiHelper {
         if (!isNullOrEmpty(toolCalls)) {
             List<ToolExecutionRequest> toolExecutionRequests = toolCalls.stream()
                     .filter(toolCall -> toolCall.type() == FUNCTION)
-                    .map(InternalOpenAiHelper::toToolExecutionRequest)
+                    .map(OpenAiUtils::toToolExecutionRequest)
                     .collect(toList());
             return isNullOrBlank(text)
                     ? AiMessage.from(toolExecutionRequests)
@@ -394,13 +398,13 @@ public class InternalOpenAiHelper {
                 chatResponse.metadata().finishReason());
     }
 
-    static void validate(ChatRequestParameters parameters) {
+    public static void validate(ChatRequestParameters parameters) {
         if (parameters.topK() != null) {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
         }
     }
 
-    static ResponseFormat fromOpenAiResponseFormat(String responseFormat) {
+    public static ResponseFormat fromOpenAiResponseFormat(String responseFormat) {
         if ("json_object".equals(responseFormat)) {
             return JSON;
         } else {
@@ -408,7 +412,7 @@ public class InternalOpenAiHelper {
         }
     }
 
-    static ChatCompletionRequest.Builder toOpenAiChatRequest(
+    public static ChatCompletionRequest.Builder toOpenAiChatRequest(
             ChatRequest chatRequest,
             OpenAiChatRequestParameters parameters,
             Boolean strictTools,
