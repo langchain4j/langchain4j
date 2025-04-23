@@ -14,7 +14,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.pdf.PdfFile;
-import dev.langchain4j.data.text.TextFile;
 import dev.langchain4j.data.video.Video;
 
 import java.lang.reflect.Type;
@@ -49,8 +48,6 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
             .addMixIn(Video.class, VideoMixin.class)
             .addMixIn(PdfFileContent.class, PdfFileContentMixin.class)
             .addMixIn(PdfFile.class, PdfFileMixin.class)
-            .addMixIn(TextFileContent.class, TextFileContentMixin.class)
-            .addMixIn(TextFile.class, TextFileMixin.class)
             .build();
 
     private static final Type MESSAGE_LIST_TYPE = new TypeReference<List<ChatMessage>>() {
@@ -160,7 +157,6 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
             @JsonSubTypes.Type(value = AudioContent.class, name = "AUDIO"),
             @JsonSubTypes.Type(value = VideoContent.class, name = "VIDEO"),
             @JsonSubTypes.Type(value = PdfFileContent.class, name = "PDF"),
-            @JsonSubTypes.Type(value = TextFileContent.class, name = "TEXT_FILE"),
     })
     private static abstract class ContentMixin {
 
@@ -230,20 +226,6 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = PdfFile.Builder.class)
     private static abstract class PdfFileMixin {
-
-    }
-
-    @JsonInclude(NON_NULL)
-    private static abstract class TextFileContentMixin {
-
-        @JsonCreator
-        public TextFileContentMixin(@JsonProperty("textFile") TextFile textFile) {
-        }
-    }
-
-    @JsonInclude(NON_NULL)
-    @JsonDeserialize(builder = TextFile.Builder.class)
-    private static abstract class TextFileMixin {
 
     }
 }

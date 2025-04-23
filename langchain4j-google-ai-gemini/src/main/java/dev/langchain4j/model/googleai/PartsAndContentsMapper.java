@@ -10,7 +10,6 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
@@ -40,26 +39,6 @@ class PartsAndContentsMapper {
             return GeminiPart.builder()
                 .text(textContent.text())
                 .build();
-        }  else if (content.type().equals(ContentType.TEXT_FILE)) {
-            TextFileContent textFileContent = (TextFileContent) content;
-
-            URI uri = textFileContent.textFile().url();
-            if (uri != null) {
-                return GeminiPart.builder()
-                    .fileData(GeminiFileData.builder()
-                        .fileUri(uri.toString())
-                        .mimeType(mimeTypeDetector.probeContentType(uri))
-                        .build())
-                    .build();
-            } else {
-                return GeminiPart.builder()
-                    .inlineData(GeminiBlob.builder()
-                        .mimeType(textFileContent.textFile().mimeType())
-                        .data(textFileContent.textFile().base64Data())
-                        .build())
-                    .build();
-            }
-
         } else if (content.type().equals(ContentType.IMAGE)) {
             ImageContent imageContent = (ImageContent) content;
 
