@@ -10,9 +10,13 @@ If you are using Quarkus, see [Quarkus Integration](/tutorials/quarkus-integrati
 If you are using Spring Boot, see [Spring Boot Integration](/tutorials/spring-boot-integration).
 :::
 
-LangChain4j offers [integration with many LLM providers](/integrations/language-models/).
+LangChain4j offers integrations with many [LLM providers](/integrations/language-models/),
+[embedding/vector stores](/integrations/embedding-stores), etc.
 Each integration has its own maven dependency.
-The simplest way to begin is with the OpenAI integration:
+
+The minimum supported JDK version is 17.
+
+As an example, let's import the OpenAI dependency:
 
 - For Maven in `pom.xml`:
 ```xml
