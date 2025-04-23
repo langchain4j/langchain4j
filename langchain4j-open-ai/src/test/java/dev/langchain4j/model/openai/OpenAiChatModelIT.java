@@ -9,10 +9,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -99,8 +99,12 @@ class OpenAiChatModelIT {
             names = {
                     "GPT_4_32K", // don't have access
                     "GPT_4_32K_0613", // don't have access
-                    "O1", // don't have access
-                    "O1_2024_12_17", // don't have access
+                    "O3", // don't have access
+                    "O3_2025_04_16", // don't have access
+                    "O1_MINI", // does not support 'system' role with this model
+                    "O1_MINI_2024_09_12", // does not support 'system' role with this model
+                    "O1_PREVIEW", // does not support 'system' role with this model
+                    "O1_PREVIEW_2024_09_12", // does not support 'system' role with this model
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
@@ -114,13 +118,15 @@ class OpenAiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        String question = "What is the capital of Germany?";
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(SystemMessage.from("Be concise"), UserMessage.from("What is the capital of Germany?"))
+                .build();
 
         // when
-        String answer = model.chat(question);
+        ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
-        assertThat(answer).containsIgnoringCase("Berlin");
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
     }
 
     @Test

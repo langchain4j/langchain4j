@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client.jdk;
 
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
@@ -18,6 +19,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.stream.Collectors.joining;
 
@@ -52,6 +54,8 @@ public class JdkHttpClient implements HttpClient {
             }
 
             return fromJdkResponse(jdkResponse, jdkResponse.body());
+        } catch (HttpTimeoutException e) {
+            throw new TimeoutException(e);
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -65,23 +69,26 @@ public class JdkHttpClient implements HttpClient {
                 .thenAccept(jdkResponse -> {
 
                     if (!isSuccessful(jdkResponse)) {
-                        listener.onError(new HttpException(jdkResponse.statusCode(), readBody(jdkResponse)));
+                        HttpException exception = new HttpException(jdkResponse.statusCode(), readBody(jdkResponse));
+                        ignoringExceptions(() -> listener.onError(exception));
                         return;
                     }
 
                     SuccessfulHttpResponse response = fromJdkResponse(jdkResponse, null);
-                    listener.onOpen(response);
+                    ignoringExceptions(() -> listener.onOpen(response));
 
                     try (InputStream inputStream = jdkResponse.body()) {
                         parser.parse(inputStream, listener);
-                        listener.onClose();
+                        ignoringExceptions(listener::onClose);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 })
                 .exceptionally(throwable -> {
                     if (throwable.getCause() instanceof HttpTimeoutException) {
-                        listener.onError(throwable);
+                        ignoringExceptions(() -> listener.onError(new TimeoutException(throwable)));
+                    } else {
+                        ignoringExceptions(() -> listener.onError(throwable));
                     }
                     return null;
                 });

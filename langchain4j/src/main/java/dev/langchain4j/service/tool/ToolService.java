@@ -170,7 +170,14 @@ public class ToolService {
                     tokenUsageAccumulator, chatResponse.metadata().tokenUsage());
         }
 
-        return new ToolServiceResult(chatResponse, toolExecutions, tokenUsageAccumulator);
+        chatResponse = ChatResponse.builder()
+                .aiMessage(chatResponse.aiMessage())
+                .metadata(chatResponse.metadata().toBuilder()
+                        .tokenUsage(tokenUsageAccumulator)
+                        .build())
+                .build();
+
+        return new ToolServiceResult(chatResponse, toolExecutions);
     }
 
     public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {

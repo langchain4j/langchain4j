@@ -3,7 +3,6 @@ package dev.langchain4j.service;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -13,7 +12,6 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,7 +65,7 @@ class AiServicesWithToolsWithDescriptionIT {
 
     interface Assistant {
 
-        Response<AiMessage> chat(String userMessage);
+        Result<String> chat(String userMessage);
     }
 
     static class ToolWithPrimitiveParameters {
@@ -101,10 +99,10 @@ class AiServicesWithToolsWithDescriptionIT {
         String text = "How much is 37 plus 87?";
 
         // when
-        Response<AiMessage> response = assistant.chat(text);
+        Result<String> result = assistant.chat(text);
 
         // then
-        assertThat(response.content().text()).contains("124");
+        assertThat(result.content()).contains("124");
 
         verify(tool).add(37, 87);
         verifyNoMoreInteractions(tool);
@@ -386,10 +384,10 @@ class AiServicesWithToolsWithDescriptionIT {
         String text = "What is the current temperature in Munich in celsius?";
 
         // when
-        Response<AiMessage> response = assistant.chat(text);
+        Result<String> result = assistant.chat(text);
 
         // then
-        assertThat(response.content().text()).contains("19");
+        assertThat(result.content()).contains("19");
 
         verify(tool).currentTemperature("Munich", CELSIUS);
         verifyNoMoreInteractions(tool);

@@ -26,6 +26,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
         this.definitions = copyIfNotNull(builder.definitions);
     }
 
+    @Override
     public String description() {
         return description;
     }
