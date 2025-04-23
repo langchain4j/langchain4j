@@ -2,7 +2,6 @@ package dev.langchain4j.model.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.ChatModelListenerUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -15,8 +14,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.internal.ChatModelListenerUtils.onRequest;
-import static dev.langchain4j.internal.ChatModelListenerUtils.onResponse;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
