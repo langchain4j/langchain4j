@@ -9,7 +9,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.TokenUsage;
@@ -40,7 +40,7 @@ import static org.mockito.Mockito.when;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesIT {
 
-    static Stream<StreamingChatLanguageModel> models() {
+    static Stream<StreamingChatModel> models() {
         return Stream.of(
                 OpenAiStreamingChatModel.builder()
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -61,7 +61,7 @@ class StreamingAiServicesIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_stream_answer(StreamingChatLanguageModel model) throws Exception {
+    void should_stream_answer(StreamingChatModel model) throws Exception {
 
         Assistant assistant = AiServices.create(Assistant.class, model);
 
@@ -95,7 +95,7 @@ class StreamingAiServicesIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_callback_with_content(StreamingChatLanguageModel model) throws Exception {
+    void should_callback_with_content(StreamingChatModel model) throws Exception {
 
         List<Content> contents = new ArrayList<>();
         contents.add(Content.from("This is additional content"));
@@ -110,7 +110,7 @@ class StreamingAiServicesIT {
         when(retrievalAugmentor.augment(any())).thenReturn(result);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(model)
+                .streamingChatModel(model)
                 .retrievalAugmentor(retrievalAugmentor)
                 .build();
 
@@ -131,12 +131,12 @@ class StreamingAiServicesIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_stream_answers_with_memory(StreamingChatLanguageModel model) throws Exception {
+    void should_stream_answers_with_memory(StreamingChatModel model) throws Exception {
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(model)
+                .streamingChatModel(model)
                 .chatMemory(chatMemory)
                 .build();
 
@@ -193,14 +193,14 @@ class StreamingAiServicesIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_a_tool_then_stream_answer(StreamingChatLanguageModel model) throws Exception {
+    void should_execute_a_tool_then_stream_answer(StreamingChatModel model) throws Exception {
 
         Calculator calculator = spy(new Calculator());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(model)
+                .streamingChatModel(model)
                 .chatMemory(chatMemory)
                 .tools(calculator)
                 .build();
@@ -268,7 +268,7 @@ class StreamingAiServicesIT {
     void should_execute_multiple_tools_sequentially_then_answer() throws Exception {
 
         // TODO test more models
-        StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
+        StreamingChatModel streamingChatModel = OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -284,7 +284,7 @@ class StreamingAiServicesIT {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(streamingChatModel)
+                .streamingChatModel(streamingChatModel)
                 .chatMemory(chatMemory)
                 .tools(calculator)
                 .build();
@@ -368,7 +368,7 @@ class StreamingAiServicesIT {
         Calculator calculator = spy(new Calculator());
 
         // TODO test more models
-        StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
+        StreamingChatModel streamingChatModel = OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -381,7 +381,7 @@ class StreamingAiServicesIT {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(streamingChatModel)
+                .streamingChatModel(streamingChatModel)
                 .chatMemory(chatMemory)
                 .tools(calculator)
                 .build();

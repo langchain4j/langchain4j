@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.filter.builder.sql;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -39,7 +39,7 @@ class LanguageModelSqlFilterBuilderIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_filter_by_genre(ChatLanguageModel model) {
+    void should_filter_by_genre(ChatModel model) {
 
         // given
         LanguageModelSqlFilterBuilder sqlFilterBuilder = new LanguageModelSqlFilterBuilder(model, table);
@@ -55,11 +55,11 @@ class LanguageModelSqlFilterBuilderIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_filter_by_genre_and_year(ChatLanguageModel model) {
+    void should_filter_by_genre_and_year(ChatModel model) {
 
         // given
         LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tableDefinition(table)
                 .build();
 
@@ -74,7 +74,7 @@ class LanguageModelSqlFilterBuilderIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_filter_by_year_range(ChatLanguageModel model) {
+    void should_filter_by_year_range(ChatModel model) {
 
         // given
         LanguageModelSqlFilterBuilder sqlFilterBuilder = new LanguageModelSqlFilterBuilder(model, table);
@@ -93,7 +93,7 @@ class LanguageModelSqlFilterBuilderIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_filter_by_year_using_arithmetics(ChatLanguageModel model) {
+    void should_filter_by_year_using_arithmetics(ChatModel model) {
 
         // given
         LanguageModelSqlFilterBuilder sqlFilterBuilder = new LanguageModelSqlFilterBuilder(model, table);
@@ -114,7 +114,7 @@ class LanguageModelSqlFilterBuilderIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_LLM_generated_metadata_filter(ChatLanguageModel model) {
+    void should_use_LLM_generated_metadata_filter(ChatModel model) {
 
         // given
         TextSegment groundhogDay = TextSegment.from("Groundhog Day", new dev.langchain4j.data.document.Metadata().put("genre", "comedy").put("year", 1993));
@@ -142,7 +142,7 @@ class LanguageModelSqlFilterBuilderIT {
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .contentRetriever(contentRetriever)
                 .build();
 

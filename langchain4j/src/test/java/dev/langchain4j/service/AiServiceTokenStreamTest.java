@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
 import java.util.ArrayList;
@@ -105,7 +105,7 @@ class AiServiceTokenStreamTest {
     }
 
     private AiServiceTokenStream setupAiServiceTokenStream() {
-        StreamingChatLanguageModel model = mock(StreamingChatLanguageModel.class);
+        StreamingChatModel model = mock(StreamingChatModel.class);
         AiServiceContext context = new AiServiceContext(getClass());
         context.streamingChatModel = model;
         return new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()

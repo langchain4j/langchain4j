@@ -17,7 +17,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequestValidator;
@@ -44,7 +45,7 @@ import java.util.stream.Collectors;
  * You can find description of parameters
  * <a href="https://docs.mistral.ai/api/#operation/createChatCompletion">here</a>.
  */
-public class MistralAiChatModel implements ChatLanguageModel {
+public class MistralAiChatModel implements ChatModel {
 
     private final MistralAiClient client;
     private final String modelName;

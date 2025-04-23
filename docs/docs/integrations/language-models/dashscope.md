@@ -145,7 +145,7 @@ Same as `QwenChatModel`, except `listeners`.
 You can initialize `QwenChatModel` by using following code:
 
 ```java
-ChatLanguageModel qwenModel = QwenChatModel.builder()
+ChatModel qwenModel = QwenChatModel.builder()
                     .apiKey("You API key here")
                     .modelName("qwen-max")
                     .build();
@@ -154,7 +154,7 @@ ChatLanguageModel qwenModel = QwenChatModel.builder()
 Or more custom for other parameters:
 
 ```java
-ChatLanguageModel qwenModel = QwenChatModel.builder()
+ChatModel qwenModel = QwenChatModel.builder()
                     .apiKey("You API key here")
                     .modelName("qwen-max")
                     .enableSearch(true)

@@ -3,7 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -43,7 +43,7 @@ import static java.util.Collections.emptySet;
  * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiChatModel implements ChatLanguageModel {
+public class OpenAiChatModel implements ChatModel {
 
     private final OpenAiClient client;
     private final Integer maxRetries;
@@ -57,14 +57,6 @@ public class OpenAiChatModel implements ChatLanguageModel {
     private final List<ChatModelListener> listeners;
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
-
-        if ("demo".equals(builder.apiKey) && !"http://langchain4j.dev/demo/openai/v1".equals(builder.baseUrl)) {
-            // TODO remove before releasing 1.0.0
-            throw new RuntimeException("""
-                    If you wish to continue using the 'demo' key, please specify the base URL explicitly:
-                    OpenAiChatModel.builder().baseUrl("http://langchain4j.dev/demo/openai/v1").apiKey("demo").build();
-                    """);
-        }
 
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)

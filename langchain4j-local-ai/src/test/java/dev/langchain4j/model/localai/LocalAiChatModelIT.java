@@ -3,7 +3,7 @@ package dev.langchain4j.model.localai;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class LocalAiChatModelIT {
 
-    ChatLanguageModel model = LocalAiChatModel.builder()
+    ChatModel model = LocalAiChatModel.builder()
             .baseUrl("http://localhost:8082/v1")
             .modelName("gpt-4")
             .maxTokens(3)

@@ -91,7 +91,7 @@ RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
     .build();
 
 return AiServices.builder(Assistant.class)
-    .chatLanguageModel(...)
+    .chatModel(...)
     .retrievalAugmentor(retrievalAugmentor)
     .build();
 ```

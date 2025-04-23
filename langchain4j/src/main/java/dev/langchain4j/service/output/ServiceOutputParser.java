@@ -1,23 +1,24 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
-import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Optional;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
+@Internal
 public class ServiceOutputParser {
 
     private final OutputParserFactory outputParserFactory;
@@ -30,7 +31,7 @@ public class ServiceOutputParser {
         this.outputParserFactory = ensureNotNull(outputParserFactory, "outputParserFactory");
     }
 
-    public Object parse(Response<AiMessage> response, Type returnType) { // TODO Response -> ChatResponse?
+    public Object parse(ChatResponse chatResponse, Type returnType) {
 
         if (typeHasRawClass(returnType, Result.class)) {
             // In the case of returnType = Result<List<String>>, returnType will be set to List<String>
@@ -43,11 +44,12 @@ public class ServiceOutputParser {
         Class<?> rawClass = getRawClass(returnType);
         Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
-        if (rawClass == Response.class) { // TODO remove?
-            return response;
+        if (rawClass == Response.class) {
+            // legacy
+            return Response.from(chatResponse.aiMessage(), chatResponse.tokenUsage(), chatResponse.finishReason());
         }
 
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = chatResponse.aiMessage();
         if (rawClass == AiMessage.class) {
             return aiMessage;
         }
@@ -78,11 +80,6 @@ public class ServiceOutputParser {
             return Optional.empty();
         }
 
-        // TODO validate this earlier
-        if (returnType == void.class) {
-            throw illegalConfiguration("Return type of method '%s' cannot be void");
-        }
-
         OutputParser<?> outputParser = outputParserFactory.get(rawClass, typeArgumentClass);
         return outputParser.jsonSchema();
     }
@@ -102,11 +99,6 @@ public class ServiceOutputParser {
 
         if (schemaNotRequired(rawClass)) {
             return "";
-        }
-
-        // TODO validate this earlier
-        if (returnType == void.class) {
-            throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
         OutputParser<?> outputParser = outputParserFactory.get(rawClass, typeArgumentClass);

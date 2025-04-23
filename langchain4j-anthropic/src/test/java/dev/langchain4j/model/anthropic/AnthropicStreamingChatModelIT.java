@@ -22,7 +22,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -40,7 +40,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicStreamingChatModelIT {
 
-    StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+    StreamingChatModel model = AnthropicStreamingChatModel.builder()
             .apiKey(getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
@@ -76,7 +76,7 @@ class AnthropicStreamingChatModelIT {
     void should_stream_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .logRequests(true)
@@ -106,7 +106,7 @@ class AnthropicStreamingChatModelIT {
     void should_accept_base64_image() {
 
         // given
-        StreamingChatLanguageModel visionModel = AnthropicStreamingChatModel.builder()
+        StreamingChatModel visionModel = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .maxTokens(20)
@@ -132,7 +132,7 @@ class AnthropicStreamingChatModelIT {
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
                 .maxTokens(1)
@@ -155,7 +155,7 @@ class AnthropicStreamingChatModelIT {
     void all_parameters() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
@@ -265,7 +265,7 @@ class AnthropicStreamingChatModelIT {
     void should_execute_a_tool_then_stream_answer() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -325,7 +325,7 @@ class AnthropicStreamingChatModelIT {
     void must_execute_a_tool() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -363,7 +363,7 @@ class AnthropicStreamingChatModelIT {
     void should_execute_multiple_tools_in_parallel_then_answer() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -435,7 +435,7 @@ class AnthropicStreamingChatModelIT {
     void should_execute_a_tool_with_nested_properties_then_answer() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -496,7 +496,7 @@ class AnthropicStreamingChatModelIT {
     void should_answer_with_thinking() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_7_SONNET_20250219)
                 .thinkingType("enabled")

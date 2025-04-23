@@ -122,13 +122,13 @@ Please note that tools/function calling is not the same as [JSON mode](/tutorial
 # 2 levels of abstraction
 
 LangChain4j provides two levels of abstraction for using tools:
-- Low-level, using the `ChatLanguageModel` and `ToolSpecification` APIs
+- Low-level, using the `ChatModel` and `ToolSpecification` APIs
 - High-level, using [AI Services](/tutorials/ai-services) and `@Tool`-annotated Java methods
 
 ## Low Level Tool API
 
 At the low level, you can use the `chat(ChatRequest)` method
-of the `ChatLanguageModel`. A similar method is also present in the `StreamingChatLanguageModel`.
+of the `ChatModel`. A similar method is also present in the `StreamingChatModel`.
 
 You can specify one or more `ToolSpecification`s when creating the `ChatRequest`.
 
@@ -321,7 +321,7 @@ class Calculator {
 }
 
 MathGenius mathGenius = AiServices.builder(MathGenius.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .tools(new Calculator())
     .build();
 
@@ -463,7 +463,7 @@ Once we have one or multiple (`ToolSpecification`, `ToolExecutor`) pairs,
 we can specify them when creating an AI Service:
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(chatLanguageModel)
+    .chatModel(chatModel)
     .tools(Map.of(toolSpecification, toolExecutor))
     .build();
 ```
@@ -496,7 +496,7 @@ ToolProvider toolProvider = (toolProviderRequest) -> {
 };
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .toolProvider(toolProvider)
     .build();
 ```
@@ -511,7 +511,7 @@ This strategy is an implementation of a `Function<ToolExecutionRequest, ToolExec
 
 ```java
 AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTool.class)
-        .chatLanguageModel(chatLanguageModel)
+        .chatModel(chatModel)
         .tools(new HelloWorld())
         .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
                 toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()))

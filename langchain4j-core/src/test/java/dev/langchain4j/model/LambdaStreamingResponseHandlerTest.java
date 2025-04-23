@@ -1,6 +1,6 @@
 package dev.langchain4j.model;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.assertj.core.api.WithAssertions;
@@ -23,7 +23,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         tokens.add("a phenomenon called ");
         tokens.add("Rayleigh scattering.");
 
-        StreamingChatLanguageModel model = new DummyModel(tokens);
+        StreamingChatModel model = new DummyModel(tokens);
 
         // when
         List<Object> receivedTokens = new ArrayList<>();
@@ -42,7 +42,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         tokens.add("One ");
         tokens.add(new RuntimeException("BOOM"));
 
-        StreamingChatLanguageModel model = new DummyModel(tokens);
+        StreamingChatModel model = new DummyModel(tokens);
 
         // when
         List<Object> receivedTokens = new ArrayList<>();
@@ -57,7 +57,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         assertThat((thrown[0]).getMessage()).isEqualTo("BOOM");
     }
 
-    static class DummyModel implements StreamingChatLanguageModel {
+    static class DummyModel implements StreamingChatModel {
 
         private final List<Object> stringsAndError;
 

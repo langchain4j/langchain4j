@@ -4,7 +4,7 @@ sidebar_position: 6
 
 # AI Services
 
-So far, we have been covering low-level components like `ChatLanguageModel`, `ChatMessage`, `ChatMemory`, etc.
+So far, we have been covering low-level components like `ChatModel`, `ChatMessage`, `ChatMemory`, etc.
 Working at this level is very flexible and gives you total freedom, but it also forces you to write a lot of boilerplate code.
 Since LLM-powered applications usually require not just a single component but multiple components working together
 (e.g., prompt templates, chat memory, LLMs, output parsers, RAG components: embedding models and stores)
@@ -57,9 +57,9 @@ interface Assistant {
 ```
 
 Then, we create our low-level components. These components will be used under the hood of our AI Service.
-In this case, we just need the `ChatLanguageModel`:
+In this case, we just need the `ChatModel`:
 ```java
-ChatLanguageModel model = OpenAiChatModel.builder()
+ChatModel model = OpenAiChatModel.builder()
     .apiKey(System.getenv("OPENAI_API_KEY"))
     .modelName(GPT_4_O_MINI)
     .build();
@@ -88,9 +88,9 @@ You provide the `Class` of your interface to `AiServices` along with the low-lev
 and `AiServices` creates a proxy object implementing this interface.
 Currently, it uses reflection, but we are considering alternatives as well.
 This proxy object handles all the conversions for inputs and outputs.
-In this case, the input is a single `String`, but we are using a `ChatLanguageModel` which takes `ChatMessage` as input.
-So, `AiService` will automatically convert it into a `UserMessage` and invoke `ChatLanguageModel`.
-Since the output type of the `chat` method is a `String`, after `ChatLanguageModel` returns `AiMessage`,
+In this case, the input is a single `String`, but we are using a `ChatModel` which takes `ChatMessage` as input.
+So, `AiService` will automatically convert it into a `UserMessage` and invoke `ChatModel`.
+Since the output type of the `chat` method is a `String`, after `ChatModel` returns `AiMessage`,
 it will be converted into a `String` before being returned from the `chat` method.
 
 ## AI Services in Quarkus Application
@@ -132,7 +132,7 @@ This will be converted into a `SystemMessage` behind the scenes and sent to the 
 System messages can also be defined dynamically with the system message provider:
 ```java
 Friend friend = AiServices.builder(Friend.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
     .build();
 ```
@@ -512,7 +512,7 @@ interface Assistant {
     TokenStream chat(String message);
 }
 
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
     .apiKey(System.getenv("OPENAI_API_KEY"))
     .modelName(GPT_4_O_MINI)
     .build();
@@ -554,7 +554,7 @@ interface Assistant {
 The AI Service can use [chat memory](/tutorials/chat-memory) in order to "remember" previous interactions:
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
     .build();
 ```
@@ -570,7 +570,7 @@ interface Assistant  {
 }
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
     .build();
 
@@ -633,7 +633,7 @@ class Tools {
 }
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .tools(new Tools())
     .build();
 
@@ -657,7 +657,7 @@ EmbeddingModel embeddingModel = ...
 ContentRetriever contentRetriever = new EmbeddingStoreContentRetriever(embeddingStore, embeddingModel);
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .contentRetriever(contentRetriever)
     .build();
 ```
@@ -674,7 +674,7 @@ RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
         .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .retrievalAugmentor(retrievalAugmentor)
     .build();
 ```
@@ -770,7 +770,7 @@ class MilesOfSmiles {
 GreetingExpert greetingExpert = AiServices.create(GreetingExpert.class, llama2);
 
 ChatBot chatBot = AiServices.builder(ChatBot.class)
-    .chatLanguageModel(gpt4)
+    .chatModel(gpt4)
     .contentRetriever(milesOfSmilesContentRetriever)
     .build();
 

@@ -12,7 +12,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -51,7 +51,7 @@ import static java.util.Collections.singletonList;
  * <p>
  * The list of models, as well as the documentation and a playground to test them, can be found at https://github.com/marketplace/models
  */
-public class GitHubModelsChatModel implements ChatLanguageModel {
+public class GitHubModelsChatModel implements ChatModel {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubModelsChatModel.class);
 
