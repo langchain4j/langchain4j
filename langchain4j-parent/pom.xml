@@ -88,7 +88,7 @@
         <mockito.version>5.14.2</mockito.version>
         <netty.version>4.1.119.Final</netty.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <openai-java.version>1.2.0</openai-java.version>
+        <openai-java.version>1.4.1</openai-java.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <reactor-bom.version>2024.0.3</reactor-bom.version>
