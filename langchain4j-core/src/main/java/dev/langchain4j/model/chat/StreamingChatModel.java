@@ -10,7 +10,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,9 +28,6 @@ public interface StreamingChatModel {
 
     /**
      * This is the main API to interact with the chat model.
-     * <p>
-     * A temporary default implementation of this method is necessary
-     * until all {@link StreamingChatModel} implementations adopt it. It should be removed once that occurs.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
@@ -70,20 +66,20 @@ public interface StreamingChatModel {
         doChat(finalChatRequest, observingHandler);
     }
 
+    default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        throw new RuntimeException("Not implemented");
+    }
+
     default ChatRequestParameters defaultRequestParameters() {
         return ChatRequestParameters.builder().build();
     }
 
     default List<ChatModelListener> listeners() {
-        return Collections.emptyList();
+        return List.of();
     }
 
     default ModelProvider provider() {
         return OTHER;
-    }
-
-    default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        throw new RuntimeException("Not implemented");
     }
 
     default void chat(String userMessage, StreamingChatResponseHandler handler) {
@@ -107,6 +103,4 @@ public interface StreamingChatModel {
     default Set<Capability> supportedCapabilities() {
         return Set.of();
     }
-
-    // TODO improve javadoc
 }

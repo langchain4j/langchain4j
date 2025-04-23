@@ -3,12 +3,11 @@ package dev.langchain4j.model.bedrock;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import java.util.List;
 
-class BedrockChatModelListenerWithConverseIT extends ChatModelListenerIT {
+class BedrockChatModelListenerWithConverseIT extends AbstractChatModelListenerIT {
 
     @Override
     protected ChatModel createModel(ChatModelListener listener) {

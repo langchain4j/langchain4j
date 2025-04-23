@@ -323,7 +323,7 @@ public abstract class AbstractAiServiceWithToolsIT {
     static class ToolWithoutParameters {
 
         @Tool
-        LocalTime currentTime() { // TODO support LocalTime
+        LocalTime currentTime() {
             return LocalTime.of(17, 11, 45);
         }
     }

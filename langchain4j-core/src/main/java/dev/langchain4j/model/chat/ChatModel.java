@@ -8,7 +8,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,8 +27,6 @@ public interface ChatModel {
 
     /**
      * This is the main API to interact with the chat model.
-     * A temporary default implementation of this method is necessary
-     * until all {@link ChatModel} implementations adopt it. It should be removed once that occurs.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link ChatResponse}, containing all the outputs from the LLM
@@ -55,20 +52,20 @@ public interface ChatModel {
         }
     }
 
+    default ChatResponse doChat(ChatRequest chatRequest) {
+        throw new RuntimeException("Not implemented");
+    }
+
     default ChatRequestParameters defaultRequestParameters() {
         return ChatRequestParameters.builder().build();
     }
 
     default List<ChatModelListener> listeners() {
-        return Collections.emptyList();
+        return List.of();
     }
 
     default ModelProvider provider() {
         return OTHER;
-    }
-
-    default ChatResponse doChat(ChatRequest chatRequest) {
-        throw new RuntimeException("Not implemented");
     }
 
     default String chat(String userMessage) {
@@ -103,6 +100,4 @@ public interface ChatModel {
     default Set<Capability> supportedCapabilities() {
         return Set.of();
     }
-
-    // TODO improve javadoc
 }

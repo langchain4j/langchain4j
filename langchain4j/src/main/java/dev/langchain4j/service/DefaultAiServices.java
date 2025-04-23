@@ -167,7 +167,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
                         if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
-                            // TODO append after storing in the memory?
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
