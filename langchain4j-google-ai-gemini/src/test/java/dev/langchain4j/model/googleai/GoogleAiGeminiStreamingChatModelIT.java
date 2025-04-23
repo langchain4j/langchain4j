@@ -21,7 +21,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -64,8 +63,6 @@ class GoogleAiGeminiStreamingChatModelIT {
 
     private static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    private static final String MD_FILE_URL =
-            "https://raw.githubusercontent.com/langchain4j/langchain4j/main/docs/docs/intro.md";
 
     @Test
     void should_answer_simple_question() {
@@ -183,27 +180,6 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_support_text_file() {
-        // given
-        GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
-
-        UserMessage userMessage = UserMessage.userMessage(
-                TextFileContent.from(new String(Base64.getEncoder().encode(readBytes(MD_FILE_URL))), "text/markdown"),
-                TextContent.from("What project does this markdown file mention?"));
-
-        // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        gemini.chat(List.of(userMessage), handler);
-        ChatResponse response = handler.get();
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("LangChain4j");
     }
 
     @Test

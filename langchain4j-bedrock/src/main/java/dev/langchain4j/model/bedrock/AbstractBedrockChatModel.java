@@ -23,7 +23,6 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -212,21 +211,6 @@ abstract class AbstractBedrockChatModel {
     protected ContentBlock convertContent(Content content) {
         if (content instanceof TextContent text) {
             return ContentBlock.builder().text(text.text()).build();
-        } else if (content instanceof TextFileContent textFileContent) {
-            final SdkBytes bytes = fromByteArray(
-                    nonNull(textFileContent.textFile().base64Data())
-                            ? Base64.getDecoder()
-                                    .decode(textFileContent.textFile().base64Data())
-                            : readBytes(
-                                    String.valueOf(textFileContent.textFile().url())));
-            return ContentBlock.builder()
-                    .document(DocumentBlock.builder()
-                            .format(DocumentFormat.TXT)
-                            .source(DocumentSource.builder().bytes(bytes).build())
-                            .name(extractFilenameWithoutExtensionFromUri(
-                                    textFileContent.textFile().url()))
-                            .build())
-                    .build();
         } else if (content instanceof PdfFileContent pdfFileContent) {
             final SdkBytes bytes = fromByteArray(
                     nonNull(pdfFileContent.pdfFile().base64Data())
