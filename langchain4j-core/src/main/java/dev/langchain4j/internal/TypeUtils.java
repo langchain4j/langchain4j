@@ -1,9 +1,12 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.Internal;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.UUID;
 
+@Internal
 public class TypeUtils {
 
     public static boolean isJsonInteger(Class<?> type) {

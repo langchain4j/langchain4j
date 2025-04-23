@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static java.util.Collections.emptyList;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+@Internal
 public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messages;
