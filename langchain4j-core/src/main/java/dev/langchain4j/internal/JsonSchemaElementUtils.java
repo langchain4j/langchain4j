@@ -1,9 +1,5 @@
 package dev.langchain4j.internal;
 
-import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
-import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
-import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
-import static dev.langchain4j.internal.TypeUtils.isJsonString;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
@@ -25,6 +21,8 @@ import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -329,6 +327,42 @@ public class JsonSchemaElementUtils {
         } else {
             return type;
         }
+    }
+
+    static boolean isJsonInteger(Class<?> type) {
+        return type == byte.class
+                || type == Byte.class
+                || type == short.class
+                || type == Short.class
+                || type == int.class
+                || type == Integer.class
+                || type == long.class
+                || type == Long.class
+                || type == BigInteger.class;
+    }
+
+    static boolean isJsonNumber(Class<?> type) {
+        return type == float.class
+                || type == Float.class
+                || type == double.class
+                || type == Double.class
+                || type == BigDecimal.class;
+    }
+
+    static boolean isJsonBoolean(Class<?> type) {
+        return type == boolean.class || type == Boolean.class;
+    }
+
+    static boolean isJsonString(Class<?> type) {
+        return type == String.class
+                || type == char.class
+                || type == Character.class
+                || CharSequence.class.isAssignableFrom(type)
+                || type == UUID.class;
+    }
+
+    static boolean isJsonArray(Class<?> type) {
+        return type.isArray() || Iterable.class.isAssignableFrom(type);
     }
 
     public static class VisitedClassMetadata {
