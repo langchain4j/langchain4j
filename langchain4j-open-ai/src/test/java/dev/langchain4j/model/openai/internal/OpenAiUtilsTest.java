@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -13,13 +13,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class InternalOpenAiHelperTest {
+class OpenAiUtilsTest {
 
     @Test
     void should_return_ai_message_with_text_when_no_functions_and_tool_calls_are_present() {

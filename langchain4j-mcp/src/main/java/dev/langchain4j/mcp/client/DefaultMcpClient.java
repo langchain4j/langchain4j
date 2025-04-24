@@ -50,6 +50,7 @@ public class DefaultMcpClient implements McpClient {
     private final String clientName;
     private final String clientVersion;
     private final String protocolVersion;
+    private final Duration initializationTimeout;
     private final Duration toolExecutionTimeout;
     private final Duration resourcesTimeout;
     private final Duration promptsTimeout;
@@ -72,6 +73,7 @@ public class DefaultMcpClient implements McpClient {
         clientName = getOrDefault(builder.clientName, "langchain4j");
         clientVersion = getOrDefault(builder.clientVersion, "1.0");
         protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
+        initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
         toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
         resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
         promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
@@ -108,7 +110,8 @@ public class DefaultMcpClient implements McpClient {
         InitializeParams params = createInitializeParams();
         request.setParams(params);
         try {
-            JsonNode capabilities = transport.initialize(request).get();
+            JsonNode capabilities =
+                    transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
             log.debug("MCP server capabilities: {}", capabilities.get("result"));
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -357,6 +360,7 @@ public class DefaultMcpClient implements McpClient {
         private String clientName;
         private String clientVersion;
         private String protocolVersion;
+        private Duration initializationTimeout;
         private Duration toolExecutionTimeout;
         private Duration resourcesTimeout;
         private Duration pingTimeout;
@@ -397,6 +401,15 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder protocolVersion(String protocolVersion) {
             this.protocolVersion = protocolVersion;
+            return this;
+        }
+
+        /**
+         * Sets the timeout for initializing the client.
+         * The default value is 30 seconds.
+         */
+        public Builder initializationTimeout(Duration initializationTimeout) {
+            this.initializationTimeout = initializationTimeout;
             return this;
         }
 

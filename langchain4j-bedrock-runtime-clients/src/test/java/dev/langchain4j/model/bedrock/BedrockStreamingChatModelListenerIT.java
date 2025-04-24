@@ -3,12 +3,12 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.model.bedrock.BedrockAnthropicStreamingChatModel.Types.AnthropicClaudeV2_1;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import java.util.List;
 import java.util.concurrent.CompletionException;
 
-class BedrockStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+class BedrockStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {

@@ -42,7 +42,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -439,7 +439,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
     @Override
     public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = request.parameters();
-        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidationUtils.validateParameters(parameters);
 
         // If the response format is not specified in the request, use the one specified in the model
         ResponseFormat responseFormat = parameters.responseFormat();
