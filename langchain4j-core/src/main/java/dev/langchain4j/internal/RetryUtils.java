@@ -181,7 +181,7 @@ public final class RetryUtils {
         }
 
         /**
-         * This method attempts to execute a given action up to 3 times with exponential backoff.
+         * This method attempts to execute a given action up to 3 times with an exponential backoff.
          * If the action fails on all attempts, it throws a RuntimeException.
          *
          * @param action The action to be executed.
@@ -216,8 +216,8 @@ public final class RetryUtils {
                         throw e instanceof RuntimeException re ? re : new LangChain4jException(e);
                     }
 
-                    // TODO update message for
-                    log.warn(String.format("Exception was thrown on attempt %s of %s", retry, maxRetries), e);
+                    log.warn("A retriable exception occurred. Remaining retries: %s of %s"
+                            .formatted(maxRetries - retry, maxRetries), e);
 
                     sleep(retry);
                 }
@@ -237,7 +237,7 @@ public final class RetryUtils {
             .build();
 
     /**
-     * This method attempts to execute a given action up to 3 times with exponential backoff.
+     * This method attempts to execute a given action up to 3 times with an exponential backoff.
      * If the action fails on all attempts, it throws a RuntimeException.
      *
      * @param action The action to be executed.
@@ -281,7 +281,7 @@ public final class RetryUtils {
     }
 
     /**
-     * This method attempts to execute a given action up to 3 times with exponential backoff.
+     * This method attempts to execute a given action up to 3 times with an exponential backoff.
      * If the action fails, the Exception causing the failure will be mapped with the default {@link ExceptionMapper}.
      *
      * @param action The action to be executed.
