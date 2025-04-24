@@ -145,7 +145,7 @@ public final class RetryUtils {
         }
 
         /**
-         * This method returns the raw delay in milliseconds for a given retry.
+         * This method returns the raw delay in milliseconds after a given retry.
          *
          * @param retry The retry number.
          * @return The raw delay in milliseconds.
@@ -155,7 +155,7 @@ public final class RetryUtils {
         }
 
         /**
-         * This method returns the jitter delay in milliseconds for a given retry.
+         * This method returns the jitter delay in milliseconds after a given retry.
          *
          * @param retry The retry number.
          * @return The jitter delay in milliseconds.
@@ -167,7 +167,7 @@ public final class RetryUtils {
         }
 
         /**
-         * This method sleeps for a given retry.
+         * This method sleeps after a given retry.
          *
          * @param retry The retry number.
          */
