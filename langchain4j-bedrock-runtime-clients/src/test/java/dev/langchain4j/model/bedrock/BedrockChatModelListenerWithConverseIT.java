@@ -33,6 +33,7 @@ class BedrockChatModelListenerWithConverseIT extends AbstractChatModelListenerIT
     protected ChatModel createFailingModel(ChatModelListener listener) {
         return BedrockChatModel.builder()
                 .modelId("banana")
+                .maxRetries(0)
                 .listeners(singletonList(listener))
                 .build();
     }

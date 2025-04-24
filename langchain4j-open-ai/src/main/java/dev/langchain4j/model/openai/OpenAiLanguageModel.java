@@ -49,7 +49,7 @@ public class OpenAiLanguageModel implements LanguageModel {
                 .build();
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     public String modelName() {

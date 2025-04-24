@@ -72,7 +72,7 @@ public class OpenAiChatModel implements ChatModel {
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
                 .build();
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {

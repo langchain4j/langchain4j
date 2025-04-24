@@ -40,6 +40,7 @@ class VertexAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName("banana")
+                .maxRetries(0)
                 .listeners(singletonList(listener))
                 .build();
     }

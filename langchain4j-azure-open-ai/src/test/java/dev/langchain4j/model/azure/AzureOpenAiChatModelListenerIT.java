@@ -34,6 +34,7 @@ class AzureOpenAiChatModelListenerIT extends AbstractChatModelListenerIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey("banana")
                 .deploymentName(modelName())
+                .maxRetries(0)
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();

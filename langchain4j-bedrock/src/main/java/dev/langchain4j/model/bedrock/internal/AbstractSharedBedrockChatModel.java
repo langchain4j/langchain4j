@@ -48,8 +48,7 @@ public abstract class AbstractSharedBedrockChatModel {
     protected final String assistantPrompt = ASSISTANT_PROMPT;
 
     @Builder.Default
-    protected final Integer maxRetries = 5;
-
+    protected final Integer maxRetries = 2;
     @Builder.Default
     protected final Region region = Region.US_EAST_1;
 

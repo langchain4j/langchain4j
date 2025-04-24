@@ -38,6 +38,7 @@ class OpenAiChatModelListenerIT extends AbstractChatModelListenerIT {
         return OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey("banana")
+                .maxRetries(0)
                 .listeners(singletonList(listener))
                 .build();
     }

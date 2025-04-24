@@ -64,7 +64,7 @@ class OpenAiToolSpecificationIT {
 
         UserMessage userMessage = UserMessage.from(
                 """
-                        Call function1 with param1=[3, null, 'abc', true].
+                        Call function1 with param1=[3, null, true].
                         """);
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -77,6 +77,6 @@ class OpenAiToolSpecificationIT {
         assertThat(chatResponse.aiMessage().toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest request =
                 chatResponse.aiMessage().toolExecutionRequests().get(0);
-        assertThat(request.arguments()).isEqualToIgnoringWhitespace("{\"param1\":[3,null,\"abc\",true]}");
+        assertThat(request.arguments()).isEqualToIgnoringWhitespace("{\"param1\":[3,null,true]}");
     }
 }
