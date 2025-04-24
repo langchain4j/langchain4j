@@ -396,7 +396,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_enum_parameter(ChatModel model) {
+    protected void should_execute_tool_with_enum_parameter(ChatModel model) {
 
         // given
         model = spy(model);
