@@ -23,7 +23,6 @@ class BedrockStreamingChatModelIT {
                 .temperature(0.5)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
-                .maxRetries(1)
                 .build();
         UserMessage userMessage = userMessage("What's the capital of Poland?");
 

@@ -36,6 +36,7 @@ class AnthropicChatModelListenerIT extends AbstractChatModelListenerIT {
         return AnthropicChatModel.builder()
                 .apiKey("banana")
                 .modelName(modelName())
+                .maxRetries(0)
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))

@@ -202,7 +202,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 ensureNotBlank(modelName, "modelName"), vertexAI)
                 .withGenerationConfig(generationConfig);
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
 
         if (logRequests != null) {
             this.logRequests = logRequests;
@@ -220,7 +220,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
                                    GenerationConfig generationConfig) {
-        this(generativeModel, generationConfig, 3);
+        this(generativeModel, generationConfig, 2);
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
@@ -229,7 +229,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel")
                 .withGenerationConfig(generationConfig);
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.vertexAI = null;
         this.safetySettings = Collections.emptyMap();
         this.googleSearch = null;

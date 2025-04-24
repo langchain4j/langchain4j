@@ -51,7 +51,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.taskType = taskType;
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 500);
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static NomicEmbeddingModelBuilder builder() {

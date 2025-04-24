@@ -20,7 +20,7 @@ class VertexAiLanguageModelIT {
                 .maxOutputTokens(50)
                 .topK(40)
                 .topP(0.95)
-                .maxRetries(3)
+                .maxRetries(2)
                 .build();
 
         Response<String> response = vertexAiLanguageModel.generate("hi, what is java?");

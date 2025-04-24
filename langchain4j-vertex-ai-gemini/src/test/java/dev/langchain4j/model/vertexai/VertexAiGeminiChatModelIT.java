@@ -549,7 +549,6 @@ class VertexAiGeminiChatModelIT {
                 .topK(1)
                 .logRequests(true)
                 .logResponses(true)
-                .maxRetries(1)
                 .build();
 
         FunctionCallingService service = new FunctionCallingService();

@@ -82,7 +82,7 @@ abstract class AbstractBedrockChatModel {
                                 ? builder.defaultRequestParameters.modelName()
                                 : null),
                 "modelId");
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
         this.listeners = getOrDefault(builder.listeners, List.of());
 

@@ -32,7 +32,7 @@ public class ChatModelMock implements ChatModel {
     private final Function<ChatRequest, AiMessage> aiMessageGenerator;
     private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
 
-    private static final RetryUtils.RetryPolicy DEFAULT_NO_RETRY_POLICY = retryPolicyBuilder().maxAttempts(1).build();
+    private static final RetryUtils.RetryPolicy DEFAULT_NO_RETRY_POLICY = retryPolicyBuilder().maxRetries(0).build();
     private RetryUtils.RetryPolicy retryPolicy = DEFAULT_NO_RETRY_POLICY;
 
     public ChatModelMock(String staticResponse) {
