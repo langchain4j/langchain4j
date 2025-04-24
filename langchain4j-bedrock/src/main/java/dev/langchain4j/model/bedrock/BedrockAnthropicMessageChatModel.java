@@ -1,5 +1,18 @@
 package dev.langchain4j.model.bedrock;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.joining;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -19,27 +32,18 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
-
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,19 +53,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.joining;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 /**
  * @deprecated please use {@link BedrockChatModel} instead
@@ -121,9 +120,9 @@ public class BedrockAnthropicMessageChatModel
         } else {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                    throw new UnsupportedFeatureException(String.format(
+                            "%s.%s is currently supported only when there is a single tool",
+                            ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
                 response = generate(chatRequest.messages(), toolSpecifications.get(0));
             } else {
@@ -183,11 +182,9 @@ public class BedrockAnthropicMessageChatModel
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatRequest listenerRequest =
-                createListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -205,8 +202,7 @@ public class BedrockAnthropicMessageChatModel
             Response<AiMessage> responseMessage =
                     Response.from(aiMessageFrom(result), result.getTokenUsage(), result.getFinishReason());
 
-            ChatResponse listenerResponse =
-                    createListenerResponse(result.getId(), result.getModel(), responseMessage);
+            ChatResponse listenerResponse = createListenerResponse(result.getId(), result.getModel(), responseMessage);
             ChatModelResponseContext responseContext =
                     new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
 
@@ -414,8 +410,8 @@ public class BedrockAnthropicMessageChatModel
         } else if (message instanceof UserMessage) {
             return ((UserMessage) message)
                     .contents().stream()
-                    .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
-                    .collect(Collectors.toList());
+                            .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
+                            .collect(Collectors.toList());
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             return Collections.singletonList(BedrockAnthropicContent.builder()
