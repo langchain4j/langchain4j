@@ -49,6 +49,7 @@ public abstract class AbstractSharedBedrockChatModel {
 
     @Builder.Default
     protected final Integer maxRetries = 2;
+
     @Builder.Default
     protected final Region region = Region.US_EAST_1;
 

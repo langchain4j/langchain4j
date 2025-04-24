@@ -30,7 +30,7 @@ class BedrockChatModelListenerIT extends AbstractChatModelListenerIT {
         return BedrockAnthropicMessageChatModel.builder()
                 .model("banana")
                 .maxRetries(0)
-                .listeners((List.of(listener))
+                .listeners(List.of(listener))
                 .build();
     }
 
