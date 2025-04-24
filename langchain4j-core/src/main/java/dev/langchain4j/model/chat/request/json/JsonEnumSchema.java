@@ -17,6 +17,7 @@ public class JsonEnumSchema implements JsonSchemaElement {
         this.enumValues = new ArrayList<>(ensureNotEmpty(builder.enumValues, "enumValues"));
     }
 
+    @Override
     public String description() {
         return description;
     }

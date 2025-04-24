@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
+import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.IntArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -18,9 +19,9 @@ import dev.langchain4j.model.TokenCountEstimator;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
 
+import static com.knuddels.jtokkit.api.EncodingType.O200K_BASE;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0125;
@@ -30,15 +31,17 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIE
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW;
 
 /**
- * This class can be used to estimate the cost (in tokens) before calling OpenAI or when using streaming.
+ * This class can be used to estimate the cost (in tokens) before calling OpenAI.
  * Magic numbers present in this class were found empirically while testing.
  * There are integration tests in place that are making sure that the calculations here are very close to that of OpenAI.
  */
 public class OpenAiTokenCountEstimator implements TokenCountEstimator {
 
-    private final String modelName;
-    private final Optional<Encoding> encoding;
+    private static final EncodingRegistry ENCODING_REGISTRY = Encodings.newDefaultEncodingRegistry();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private final String modelName;
+    private final Encoding encoding;
 
     /**
      * Creates an instance of the {@code OpenAiTokenCountEstimator} for a given {@link OpenAiChatModelName}.
@@ -66,21 +69,16 @@ public class OpenAiTokenCountEstimator implements TokenCountEstimator {
      */
     public OpenAiTokenCountEstimator(String modelName) {
         this.modelName = ensureNotBlank(modelName, "modelName");
-        // If the model is unknown, we should NOT fail fast during the creation of OpenAiTokenCountEstimator.
-        // Doing so would cause the failure of every OpenAI***Model that uses this token count estimator.
-        // This is done to account for situations when a new OpenAI model is available,
-        // but JTokkit does not yet support it.
-        if (modelName.startsWith("o1") || modelName.startsWith("o3")) {
+        if (modelName.startsWith("o") || modelName.startsWith("gpt-4.")) {
             // temporary fix until https://github.com/knuddelsgmbh/jtokkit/pull/118 is released
-            this.encoding = Encodings.newLazyEncodingRegistry().getEncoding("o200k_base");
+            this.encoding = ENCODING_REGISTRY.getEncoding(O200K_BASE);
         } else {
-            this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
+            this.encoding = ENCODING_REGISTRY.getEncodingForModel(modelName).orElseThrow(unknownModelException());
         }
     }
 
     public int estimateTokenCountInText(String text) {
-        return encoding.orElseThrow(unknownModelException())
-                .countTokensOrdinary(text);
+        return encoding.countTokensOrdinary(text);
     }
 
     @Override
@@ -167,6 +165,10 @@ public class OpenAiTokenCountEstimator implements TokenCountEstimator {
             }
         }
 
+        if (modelName.startsWith("o4")) {
+            tokenCount += 2;
+        }
+
         return tokenCount;
     }
 
@@ -198,17 +200,18 @@ public class OpenAiTokenCountEstimator implements TokenCountEstimator {
         for (ChatMessage message : messages) {
             tokenCount += estimateTokenCountInMessage(message);
         }
+        if (modelName.startsWith("o") ) {
+            tokenCount -= 1;
+        }
         return tokenCount;
     }
 
     public List<Integer> encode(String text) {
-        return encoding.orElseThrow(unknownModelException())
-                .encodeOrdinary(text).boxed();
+        return encoding.encodeOrdinary(text).boxed();
     }
 
     public List<Integer> encode(String text, int maxTokensToEncode) {
-        return encoding.orElseThrow(unknownModelException())
-                .encodeOrdinary(text, maxTokensToEncode).getTokens().boxed();
+        return encoding.encodeOrdinary(text, maxTokensToEncode).getTokens().boxed();
     }
 
     public String decode(List<Integer> tokens) {
@@ -218,8 +221,7 @@ public class OpenAiTokenCountEstimator implements TokenCountEstimator {
             intArrayList.add(token);
         }
 
-        return encoding.orElseThrow(unknownModelException())
-                .decode(intArrayList);
+        return encoding.decode(intArrayList);
     }
 
     private Supplier<IllegalArgumentException> unknownModelException() {

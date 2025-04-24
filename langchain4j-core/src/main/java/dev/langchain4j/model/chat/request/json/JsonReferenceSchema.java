@@ -21,6 +21,11 @@ public class JsonReferenceSchema implements JsonSchemaElement {
         return reference;
     }
 
+    @Override
+    public String description() {
+        return null;
+    }
+
     public static Builder builder() {
         return new Builder();
     }

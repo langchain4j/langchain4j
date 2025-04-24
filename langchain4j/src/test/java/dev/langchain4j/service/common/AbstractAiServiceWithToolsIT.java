@@ -3,7 +3,6 @@ package dev.langchain4j.service.common;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -13,8 +12,8 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,7 +65,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     interface Assistant {
 
-        Response<AiMessage> chat(String userMessage);
+        Result<String> chat(String userMessage);
     }
 
     static class ToolWithPrimitiveParameters {
@@ -100,10 +99,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         String text = "How much is 37 plus 87?";
 
         // when
-        Response<AiMessage> response = assistant.chat(text);
+        Result<String> result = assistant.chat(text);
 
         // then
-        assertThat(response.content().text()).contains("124");
+        assertThat(result.content()).contains("124");
 
         verify(tool).add(37, 87);
         verifyNoMoreInteractions(tool);
@@ -346,10 +345,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         String text = "What is the time now? Respond in HH:MM:SS format.";
 
         // when
-        Response<AiMessage> response = assistant.chat(text);
+        Result<String> result = assistant.chat(text);
 
         // then
-        assertThat(response.content().text()).contains("17:11:45");
+        assertThat(result.content()).contains("17:11:45");
 
         verify(tools).currentTime();
         verifyNoMoreInteractions(tools);
@@ -412,10 +411,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         String text = "What is the current temperature in Munich in celsius?";
 
         // when
-        Response<AiMessage> response = assistant.chat(text);
+        Result<String> result = assistant.chat(text);
 
         // then
-        assertThat(response.content().text()).contains("19");
+        assertThat(result.content()).contains("19");
 
         verify(tool).currentTemperature("Munich", CELSIUS);
         verifyNoMoreInteractions(tool);
@@ -768,10 +767,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         String text = "What is the username with ID 62dbcc27-aaf3-449a-b12d-5a904271a57f?";
 
         // when
-        var response = assistant.chat(text);
+        Result<String> result = assistant.chat(text);
 
         // then
-        assertThat(response.content().text()).contains("Alice");
+        assertThat(result.content()).contains("Alice");
 
         verify(tool).getUsernameFromId(UUID.fromString("62dbcc27-aaf3-449a-b12d-5a904271a57f"));
         verifyNoMoreInteractions(tool);

@@ -9,6 +9,8 @@ import opennlp.tools.sentdetect.SentenceModel;
 
 import java.io.InputStream;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * Splits the provided {@link Document} into sentences and attempts to fit as many sentences as possible
  * into a single {@link TextSegment}, adhering to the limit set by {@code maxSegmentSize}.
@@ -60,8 +62,22 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
         this.sentenceModel = createSentenceModel();
     }
 
+    /**
+     * @param sentenceModel The {@link SentenceModel} to be used for splitting text into sentences.
+     *                      Pretrained models for various languages can be found
+     *                      <a href="https://opennlp.apache.org/models.html#sentence_detection">here</a>.
+     */
+    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
+                                      int maxOverlapSizeInTokens,
+                                      TokenCountEstimator tokenCountEstimator,
+                                      DocumentSplitter subSplitter,
+                                      SentenceModel sentenceModel) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, subSplitter);
+        this.sentenceModel = ensureNotNull(sentenceModel, "sentenceModel");
+    }
+
     private SentenceModel createSentenceModel() {
-        String sentenceModelFilePath = "/opennlp/opennlp-en-ud-ewt-sentence-1.0-1.9.3.bin";
+        String sentenceModelFilePath = "/opennlp/opennlp-en-ud-ewt-sentence-1.2-2.5.0.bin";
         try (InputStream is = getClass().getResourceAsStream(sentenceModelFilePath)) {
             return new SentenceModel(is);
         } catch (Exception e) {
