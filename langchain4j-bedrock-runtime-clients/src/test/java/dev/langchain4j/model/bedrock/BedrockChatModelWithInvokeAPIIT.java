@@ -14,6 +14,7 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -732,7 +733,7 @@ public class BedrockChatModelWithInvokeAPIIT {
     @ParameterizedTest
     @EnumSource(
             value = BedrockLlamaChatModel.Types.class,
-            mode = EnumSource.Mode.INCLUDE,
+            mode = INCLUDE,
             names = {"META_LLAMA3_8B_INSTRUCT_V1_0", "META_LLAMA3_70B_INSTRUCT_V1_0"})
     void bedrockLlamaChatModel(BedrockLlamaChatModel.Types modelId) {
 

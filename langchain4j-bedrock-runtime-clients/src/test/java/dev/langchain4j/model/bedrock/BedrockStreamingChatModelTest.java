@@ -11,7 +11,7 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 class BedrockStreamingChatModelTest {
 
     @Test
-    void should_fail_instantiation_with_both_client_and_credentialprovider() {
+    void should_fail_instantiation_when_both_client_and_credentialprovider_are_provided() {
         final BedrockRuntimeAsyncClient bedrockRuntimeAsyncClient =
                 BedrockRuntimeAsyncClient.builder().region(Region.US_EAST_1).build();
         final DefaultCredentialsProvider defaultCredentialsProvider =
