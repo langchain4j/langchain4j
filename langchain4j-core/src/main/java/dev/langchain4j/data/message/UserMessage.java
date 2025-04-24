@@ -1,7 +1,5 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.Experimental;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +17,7 @@ import static java.util.Collections.unmodifiableList;
  * Depending on the supported modalities (text, image, audio, video, etc.) of the model,
  * user messages can contain either a single text (a {@code String}) or multiple {@link Content}s,
  * which can be either {@link TextContent}, {@link ImageContent}, {@link AudioContent},
- * {@link VideoContent}, {@link PdfFileContent}, or {@link TextFileContent}.
+ * {@link VideoContent}, or {@link PdfFileContent}.
  * <br>
  * Optionally, user message can contain a {@link #name} of the user.
  * Be aware that not all models support names in {@code UserMessage}.
@@ -182,7 +180,6 @@ public class UserMessage implements ChatMessage {
             return this;
         }
 
-        @Experimental
         public Builder addContent(Content content) {
             if (this.contents == null) {
                 this.contents = new ArrayList<>();

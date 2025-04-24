@@ -1,7 +1,7 @@
 package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
@@ -28,7 +28,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<StreamingChatModel> models() {
         return List.of(
                 AZURE_OPEN_AI_STREAMING_CHAT_MODEL,
                 AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA
@@ -39,7 +39,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Disabled
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_single_image_as_public_URL(StreamingChatLanguageModel model) {
+    protected void should_accept_single_image_as_public_URL(StreamingChatModel model) {
         // TODO fix
     }
 
@@ -47,7 +47,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Disabled
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_public_URLs(StreamingChatLanguageModel model) {
+    protected void should_accept_multiple_images_as_public_URLs(StreamingChatModel model) {
         // TODO fix
     }
 

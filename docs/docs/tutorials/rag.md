@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -185,13 +185,13 @@ interface Assistant {
     String chat(String userMessage);
 }
 
-ChatLanguageModel chatModel = OpenAiChatModel.builder()
+ChatModel chatModel = OpenAiChatModel.builder()
     .apiKey(System.getenv("OPENAI_API_KEY"))
     .modelName(GPT_4_O_MINI)
     .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(chatModel)
+    .chatModel(chatModel)
     .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
     .contentRetriever(EmbeddingStoreContentRetriever.from(embeddingStore))
     .build();
@@ -567,7 +567,7 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
     })
 
     // splitting each Document into TextSegments of 1000 tokens each, with a 200-token overlap
-    .documentSplitter(DocumentSplitters.recursive(1000, 200, new OpenAiTokenizer()))
+    .documentSplitter(DocumentSplitters.recursive(1000, 200, new OpenAiTokenCountEstimator("gpt-4o-mini")))
 
     // adding a name of the Document to each TextSegment to improve the quality of search
     .textSegmentTransformer(textSegment -> TextSegment.from(
@@ -596,7 +596,7 @@ ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
     .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .contentRetriever(contentRetriever)
     .build();
 ```
@@ -791,7 +791,7 @@ Please refer to the `AzureAiSearchContentRetriever` Javadoc for more information
 `Neo4jContentRetriever` is an integration with the [Neo4j](https://neo4j.com/) graph database.
 It converts natural language queries into Neo4j Cypher queries
 and retrieves relevant information by running these queries in Neo4j.
-It can be found in the `langchain4j-neo4j` module.
+It can be found in the `langchain4j-community-neo4j-retriever` module.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).

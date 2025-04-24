@@ -27,11 +27,10 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
     /**
      * Constructs an instance of an {@code OvhAiEmbeddingModel} with the specified parameters.
      *
-     * @param baseUrl      The base URL of the OVHcloud API. Default:
-     *                     "https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net"
+     * @param baseUrl      The base URL of the OVHcloud API.
      * @param apiKey       The API key for authentication with the OVHcloud API.
      * @param timeout      The timeout for API requests. Default: 60 seconds
-     * @param maxRetries   The maximum number of retries for API requests. Default: 3
+     * @param maxRetries   The maximum number of retries for API requests. Default: 2
      * @param logRequests  Whether to log the content of API requests using SLF4J. Default: false
      * @param logResponses Whether to log the content of API responses using SLF4J. Default: false
      */
@@ -45,14 +44,13 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
         this.client =
                 DefaultOvhAiClient
                         .builder()
-                        .baseUrl(getOrDefault(baseUrl,
-                                "https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net"))
+                        .baseUrl(baseUrl)
                         .apiKey(apiKey)
                         .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                         .logRequests(getOrDefault(logRequests, false))
                         .logResponses(getOrDefault(logResponses, false))
                         .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     /**

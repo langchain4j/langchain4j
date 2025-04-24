@@ -2,7 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class OllamaOpenAiStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
-    StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+    StreamingChatModel model = OpenAiStreamingChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)

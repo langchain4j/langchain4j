@@ -5,12 +5,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -36,7 +36,7 @@ import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReaso
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 
 @Experimental
-public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatLanguageModel {
+public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatModel {
 
     public GoogleAiGeminiChatModel(
             String apiKey, String modelName,
@@ -65,7 +65,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
-        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
 
         GeminiGenerateContentRequest request = createGenerateContentRequest(
                 chatRequest.messages(),

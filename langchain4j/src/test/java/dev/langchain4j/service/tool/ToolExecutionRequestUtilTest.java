@@ -1,16 +1,15 @@
 package dev.langchain4j.service.tool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 
 class ToolExecutionRequestUtilTest implements WithAssertions {
 
@@ -39,6 +38,28 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
                 .containsEntry("foo", "bar")
                 .containsEntry("qux", 12);
+    }
+
+    @Test
+    void argument_leading_trailing_quotes() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments("\"{\"foo\":\"bar\"}\"")
+                .build();
+
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments())).containsEntry("foo", "bar");
+    }
+
+    @Test
+    void argument_leading_trailing_and_escaped_quotes() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments("\"{\\\"foo\\\":\\\"bar\\\"}\"")
+                .build();
+
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments())).containsEntry("foo", "bar");
     }
 
     @Test

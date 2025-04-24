@@ -1,9 +1,13 @@
 package dev.langchain4j.model.googleai.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
@@ -13,7 +17,7 @@ import static java.util.Collections.singletonList;
 class GoogleAiGeminiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return singletonList(
                 GoogleAiGeminiChatModel.builder()
                         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
@@ -23,6 +27,13 @@ class GoogleAiGeminiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonS
                         .logRequestsAndResponses(true)
                         .build()
         );
+    }
+
+    @Override
+    @Disabled("Gemini does not support Map<?,?> fields")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_missing_data(ChatModel model) {
     }
 
     @AfterEach

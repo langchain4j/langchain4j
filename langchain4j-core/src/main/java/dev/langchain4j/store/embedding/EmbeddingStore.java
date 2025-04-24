@@ -1,9 +1,9 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.util.ArrayList;
@@ -88,7 +88,7 @@ public interface EmbeddingStore<Embedded> {
      * @param embedded   A list of original contents that were embedded.
      */
     default void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedFeatureException("Not supported yet.");
     }
 
     /**
@@ -96,7 +96,6 @@ public interface EmbeddingStore<Embedded> {
      *
      * @param id The unique ID of the embedding to be removed.
      */
-    @Experimental
     default void remove(String id) {
         ensureNotBlank(id, "id");
         this.removeAll(singletonList(id));
@@ -107,9 +106,8 @@ public interface EmbeddingStore<Embedded> {
      *
      * @param ids A collection of unique IDs of the embeddings to be removed.
      */
-    @Experimental
     default void removeAll(Collection<String> ids) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedFeatureException("Not supported yet.");
     }
 
     /**
@@ -119,17 +117,15 @@ public interface EmbeddingStore<Embedded> {
      *               Only embeddings whose {@code TextSegment}'s {@code Metadata}
      *               match the {@code Filter} will be removed.
      */
-    @Experimental
     default void removeAll(Filter filter) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedFeatureException("Not supported yet.");
     }
 
     /**
      * Removes all embeddings from the store.
      */
-    @Experimental
     default void removeAll() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedFeatureException("Not supported yet.");
     }
 
     /**

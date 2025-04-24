@@ -3,8 +3,7 @@ package dev.langchain4j.service;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -13,7 +12,6 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,7 +48,7 @@ class AiServicesWithToolsWithDescriptionIT {
     @Captor
     ArgumentCaptor<ChatRequest> chatRequestCaptor;
 
-    private static List<ChatLanguageModel> models() {
+    private static List<ChatModel> models() {
         return singletonList(OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -67,7 +65,7 @@ class AiServicesWithToolsWithDescriptionIT {
 
     interface Assistant {
 
-        Response<AiMessage> chat(String userMessage);
+        Result<String> chat(String userMessage);
     }
 
     static class ToolWithPrimitiveParameters {
@@ -86,7 +84,7 @@ class AiServicesWithToolsWithDescriptionIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_primitive_parameters(ChatLanguageModel model) {
+    void should_execute_tool_with_primitive_parameters(ChatModel model) {
 
         // given
         model = spy(model);
@@ -94,17 +92,17 @@ class AiServicesWithToolsWithDescriptionIT {
         ToolWithPrimitiveParameters tool = spy(new ToolWithPrimitiveParameters());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
         String text = "How much is 37 plus 87?";
 
         // when
-        Response<AiMessage> response = assistant.chat(text);
+        Result<String> result = assistant.chat(text);
 
         // then
-        assertThat(response.content().text()).contains("124");
+        assertThat(result.content()).contains("124");
 
         verify(tool).add(37, 87);
         verifyNoMoreInteractions(tool);
@@ -148,7 +146,6 @@ class AiServicesWithToolsWithDescriptionIT {
                 .addProperties(singletonMap("arg0", JsonObjectSchema.builder()
                         .description("a person 2")
                         .addStringProperty("name", "a name")
-                        .addStringProperty("name", "a name")
                         .addIntegerProperty("age", "an age")
                         .addNumberProperty("height", "a height")
                         .addBooleanProperty("married", "is married")
@@ -160,7 +157,7 @@ class AiServicesWithToolsWithDescriptionIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_pojo_with_primitives(ChatLanguageModel model) {
+    void should_execute_tool_with_pojo_with_primitives(ChatModel model) {
 
         // given
         model = spy(model);
@@ -168,7 +165,7 @@ class AiServicesWithToolsWithDescriptionIT {
         ToolWithPojoParameter tool = spy(new ToolWithPojoParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -231,7 +228,7 @@ class AiServicesWithToolsWithDescriptionIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_pojo_with_nested_pojo(ChatLanguageModel model) {
+    void should_execute_tool_with_pojo_with_nested_pojo(ChatModel model) {
 
         // given
         model = spy(model);
@@ -239,7 +236,7 @@ class AiServicesWithToolsWithDescriptionIT {
         ToolWithNestedPojoParameter tool = spy(new ToolWithNestedPojoParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -303,7 +300,7 @@ class AiServicesWithToolsWithDescriptionIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_pojo_with_recursion(ChatLanguageModel model) {
+    void should_execute_tool_with_pojo_with_recursion(ChatModel model) {
 
         // given
         model = spy(model);
@@ -311,7 +308,7 @@ class AiServicesWithToolsWithDescriptionIT {
         ToolWithRecursion tool = spy(new ToolWithRecursion());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -372,7 +369,7 @@ class AiServicesWithToolsWithDescriptionIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_enum_parameter(ChatLanguageModel model) {
+    void should_execute_tool_with_enum_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -380,17 +377,17 @@ class AiServicesWithToolsWithDescriptionIT {
         ToolWithEnumParameter tool = spy(new ToolWithEnumParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
         String text = "What is the current temperature in Munich in celsius?";
 
         // when
-        Response<AiMessage> response = assistant.chat(text);
+        Result<String> result = assistant.chat(text);
 
         // then
-        assertThat(response.content().text()).contains("19");
+        assertThat(result.content()).contains("19");
 
         verify(tool).currentTemperature("Munich", CELSIUS);
         verifyNoMoreInteractions(tool);
@@ -424,7 +421,7 @@ class AiServicesWithToolsWithDescriptionIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_map_parameter(ChatLanguageModel model) {
+    void should_execute_tool_with_map_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -432,7 +429,7 @@ class AiServicesWithToolsWithDescriptionIT {
         ToolWithMapParameter tool = spy(new ToolWithMapParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 
@@ -486,7 +483,7 @@ class AiServicesWithToolsWithDescriptionIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_with_list_of_enums_parameter(ChatLanguageModel model) {
+    void should_execute_tool_with_list_of_enums_parameter(ChatModel model) {
 
         // given
         model = spy(model);
@@ -494,7 +491,7 @@ class AiServicesWithToolsWithDescriptionIT {
         ToolWithListOfEnumsParameter tool = spy(new ToolWithListOfEnumsParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .build();
 

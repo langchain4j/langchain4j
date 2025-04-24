@@ -51,7 +51,6 @@ class VertexAiImageModelIT {
                 .project(PROJECT)
                 .publisher(PUBLISHER)
                 .modelName("imagegeneration@005")
-                .maxRetries(2)
                 .withPersisting()
                 .build();
 
@@ -99,7 +98,6 @@ class VertexAiImageModelIT {
                 .seed(19707L)
                 .sampleImageStyle(VertexAiImageModel.ImageStyle.PHOTOGRAPH)
                 .guidanceScale(100)
-                .maxRetries(4)
                 .withPersisting()
                 .build();
 
@@ -128,7 +126,6 @@ class VertexAiImageModelIT {
                 .sampleImageSize(1024)
                 .withPersisting()
                 .persistTo(defaultTempDirPath)
-                .maxRetries(3)
                 .build();
 
         Response<Image> imageResponse = imagenModel.generate("A black bird looking itself in an antique mirror");
@@ -146,7 +143,6 @@ class VertexAiImageModelIT {
                 .sampleImageSize(4096)
                 .withPersisting()
                 .persistTo(defaultTempDirPath)
-                .maxRetries(3)
                 .build();
 
         Response<Image> upscaledImageResponse = imagenModelForUpscaling.edit(imageResponse.content(), "");
@@ -166,7 +162,6 @@ class VertexAiImageModelIT {
                 .modelName("imagegeneration@005")
                 .language("ja")
                 .negativePrompt("pepperoni, pineapple")
-                .maxRetries(2)
                 .withPersisting()
                 .build();
 
@@ -205,7 +200,6 @@ class VertexAiImageModelIT {
                 .compressionQuality(80)
                 //            .personGeneration(VertexAiImageModel.PersonGeneration.dont_allow) // TODO: extra test
                 .watermark(false) // true by default with v3 // TODO: not sure how to test a watermark is present or not
-                .maxRetries(2)
                 .withPersisting()
                 .logRequests(true)
                 .logResponses(true)

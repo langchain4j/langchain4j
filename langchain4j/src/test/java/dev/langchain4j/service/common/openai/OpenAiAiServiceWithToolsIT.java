@@ -1,6 +1,6 @@
 package dev.langchain4j.service.common.openai;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -16,7 +16,7 @@ import static java.util.Collections.singletonList;
 class OpenAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return asList(
                 OpenAiChatModel.builder()
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -41,7 +41,7 @@ class OpenAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     }
 
     @Override
-    protected List<ChatLanguageModel> modelsSupportingMapParametersInTools() {
+    protected List<ChatModel> modelsSupportingMapParametersInTools() {
         return singletonList(models().get(0)); // second model (with strictTools(true)) goes into an endless loop
     }
 

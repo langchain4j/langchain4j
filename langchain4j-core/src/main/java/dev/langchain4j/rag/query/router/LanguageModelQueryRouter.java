@@ -5,13 +5,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -35,7 +35,7 @@ import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.Fallback
 import static java.util.Collections.emptyList;
 
 /**
- * A {@link QueryRouter} that utilizes a {@link ChatLanguageModel} to make a routing decision.
+ * A {@link QueryRouter} that utilizes a {@link ChatModel} to make a routing decision.
  * <br>
  * Each {@link ContentRetriever} provided in the constructor should be accompanied by a description which
  * should help the LLM to decide where to route a {@link Query}.
@@ -72,22 +72,22 @@ public class LanguageModelQueryRouter implements QueryRouter {
             .visibility(FIELD, ANY)
             .build();
 
-    protected final ChatLanguageModel chatLanguageModel;
+    protected final ChatModel chatModel;
     protected final PromptTemplate promptTemplate;
     protected final String options;
     protected final Map<Integer, ContentRetriever> idToRetriever;
     protected final FallbackStrategy fallbackStrategy;
 
-    public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
+    public LanguageModelQueryRouter(ChatModel chatModel,
                                     Map<ContentRetriever, String> retrieverToDescription) {
-        this(chatLanguageModel, retrieverToDescription, DEFAULT_PROMPT_TEMPLATE, DO_NOT_ROUTE);
+        this(chatModel, retrieverToDescription, DEFAULT_PROMPT_TEMPLATE, DO_NOT_ROUTE);
     }
 
-    public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
+    public LanguageModelQueryRouter(ChatModel chatModel,
                                     Map<ContentRetriever, String> retrieverToDescription,
                                     PromptTemplate promptTemplate,
                                     FallbackStrategy fallbackStrategy) {
-        this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
+        this.chatModel = ensureNotNull(chatModel, "chatModel");
         ensureNotEmpty(retrieverToDescription, "retrieverToDescription");
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
 
@@ -124,8 +124,8 @@ public class LanguageModelQueryRouter implements QueryRouter {
                 .messages(new UserMessage(createPrompt(query).text()))
                 .build();
         try {
-            ChatResponse response = chatLanguageModel.chat(chatRequest);
-            return parse(response.aiMessage().text());
+            ChatResponse chatResponse = chatModel.chat(chatRequest);
+            return parse(chatResponse.aiMessage().text());
         } catch (Exception e) {
             log.warn("Failed to route query '{}'", query.text(), e);
             return fallback(query, e);
@@ -192,7 +192,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
     }
 
     public static class LanguageModelQueryRouterBuilder {
-        private ChatLanguageModel chatLanguageModel;
+        private ChatModel chatModel;
         private Map<ContentRetriever, String> retrieverToDescription;
         private PromptTemplate promptTemplate;
         private FallbackStrategy fallbackStrategy;
@@ -200,8 +200,8 @@ public class LanguageModelQueryRouter implements QueryRouter {
         LanguageModelQueryRouterBuilder() {
         }
 
-        public LanguageModelQueryRouterBuilder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
-            this.chatLanguageModel = chatLanguageModel;
+        public LanguageModelQueryRouterBuilder chatModel(ChatModel chatModel) {
+            this.chatModel = chatModel;
             return this;
         }
 
@@ -221,11 +221,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
         }
 
         public LanguageModelQueryRouter build() {
-            return new LanguageModelQueryRouter(this.chatLanguageModel, this.retrieverToDescription, this.promptTemplate, this.fallbackStrategy);
-        }
-
-        public String toString() {
-            return "LanguageModelQueryRouter.LanguageModelQueryRouterBuilder(chatLanguageModel=" + this.chatLanguageModel + ", retrieverToDescription=" + this.retrieverToDescription + ", promptTemplate=" + this.promptTemplate + ", fallbackStrategy=" + this.fallbackStrategy + ")";
+            return new LanguageModelQueryRouter(this.chatModel, this.retrieverToDescription, this.promptTemplate, this.fallbackStrategy);
         }
     }
 }

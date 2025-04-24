@@ -58,7 +58,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     /**

@@ -1,6 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -42,7 +42,7 @@ import static org.mockito.Mockito.verify;
 class AiServicesWithJsonSchemaWithDescriptionsIT {
 
     @Spy
-    ChatLanguageModel model = OpenAiChatModel.builder()
+    ChatModel model = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -120,7 +120,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                     .description("married or not")
                                                     .build());
                                         }})
-                                        .required("name", "age", "height", "married")
                                         .build())
                                 .build())
                         .build())
@@ -184,10 +183,8 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                                 .description("a city")
                                                                 .build());
                                                     }})
-                                                    .required("city")
                                                     .build());
                                         }})
-                                        .required("name", "address")
                                         .build())
                                 .build())
                         .build())
@@ -248,7 +245,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                     .description("marital status override")
                                                     .build());
                                         }})
-                                        .required("name", "maritalStatus")
                                         .build())
                                 .build())
                         .build())
@@ -303,7 +299,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                     .description("favourite colors")
                                                     .build());
                                         }})
-                                        .required("name", "favouriteColors")
                                         .build())
                                 .build())
                         .build())
@@ -358,7 +353,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                     .description("favourite colors")
                                                     .build());
                                         }})
-                                        .required("name", "favouriteColors")
                                         .build())
                                 .build())
                         .build())
@@ -413,7 +407,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                     .description("favourite colors")
                                                     .build());
                                         }})
-                                        .required("name", "favouriteColors")
                                         .build())
                                 .build())
                         .build())
@@ -480,12 +473,10 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                                         .description("a name of a pet")
                                                                         .build());
                                                             }})
-                                                            .required("name")
                                                             .build())
                                                     .description("pets of a person")
                                                     .build());
                                         }})
-                                        .required("name", "pets")
                                         .build())
                                 .build())
                         .build())
@@ -552,12 +543,10 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                                         .description("a name of a pet")
                                                                         .build());
                                                             }})
-                                                            .required("name")
                                                             .build())
                                                     .description("pets of a person")
                                                     .build());
                                         }})
-                                        .required("name", "pets")
                                         .build())
                                 .build())
                         .build())
@@ -615,12 +604,10 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                                         .description("a name of a pet")
                                                                         .build());
                                                             }})
-                                                            .required("name")
                                                             .build())
                                                     .description("pets of a person")
                                                     .build());
                                         }})
-                                        .required("name", "pets")
                                         .build())
                                 .build())
                         .build())
@@ -684,7 +671,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                             .build())
                                                     .build());
                                         }})
-                                        .required("name", "groups")
                                         .build())
                                 .build())
                         .build())
@@ -748,7 +734,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                             .build())
                                                     .build());
                                         }})
-                                        .required("name", "groups")
                                         .build())
                                 .build())
                         .build())
@@ -812,7 +797,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                             .build())
                                                     .build());
                                         }})
-                                        .required("name", "groups")
                                         .build())
                                 .build())
                         .build())
@@ -878,7 +862,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                         put("month", new JsonIntegerSchema());
                                                         put("day", new JsonIntegerSchema());
                                                     }})
-                                                    .required("year", "month", "day")
                                                     .build());
                                             put("birthTime", JsonObjectSchema.builder()
                                                     .description("a birth time")
@@ -888,7 +871,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                         put("second", new JsonIntegerSchema());
                                                         put("nano", new JsonIntegerSchema());
                                                     }})
-                                                    .required("hour", "minute", "second", "nano")
                                                     .build());
                                             put("birthDateTime", JsonObjectSchema.builder()
                                                     .description("a birth date and time")
@@ -899,7 +881,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                                     put("month", new JsonIntegerSchema());
                                                                     put("day", new JsonIntegerSchema());
                                                                 }})
-                                                                .required("year", "month", "day")
                                                                 .build());
                                                         put("time", JsonObjectSchema.builder()
                                                                 .addProperties(new LinkedHashMap<>() {{
@@ -908,13 +889,10 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                                                     put("second", new JsonIntegerSchema());
                                                                     put("nano", new JsonIntegerSchema());
                                                                 }})
-                                                                .required("hour", "minute", "second", "nano")
                                                                 .build());
                                                     }})
-                                                    .required("date", "time")
                                                     .build());
                                         }})
-                                        .required("name", "birthDate", "birthTime", "birthDateTime")
                                         .build())
                                 .build())
                         .build())

@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.query.router;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -32,7 +33,7 @@ class LanguageModelQueryRouterIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_route_to_single_retriever(ChatLanguageModel model) {
+    void should_route_to_single_retriever(ChatModel model) {
 
         // given
         Query query = Query.from("Do Labradors shed?");
@@ -52,7 +53,7 @@ class LanguageModelQueryRouterIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_route_to_multiple_retrievers(ChatLanguageModel model) {
+    void should_route_to_multiple_retrievers(ChatModel model) {
 
         // given
         Query query = Query.from("Tell me about animals");
@@ -72,7 +73,7 @@ class LanguageModelQueryRouterIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_return_an_empty_list_when_LLM_did_not_provide_a_valid_response(ChatLanguageModel model) {
+    void should_return_an_empty_list_when_LLM_did_not_provide_a_valid_response(ChatModel model) {
 
         // given
         Query query = Query.from("Hey, what's up?");
