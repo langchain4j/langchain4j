@@ -152,9 +152,10 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                     && (nonNull(this.region)
                             || nonNull(this.awsCredentialsProvider)
                             || nonNull(this.logRequests)
-                            || nonNull(this.logResponses))) {
+                            || nonNull(this.logResponses)
+                            || nonNull(this.timeout))) {
                 throw new IllegalArgumentException(
-                        "You must provide either a BedrockRuntimeAsyncClient or a combination of region, awsCredentialsProvider, logRequests, and logResponses — not both. Providing both may lead to inconsistent behavior.");
+                        "You must provide either a BedrockRuntimeAsyncClient or a combination of region, awsCredentialsProvider, timeout, logRequests, and logResponses — not both. Providing both may lead to inconsistent behavior.");
             }
             return new BedrockStreamingChatModel(this);
         }
