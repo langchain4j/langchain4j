@@ -6,10 +6,10 @@ import static java.util.Collections.singletonList;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
-public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+public class OllamaStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {

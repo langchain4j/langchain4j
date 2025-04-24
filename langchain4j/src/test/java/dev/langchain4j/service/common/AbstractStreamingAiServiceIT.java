@@ -95,7 +95,7 @@ public abstract class AbstractStreamingAiServiceIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_without_arguments(StreamingChatModel model) throws Exception {
+    protected void should_execute_tool_without_arguments(StreamingChatModel model) throws Exception {
 
         // given
         class Tools {

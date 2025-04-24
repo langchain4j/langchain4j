@@ -21,7 +21,6 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
-                .maxRetries(3)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -41,7 +40,6 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
-                .maxRetries(3)
                 .logRequestsAndResponses(true)
                 .titleMetadataKey("title")
                 .taskType(GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT)
@@ -64,7 +62,6 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
-                .maxRetries(3)
                 .logRequestsAndResponses(true)
                 .outputDimensionality(512)
                 .build();
@@ -91,7 +88,6 @@ class GoogleAiEmbeddingModelIT {
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("text-embedding-004")
-                .maxRetries(3)
                 .build();
 
         // when

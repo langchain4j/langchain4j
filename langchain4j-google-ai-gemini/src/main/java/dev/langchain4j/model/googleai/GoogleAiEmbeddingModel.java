@@ -45,7 +45,7 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
 
         this.taskType = taskType;
         this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");

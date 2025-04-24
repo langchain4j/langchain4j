@@ -30,14 +30,19 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
     private final Integer maxRetries;
 
     public OllamaChatModel(OllamaChatModelBuilder builder) {
-
         init(builder);
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+    }
+
+    public static OllamaChatModelBuilder builder() {
+        for (OllamaChatModelBuilderFactory factory : loadFactories(OllamaChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaChatModelBuilder();
     }
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-
         OllamaChatRequestParameters parameters = (OllamaChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
@@ -69,13 +74,6 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
     @Override
     public ChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
-    }
-
-    public static OllamaChatModelBuilder builder() {
-        for (OllamaChatModelBuilderFactory factory : loadFactories(OllamaChatModelBuilderFactory.class)) {
-            return factory.get();
-        }
-        return new OllamaChatModelBuilder();
     }
 
     public static class OllamaChatModelBuilder extends Builder<OllamaChatModel, OllamaChatModelBuilder> {

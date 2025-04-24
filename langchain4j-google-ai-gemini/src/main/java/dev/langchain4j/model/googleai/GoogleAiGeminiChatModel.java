@@ -10,7 +10,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -65,7 +65,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
-        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
 
         GeminiGenerateContentRequest request = createGenerateContentRequest(
                 chatRequest.messages(),

@@ -9,10 +9,10 @@ import static java.util.Collections.singletonList;
 
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
-class OllamaChatModelListenerIT extends ChatModelListenerIT {
+class OllamaChatModelListenerIT extends AbstractChatModelListenerIT {
 
     private static final String MODEL_NAME = LLAMA_3_1;
     private static LC4jOllamaContainer ollama;
@@ -51,6 +51,7 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
         return OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName("banana")
+                .maxRetries(0)
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))

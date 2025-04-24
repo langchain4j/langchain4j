@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+
 public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     @Override
@@ -19,7 +21,8 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             while ((line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
-                        listener.onEvent(new ServerSentEvent(event, data.toString()));
+                        ServerSentEvent sse = new ServerSentEvent(event, data.toString());
+                        ignoringExceptions(() -> listener.onEvent(sse));
                         event = null;
                         data.setLength(0);
                     }
@@ -38,10 +41,11 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             }
 
             if (!data.isEmpty()) {
-                listener.onEvent(new ServerSentEvent(event, data.toString()));
+                ServerSentEvent sse = new ServerSentEvent(event, data.toString());
+                ignoringExceptions(() -> listener.onEvent(sse));
             }
         } catch (IOException e) {
-            listener.onError(e);
+            ignoringExceptions(() -> listener.onError(e));
         }
     }
 }

@@ -22,7 +22,7 @@ class VertexAiChatModelIT {
                 .maxOutputTokens(50)
                 .topK(0)
                 .topP(0.0)
-                .maxRetries(3)
+                .maxRetries(2)
                 .build();
 
         ChatResponse response = vertexAiChatModel.chat(UserMessage.from("hi, how are you doing?"));

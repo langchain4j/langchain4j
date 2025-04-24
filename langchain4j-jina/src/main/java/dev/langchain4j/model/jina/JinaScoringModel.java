@@ -45,7 +45,7 @@ public class JinaScoringModel implements ScoringModel {
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static JinaScoringModelBuilder builder() {

@@ -34,10 +34,6 @@ public interface ChatRequestParameters {
 
     ResponseFormat responseFormat();
 
-    static DefaultChatRequestParameters.Builder<?> builder() { // TODO
-        return new DefaultChatRequestParameters.Builder<>();
-    }
-
     /**
      * Creates a new {@link ChatRequestParameters} by combining the current parameters with the specified ones.
      * Values from the specified parameters override values from the current parameters when there is overlap.
@@ -63,4 +59,8 @@ public interface ChatRequestParameters {
      * @return a new {@link ChatRequestParameters} instance combining both sets of parameters
      */
     ChatRequestParameters overrideWith(ChatRequestParameters parameters);
+
+    static DefaultChatRequestParameters.Builder<?> builder() {
+        return new DefaultChatRequestParameters.Builder<>();
+    }
 }
