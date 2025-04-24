@@ -171,7 +171,7 @@ class InternalGitHubModelHelper {
     }
 
     private static RetryOptions getRetryOptions(Integer maxRetries) {
-        maxRetries = getOrDefault(maxRetries, 3);
+        maxRetries = getOrDefault(maxRetries, 2);
         ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
         exponentialBackoffOptions.setMaxRetries(maxRetries);
         return new RetryOptions(exponentialBackoffOptions);

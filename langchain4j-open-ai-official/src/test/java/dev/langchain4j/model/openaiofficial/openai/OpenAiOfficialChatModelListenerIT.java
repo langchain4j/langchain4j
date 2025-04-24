@@ -33,6 +33,7 @@ class OpenAiOfficialChatModelListenerIT extends AbstractChatModelListenerIT {
         return OpenAiOfficialChatModel.builder()
                 .apiKey("banana")
                 .modelName(modelName())
+                .maxRetries(0)
                 .listeners(singletonList(listener))
                 .build();
     }

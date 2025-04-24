@@ -29,6 +29,7 @@ class BedrockChatModelListenerIT extends AbstractChatModelListenerIT {
     protected ChatModel createFailingModel(ChatModelListener listener) {
         return BedrockAnthropicMessageChatModel.builder()
                 .model("banana")
+                .maxRetries(0)
                 .listeners(singletonList(listener))
                 .build();
     }

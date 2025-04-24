@@ -56,7 +56,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = builder.modelName;
         this.dimensions = builder.dimensions;
         this.user = builder.user;
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
     }

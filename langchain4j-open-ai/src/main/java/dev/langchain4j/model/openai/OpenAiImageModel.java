@@ -55,7 +55,7 @@ public class OpenAiImageModel implements ImageModel {
 
         this.client = cBuilder.build();
 
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.modelName = builder.modelName;
         this.size = builder.size;
         this.quality = builder.quality;

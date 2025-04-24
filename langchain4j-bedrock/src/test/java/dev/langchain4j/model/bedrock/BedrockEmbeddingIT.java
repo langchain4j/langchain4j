@@ -21,7 +21,6 @@ class BedrockEmbeddingIT {
 
         BedrockTitanEmbeddingModel embeddingModel = BedrockTitanEmbeddingModel.builder()
                 .region(Region.US_EAST_1)
-                .maxRetries(1)
                 .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV1.getValue())
                 .build();
 
@@ -52,7 +51,6 @@ class BedrockEmbeddingIT {
     void bedrockTitanEmbeddingModelV2() {
         BedrockTitanEmbeddingModel embeddingModel = BedrockTitanEmbeddingModel.builder()
                 .region(Region.US_EAST_1)
-                .maxRetries(1)
                 .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV2.getValue())
                 .dimensions(256)
                 .normalize(true)

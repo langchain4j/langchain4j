@@ -52,7 +52,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 .customHeaders(builder.customHeaders)
                 .build();
         this.modelName = builder.modelName;
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     public String modelName() {

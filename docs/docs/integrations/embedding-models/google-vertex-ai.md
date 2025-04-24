@@ -94,7 +94,7 @@ EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
     .endpoint("us-central1-aiplatform.googleapis.com:443") // optional
     .publisher("google")
     .modelName(MODEL_NAME)
-    .maxRetries(3)             // 3 by default
+    .maxRetries(2)             // 2 by default
     .maxSegmentsPerBatch(250)  // up to 250 segments per batch
     .maxTokensPerBatch(2048)   // up to 2048 tokens per segment
     .taskType()                // see below for the different task types

@@ -109,7 +109,7 @@ public class MistralAiChatModel implements ChatModel {
         this.safePrompt = safePrompt;
         this.randomSeed = randomSeed;
         this.responseFormat = responseFormat;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.supportedCapabilities = getOrDefault(supportedCapabilities, Set.of());
     }
 
