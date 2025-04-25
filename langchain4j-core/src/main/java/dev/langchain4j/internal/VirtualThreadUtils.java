@@ -6,17 +6,20 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
+
+import dev.langchain4j.Internal;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Utility class for working with virtual threads introduced in Java 21.
- *
+ * <p>
  * This class provides a mechanism to create a virtual thread per task executor
  * through reflection, enabling compatibility with both Java versions that
  * support virtual threads and those that do not.
  *
  * @author Konstantin Pavlov
  */
+@Internal
 public class VirtualThreadUtils {
 
     @Nullable

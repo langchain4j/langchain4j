@@ -72,8 +72,6 @@ public class DefaultToolExecutor implements ToolExecutor {
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
         log.debug("About to execute {} for memoryId {}", toolExecutionRequest, memoryId);
 
-        // TODO ensure this method never throws exceptions
-
         Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
         Object[] arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
         try {
@@ -143,7 +141,6 @@ public class DefaultToolExecutor implements ToolExecutor {
             return argument.toString();
         }
 
-        // TODO handle enum and collection of enums (e.g. wrong case, etc)
         if (parameterClass.isEnum()) {
             try {
                 @SuppressWarnings({"unchecked", "rawtypes"})
@@ -210,14 +207,6 @@ public class DefaultToolExecutor implements ToolExecutor {
         if (parameterClass == BigInteger.class) {
             return BigDecimal.valueOf(getNonFractionalDoubleValue(argument, parameterName, parameterClass))
                     .toBigInteger();
-        }
-
-        if (parameterClass.isArray() && argument instanceof Collection) {
-            Class<?> type = parameterClass.getComponentType();
-            if (type == String.class) {
-                return ((Collection<String>) argument).toArray(new String[0]);
-            }
-            // TODO: Consider full type coverage.
         }
 
         if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {

@@ -3,14 +3,14 @@ package dev.langchain4j.model.bedrock;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.util.concurrent.CompletionException;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-class BedrockStreamingChatModelListenerWithConverseIT extends StreamingChatModelListenerIT {
+class BedrockStreamingChatModelListenerWithConverseIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {

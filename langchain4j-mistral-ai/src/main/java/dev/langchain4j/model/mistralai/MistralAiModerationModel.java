@@ -45,7 +45,7 @@ public class MistralAiModerationModel implements ModerationModel {
             .build();
 
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
 

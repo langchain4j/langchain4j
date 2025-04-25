@@ -155,10 +155,5 @@ public class DefaultContentInjector implements ContentInjector {
         public DefaultContentInjector build() {
             return new DefaultContentInjector(this.promptTemplate, this.metadataKeysToInclude);
         }
-
-        public String toString() {
-            return "DefaultContentInjector.DefaultContentInjectorBuilder(promptTemplate=" + this.promptTemplate
-                    + ", metadataKeysToInclude=" + this.metadataKeysToInclude + ")";
-        }
     }
 }
