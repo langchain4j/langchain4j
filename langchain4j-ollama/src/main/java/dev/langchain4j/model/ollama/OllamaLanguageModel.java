@@ -73,7 +73,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .stop(stop)
                 .build();
         this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static OllamaLanguageModelBuilder builder() {

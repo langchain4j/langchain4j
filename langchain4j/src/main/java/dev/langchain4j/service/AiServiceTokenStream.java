@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -24,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+@Internal
 public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messages;

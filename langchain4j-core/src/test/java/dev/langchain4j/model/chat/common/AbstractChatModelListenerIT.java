@@ -1,4 +1,4 @@
-package dev.langchain4j.model.chat;
+package dev.langchain4j.model.chat.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.fail;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -52,8 +53,7 @@ import org.junit.jupiter.api.Test;
  *
  * </pre>
  */
-public abstract class ChatModelListenerIT {
-    // TODO move to "common" package
+public abstract class AbstractChatModelListenerIT {
 
     protected abstract ChatModel createModel(ChatModelListener listener);
 

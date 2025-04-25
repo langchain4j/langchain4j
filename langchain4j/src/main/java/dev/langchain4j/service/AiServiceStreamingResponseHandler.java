@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
  * Handles response from a language model for AI Service that is streamed token-by-token. Handles both regular (text)
  * responses and responses with the request to execute one or multiple tools.
  */
+@Internal
 class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler {
     private static final Logger LOG = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
 

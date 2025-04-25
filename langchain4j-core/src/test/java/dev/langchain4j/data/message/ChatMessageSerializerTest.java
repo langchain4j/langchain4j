@@ -62,10 +62,6 @@ class ChatMessageSerializerTest {
                         "{\"contents\":[{\"video\":{\"base64Data\":\"bXA0\",\"mimeType\":\"video/mp4\"},\"type\":\"VIDEO\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
-                        UserMessage.from(TextFileContent.from("cGRm", "text/markdown")),
-                        "{\"contents\":[{\"textFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"text/markdown\"},\"type\":\"TEXT_FILE\"}],\"type\":\"USER\"}"
-                ),
-                Arguments.of(
                         UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
                         "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"application/pdf\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
                 ),

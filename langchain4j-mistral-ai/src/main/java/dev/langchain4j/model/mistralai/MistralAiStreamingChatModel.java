@@ -21,7 +21,7 @@ import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -113,9 +113,9 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
 
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidationUtils.validateParameters(parameters);
         ResponseFormat responseFormat = parameters.responseFormat();
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {

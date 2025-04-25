@@ -1,5 +1,6 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -15,6 +16,7 @@ import static dev.langchain4j.service.output.EnumOutputParser.getEnumDescription
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 import static java.util.Arrays.stream;
 
+@Internal
 abstract class EnumCollectionOutputParser<E extends Enum<E>, CE extends Collection<E>> implements OutputParser<CE> {
 
     protected final Class<E> enumClass;

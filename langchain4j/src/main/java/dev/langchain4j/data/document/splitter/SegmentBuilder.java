@@ -1,5 +1,7 @@
 package dev.langchain4j.data.document.splitter;
 
+import dev.langchain4j.Internal;
+
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -8,7 +10,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 /**
  * Segment builder utility class for HierarchicalDocumentSplitter.
  */
+@Internal
 class SegmentBuilder {
+
     private final int maxSegmentSize;
     private final Function<String, Integer> sizeFunction;
     private final String joinSeparator;

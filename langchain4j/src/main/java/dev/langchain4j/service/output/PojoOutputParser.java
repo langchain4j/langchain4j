@@ -1,5 +1,6 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.structured.Description;
@@ -17,11 +18,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
 import static java.lang.String.format;
 
+@Internal
 class PojoOutputParser<T> implements OutputParser<T> {
 
     private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile("(?s)\\{.*\\}|\\[.*\\]");

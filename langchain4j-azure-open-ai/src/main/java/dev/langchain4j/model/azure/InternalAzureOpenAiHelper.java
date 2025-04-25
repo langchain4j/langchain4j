@@ -79,7 +79,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -127,7 +127,7 @@ class InternalAzureOpenAiHelper {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
-        maxRetries = getOrDefault(maxRetries, 3);
+        maxRetries = getOrDefault(maxRetries, 2);
         ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
         exponentialBackoffOptions.setMaxRetries(maxRetries);
         RetryOptions retryOptions = new RetryOptions(exponentialBackoffOptions);

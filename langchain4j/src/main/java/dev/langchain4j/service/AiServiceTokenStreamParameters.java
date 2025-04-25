@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -16,7 +17,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.
  */
+@Internal
 public class AiServiceTokenStreamParameters {
+
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
