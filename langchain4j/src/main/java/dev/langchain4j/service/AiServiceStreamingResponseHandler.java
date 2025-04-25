@@ -16,7 +16,6 @@ import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -162,11 +161,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             .chatExecutor(chatExecutor)
                             .requestParams(newCommonParams)
                             .build();
-                    Response<AiMessage> response =
-                            context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
-                    finalChatResponse = finalChatResponse.toBuilder()
-                            .aiMessage(response.content())
-                            .build();
+
+                    finalChatResponse = context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
                 }
 
                 // TODO should completeResponseHandler accept all ChatResponses that happened?
