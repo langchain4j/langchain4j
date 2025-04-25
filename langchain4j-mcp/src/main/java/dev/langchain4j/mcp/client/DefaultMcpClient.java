@@ -169,6 +169,9 @@ public class DefaultMcpClient implements McpClient {
             if (isNullOrBlank(args)) {
                 args = "{}";
             }
+            if(args.startsWith("{") && !args.endsWith("}")){
+                args += "}";
+            }
             arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
