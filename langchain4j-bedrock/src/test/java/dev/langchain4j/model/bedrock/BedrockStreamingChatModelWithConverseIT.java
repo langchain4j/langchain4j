@@ -2,6 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
@@ -19,6 +20,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -241,4 +244,8 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
         }
     }
 
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
+    }
 }

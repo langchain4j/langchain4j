@@ -51,7 +51,12 @@ import static java.util.stream.Collectors.toList;
  * 2. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#authorization">Authorization</a>
  * <br>
  * 3. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#prerequisites">Prerequisites</a>
+ *
+ * @deprecated The "Bison" models have been discontinued by Google.
+ * Please use one of the "Gemini" models with {@code VertexAiGeminiChatModel}
+ * from the {@code langchain4j-vertex-ai-gemini} module instead.
  */
+@Deprecated(since = "1.0.0-beta4", forRemoval = true)
 public class VertexAiChatModel implements ChatModel {
 
     private final PredictionServiceSettings settings;

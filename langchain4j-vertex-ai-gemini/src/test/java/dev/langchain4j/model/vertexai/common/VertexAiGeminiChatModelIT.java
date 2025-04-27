@@ -1,7 +1,6 @@
 package dev.langchain4j.model.vertexai.common;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import org.junit.jupiter.api.AfterEach;
@@ -13,16 +12,14 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
-    static final VertexAiGeminiChatModel VERTEX_AI_GEMINI_CHAT_MODEL = VertexAiGeminiChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-1.5-flash")
-            .build();
-
     @Override
     protected List<ChatModel> models() {
         return List.of(
-                VERTEX_AI_GEMINI_CHAT_MODEL
+                VertexAiGeminiChatModel.builder()
+                        .project(System.getenv("GCP_PROJECT_ID"))
+                        .location(System.getenv("GCP_LOCATION"))
+                        .modelName("gemini-2.0-flash")
+                        .build()
                 // TODO add more model configs, see OpenAiChatModelIT
         );
     }
