@@ -1,5 +1,7 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.Internal;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -28,7 +30,9 @@ import static java.util.Collections.unmodifiableSet;
 /**
  * Utility methods.
  */
+@Internal
 public class Utils {
+
   private Utils() {}
 
   /**

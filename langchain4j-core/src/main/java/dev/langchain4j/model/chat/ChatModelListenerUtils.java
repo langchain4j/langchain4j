@@ -1,4 +1,4 @@
-package dev.langchain4j.internal;
+package dev.langchain4j.model.chat;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.ModelProvider;
@@ -15,17 +15,17 @@ import java.util.List;
 import java.util.Map;
 
 @Internal
-public class ChatModelListenerUtils {
+class ChatModelListenerUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(ChatModelListenerUtils.class);
 
     private ChatModelListenerUtils() {
     }
 
-    public static void onRequest(ChatRequest chatRequest,
-                                 ModelProvider modelProvider,
-                                 Map<Object, Object> attributes,
-                                 List<ChatModelListener> listeners) {
+    static void onRequest(ChatRequest chatRequest,
+                          ModelProvider modelProvider,
+                          Map<Object, Object> attributes,
+                          List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
@@ -40,11 +40,11 @@ public class ChatModelListenerUtils {
         });
     }
 
-    public static void onResponse(ChatResponse chatResponse,
-                                  ChatRequest chatRequest,
-                                  ModelProvider modelProvider,
-                                  Map<Object, Object> attributes,
-                                  List<ChatModelListener> listeners) {
+    static void onResponse(ChatResponse chatResponse,
+                           ChatRequest chatRequest,
+                           ModelProvider modelProvider,
+                           Map<Object, Object> attributes,
+                           List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
@@ -60,11 +60,11 @@ public class ChatModelListenerUtils {
         });
     }
 
-    public static void onError(Throwable error,
-                               ChatRequest chatRequest,
-                               ModelProvider modelProvider,
-                               Map<Object, Object> attributes,
-                               List<ChatModelListener> listeners) {
+    static void onError(Throwable error,
+                        ChatRequest chatRequest,
+                        ModelProvider modelProvider,
+                        Map<Object, Object> attributes,
+                        List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }

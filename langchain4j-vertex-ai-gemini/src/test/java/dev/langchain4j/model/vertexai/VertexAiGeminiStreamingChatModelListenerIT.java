@@ -2,13 +2,13 @@ package dev.langchain4j.model.vertexai;
 
 import com.google.api.gax.rpc.NotFoundException;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.AfterEach;
 
 import static java.util.Collections.singletonList;
 
-class VertexAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+class VertexAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {

@@ -194,9 +194,5 @@ public class LanguageModelQueryRouter implements QueryRouter {
         public LanguageModelQueryRouter build() {
             return new LanguageModelQueryRouter(this.chatModel, this.retrieverToDescription, this.promptTemplate, this.fallbackStrategy);
         }
-
-        public String toString() {
-            return "LanguageModelQueryRouter.LanguageModelQueryRouterBuilder(chatModel=" + this.chatModel + ", retrieverToDescription=" + this.retrieverToDescription + ", promptTemplate=" + this.promptTemplate + ", fallbackStrategy=" + this.fallbackStrategy + ")";
-        }
     }
 }

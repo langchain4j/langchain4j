@@ -1,14 +1,13 @@
 package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.AfterEach;
 
 import static java.util.Collections.singletonList;
 
-class VertexAiGeminiChatModelListenerIT extends ChatModelListenerIT {
+class VertexAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected ChatModel createModel(ChatModelListener listener) {
@@ -41,6 +40,7 @@ class VertexAiGeminiChatModelListenerIT extends ChatModelListenerIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName("banana")
+                .maxRetries(0)
                 .listeners(singletonList(listener))
                 .build();
     }

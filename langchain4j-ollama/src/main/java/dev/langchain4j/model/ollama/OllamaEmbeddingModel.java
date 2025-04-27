@@ -43,7 +43,7 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static OllamaEmbeddingModelBuilder builder() {

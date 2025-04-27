@@ -13,7 +13,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -51,7 +51,12 @@ import static java.util.stream.Collectors.toList;
  * 2. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#authorization">Authorization</a>
  * <br>
  * 3. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#prerequisites">Prerequisites</a>
+ *
+ * @deprecated The "Bison" models have been discontinued by Google.
+ * Please use one of the "Gemini" models with {@code VertexAiGeminiChatModel}
+ * from the {@code langchain4j-vertex-ai-gemini} module instead.
  */
+@Deprecated(since = "1.0.0-beta4", forRemoval = true)
 public class VertexAiChatModel implements ChatModel {
 
     private final PredictionServiceSettings settings;
@@ -88,12 +93,12 @@ public class VertexAiChatModel implements ChatModel {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.toolChoice());
-        ChatRequestValidator.validate(parameters.toolSpecifications());
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.toolSpecifications());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         Response<AiMessage> response = generate(chatRequest.messages());
 

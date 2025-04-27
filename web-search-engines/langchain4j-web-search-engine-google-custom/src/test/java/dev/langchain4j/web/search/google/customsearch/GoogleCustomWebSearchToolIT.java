@@ -53,7 +53,6 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
                 .csi(System.getenv("GOOGLE_SEARCH_ENGINE_ID"))
                 .logRequests(true)
                 .logResponses(true)
-                .maxRetries(3)
                 .build();
 
         WebSearchTool webSearchTool = WebSearchTool.from(googleSearchEngine);

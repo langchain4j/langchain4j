@@ -95,9 +95,5 @@ public class Result<T> {
         public Result<T> build() {
             return new Result<T>(this.content, this.tokenUsage, this.sources, this.finishReason, this.toolExecutions);
         }
-
-        public String toString() {
-            return "Result.ResultBuilder(content=" + this.content + ", tokenUsage=" + this.tokenUsage + ", sources=" + this.sources + ", finishReason=" + this.finishReason + ", toolExecutions=" + this.toolExecutions + ")";
-        }
     }
 }
