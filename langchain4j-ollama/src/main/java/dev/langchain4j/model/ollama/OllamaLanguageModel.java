@@ -11,7 +11,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
@@ -73,7 +73,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .stop(stop)
                 .build();
         this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static OllamaLanguageModelBuilder builder() {
@@ -94,7 +94,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .stream(false)
                 .build();
 
-        CompletionResponse response = withRetry(() -> client.completion(request), maxRetries);
+        CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request), maxRetries);
 
         return Response.from(
                 response.getResponse(),

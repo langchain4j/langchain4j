@@ -1,9 +1,5 @@
 package dev.langchain4j.model.huggingface;
 
-import static dev.langchain4j.model.huggingface.HuggingFaceModelName.SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.stream.Collectors.toList;
-
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
@@ -12,9 +8,12 @@ import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+
 import java.time.Duration;
 import java.util.List;
-import lombok.Builder;
+
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.stream.Collectors.toList;
 
 public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
 
@@ -28,7 +27,6 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
     /**
      * Constructor with Custom baseUrl parameter
      */
-    @Builder
     public HuggingFaceEmbeddingModel(
             String baseUrl, String accessToken, String modelId, Boolean waitForModel, Duration timeout) {
 
@@ -42,7 +40,6 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.client = createClient(accessToken, modelId, timeout);
     }
 
-    @Builder
     public HuggingFaceEmbeddingModel(String accessToken, String modelId, Boolean waitForModel, Duration timeout) {
         this(null, accessToken, modelId, waitForModel, timeout);
     }
@@ -61,7 +58,7 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
 
             @Override
             public String modelId() {
-                return modelId == null ? SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2 : modelId;
+                return modelId;
             }
 
             @Override
@@ -103,9 +100,48 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     public static class HuggingFaceEmbeddingModelBuilder {
+        private String baseUrl;
+        private String accessToken;
+        private String modelId;
+        private Boolean waitForModel;
+        private Duration timeout;
+
         public HuggingFaceEmbeddingModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public HuggingFaceEmbeddingModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public HuggingFaceEmbeddingModelBuilder accessToken(String accessToken) {
+            this.accessToken = accessToken;
+            return this;
+        }
+
+        public HuggingFaceEmbeddingModelBuilder modelId(String modelId) {
+            this.modelId = modelId;
+            return this;
+        }
+
+        public HuggingFaceEmbeddingModelBuilder waitForModel(Boolean waitForModel) {
+            this.waitForModel = waitForModel;
+            return this;
+        }
+
+        public HuggingFaceEmbeddingModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public HuggingFaceEmbeddingModel build() {
+            return new HuggingFaceEmbeddingModel(this.baseUrl, this.accessToken, this.modelId, this.waitForModel, this.timeout);
+        }
+
+        public String toString() {
+            return "HuggingFaceEmbeddingModel.HuggingFaceEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", accessToken=" + this.accessToken + ", modelId=" + this.modelId + ", waitForModel=" + this.waitForModel + ", timeout=" + this.timeout + ")";
         }
     }
 }

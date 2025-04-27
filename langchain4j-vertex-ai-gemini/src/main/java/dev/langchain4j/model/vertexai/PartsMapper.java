@@ -190,7 +190,7 @@ class PartsMapper {
 
     static Part map(PdfFileContent content) {
         PdfFile pdfFile = content.pdfFile();
-        return getPart(pdfFile.url(), "application/pdf", pdfFile.base64Data());
+        return getPart(pdfFile.url(), pdfFile.mimeType(), pdfFile.base64Data());
     }
 
     private static Part getPart(URI url, String mimeType, String base64data) {

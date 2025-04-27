@@ -1,10 +1,12 @@
 package dev.langchain4j.spi.prompt.structured;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.input.Prompt;
 
 /**
  * Represents a factory for structured prompts.
  */
+@Internal
 public interface StructuredPromptFactory {
 
     /**

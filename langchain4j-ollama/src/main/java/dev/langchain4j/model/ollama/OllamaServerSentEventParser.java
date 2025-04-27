@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+
 /**
  * Ollama does not follow SSE standard for streaming, it uses newline delimited JSON format.
  * The HTTP response body from Ollama looks like this:
@@ -28,10 +30,11 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                listener.onEvent(new ServerSentEvent(null, line));
+                ServerSentEvent sse = new ServerSentEvent(null, line);
+                ignoringExceptions(() -> listener.onEvent(sse));
             }
         } catch (IOException e) {
-            listener.onError(e);
+            ignoringExceptions(() -> listener.onError(e));
         }
     }
 }

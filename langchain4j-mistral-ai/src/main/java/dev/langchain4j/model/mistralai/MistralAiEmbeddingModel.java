@@ -1,7 +1,8 @@
 package dev.langchain4j.model.mistralai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
@@ -56,18 +57,8 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralAiEmbeddingModelName.MISTRAL_EMBED.toString());
-        this.maxRetries = getOrDefault(maxRetries, 3);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static MistralAiEmbeddingModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
+        this.modelName = ensureNotBlank(modelName, "modelName");
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     /**
@@ -85,7 +76,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .encodingFormat(EMBEDDINGS_ENCODING_FORMAT)
                 .build();
 
-        MistralAiEmbeddingResponse response = withRetry(() -> client.embedding(request), maxRetries);
+        MistralAiEmbeddingResponse response = withRetryMappingExceptions(() -> client.embedding(request), maxRetries);
 
         List<Embedding> embeddings = response.getData().stream()
                 .map(mistralAiEmbedding -> Embedding.from(mistralAiEmbedding.getEmbedding()))

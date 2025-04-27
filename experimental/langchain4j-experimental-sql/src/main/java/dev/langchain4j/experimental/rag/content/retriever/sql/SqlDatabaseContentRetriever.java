@@ -5,19 +5,22 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import lombok.Builder;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.Select;
 
 import javax.sql.DataSource;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +40,7 @@ import static java.util.Collections.singletonList;
  * </b>
  * <br>
  * <br>
- * Using the {@link DataSource} and the {@link ChatLanguageModel}, this {@link ContentRetriever}
+ * Using the {@link DataSource} and the {@link ChatModel}, this {@link ContentRetriever}
  * attempts to generate and execute SQL queries for given natural language queries.
  * <br>
  * Optionally, {@link #sqlDialect}, {@link #databaseStructure}, {@link #promptTemplate}, and {@link #maxRetries} can be specified
@@ -63,7 +66,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
     private final String databaseStructure;
 
     private final PromptTemplate promptTemplate;
-    private final ChatLanguageModel chatLanguageModel;
+    private final ChatModel chatModel;
 
     private final int maxRetries;
 
@@ -85,26 +88,25 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
      *                          <b>WARNING! In this case, all tables will be visible to the LLM!</b>
      * @param promptTemplate    The {@link PromptTemplate} to be used for creating a {@code SystemMessage}.
      *                          This is an optional parameter. Default: {@link #DEFAULT_PROMPT_TEMPLATE}.
-     * @param chatLanguageModel The {@link ChatLanguageModel} to be used for generating SQL queries.
+     * @param chatModel The {@link ChatModel} to be used for generating SQL queries.
      *                          This is a mandatory parameter.
      * @param maxRetries        The maximum number of retries to perform if the database cannot execute the generated SQL query.
      *                          An error message will be sent back to the LLM to try correcting the query.
-     *                          This is an optional parameter. Default: 1.
+     *                          This is an optional parameter. Default: 0.
      */
-    @Builder
     @Experimental
     public SqlDatabaseContentRetriever(DataSource dataSource,
                                        String sqlDialect,
                                        String databaseStructure,
                                        PromptTemplate promptTemplate,
-                                       ChatLanguageModel chatLanguageModel,
+                                       ChatModel chatModel,
                                        Integer maxRetries) {
         this.dataSource = ensureNotNull(dataSource, "dataSource");
         this.sqlDialect = getOrDefault(sqlDialect, () -> getSqlDialect(dataSource));
         this.databaseStructure = getOrDefault(databaseStructure, () -> generateDDL(dataSource));
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
-        this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.maxRetries = getOrDefault(maxRetries, 1);
+        this.chatModel = ensureNotNull(chatModel, "chatModel");
+        this.maxRetries = getOrDefault(maxRetries, 0);
     }
 
     // TODO (for v2)
@@ -234,6 +236,10 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         return createTableStatement.toString();
     }
 
+    public static SqlDatabaseContentRetrieverBuilder builder() {
+        return new SqlDatabaseContentRetrieverBuilder();
+    }
+
     @Override
     public List<Content> retrieve(Query naturalLanguageQuery) {
 
@@ -281,7 +287,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             messages.add(UserMessage.from(previousErrorMessage));
         }
 
-        return chatLanguageModel.generate(messages).content().text();
+        return chatModel.chat(messages).aiMessage().text();
     }
 
     protected Prompt createSystemPrompt() {
@@ -331,7 +337,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 List<String> columnValues = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
 
-                    String columnValue = resultSet.getObject(i)==null?"":resultSet.getObject(i).toString();
+                    String columnValue = resultSet.getObject(i) == null ? "" : resultSet.getObject(i).toString();
 
                     if (columnValue.contains(",")) {
                         columnValue = "\"" + columnValue + "\"";
@@ -347,5 +353,55 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
     private static Content format(String result, String sqlQuery) {
         return Content.from(String.format("Result of executing '%s':\n%s", sqlQuery, result));
+    }
+
+    public static class SqlDatabaseContentRetrieverBuilder {
+        private DataSource dataSource;
+        private String sqlDialect;
+        private String databaseStructure;
+        private PromptTemplate promptTemplate;
+        private ChatModel chatModel;
+        private Integer maxRetries;
+
+        SqlDatabaseContentRetrieverBuilder() {
+        }
+
+        public SqlDatabaseContentRetrieverBuilder dataSource(DataSource dataSource) {
+            this.dataSource = dataSource;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder sqlDialect(String sqlDialect) {
+            this.sqlDialect = sqlDialect;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder databaseStructure(String databaseStructure) {
+            this.databaseStructure = databaseStructure;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder promptTemplate(PromptTemplate promptTemplate) {
+            this.promptTemplate = promptTemplate;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder chatModel(ChatModel chatModel) {
+            this.chatModel = chatModel;
+            return this;
+        }
+
+        public SqlDatabaseContentRetrieverBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public SqlDatabaseContentRetriever build() {
+            return new SqlDatabaseContentRetriever(this.dataSource, this.sqlDialect, this.databaseStructure, this.promptTemplate, this.chatModel, this.maxRetries);
+        }
+
+        public String toString() {
+            return "SqlDatabaseContentRetriever.SqlDatabaseContentRetrieverBuilder(dataSource=" + this.dataSource + ", sqlDialect=" + this.sqlDialect + ", databaseStructure=" + this.databaseStructure + ", promptTemplate=" + this.promptTemplate + ", chatModel=" + this.chatModel + ", maxRetries=" + this.maxRetries + ")";
+        }
     }
 }

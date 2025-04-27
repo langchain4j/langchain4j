@@ -6,6 +6,6 @@ public class JdkHttpClientBuilderFactory implements HttpClientBuilderFactory {
 
     @Override
     public JdkHttpClientBuilder create() {
-        return new JdkHttpClientBuilder();
+        return JdkHttpClient.builder();
     }
 }

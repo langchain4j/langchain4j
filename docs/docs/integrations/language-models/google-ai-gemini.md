@@ -13,7 +13,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -25,28 +25,29 @@ Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-2.0-flash`
 * `gemini-1.5-flash`
 * `gemini-1.5-pro`
 * `gemini-1.0-pro`
 
 ## GoogleAiGeminiChatModel
 
-The usual `generate(...)` methods are available:
+The usual `chat(...)` methods are available:
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     ...
     .build();
 
-String response = gemini.generate("Hello Gemini!");
+String response = gemini.chat("Hello Gemini!");
 ```
 
 As well, as the `ChatResponse chat(ChatRequest req)` method:
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .build();
@@ -62,7 +63,7 @@ String response = chatResponse.aiMessage().text();
 ### Configuring
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .temperature(1.0)
@@ -83,24 +84,26 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 ```
 
 ## GoogleAiGeminiStreamingChatModel
-The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token. The response must be managed by a `StreamingResponseHandler`. 
+The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.
+The response must be handled by a `StreamingChatResponseHandler`. 
 ```java
-StreamingChatLanguageModel gemini = GoogleAiGeminiStreamingChatModel.builder()
+StreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-1.5-flash")
         .build();
 
-CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        gemini.generate("Tell me a joke about Java", new StreamingResponseHandler<AiMessage>() {
+gemini.chat("Tell me a joke about Java", new StreamingChatResponseHandler() {
+
     @Override
-    public void onNext(String token) {
-        System.out.print(token);
+    public void onPartialResponse(String partialResponse) {
+        System.out.print(partialResponse);
     }
 
     @Override
-    public void onComplete(Response<AiMessage> response) {
-        futureResponse.complete(response);
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        futureResponse.complete(completeResponse);
     }
 
     @Override
@@ -115,7 +118,9 @@ CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>(
 ## Tools
 
 Tools (aka Function Calling) is supported, including parallel calls.
-You can either use the `generate(...)` methods that take a single or a list of tool specifications to let Gemini know it can request a function to be called. Or you can use LangChain4j's `AiServices` to define them.
+You can either use the `chat(ChatRequest)` method that accepts a `ChatRequest` that can be configured with
+one or more `ToolSpecification`s to let Gemini know it can request a function to be called.
+Or you can use LangChain4j's `AiServices` to define them.
 
 Here is an example of a weather tool, using `AiServices`:
 
@@ -148,7 +153,7 @@ interface WeatherAssistant {
 WeatherForecastService weatherForecastService =
     new WeatherForecastService();
 
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .temperature(0.0)
@@ -156,7 +161,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 
 WeatherAssistant weatherAssistant =
     AiServices.builder(WeatherAssistant.class)
-        .chatLanguageModel(gemini)
+        .chatModel(gemini)
         .tools(weatherForecastService)
         .build();
 
@@ -196,7 +201,7 @@ interface WeatherForecastAssistant {
 
 // Let's extract the data:
 
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .responseFormat(ResponseFormat.JSON) // this is required to enable structured outputs feature
@@ -204,7 +209,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 
 WeatherForecastAssistant forecastAssistant =
     AiServices.builder(WeatherForecastAssistant.class)
-        .chatLanguageModel(gemini)
+        .chatModel(gemini)
         .build();
 
 WeatherForecast forecast = forecastAssistant.extract("""
@@ -249,13 +254,13 @@ ResponseFormat responseFormat = ResponseFormat.builder()
                 .build())
         .build();
 
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-1.5-flash")
         .responseFormat(responseFormat)
         .build();
 
-String recipeResponse = gemini.generate("Suggest a dessert recipe with strawberries");
+String recipeResponse = gemini.chat("Suggest a dessert recipe with strawberries");
 
 System.out.println(recipeResponse);
 ```
@@ -267,7 +272,7 @@ JsonSchema jsonSchema = JsonSchemas.jsonSchemaFrom(TripItinerary.class).get();
 
 Let's have a look at an example to define a JSON schema for a recipe when calling the `GoogleAiGeminiChatModel`:
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-1.5-flash")
         .build();
@@ -289,13 +294,13 @@ System.out.println(chatResponse.aiMessage().text());
 You can force Gemini to reply in JSON:
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .responseFormat(ResponseFormat.JSON)
     .build();
 
-String roll = gemini.generate("Roll a 6-sided dice");
+String roll = gemini.chat("Roll a 6-sided dice");
 
 System.out.println(roll);
 // {"roll": "3"}
@@ -312,7 +317,7 @@ Beyond function calling, Google AI Gemini allows to create and execute Python co
 This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .allowCodeExecution(true)
@@ -325,7 +330,7 @@ There are 2 builder methods:
 * `includeCodeExecutionOutput(true)`: if you want to see the actual Python script it came up with, and the output of its execution
 
 ```java
-Response<AiMessage> mathQuizz = gemini.generate(
+ChatResponse mathQuizz = gemini.chat(
     SystemMessage.from("""
         You are an expert mathematician.
         When asked a math problem or logic problem,
@@ -387,27 +392,21 @@ Gemini is a multimodal model, which means it outputs text, but in input, it acce
 * videos (`VideoContent`)
 * audio files (`AudioContent`)
 * PDF files (`PdfFileContent`)
-* text documents (`TextFileContent`)
 
-The example below shows how to mix a text prompt, with an image, and a Markdown document:
+The example below shows how to mix a text prompt with an image:
 
 ```java
-// README.md markdown file from LangChain4j's project Github repos
-String base64Text = b64encoder.encodeToString(readBytes(
-  "https://github.com/langchain4j/langchain4j/blob/main/README.md"));
-
 // PNG of the cute colorful parrot mascot of the LangChain4j project
 String base64Img = b64encoder.encodeToString(readBytes(
   "https://avatars.githubusercontent.com/u/132277850?v=4"));
 
-ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .build();
 
-Response<AiMessage> response = gemini.generate(
+ChatResponse response = gemini.chat(
     UserMessage.from(
-        TextFileContent.from(base64Text, "text/x-markdown"),
         ImageContent.from(base64Img, "image/png"),
         TextContent.from("""
             Do you think this logo fits well

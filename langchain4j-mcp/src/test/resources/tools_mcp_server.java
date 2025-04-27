@@ -1,14 +1,16 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.17.5}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.0.0.Alpha6
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.0.0.Alpha6
+//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.20.0}@pom
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.1.0
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.1.0
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
+import io.quarkiverse.mcp.server.ToolResponse;
 
 public class tools_mcp_server {
 
@@ -36,6 +38,13 @@ public class tools_mcp_server {
     @Tool(description = "Throws a business error")
     public String error() throws Exception {
         throw new RuntimeException("business error");
+    }
+    
+    @Tool(description = "Returns a response as an error")
+    public ToolResponse errorResponse() throws Exception {
+        List<TextContent> lst = new ArrayList<>();
+        lst.add(new TextContent("This is an actual error"));
+        return new ToolResponse(true, lst);
     }
 
 }

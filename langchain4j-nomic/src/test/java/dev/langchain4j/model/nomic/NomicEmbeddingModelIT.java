@@ -19,7 +19,10 @@ class NomicEmbeddingModelIT {
     void should_embed_single_text() {
 
         // given
-        EmbeddingModel model = NomicEmbeddingModel.withApiKey(System.getenv("NOMIC_API_KEY"));
+        EmbeddingModel model = NomicEmbeddingModel.builder()
+                .apiKey(System.getenv("NOMIC_API_KEY"))
+                .modelName("nomic-embed-text-v1")
+                .build();
 
         String text = "hello";
 
@@ -45,7 +48,6 @@ class NomicEmbeddingModelIT {
                 .taskType("clustering")
                 .maxSegmentsPerBatch(1)
                 .timeout(ofSeconds(10))
-                .maxRetries(2)
                 .logRequests(true)
                 .logResponses(true)
                 .build();

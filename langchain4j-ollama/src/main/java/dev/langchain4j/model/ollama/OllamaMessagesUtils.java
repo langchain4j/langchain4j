@@ -2,7 +2,6 @@ package dev.langchain4j.model.ollama;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -11,11 +10,13 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +27,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 
@@ -68,12 +69,6 @@ class OllamaMessagesUtils {
                     .properties(toMap(parameters.properties()))
                     .required(parameters.required())
                     .build();
-        } else if (toolSpecification.toolParameters() != null) {
-            ToolParameters parameters = toolSpecification.toolParameters();
-            return Parameters.builder()
-                    .properties(parameters.properties())
-                    .required(parameters.required())
-                    .build();
         } else {
             return null;
         }
@@ -94,7 +89,7 @@ class OllamaMessagesUtils {
         } else if (responseFormat == ResponseFormat.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
-            return toJson(JsonSchemaElementHelper.toMap(responseFormat.jsonSchema().rootElement()));
+            return toJson(JsonSchemaElementUtils.toMap(responseFormat.jsonSchema().rootElement()));
         }
     }
 
@@ -127,8 +122,7 @@ class OllamaMessagesUtils {
         }
 
         List<ToolCall> toolCalls = null;
-        if (ChatMessageType.AI == chatMessage.type()) {
-            AiMessage aiMessage = (AiMessage) chatMessage;
+        if (chatMessage instanceof AiMessage aiMessage) {
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
             toolCalls = Optional.ofNullable(toolExecutionRequests)
                     .map(reqs -> reqs.stream()
@@ -147,9 +141,23 @@ class OllamaMessagesUtils {
         }
         return Message.builder()
                 .role(toOllamaRole(chatMessage.type()))
-                .content(chatMessage.text())
+                .content(toText(chatMessage))
                 .toolCalls(toolCalls)
                 .build();
+    }
+
+    private static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            return toolExecutionResultMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
     }
 
     private static Role toOllamaRole(ChatMessageType chatMessageType) {

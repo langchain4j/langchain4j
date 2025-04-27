@@ -15,6 +15,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -62,9 +63,14 @@ class MongoDbEmbeddingStoreMiscIT {
         TextSegment refSegment = TextSegment.from("find a segment");
         Embedding refEmbedding = embeddingModel().embed(refSegment.text()).content();
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(refEmbedding)
+                .maxResults(2)
+                .build();
+
         awaitUntilAsserted(() -> {
             // when
-            List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(refEmbedding, 2);
+            List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().search(searchRequest).matches();
 
             // then
             assertThat(relevant).hasSize(1);

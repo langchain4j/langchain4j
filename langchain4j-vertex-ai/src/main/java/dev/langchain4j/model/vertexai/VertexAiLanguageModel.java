@@ -15,9 +15,9 @@ import java.io.IOException;
 import java.util.List;
 
 import static com.google.protobuf.Value.newBuilder;
-import static dev.langchain4j.internal.Json.toJson;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.vertexai.Json.toJson;
 import static dev.langchain4j.model.vertexai.VertexAiChatModel.extractTokenCount;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
@@ -40,7 +40,12 @@ import static java.util.Collections.singletonList;
  * 2. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#authorization">Authorization</a>
  * <br>
  * 3. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#prerequisites">Prerequisites</a>
+ *
+ * @deprecated The "Bison" models have been discontinued by Google.
+ * Please use one of the "Gemini" models with {@code VertexAiGeminiChatModel}
+ * from the {@code langchain4j-vertex-ai-gemini} module instead.
  */
+@Deprecated(since = "1.0.0-beta4", forRemoval = true)
 public class VertexAiLanguageModel implements LanguageModel {
 
     private final PredictionServiceSettings settings;
@@ -87,7 +92,7 @@ public class VertexAiLanguageModel implements LanguageModel {
             JsonFormat.parser().merge(toJson(vertexAiParameters), parametersBuilder);
             Value parameters = parametersBuilder.build();
 
-            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
+            PredictResponse response = withRetryMappingExceptions(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
             return Response.from(
                     extractContent(response),

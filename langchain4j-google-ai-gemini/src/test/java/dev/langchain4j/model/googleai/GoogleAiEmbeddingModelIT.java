@@ -1,18 +1,17 @@
 package dev.langchain4j.model.googleai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-public class GoogleAiEmbeddingModelIT {
+class GoogleAiEmbeddingModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
@@ -20,11 +19,10 @@ public class GoogleAiEmbeddingModelIT {
     void should_embed_one_text() {
         // given
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
-            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-            .modelName("embedding-001")
-            .maxRetries(3)
-            .logRequestsAndResponses(true)
-            .build();
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("embedding-001")
+                .logRequestsAndResponses(true)
+                .build();
 
         // when
         Response<Embedding> embed = embeddingModel.embed("Hello world!");
@@ -40,19 +38,16 @@ public class GoogleAiEmbeddingModelIT {
     void should_use_metadata() {
         // given
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
-            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-            .modelName("embedding-001")
-            .maxRetries(3)
-            .logRequestsAndResponses(true)
-            .titleMetadataKey("title")
-            .taskType(GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT)
-            .build();
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("embedding-001")
+                .logRequestsAndResponses(true)
+                .titleMetadataKey("title")
+                .taskType(GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT)
+                .build();
 
         // when
-        TextSegment textSegment = TextSegment.from(
-            "What is the capital of France?",
-            Metadata.from("title", "document title")
-        );
+        TextSegment textSegment =
+                TextSegment.from("What is the capital of France?", Metadata.from("title", "document title"));
         Response<Embedding> embed = embeddingModel.embed(textSegment);
 
         // then
@@ -65,26 +60,22 @@ public class GoogleAiEmbeddingModelIT {
     void should_embed_in_batch() {
         // given
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
-            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-            .modelName("embedding-001")
-            .maxRetries(3)
-            .logRequestsAndResponses(true)
-            .outputDimensionality(512)
-            .build();
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("embedding-001")
+                .logRequestsAndResponses(true)
+                .outputDimensionality(512)
+                .build();
 
         // when
         List<TextSegment> textSegments = Arrays.asList(
-            TextSegment.from("What is the capital of France?"),
-            TextSegment.from("What is the capital of Germany?")
-        );
+                TextSegment.from("What is the capital of France?"),
+                TextSegment.from("What is the capital of Germany?"));
 
         Response<List<Embedding>> embed = embeddingModel.embedAll(textSegments);
 
         // then
         List<Embedding> embeddings = embed.content();
-        assertThat(embeddings)
-                .isNotNull()
-                .hasSize(2);
+        assertThat(embeddings).isNotNull().hasSize(2);
         assertThat(embeddings.get(0).vector()).isNotNull();
         assertThat(embeddings.get(0).vector()).hasSize(512);
         assertThat(embeddings.get(1).vector()).isNotNull();
@@ -95,10 +86,9 @@ public class GoogleAiEmbeddingModelIT {
     void should_embed_more_than_100() {
         // given
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
-            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-            .modelName("text-embedding-004")
-            .maxRetries(3)
-            .build();
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("text-embedding-004")
+                .build();
 
         // when
         List<TextSegment> textSegments = new ArrayList<>();

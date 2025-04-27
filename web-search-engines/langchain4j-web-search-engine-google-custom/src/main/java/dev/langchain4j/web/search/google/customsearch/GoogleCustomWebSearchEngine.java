@@ -3,8 +3,11 @@ package dev.langchain4j.web.search.google.customsearch;
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.customsearch.v1.model.Result;
 import com.google.api.services.customsearch.v1.model.Search;
-import dev.langchain4j.web.search.*;
-import lombok.Builder;
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchInformationResult;
+import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchRequest;
+import dev.langchain4j.web.search.WebSearchResults;
 
 import java.net.URI;
 import java.time.Duration;
@@ -15,7 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.api.services.customsearch.v1.model.Search.Queries;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
@@ -48,7 +53,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
      *                      Default value is 60 seconds.
      * @param maxRetries    the maximum number of retries for API requests
      *                      <p>
-     *                      Default value is 10.
+     *                      Default value is 2.
      * @param logRequests   whether to log API requests
      *                      <p>
      *                      Default value is false.
@@ -56,7 +61,6 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
      *                      <p>
      *                      Default value is false.
      */
-    @Builder
     public GoogleCustomWebSearchEngine(String apiKey,
                                        String csi,
                                        Boolean siteRestrict,
@@ -71,7 +75,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
                 .csi(csi)
                 .siteRestrict(getOrDefault(siteRestrict, false))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .maxRetries(getOrDefault(maxRetries, 3))
+                .maxRetries(getOrDefault(maxRetries, 2))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
@@ -87,6 +91,10 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
      */
     public static GoogleCustomWebSearchEngine withApiKeyAndCsi(String apiKey, String csi) {
         return GoogleCustomWebSearchEngine.builder().apiKey(apiKey).csi(csi).build();
+    }
+
+    public static GoogleCustomWebSearchEngineBuilder builder() {
+        return new GoogleCustomWebSearchEngineBuilder();
     }
 
     @Override
@@ -116,7 +124,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         if (includeImages && !searchTypeImage) {
             requestQuery.setSearchType("image");
             Search imagesSearch = googleCustomSearchApiClient.searchResults(requestQuery);
-            if (!isNullOrEmpty(imagesSearch.getItems())){
+            if (!isNullOrEmpty(imagesSearch.getItems())) {
                 List<ImageSearchResult> images = imagesSearch.getItems().stream()
                         .map(result -> ImageSearchResult.from(
                                 result.getTitle(),
@@ -185,7 +193,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
     }
 
     private static List<WebSearchOrganicResult> toWebSearchOrganicResults(Search search, Boolean searchTypeImage) {
-        List<WebSearchOrganicResult>  organicResults = new ArrayList<>();
+        List<WebSearchOrganicResult> organicResults = new ArrayList<>();
         if (!isNullOrEmpty(search.getItems())) {
             organicResults = search.getItems().stream()
                     .map(result -> WebSearchOrganicResult.from(
@@ -279,6 +287,68 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
 
         public static ImageSearchResult from(String title, URI imageLink, URI contextLink, URI thumbnailLink) {
             return new ImageSearchResult(title, imageLink, contextLink, thumbnailLink);
+        }
+    }
+
+    public static class GoogleCustomWebSearchEngineBuilder {
+        private String apiKey;
+        private String csi;
+        private Boolean siteRestrict;
+        private Boolean includeImages;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        GoogleCustomWebSearchEngineBuilder() {
+        }
+
+        public GoogleCustomWebSearchEngineBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleCustomWebSearchEngineBuilder csi(String csi) {
+            this.csi = csi;
+            return this;
+        }
+
+        public GoogleCustomWebSearchEngineBuilder siteRestrict(Boolean siteRestrict) {
+            this.siteRestrict = siteRestrict;
+            return this;
+        }
+
+        public GoogleCustomWebSearchEngineBuilder includeImages(Boolean includeImages) {
+            this.includeImages = includeImages;
+            return this;
+        }
+
+        public GoogleCustomWebSearchEngineBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public GoogleCustomWebSearchEngineBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public GoogleCustomWebSearchEngineBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleCustomWebSearchEngineBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public GoogleCustomWebSearchEngine build() {
+            return new GoogleCustomWebSearchEngine(this.apiKey, this.csi, this.siteRestrict, this.includeImages, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "GoogleCustomWebSearchEngine.GoogleCustomWebSearchEngineBuilder(apiKey=" + this.apiKey + ", csi=" + this.csi + ", siteRestrict=" + this.siteRestrict + ", includeImages=" + this.includeImages + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

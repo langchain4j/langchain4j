@@ -4,8 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
-    ChatLanguageModel model = OllamaChatModel.builder()
+    ChatModel model = OllamaChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollama))
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
@@ -32,10 +31,10 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        dev.langchain4j.model.chat.response.ChatResponse response = model.chat(userMessage);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).contains("Berlin");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
@@ -64,10 +63,10 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        dev.langchain4j.model.chat.response.ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).doesNotContain("Berlin");
+        assertThat(response.aiMessage().text()).doesNotContain("Berlin");
         assertThat(response.tokenUsage().outputTokenCount()).isBetween(numPredict, numPredict + 2); // bug in Ollama
     }
 
@@ -79,10 +78,10 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         UserMessage userMessage = UserMessage.from("I love you");
 
         // when
-        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+        dev.langchain4j.model.chat.response.ChatResponse response = model.chat(systemMessage, userMessage);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("liebe");
+        assertThat(response.aiMessage().text()).containsIgnoringCase("liebe");
     }
 
     @Test
@@ -97,17 +96,17 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
                 UserMessage.from("4 + 4 ="));
 
         // when
-        Response<AiMessage> response = model.generate(messages);
+        dev.langchain4j.model.chat.response.ChatResponse response = model.chat(messages);
 
         // then
-        assertThat(response.content().text()).startsWith(">>> 8");
+        assertThat(response.aiMessage().text()).startsWith(">>> 8");
     }
 
     @Test
     void should_generate_valid_json() {
 
         // given
-        ChatLanguageModel model = OllamaChatModel.builder()
+        ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
@@ -119,7 +118,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         String userMessage = "Return JSON with two fields: name and age of John Doe, 42 years old.";
 
         // when
-        String json = model.generate(userMessage);
+        String json = model.chat(userMessage);
 
         // then
         assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
@@ -127,7 +126,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     @Test
     void should_return_set_capabilities() {
-        ChatLanguageModel model = OllamaChatModel.builder()
+        ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)

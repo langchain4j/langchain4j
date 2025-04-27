@@ -15,6 +15,7 @@ import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
@@ -70,8 +71,6 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
         log.debug("About to execute {} for memoryId {}", toolExecutionRequest, memoryId);
-
-        // TODO ensure this method never throws exceptions
 
         Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
         Object[] arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
@@ -142,7 +141,6 @@ public class DefaultToolExecutor implements ToolExecutor {
             return argument.toString();
         }
 
-        // TODO handle enum and collection of enums (e.g. wrong case, etc)
         if (parameterClass.isEnum()) {
             try {
                 @SuppressWarnings({"unchecked", "rawtypes"})
@@ -211,23 +209,20 @@ public class DefaultToolExecutor implements ToolExecutor {
                     .toBigInteger();
         }
 
-        if (parameterClass.isArray() && argument instanceof Collection) {
-            Class<?> type = parameterClass.getComponentType();
-            if (type == String.class) {
-                return ((Collection<String>) argument).toArray(new String[0]);
-            }
-            // TODO: Consider full type coverage.
+        if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {
+            // Conversion to JSON and back is required when parameterType is a POJO
+            return Json.fromJson(Json.toJson(argument), parameterType);
         }
 
-        if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {
-            return Json.fromJson(Json.toJson(argument), parameterType);
+        if (parameterClass == UUID.class) {
+            return UUID.fromString(argument.toString());
         }
 
         if (argument instanceof String) {
             return Json.fromJson(argument.toString(), parameterClass);
         } else {
-            String result = Json.toJson(argument);
-            return Json.fromJson(result, parameterClass);
+            // Conversion to JSON and back is required when parameterClass is a POJO
+            return Json.fromJson(Json.toJson(argument), parameterClass);
         }
     }
 
@@ -266,7 +261,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    private static long getBoundedLongValue(
+    public static long getBoundedLongValue(
             Object argument, String parameterName, Class<?> parameterType, long minValue, long maxValue) {
         double doubleValue = getNonFractionalDoubleValue(argument, parameterName, parameterType);
         checkBounds(doubleValue, parameterName, parameterType, minValue, maxValue);

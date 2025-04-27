@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -43,7 +43,7 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static OllamaEmbeddingModelBuilder builder() {
@@ -63,7 +63,7 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .model(modelName)
                 .input(input)
                 .build();
-        EmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
+        EmbeddingResponse response = withRetryMappingExceptions(() -> client.embed(request), maxRetries);
         List<Embedding> embeddings = response.getEmbeddings()
                 .stream()
                 .map(Embedding::from)

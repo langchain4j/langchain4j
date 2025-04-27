@@ -1,20 +1,19 @@
 package dev.langchain4j.data.video;
 
-import dev.langchain4j.Experimental;
-
 import java.net.URI;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
-@Experimental
 public class Video {
+
     private final URI url;
     private final String base64Data;
     private final String mimeType;
 
     /**
      * Create a new {@link Video} from the Builder.
+     *
      * @param builder the builder.
      */
     private Video(Builder builder) {
@@ -25,6 +24,7 @@ public class Video {
 
     /**
      * Create a new {@link Builder}.
+     *
      * @return the new {@link Builder}.
      */
     public static Builder builder() {
@@ -33,6 +33,7 @@ public class Video {
 
     /**
      * Get the url of the video.
+     *
      * @return the url of the video, or null if not set.
      */
     public URI url() {
@@ -41,6 +42,7 @@ public class Video {
 
     /**
      * Get the base64 data of the video.
+     *
      * @return the base64 data of the video, or null if not set.
      */
     public String base64Data() {
@@ -49,6 +51,7 @@ public class Video {
 
     /**
      * Get the mime type of the video.
+     *
      * @return the mime type of the video, or null if not set.
      */
     public String mimeType() {
@@ -61,8 +64,8 @@ public class Video {
         if (o == null || getClass() != o.getClass()) return false;
         Video that = (Video) o;
         return Objects.equals(this.url, that.url)
-            && Objects.equals(this.base64Data, that.base64Data)
-            && Objects.equals(this.mimeType, that.mimeType);
+                && Objects.equals(this.base64Data, that.base64Data)
+                && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
@@ -73,10 +76,10 @@ public class Video {
     @Override
     public String toString() {
         return "Video {" +
-            " url = " + quoted(url) +
-            ", base64Data = " + quoted(base64Data) +
-            ", mimeType = " + quoted(mimeType) +
-            " }";
+                " url = " + quoted(url) +
+                ", base64Data = " + quoted(base64Data) +
+                ", mimeType = " + quoted(mimeType) +
+                " }";
     }
 
     /**
@@ -91,10 +94,12 @@ public class Video {
         /**
          * Create a new {@link Builder}.
          */
-        public Builder() {}
+        public Builder() {
+        }
 
         /**
          * Set the url of the video.
+         *
          * @param url the url of the video.
          * @return {@code this}
          */
@@ -105,6 +110,7 @@ public class Video {
 
         /**
          * Set the url of the video.
+         *
          * @param url the url of the video.
          * @return {@code this}
          */
@@ -114,6 +120,7 @@ public class Video {
 
         /**
          * Set the base64 data of the video.
+         *
          * @param base64Data the base64 data of the video.
          * @return {@code this}
          */
@@ -124,6 +131,7 @@ public class Video {
 
         /**
          * Set the mime type of the video.
+         *
          * @param mimeType the mime type of the video.
          * @return {@code this}
          */
@@ -134,6 +142,7 @@ public class Video {
 
         /**
          * Build the {@link Video}.
+         *
          * @return the {@link Video}.
          */
         public Video build() {

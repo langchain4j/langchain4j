@@ -1,6 +1,6 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
@@ -78,13 +78,13 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         // given AbstractOllamaInfrastructure
 
         // load model
-        ChatLanguageModel model = OllamaChatModel.builder()
+        ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .temperature(0.0)
                 .numPredict(1)
                 .build();
-        model.generate("Tell a joke");
+        model.chat("Tell a joke");
 
         // when
         Response<List<RunningOllamaModel>> response = ollamaModels.runningModels();

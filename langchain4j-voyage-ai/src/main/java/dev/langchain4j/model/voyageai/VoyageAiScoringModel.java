@@ -8,7 +8,7 @@ import dev.langchain4j.model.scoring.ScoringModel;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.voyageai.VoyageAiApi.DEFAULT_BASE_URL;
@@ -40,7 +40,7 @@ public class VoyageAiScoringModel implements ScoringModel {
             Boolean logResponses
     ) {
         // Below attributes are force to non-null
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.modelName = ensureNotBlank(modelName, "modelName");
         // Below attributes can be null
         this.truncation = truncation;
@@ -67,7 +67,7 @@ public class VoyageAiScoringModel implements ScoringModel {
                 .truncation(truncation)
                 .build();
 
-        RerankResponse response = withRetry(() -> client.rerank(request), maxRetries);
+        RerankResponse response = withRetryMappingExceptions(() -> client.rerank(request), maxRetries);
 
         List<Double> scores = response.getData().stream()
                 .sorted(comparingInt(RerankResponse.RerankData::getIndex))

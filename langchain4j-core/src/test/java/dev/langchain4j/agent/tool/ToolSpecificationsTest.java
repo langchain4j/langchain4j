@@ -9,9 +9,6 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -20,19 +17,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class ToolSpecificationsTest implements WithAssertions {
 
     public record Person(
-        @Description("Name of the person")
-        String name,
-        List<String> aliases,
-        boolean active,
-        Person parent,
-        Address currentAddress,
-        List<Address> previousAddresses
-    ) {
-    }
+            @Description("Name of the person") String name,
+            List<String> aliases,
+            boolean active,
+            Person parent,
+            Address currentAddress,
+            List<Address> previousAddresses) {}
 
     public static class Address {
         private String street;
@@ -40,43 +36,44 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     public enum E {
-        A, B, C
+        A,
+        B,
+        C
     }
 
     @SuppressWarnings("unused")
     public static class Wrapper {
         @Tool({"line1", "line2"})
         public int f(
-            @P("foo") String p0,
-            boolean p1,
-            @P("b2") Boolean p2,
-            byte p3,
-            Byte p4,
-            short p5,
-            Short p6,
-            int p7,
-            Integer p8,
-            long p9,
-            Long p10,
-            @P("biggy")
-            BigInteger p11,
-            float p12,
-            Float p13,
-            double p14,
-            Double p15,
-            @P("bigger") BigDecimal p16,
-            String[] p17,
-            Integer[] p18,
-            Boolean[] p19,
-            int[] p20,
-            boolean[] p21,
-            List<Integer> p22,
-            Set<BigDecimal> p23,
-            Collection<String> p24,
-            E p25,
-            Person p26,
-            @P(value = "optional", required = false) int p27,
-            @P(value = "required") int p28) {
+                @P("foo") String p0,
+                boolean p1,
+                @P("b2") Boolean p2,
+                byte p3,
+                Byte p4,
+                short p5,
+                Short p6,
+                int p7,
+                Integer p8,
+                long p9,
+                Long p10,
+                @P("biggy") BigInteger p11,
+                float p12,
+                Float p13,
+                double p14,
+                Double p15,
+                @P("bigger") BigDecimal p16,
+                String[] p17,
+                Integer[] p18,
+                Boolean[] p19,
+                int[] p20,
+                boolean[] p21,
+                List<Integer> p22,
+                Set<BigDecimal> p23,
+                Collection<String> p24,
+                E p25,
+                Person p26,
+                @P(value = "optional", required = false) int p27,
+                @P(value = "required") int p28) {
             return 42;
         }
 
@@ -119,111 +116,75 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     private static Method getF() throws NoSuchMethodException {
-        return Wrapper.class.getMethod("f",
-            String.class,//0
-            boolean.class,
-            Boolean.class,
-            byte.class,
-            Byte.class,
-            short.class,//5
-            Short.class,
-            int.class,
-            Integer.class,
-            long.class,
-            Long.class, //10
-            BigInteger.class,
-            float.class,
-            Float.class,
-            double.class,
-            Double.class, //15
-            BigDecimal.class,
-            String[].class,
-            Integer[].class,
-            Boolean[].class,
-            int[].class,//20
-            boolean[].class,
-            List.class,
-            Set.class,
-            Collection.class,
-            E.class,// 25
-            Person.class,
-            int.class,
-            int.class);
-    }
-
-    public static <K, V> Map<K, V> mapOf(K k1, V v1) {
-        Map<K, V> map = new HashMap<>();
-        map.put(k1, v1);
-        return map;
-    }
-
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2) {
-        Map<K, V> map = new HashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        return map;
-    }
-
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3) {
-        Map<K, V> map = new HashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        map.put(k3, v3);
-        return map;
-    }
-
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5, K k6, V v6, K k7, V v7) {
-        Map<K, V> map = new HashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        map.put(k3, v3);
-        map.put(k4, v4);
-        map.put(k5, v5);
-        map.put(k6, v6);
-        map.put(k7, v7);
-        return map;
+        return Wrapper.class.getMethod(
+                "f",
+                String.class, // 0
+                boolean.class,
+                Boolean.class,
+                byte.class,
+                Byte.class,
+                short.class, // 5
+                Short.class,
+                int.class,
+                Integer.class,
+                long.class,
+                Long.class, // 10
+                BigInteger.class,
+                float.class,
+                Float.class,
+                double.class,
+                Double.class, // 15
+                BigDecimal.class,
+                String[].class,
+                Integer[].class,
+                Boolean[].class,
+                int[].class, // 20
+                boolean[].class,
+                List.class,
+                Set.class,
+                Collection.class,
+                E.class, // 25
+                Person.class,
+                int.class,
+                int.class);
     }
 
     @Test
-    public void test_toolSpecificationsFrom() {
+    void tool_specifications_from() {
         List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new Wrapper());
         assertThat(specs).hasSize(2);
 
-        assertThat(specs).extracting(ToolSpecification::name)
-            .containsExactlyInAnyOrder("f", "func_name");
+        assertThat(specs).extracting(ToolSpecification::name).containsExactlyInAnyOrder("f", "func_name");
     }
 
     @Test
-    public void test_toolSpecificationsFrom_with_duplicate_method_names() {
+    void tool_specifications_from_with_duplicate_method_names() {
         assertThatExceptionOfType(IllegalArgumentException.class)
-            .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidToolsWithDuplicateMethodNames()))
-            .withMessage("Tool names must be unique. The tool 'duplicateMethod' appears several times")
-            .withNoCause();
-
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidToolsWithDuplicateMethodNames()))
+                .withMessage("Tool names must be unique. The tool 'duplicateMethod' appears several times")
+                .withNoCause();
     }
 
     @Test
-    public void test_toolSpecificationsFrom_with_duplicate_names() {
+    void tool_specifications_from_with_duplicate_names() {
         assertThatExceptionOfType(IllegalArgumentException.class)
-            .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidToolsWithDuplicateNames()))
-            .withMessage("Tool names must be unique. The tool 'duplicate_name' appears several times")
-            .withNoCause();
-
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidToolsWithDuplicateNames()))
+                .withMessage("Tool names must be unique. The tool 'duplicate_name' appears several times")
+                .withNoCause();
     }
 
     @Test
-    public void test_toolName_memoryId() throws NoSuchMethodException {
+    void tool_name_memory_id() throws NoSuchMethodException {
         Method method = Wrapper.class.getMethod("g", String.class);
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
 
         assertThat(ts.name()).isEqualTo("func_name");
         assertThat(ts.description()).isNull();
         assertThat(ts.parameters()).isNull();
-        assertThat(ts.toolParameters()).isNull();
     }
 
     @Test
-    public void test_toolSpecificationFrom() throws NoSuchMethodException {
+    void tool_specification_from() throws NoSuchMethodException {
         Method method = getF();
 
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
@@ -236,73 +197,97 @@ class ToolSpecificationsTest implements WithAssertions {
 
         assertThat(properties).hasSize(29);
         assertThat(properties)
-            .containsEntry("arg0", JsonStringSchema.builder().description("foo").build())
-            .containsEntry("arg1", new JsonBooleanSchema())
-            .containsEntry("arg2", JsonBooleanSchema.builder().description("b2").build())
-            .containsEntry("arg3", new JsonIntegerSchema())
-            .containsEntry("arg4", new JsonIntegerSchema())
-            .containsEntry("arg5", new JsonIntegerSchema())
-            .containsEntry("arg6", new JsonIntegerSchema())
-            .containsEntry("arg7", new JsonIntegerSchema())
-            .containsEntry("arg8", new JsonIntegerSchema())
-            .containsEntry("arg9", new JsonIntegerSchema())
-            .containsEntry("arg10", new JsonIntegerSchema())
-            .containsEntry("arg11", JsonIntegerSchema.builder().description("biggy").build())
-            .containsEntry("arg12", new JsonNumberSchema())
-            .containsEntry("arg13", new JsonNumberSchema())
-            .containsEntry("arg14", new JsonNumberSchema())
-            .containsEntry("arg15", new JsonNumberSchema())
-            .containsEntry("arg16", JsonNumberSchema.builder().description("bigger").build())
-            .containsEntry("arg17", JsonArraySchema.builder().items(new JsonStringSchema()).build())
-            .containsEntry("arg18", JsonArraySchema.builder().items(new JsonIntegerSchema()).build())
-            .containsEntry("arg19", JsonArraySchema.builder().items(new JsonBooleanSchema()).build())
-            .containsEntry("arg20", JsonArraySchema.builder().items(new JsonIntegerSchema()).build())
-            .containsEntry("arg21", JsonArraySchema.builder().items(new JsonBooleanSchema()).build())
-            .containsEntry("arg22", JsonArraySchema.builder().items(new JsonIntegerSchema()).build())
-            .containsEntry("arg23", JsonArraySchema.builder().items(new JsonNumberSchema()).build())
-            .containsEntry("arg24", JsonArraySchema.builder().items(new JsonStringSchema()).build())
-            .containsEntry("arg25", JsonEnumSchema.builder().enumValues("A", "B", "C").build())
-            .containsEntry("arg27", JsonIntegerSchema.builder().description("optional").build())
-            .containsEntry("arg28", JsonIntegerSchema.builder().description("required").build());
+                .containsEntry(
+                        "arg0", JsonStringSchema.builder().description("foo").build())
+                .containsEntry("arg1", new JsonBooleanSchema())
+                .containsEntry(
+                        "arg2", JsonBooleanSchema.builder().description("b2").build())
+                .containsEntry("arg3", new JsonIntegerSchema())
+                .containsEntry("arg4", new JsonIntegerSchema())
+                .containsEntry("arg5", new JsonIntegerSchema())
+                .containsEntry("arg6", new JsonIntegerSchema())
+                .containsEntry("arg7", new JsonIntegerSchema())
+                .containsEntry("arg8", new JsonIntegerSchema())
+                .containsEntry("arg9", new JsonIntegerSchema())
+                .containsEntry("arg10", new JsonIntegerSchema())
+                .containsEntry(
+                        "arg11",
+                        JsonIntegerSchema.builder().description("biggy").build())
+                .containsEntry("arg12", new JsonNumberSchema())
+                .containsEntry("arg13", new JsonNumberSchema())
+                .containsEntry("arg14", new JsonNumberSchema())
+                .containsEntry("arg15", new JsonNumberSchema())
+                .containsEntry(
+                        "arg16",
+                        JsonNumberSchema.builder().description("bigger").build())
+                .containsEntry(
+                        "arg17",
+                        JsonArraySchema.builder().items(new JsonStringSchema()).build())
+                .containsEntry(
+                        "arg18",
+                        JsonArraySchema.builder().items(new JsonIntegerSchema()).build())
+                .containsEntry(
+                        "arg19",
+                        JsonArraySchema.builder().items(new JsonBooleanSchema()).build())
+                .containsEntry(
+                        "arg20",
+                        JsonArraySchema.builder().items(new JsonIntegerSchema()).build())
+                .containsEntry(
+                        "arg21",
+                        JsonArraySchema.builder().items(new JsonBooleanSchema()).build())
+                .containsEntry(
+                        "arg22",
+                        JsonArraySchema.builder().items(new JsonIntegerSchema()).build())
+                .containsEntry(
+                        "arg23",
+                        JsonArraySchema.builder().items(new JsonNumberSchema()).build())
+                .containsEntry(
+                        "arg24",
+                        JsonArraySchema.builder().items(new JsonStringSchema()).build())
+                .containsEntry(
+                        "arg25",
+                        JsonEnumSchema.builder().enumValues("A", "B", "C").build())
+                .containsEntry(
+                        "arg27",
+                        JsonIntegerSchema.builder().description("optional").build())
+                .containsEntry(
+                        "arg28",
+                        JsonIntegerSchema.builder().description("required").build());
 
         assertThat(ts.parameters().required())
-            .containsExactly("arg0",
-                "arg1",
-                "arg2",
-                "arg3",
-                "arg4",
-                "arg5",
-                "arg6",
-                "arg7",
-                "arg8",
-                "arg9",
-                "arg10",
-                "arg11",
-                "arg12",
-                "arg13",
-                "arg14",
-                "arg15",
-                "arg16",
-                "arg17",
-                "arg18",
-                "arg19",
-                "arg20",
-                "arg21",
-                "arg22",
-                "arg23",
-                "arg24",
-                "arg25",
-                "arg26",
-                // "arg27", params with @P(required = false) are optional
-                "arg28"
-            );
+                .containsExactly(
+                        "arg0",
+                        "arg1",
+                        "arg2",
+                        "arg3",
+                        "arg4",
+                        "arg5",
+                        "arg6",
+                        "arg7",
+                        "arg8",
+                        "arg9",
+                        "arg10",
+                        "arg11",
+                        "arg12",
+                        "arg13",
+                        "arg14",
+                        "arg15",
+                        "arg16",
+                        "arg17",
+                        "arg18",
+                        "arg19",
+                        "arg20",
+                        "arg21",
+                        "arg22",
+                        "arg23",
+                        "arg24",
+                        "arg25",
+                        "arg26",
+                        // "arg27", params with @P(required = false) are optional
+                        "arg28");
     }
 
-    record Customer(
-        String name,
-        Address billingAddress,
-        Address shippingAddress) {
-    }
+    record Customer(String name, Address billingAddress, Address shippingAddress) {}
 
     public static class CustomerRegistration {
         @Tool("register a new customer")
@@ -312,33 +297,40 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     @Test
-    void test_object_used_multiple_times() {
+    void object_used_multiple_times() {
 
         // when
-        List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(CustomerRegistration.class);
+        List<ToolSpecification> toolSpecifications =
+                ToolSpecifications.toolSpecificationsFrom(CustomerRegistration.class);
 
         // then
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("registerCustomer");
         assertThat(toolSpecification.description()).isEqualTo("register a new customer");
-        assertThat(toolSpecification.parameters()).isEqualTo(JsonObjectSchema.builder()
-            .addProperty("arg0", JsonObjectSchema.builder()
-                .addStringProperty("name")
-                .addProperty("billingAddress", JsonObjectSchema.builder()
-                    .addStringProperty("street")
-                    .addStringProperty("city")
-                    .required("street", "city")
-                    .build())
-                .addProperty("shippingAddress", JsonObjectSchema.builder()
-                    .addStringProperty("street")
-                    .addStringProperty("city")
-                    .required("street", "city")
-                    .build())
-                .required("name", "billingAddress", "shippingAddress")
-                .build())
-            .required("arg0")
-            .build());
-        assertThat(toolSpecification.toolParameters()).isNull();
+        assertThat(toolSpecification.parameters())
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "arg0",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("name")
+                                        .addProperty(
+                                                "billingAddress",
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("street")
+                                                        .addStringProperty("city")
+                                                        .required("street", "city")
+                                                        .build())
+                                        .addProperty(
+                                                "shippingAddress",
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("street")
+                                                        .addStringProperty("city")
+                                                        .required("street", "city")
+                                                        .build())
+                                        .required("name", "billingAddress", "shippingAddress")
+                                        .build())
+                        .required("arg0")
+                        .build());
     }
 }

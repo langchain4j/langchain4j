@@ -1,17 +1,5 @@
 package dev.langchain4j.rag.content.injector;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.input.Prompt;
-import dev.langchain4j.model.input.PromptTemplate;
-import dev.langchain4j.rag.content.Content;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
@@ -19,6 +7,17 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.input.Prompt;
+import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.content.Content;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Default implementation of {@link ContentInjector} intended to be suitable for the majority of use cases.
@@ -49,10 +48,9 @@ public class DefaultContentInjector implements ContentInjector {
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             """
                     {{userMessage}}
-                    
+
                     Answer using the following information:
-                    {{contents}}"""
-    );
+                    {{contents}}""");
 
     private final PromptTemplate promptTemplate;
     private final List<String> metadataKeysToInclude;
@@ -94,42 +92,14 @@ public class DefaultContentInjector implements ContentInjector {
     }
 
     protected Prompt createPrompt(ChatMessage chatMessage, List<Content> contents) {
-        return createPrompt((UserMessage) chatMessage, contents);
-    }
-
-    /**
-     * @deprecated use {@link #inject(List, ChatMessage)} instead.
-     */
-    @Override
-    @Deprecated
-    public UserMessage inject(List<Content> contents, UserMessage userMessage) {
-
-        if (contents.isEmpty()) {
-            return userMessage;
-        }
-
-        Prompt prompt = createPrompt(userMessage, contents);
-        if (isNotNullOrBlank(userMessage.name())) {
-            return prompt.toUserMessage(userMessage.name());
-        }
-        return prompt.toUserMessage();
-    }
-
-    /**
-     * @deprecated implement/override {@link #createPrompt(ChatMessage, List)} instead.
-     */
-    @Deprecated
-    protected Prompt createPrompt(UserMessage userMessage, List<Content> contents) {
         Map<String, Object> variables = new HashMap<>();
-        variables.put("userMessage", userMessage.text());
+        variables.put("userMessage", ((UserMessage) chatMessage).singleText());
         variables.put("contents", format(contents));
         return promptTemplate.apply(variables);
     }
 
     protected String format(List<Content> contents) {
-        return contents.stream()
-                .map(this::format)
-                .collect(joining("\n\n"));
+        return contents.stream().map(this::format).collect(joining("\n\n"));
     }
 
     protected String format(Content content) {
@@ -149,9 +119,9 @@ public class DefaultContentInjector implements ContentInjector {
     protected String format(Metadata metadata) {
         StringBuilder formattedMetadata = new StringBuilder();
         for (String metadataKey : metadataKeysToInclude) {
-            String metadataValue = metadata.get(metadataKey);
+            String metadataValue = metadata.getString(metadataKey);
             if (metadataValue != null) {
-                if (formattedMetadata.length() > 0) {
+                if (!formattedMetadata.isEmpty()) {
                     formattedMetadata.append("\n");
                 }
                 formattedMetadata.append(metadataKey).append(": ").append(metadataValue);
@@ -170,8 +140,7 @@ public class DefaultContentInjector implements ContentInjector {
         private PromptTemplate promptTemplate;
         private List<String> metadataKeysToInclude;
 
-        DefaultContentInjectorBuilder() {
-        }
+        DefaultContentInjectorBuilder() {}
 
         public DefaultContentInjectorBuilder promptTemplate(PromptTemplate promptTemplate) {
             this.promptTemplate = promptTemplate;
@@ -185,10 +154,6 @@ public class DefaultContentInjector implements ContentInjector {
 
         public DefaultContentInjector build() {
             return new DefaultContentInjector(this.promptTemplate, this.metadataKeysToInclude);
-        }
-
-        public String toString() {
-            return "DefaultContentInjector.DefaultContentInjectorBuilder(promptTemplate=" + this.promptTemplate + ", metadataKeysToInclude=" + this.metadataKeysToInclude + ")";
         }
     }
 }

@@ -43,7 +43,6 @@ import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -54,17 +53,17 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -80,7 +79,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -89,8 +88,6 @@ import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 class InternalAzureOpenAiHelper {
-
-    private static final Logger logger = LoggerFactory.getLogger(InternalAzureOpenAiHelper.class);
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
@@ -130,7 +127,7 @@ class InternalAzureOpenAiHelper {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
-        maxRetries = getOrDefault(maxRetries, 3);
+        maxRetries = getOrDefault(maxRetries, 2);
         ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
         exponentialBackoffOptions.setMaxRetries(maxRetries);
         RetryOptions retryOptions = new RetryOptions(exponentialBackoffOptions);
@@ -267,11 +264,7 @@ class InternalAzureOpenAiHelper {
     }
 
     private static BinaryData getParameters(ToolSpecification toolSpecification) {
-        if (toolSpecification.parameters() != null) {
-            return toOpenAiParameters(toolSpecification.parameters());
-        } else {
-            return toOpenAiParametersOld(toolSpecification.toolParameters());
-        }
+        return toOpenAiParameters(toolSpecification.parameters());
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -287,16 +280,6 @@ class InternalAzureOpenAiHelper {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
         }
         parameters.setProperties(toMap(toolParameters.properties()));
-        parameters.setRequired(toolParameters.required());
-        return BinaryData.fromObject(parameters);
-    }
-
-    private static BinaryData toOpenAiParametersOld(ToolParameters toolParameters) {
-        Parameters parameters = new Parameters();
-        if (toolParameters == null) {
-            return BinaryData.fromObject(NO_PARAMETER_DATA);
-        }
-        parameters.setProperties(toolParameters.properties());
         parameters.setRequired(toolParameters.required());
         return BinaryData.fromObject(parameters);
     }
@@ -401,32 +384,36 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    static ChatModelRequest createModelListenerRequest(ChatCompletionsOptions options,
-                                                       List<ChatMessage> messages,
-                                                       List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-                .model(options.getModel())
-                .temperature(options.getTemperature())
-                .topP(options.getTopP())
-                .maxTokens(options.getMaxTokens())
+    static ChatRequest createListenerRequest(ChatCompletionsOptions options,
+                                             List<ChatMessage> messages,
+                                             List<ToolSpecification> toolSpecifications) {
+        return ChatRequest.builder()
                 .messages(messages)
-                .toolSpecifications(toolSpecifications)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(options.getModel())
+                        .temperature(options.getTemperature())
+                        .topP(options.getTopP())
+                        .maxOutputTokens(options.getMaxTokens())
+                        .toolSpecifications(toolSpecifications)
+                        .build())
                 .build();
     }
 
-    static ChatModelResponse createModelListenerResponse(String responseId,
-                                                         String responseModel,
-                                                         Response<AiMessage> response) {
+    static ChatResponse createListenerResponse(String responseId,
+                                               String responseModel,
+                                               Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
 
-        return ChatModelResponse.builder()
-                .id(responseId)
-                .model(responseModel)
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
+        return ChatResponse.builder()
                 .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .id(responseId)
+                        .modelName(responseModel)
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
                 .build();
     }
 

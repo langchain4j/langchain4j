@@ -1,8 +1,9 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -100,7 +101,7 @@ public class ToolSpecifications {
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
 
-        Map<Class<?>, JsonSchemaElementHelper.VisitedClassMetadata> visited = new LinkedHashMap<>();
+        Map<Class<?>, VisitedClassMetadata> visited = new LinkedHashMap<>();
 
         for (Parameter parameter : parameters) {
             if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
@@ -136,13 +137,14 @@ public class ToolSpecifications {
     }
 
     private static JsonSchemaElement jsonSchemaElementFrom(Parameter parameter,
-                                                           Map<Class<?>, JsonSchemaElementHelper.VisitedClassMetadata> visited) {
+                                                           Map<Class<?>, VisitedClassMetadata> visited) {
         P annotation = parameter.getAnnotation(P.class);
         String description = annotation == null ? null : annotation.value();
-        return JsonSchemaElementHelper.jsonSchemaElementFrom(
+        return JsonSchemaElementUtils.jsonSchemaElementFrom(
                 parameter.getType(),
                 parameter.getParameterizedType(),
                 description,
+                true,
                 visited
         );
     }

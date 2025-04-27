@@ -10,10 +10,10 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
 
 import java.net.URI;
@@ -39,26 +39,6 @@ class PartsAndContentsMapper {
             return GeminiPart.builder()
                 .text(textContent.text())
                 .build();
-        }  else if (content.type().equals(ContentType.TEXT_FILE)) {
-            TextFileContent textFileContent = (TextFileContent) content;
-
-            URI uri = textFileContent.textFile().url();
-            if (uri != null) {
-                return GeminiPart.builder()
-                    .fileData(GeminiFileData.builder()
-                        .fileUri(uri.toString())
-                        .mimeType(mimeTypeDetector.probeContentType(uri))
-                        .build())
-                    .build();
-            } else {
-                return GeminiPart.builder()
-                    .inlineData(GeminiBlob.builder()
-                        .mimeType(textFileContent.textFile().mimeType())
-                        .data(textFileContent.textFile().base64Data())
-                        .build())
-                    .build();
-            }
-
         } else if (content.type().equals(ContentType.IMAGE)) {
             ImageContent imageContent = (ImageContent) content;
 
@@ -119,10 +99,10 @@ class PartsAndContentsMapper {
                             .build())
                         .build();
                 }
-        } else if (content.type().equals(ContentType.PDF)) {
-            PdfFileContent pdfFileContent = (PdfFileContent) content;
+        } else if (content instanceof PdfFileContent pdfFileContent) {
+            PdfFile pdfFile = pdfFileContent.pdfFile();
 
-            URI uri = pdfFileContent.pdfFile().url();
+            URI uri = pdfFile.url();
             if (uri != null) {
                 return GeminiPart.builder()
                     .fileData(GeminiFileData.builder()
@@ -133,8 +113,8 @@ class PartsAndContentsMapper {
             } else {
                 return GeminiPart.builder()
                     .inlineData(GeminiBlob.builder()
-                        .mimeType("application/pdf")
-                        .data(pdfFileContent.pdfFile().base64Data())
+                        .mimeType(pdfFile.mimeType())
+                        .data(pdfFile.base64Data())
                         .build())
                     .build();
             }

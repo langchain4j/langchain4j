@@ -2,7 +2,7 @@ package dev.langchain4j.model.huggingface;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
+import static dev.langchain4j.model.huggingface.HuggingFaceModelName.MICROSOFT_PHI3_MINI_4K_INSTRUCT;
 import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,10 +28,10 @@ class HuggingFaceChatModelIT {
                 .waitForModel(true)
                 .build();
 
-        AiMessage aiMessage = model.generate(
+        AiMessage aiMessage = model.chat(
                         systemMessage("You are a good friend of mine, who likes to answer with jokes"),
                         userMessage("Hey Bro, what are you doing?"))
-                .content();
+                .aiMessage();
 
         assertThat(aiMessage.text()).isNotBlank();
     }
@@ -49,10 +49,10 @@ class HuggingFaceChatModelIT {
                 .waitForModel(true)
                 .build();
 
-        AiMessage aiMessage = model.generate(
+        AiMessage aiMessage = model.chat(
                         systemMessage("You are a good friend of mine, who likes to answer with jokes"),
                         userMessage("Hey Bro, what are you doing?"))
-                .content();
+                .aiMessage();
 
         assertThat(aiMessage.text()).isNotBlank();
     }
@@ -73,7 +73,7 @@ class HuggingFaceChatModelIT {
                     HuggingFaceChatModel.builder()
                             .baseUrl("//not-valid-base-url/")
                             .accessToken(System.getenv("HF_API_KEY"))
-                            .modelId(TII_UAE_FALCON_7B_INSTRUCT)
+                            .modelId(MICROSOFT_PHI3_MINI_4K_INSTRUCT)
                             .timeout(ofSeconds(15))
                             .temperature(0.7)
                             .maxNewTokens(20)

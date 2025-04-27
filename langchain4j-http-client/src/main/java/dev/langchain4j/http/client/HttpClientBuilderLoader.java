@@ -1,13 +1,10 @@
 package dev.langchain4j.http.client;
 
-import dev.langchain4j.Experimental;
-
 import java.util.Collection;
 import java.util.List;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-@Experimental
 public class HttpClientBuilderLoader {
 
     public static HttpClientBuilder loadHttpClientBuilder() {

@@ -36,6 +36,7 @@ public class HttpMcpTransport implements McpTransport {
     private final boolean logRequests;
     private EventSource mcpSseEventListener;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private volatile Runnable onFailure;
 
     // this is obtained from the server after initializing the SSE channel
     private volatile String postUrl;
@@ -99,6 +100,16 @@ public class HttpMcpTransport implements McpTransport {
         }
     }
 
+    @Override
+    public void checkHealth() {
+        // no transport-specific checks right now
+    }
+
+    @Override
+    public void onFailure(Runnable actionOnFailure) {
+        this.onFailure = actionOnFailure;
+    }
+
     private CompletableFuture<JsonNode> execute(Request request, Long id) {
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         if (id != null) {
@@ -132,7 +143,8 @@ public class HttpMcpTransport implements McpTransport {
     private EventSource startSseChannel(boolean logResponses) {
         Request request = new Request.Builder().url(sseUrl).build();
         CompletableFuture<String> initializationFinished = new CompletableFuture<>();
-        SseEventListener listener = new SseEventListener(messageHandler, logResponses, initializationFinished);
+        SseEventListener listener =
+                new SseEventListener(messageHandler, logResponses, initializationFinished, onFailure);
         EventSource eventSource = EventSources.createFactory(client).newEventSource(request, listener);
         // wait for the SSE channel to be created, receive the POST url from the server, throw an exception if that
         // failed

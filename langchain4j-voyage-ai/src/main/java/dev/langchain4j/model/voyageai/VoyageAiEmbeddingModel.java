@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.voyageai.VoyageAiApi.DEFAULT_BASE_URL;
@@ -46,7 +46,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             Boolean logResponses,
             Integer maxSegmentsPerBatch
     ) {
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 128);
         this.truncation = truncation;
@@ -86,7 +86,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                     .encodingFormat(encodingFormat)
                     .build();
 
-            EmbeddingResponse response = withRetry(() -> this.client.embed(request), maxRetries);
+            EmbeddingResponse response = withRetryMappingExceptions(() -> this.client.embed(request), maxRetries);
 
             embeddings.addAll(getEmbeddings(response));
             inputTokenCount += getTokenUsage(response);

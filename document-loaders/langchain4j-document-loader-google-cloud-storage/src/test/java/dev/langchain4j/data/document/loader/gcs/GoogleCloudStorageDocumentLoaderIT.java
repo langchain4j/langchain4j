@@ -1,14 +1,13 @@
 package dev.langchain4j.data.document.loader.gcs;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.cloud.storage.StorageException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
 
 public class GoogleCloudStorageDocumentLoaderIT {
 
@@ -19,8 +18,8 @@ public class GoogleCloudStorageDocumentLoaderIT {
     void should_load_single_document() {
         // given
         GoogleCloudStorageDocumentLoader gcsLoader = GoogleCloudStorageDocumentLoader.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .build();
 
         // when
         Document document = gcsLoader.loadDocument(BUCKET_NAME, FILE_NAME, new TextDocumentParser());
@@ -33,14 +32,14 @@ public class GoogleCloudStorageDocumentLoaderIT {
     void should_fail_for_missing_document() {
         // given
         GoogleCloudStorageDocumentLoader gcsLoader = GoogleCloudStorageDocumentLoader.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .build();
         final String DUMMY_FILE_NAME = "DUMMY_XYZ.txt";
 
         // when
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            gcsLoader.loadDocument(BUCKET_NAME, DUMMY_FILE_NAME, new TextDocumentParser());
-        });
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> gcsLoader.loadDocument(BUCKET_NAME, DUMMY_FILE_NAME, new TextDocumentParser()));
 
         // then
         assertThat(exception.getMessage()).contains(DUMMY_FILE_NAME);
@@ -50,8 +49,8 @@ public class GoogleCloudStorageDocumentLoaderIT {
     void should_load_multipe_documents() {
         // given
         GoogleCloudStorageDocumentLoader gcsLoader = GoogleCloudStorageDocumentLoader.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .build();
 
         // when
         List<Document> documents = gcsLoader.loadDocuments(BUCKET_NAME, new TextDocumentParser());
@@ -64,11 +63,12 @@ public class GoogleCloudStorageDocumentLoaderIT {
     void should_fail_for_wrong_bucket() {
         // given
         GoogleCloudStorageDocumentLoader gcsLoader = GoogleCloudStorageDocumentLoader.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .build();
 
         // then
-        StorageException exception = assertThrows(StorageException.class, () -> gcsLoader.loadDocuments("DUMMY_BUCKET", new TextDocumentParser()));
+        StorageException exception = assertThrows(
+                StorageException.class, () -> gcsLoader.loadDocuments("DUMMY_BUCKET", new TextDocumentParser()));
         assertThat(exception.getMessage()).contains("The specified bucket does not exist");
     }
 
@@ -76,8 +76,8 @@ public class GoogleCloudStorageDocumentLoaderIT {
     void should_load_document_with_glob() {
         // given
         GoogleCloudStorageDocumentLoader gcsLoader = GoogleCloudStorageDocumentLoader.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .build();
 
         // when
         List<Document> documents = gcsLoader.loadDocuments(BUCKET_NAME, "*.txt", new TextDocumentParser());

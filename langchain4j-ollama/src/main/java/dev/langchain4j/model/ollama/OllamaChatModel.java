@@ -4,11 +4,12 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
@@ -23,11 +24,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createModelListenerRequest;
+import static dev.langchain4j.model.ModelProvider.OLLAMA;
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createListenerRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenResponse;
@@ -45,7 +46,7 @@ import static java.util.Collections.emptySet;
  * <br>
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values">Ollama API parameters</a>.
  */
-public class OllamaChatModel implements ChatLanguageModel {
+public class OllamaChatModel implements ChatModel {
 
     private final OllamaClient client;
     private final String modelName;
@@ -101,7 +102,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .stop(stop)
                 .build();
         this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.listeners = new ArrayList<>(getOrDefault(listeners, emptyList()));
         this.supportedCapabilities = new HashSet<>(getOrDefault(supportedCapabilities, emptySet()));
     }
@@ -114,25 +115,11 @@ public class OllamaChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ensureNotEmpty(messages, "messages");
-
-        return doGenerate(messages, null, responseFormat);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ensureNotEmpty(messages, "messages");
-
-        return doGenerate(messages, toolSpecifications, responseFormat);
-    }
-
-    @Override
     public dev.langchain4j.model.chat.response.ChatResponse chat(dev.langchain4j.model.chat.request.ChatRequest request) {
 
         ChatRequestParameters parameters = request.parameters();
-        ChatLanguageModel.validate(parameters);
-        ChatLanguageModel.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
 
         Response<AiMessage> response = doGenerate(
                 request.messages(),
@@ -154,6 +141,16 @@ public class OllamaChatModel implements ChatLanguageModel {
         return supportedCapabilities;
     }
 
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return OLLAMA;
+    }
+
     private Response<AiMessage> doGenerate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, ResponseFormat responseFormat) {
         ChatRequest request = ChatRequest.builder()
                 .model(modelName)
@@ -164,23 +161,24 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .tools(toOllamaTools(toolSpecifications))
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        dev.langchain4j.model.chat.request.ChatRequest listenerRequest =
+                createListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        onListenRequest(listeners, modelListenerRequest, attributes);
+        onListenRequest(listeners, listenerRequest, provider(), attributes);
 
         try {
-            ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
+            ChatResponse chatResponse = withRetryMappingExceptions(() -> client.chat(request), maxRetries);
             Response<AiMessage> response = Response.from(
                     chatResponse.getMessage().getToolCalls() != null ?
                             AiMessage.from(toToolExecutionRequests(chatResponse.getMessage().getToolCalls())) :
                             AiMessage.from(chatResponse.getMessage().getContent()),
                     new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
             );
-            onListenResponse(listeners, response, modelListenerRequest, attributes);
+            onListenResponse(listeners, response, listenerRequest, provider(), attributes);
 
             return response;
         } catch (Exception e) {
-            onListenError(listeners, e, modelListenerRequest, null, attributes);
+            onListenError(listeners, e, listenerRequest, provider(), attributes);
             throw e;
         }
     }

@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicApi;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -12,11 +13,9 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRespon
 import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
-import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import okhttp3.sse.EventSource;
@@ -46,6 +45,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlock
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 public class DefaultAnthropicClient extends AnthropicClient {
@@ -304,9 +304,19 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             private Response<AiMessage> build() {
 
-                String text = String.join("\n", contents);
-                TokenUsage tokenUsage = new AnthropicTokenUsage(inputTokenCount.get(), outputTokenCount.get(), cacheCreationInputTokens.get(), cacheReadInputTokens.get());
+                String text = contents.stream()
+                        .filter(content -> !content.isEmpty())
+                        .collect(joining("\n"));
+
+                AnthropicTokenUsage tokenUsage = AnthropicTokenUsage.builder()
+                        .inputTokenCount(inputTokenCount.get())
+                        .outputTokenCount(outputTokenCount.get())
+                        .cacheCreationInputTokens(cacheCreationInputTokens.get())
+                        .cacheReadInputTokens(cacheReadInputTokens.get())
+                        .build();
+
                 FinishReason finishReason = toFinishReason(stopReason);
+
                 Map<String, Object> metadata = createMetadata();
 
                 if (toolExecutionRequestBuilderMap.isEmpty()) {

@@ -1,8 +1,8 @@
 package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.model.ExampleTestTokenizer;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.ExampleTestTokenCountEstimator;
+import dev.langchain4j.model.TokenCountEstimator;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -12,16 +12,21 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             super(maxSegmentSizeInChars, maxOverlapSizeInChars);
         }
 
-        public ExampleImpl(int maxSegmentSizeInChars, int maxOverlapSizeInChars, HierarchicalDocumentSplitter subSplitter) {
+        public ExampleImpl(
+                int maxSegmentSizeInChars, int maxOverlapSizeInChars, HierarchicalDocumentSplitter subSplitter) {
             super(maxSegmentSizeInChars, maxOverlapSizeInChars, subSplitter);
         }
 
-        public ExampleImpl(int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, Tokenizer tokenizer) {
-            super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer);
+        public ExampleImpl(int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, TokenCountEstimator tokenCountEstimator) {
+            super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator);
         }
 
-        public ExampleImpl(int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, Tokenizer tokenizer, HierarchicalDocumentSplitter subSplitter) {
-            super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
+        public ExampleImpl(
+                int maxSegmentSizeInTokens,
+                int maxOverlapSizeInTokens,
+                TokenCountEstimator tokenCountEstimator,
+                HierarchicalDocumentSplitter subSplitter) {
+            super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, subSplitter);
         }
 
         @Override
@@ -41,12 +46,12 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
     }
 
     @Test
-    void test_constructor() {
+    void constructor() {
         {
             ExampleImpl splitter = new ExampleImpl(1, 1);
             assertThat(splitter.maxSegmentSize).isEqualTo(1);
             assertThat(splitter.maxOverlapSize).isEqualTo(1);
-            assertThat(splitter.tokenizer).isNull();
+            assertThat(splitter.tokenCountEstimator).isNull();
             assertThat(splitter.subSplitter).isNull();
 
             assertThat(splitter.estimateSize("abc def")).isEqualTo(7);
@@ -56,28 +61,28 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             ExampleImpl splitter = new ExampleImpl(1, 1, subSplitter);
             assertThat(splitter.maxSegmentSize).isEqualTo(1);
             assertThat(splitter.maxOverlapSize).isEqualTo(1);
-            assertThat(splitter.tokenizer).isNull();
+            assertThat(splitter.tokenCountEstimator).isNull();
             assertThat(splitter.subSplitter).isSameAs(subSplitter);
 
             assertThat(splitter.estimateSize("abc def")).isEqualTo(7);
         }
         {
-            Tokenizer tokenizer = new ExampleTestTokenizer();
-            ExampleImpl splitter = new ExampleImpl(1, 1, tokenizer);
+            TokenCountEstimator tokenCountEstimator = new ExampleTestTokenCountEstimator();
+            ExampleImpl splitter = new ExampleImpl(1, 1, tokenCountEstimator);
             assertThat(splitter.maxSegmentSize).isEqualTo(1);
             assertThat(splitter.maxOverlapSize).isEqualTo(1);
-            assertThat(splitter.tokenizer).isSameAs(tokenizer);
+            assertThat(splitter.tokenCountEstimator).isSameAs(tokenCountEstimator);
             assertThat(splitter.subSplitter).isNull();
 
             assertThat(splitter.estimateSize("abc def")).isEqualTo(2);
         }
         {
             DocumentByWordSplitter subSplitter = new DocumentByWordSplitter(2, 2);
-            Tokenizer tokenizer = new ExampleTestTokenizer();
-            ExampleImpl splitter = new ExampleImpl(1, 1, tokenizer, subSplitter);
+            TokenCountEstimator tokenCountEstimator = new ExampleTestTokenCountEstimator();
+            ExampleImpl splitter = new ExampleImpl(1, 1, tokenCountEstimator, subSplitter);
             assertThat(splitter.maxSegmentSize).isEqualTo(1);
             assertThat(splitter.maxOverlapSize).isEqualTo(1);
-            assertThat(splitter.tokenizer).isSameAs(tokenizer);
+            assertThat(splitter.tokenCountEstimator).isSameAs(tokenCountEstimator);
             assertThat(splitter.subSplitter).isSameAs(subSplitter);
 
             assertThat(splitter.estimateSize("abc def")).isEqualTo(2);

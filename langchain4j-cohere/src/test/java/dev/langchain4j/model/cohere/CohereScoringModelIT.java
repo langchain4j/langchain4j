@@ -18,7 +18,12 @@ class CohereScoringModelIT {
     void should_score_single_text() {
 
         // given
-        ScoringModel model = CohereScoringModel.withApiKey(System.getenv("COHERE_API_KEY"));
+        ScoringModel model = CohereScoringModel.builder()
+                .apiKey(System.getenv("COHERE_API_KEY"))
+                .modelName("rerank-english-v3.0")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
         String text = "labrador retriever";
         String query = "tell me about dogs";
@@ -27,7 +32,7 @@ class CohereScoringModelIT {
         Response<Double> response = model.score(text, query);
 
         // then
-        assertThat(response.content()).isCloseTo(0.034, withPercentage(1));
+        assertThat(response.content()).isCloseTo(0.008, withPercentage(1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(1);
 
@@ -41,7 +46,7 @@ class CohereScoringModelIT {
         ScoringModel model = CohereScoringModel.builder()
                 .baseUrl("https://api.cohere.ai/v1/")
                 .apiKey(System.getenv("COHERE_API_KEY"))
-                .modelName("rerank-multilingual-v2.0")
+                .modelName("rerank-english-v3.0")
                 .timeout(Duration.ofSeconds(30))
                 .maxRetries(2)
                 .logRequests(true)
