@@ -4,28 +4,25 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.code.CodeExecutionEngine;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpMethod;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.spi.ServiceHelper;
 import java.io.*;
 import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
-import okhttp3.*;
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 /**
  * A tool for executing code in Azure ACA dynamic sessions.
@@ -36,27 +33,29 @@ import org.json.JSONObject;
  * SessionsREPLTool provides a mechanism to execute code snippets within an Azure
  * Container Apps (ACA) dynamic session. It facilitates interaction with a remote code execution environment,
  * allowing for tasks such as performing calculations, running scripts, and managing files.
+ * This class implements {@link CodeExecutionEngine}, making it compatible with the standard
+ * code execution interfaces in langchain4j.
  *
  * Key Components:
  *   USER_AGENT:  A static string defining the User-Agent header for HTTP requests.
  *   API_VERSION:  A static string specifying the API version for interacting with the ACA dynamic sessions endpoint.
  *   SANITIZE_PATTERN_START and SANITIZE_PATTERN_END:  Static patterns used to sanitize input code by removing leading/trailing whitespace or keywords.
- *   name:  The name of the tool (sessions_REPL), used for identification and invocation.
- *   description:  A description of the tool, explaining its purpose and usage.
  *   sanitizeInput:  A boolean flag indicating whether to sanitize the input code before execution.
  *   poolManagementEndpoint:  The URL of the pool management endpoint for the ACA dynamic sessions.
  *   sessionId:  The unique identifier for the ACA dynamic session.
- *   httpClient:  An HttpClient instance for making HTTP requests.
+ *   nativeHttpClient:  A standard Java HttpClient instance for multipart form data operations.
+ *   langchainHttpClient:  A langchain4j HttpClient abstraction for standard HTTP operations.
  *   credential:  A DefaultAzureCredential instance for authenticating with Azure services.
  *   accessTokenRef:  An AtomicReference to store and manage the access token.
- *   client:  An OkHttpClient instance for performing file operations (upload, download, list).
  *   FileUploader, FileDownloader, FileLister:  Interfaces defining file management operations.
- *   MyFileUploader, MyFileDownloader, MyFileLister:  Implementations of the file management interfaces.
+ *   FileUploaderImpl, FileDownloaderImpl, FileListerImpl:  Implementations of the file management interfaces.
  *   RemoteFileMetadata:  A class representing metadata for remote files.
  *
  * Functionality:
  * The SessionsREPLTool class provides the following core functionalities:
  *   Code Execution:  Executes code snippets within the ACA dynamic session and returns the results.
+ *      - Implements {@link CodeExecutionEngine#execute(String)} for standardized execution API
+ *      - Provides a {@link Tool} annotated {@link #use(String)} method for integration with AI services
  *   File Management:  Allows uploading, downloading, and listing files within the session's environment.
  *   Authentication:  Handles authentication with Azure services using the DefaultAzureCredential.
  *   Input Sanitization:  Provides an option to sanitize input code for security and compatibility.
@@ -64,11 +63,12 @@ import org.json.JSONObject;
  * Usage:
  * To use the SessionsREPLTool, you need to:
  *  Create an instance of the class, providing the pool management endpoint.
- *  Call the use() method to execute code, passing the code snippet as a string.
+ *  Call the use() or execute() method to execute code, passing the code snippet as a string.
  *  Use the file management interfaces and implementations to interact with files in the session.
  *  Ensure proper error handling and resource management.
+ *  For testing, use the protected constructor that accepts pre-configured dependencies.
  */
-public class SessionsREPLTool {
+public class SessionsREPLTool implements CodeExecutionEngine {
 
     private static final String USER_AGENT = "langchain4j-azure-dynamic-sessions/1.0.0-beta1 (Language=Java)";
     private static final String API_VERSION = "2024-02-02-preview";
@@ -76,17 +76,13 @@ public class SessionsREPLTool {
     private static final Pattern SANITIZE_PATTERN_START = Pattern.compile("^(\\s|`)*(?i:python)?\\s*");
     private static final Pattern SANITIZE_PATTERN_END = Pattern.compile("(\\s|`)*$");
 
-    private final String name = "sessions_REPL";
-    private final String description =
-            "Use this to execute commands when you need to perform calculations or computations. Input should be a valid command. Returns a JSON object with the result, stdout, and stderr.";
     private final boolean sanitizeInput;
     private final String poolManagementEndpoint;
     private final String sessionId;
-    private final HttpClient httpClient;
+    private final java.net.http.HttpClient nativeHttpClient;
+    private final HttpClient langchainHttpClient;
     private final DefaultAzureCredential credential;
     private final AtomicReference<AccessToken> accessTokenRef = new AtomicReference<>();
-
-    private OkHttpClient client;
 
     /**
      * Constructs a new SessionsREPLTool with the specified endpoint.
@@ -101,6 +97,12 @@ public class SessionsREPLTool {
      * Interface for uploading files to ACA.
      */
     public interface FileUploader {
+        /**
+         * Uploads a local file to Azure Container Apps.
+         *
+         * @param localFilePath the path to the local file to upload
+         * @return metadata about the uploaded file
+         */
         RemoteFileMetadata uploadFileToAca(Path localFilePath);
     }
 
@@ -108,6 +110,12 @@ public class SessionsREPLTool {
      * Interface for downloading files from ACA.
      */
     public interface FileDownloader {
+        /**
+         * Downloads a file from Azure Container Apps.
+         *
+         * @param remoteFilePath the path of the file to download
+         * @return the content of the downloaded file
+         */
         String downloadFile(String remoteFilePath);
     }
 
@@ -115,7 +123,23 @@ public class SessionsREPLTool {
      * Interface for listing files in ACA.
      */
     public interface FileLister {
+        /**
+         * Lists all files in the Azure Container Apps session.
+         *
+         * @return a string representation of the file listing
+         */
         String listFiles();
+    }
+
+    /**
+     * Implementation of CodeExecutionEngine.execute method
+     * @param code The code to execute.
+     * @return The result of the execution as a String in JSON format.
+     */
+    @Override
+    public String execute(String code) {
+        // Use the existing 'use' method which returns a JSON-formatted string
+        return use(code);
     }
 
     /**
@@ -129,18 +153,46 @@ public class SessionsREPLTool {
         this.poolManagementEndpoint = poolManagementEndpoint;
         this.sessionId = sessionId;
         this.sanitizeInput = sanitizeInput;
-        this.httpClient = HttpClient.newBuilder().build();
+        this.nativeHttpClient = java.net.http.HttpClient.newBuilder().build();
+
+        // The loadFactories() method returns a Collection, not a List,
+        // so we need to use the iterator instead of get(0)
+        Collection<HttpClientBuilder> builders = ServiceHelper.loadFactories(HttpClientBuilder.class);
+        if (builders.isEmpty()) {
+            throw new IllegalStateException(
+                    "No HttpClientBuilder implementation found. Make sure you have a proper implementation on the classpath.");
+        }
+        this.langchainHttpClient = builders.iterator().next().build(); // Use the langchain4j HTTP client abstraction
+
         this.credential = new DefaultAzureCredentialBuilder().build();
-        this.client = new OkHttpClient(); // Initialize OkHttpClient in the constructor
     }
 
-    // Add a method to shut down the OkHttpClient
+    /**
+     * Protected constructor for testing purposes that allows injecting dependencies.
+     *
+     * @param poolManagementEndpoint the pool management endpoint URL
+     * @param sessionId the session ID
+     * @param sanitizeInput whether to sanitize the input code
+     * @param httpClient a pre-configured HTTP client
+     * @param credential a pre-configured credential
+     */
+    protected SessionsREPLTool(
+            String poolManagementEndpoint,
+            String sessionId,
+            boolean sanitizeInput,
+            HttpClient httpClient,
+            DefaultAzureCredential credential) {
+        this.poolManagementEndpoint = poolManagementEndpoint;
+        this.sessionId = sessionId;
+        this.sanitizeInput = sanitizeInput;
+        this.nativeHttpClient = java.net.http.HttpClient.newBuilder().build();
+        this.langchainHttpClient = httpClient;
+        this.credential = credential;
+    }
+
+    // Method is now a no-op as langchain4j HTTP client handles resource cleanup internally
     public void shutdown() {
-        if (client != null) {
-            client.dispatcher().executorService().shutdown(); // close executor service
-            client.connectionPool().evictAll(); // close and remove all connection
-            client = null;
-        }
+        // No manual cleanup needed for the HTTP client
     }
 
     /**
@@ -151,7 +203,7 @@ public class SessionsREPLTool {
      */
     @Tool(name = "sessions_REPL")
     public String use(String input) {
-        Map<String, Object> response = execute(input);
+        Map<String, Object> response = executeCode(input);
 
         Object result = response.get("result");
         if (result instanceof Map<?, ?>) {
@@ -224,7 +276,7 @@ public class SessionsREPLTool {
      * @param sessionCode the code or query to execute
      * @return a map containing the execution results
      */
-    public Map<String, Object> execute(String sessionCode) {
+    public Map<String, Object> executeCode(String sessionCode) {
         if (sanitizeInput) {
             sessionCode = sanitizeInput(sessionCode);
         }
@@ -243,15 +295,16 @@ public class SessionsREPLTool {
             ObjectMapper objectMapper = new ObjectMapper();
             String requestBody = objectMapper.writeValueAsString(body);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(apiUrl))
-                    .header("Authorization", "Bearer " + accessToken)
-                    .header("Content-Type", "application/json")
-                    .header("User-Agent", USER_AGENT)
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            HttpRequest request = HttpRequest.builder()
+                    .method(HttpMethod.POST)
+                    .url(apiUrl)
+                    .addHeader("Authorization", "Bearer " + accessToken)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("User-Agent", USER_AGENT)
+                    .body(requestBody)
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            SuccessfulHttpResponse response = langchainHttpClient.execute(request);
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 Map<String, Object> responseJson = objectMapper.readValue(response.body(), Map.class);
@@ -265,7 +318,10 @@ public class SessionsREPLTool {
         }
     }
 
-    public class MyFileUploader implements FileUploader {
+    /**
+     * Implementation of the FileUploader interface that uploads files to Azure Container Apps.
+     */
+    public class FileUploaderImpl implements FileUploader {
 
         @Override
         public RemoteFileMetadata uploadFileToAca(Path localFilePath) {
@@ -274,37 +330,53 @@ public class SessionsREPLTool {
             String accessToken = getAccessToken();
             String apiUrl = buildUrl("files/upload");
             System.out.println("Uploading: API URL:" + apiUrl);
-            OkHttpClient client = new OkHttpClient();
 
             File file = localFilePath.toFile(); // Convert Path to File
 
             try {
-                RequestBody fileBody =
-                        RequestBody.create(file, MediaType.parse("application/json")); // Use application/json
-                RequestBody requestBody = new MultipartBody.Builder()
-                        .setType(MultipartBody.FORM)
-                        .addFormDataPart("file", file.getName(), fileBody)
+                // Note: For multipart/form-data uploads, we need to use the native Java HttpClient
+                // as the langchain4j HttpClient abstraction doesn't directly support multipart yet
+                java.net.http.HttpRequest.BodyPublisher publisher =
+                        java.net.http.HttpRequest.BodyPublishers.ofFile(localFilePath);
+
+                String boundary = "----" + System.currentTimeMillis();
+                String contentDisposition =
+                        "Content-Disposition: form-data; name=\"file\"; filename=\"" + file.getName() + "\"";
+
+                byte[] fileBytes = Files.readAllBytes(localFilePath);
+                String separator = "--" + boundary + "\r\n";
+                String contentType = "Content-Type: application/json\r\n\r\n";
+                String end = "\r\n--" + boundary + "--\r\n";
+
+                byte[] formDataBytes =
+                        (separator + contentDisposition + "\r\n" + contentType).getBytes(StandardCharsets.UTF_8);
+                byte[] endBytes = end.getBytes(StandardCharsets.UTF_8);
+
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                outputStream.write(formDataBytes);
+                outputStream.write(fileBytes);
+                outputStream.write(endBytes);
+                byte[] requestBody = outputStream.toByteArray();
+
+                java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                        .uri(URI.create(apiUrl))
+                        .header("Authorization", "Bearer " + accessToken)
+                        .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                        .POST(java.net.http.HttpRequest.BodyPublishers.ofByteArray(requestBody))
                         .build();
 
-                Request request = new Request.Builder()
-                        .url(apiUrl)
-                        .post(requestBody)
-                        .addHeader("Authorization", "Bearer " + accessToken)
-                        .addHeader("Content-Type", "multipart/form-data")
-                        .build();
+                java.net.http.HttpResponse<String> response =
+                        nativeHttpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
 
-                try (Response response = client.newCall(request).execute()) {
-                    if (!response.isSuccessful()) {
-                        throw new IOException("Unexpected code " + response);
-                    }
-
-                    String responseBody = response.body().string();
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    Map<String, Object> responseJson = objectMapper.readValue(responseBody, Map.class);
-                    List<Map<String, Object>> valueList = (List<Map<String, Object>>) responseJson.get("value");
-                    Map<String, Object> fileMetadataMap = valueList.get(0);
-                    return RemoteFileMetadata.fromDict(fileMetadataMap);
+                if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                    throw new IOException("Unexpected code " + response);
                 }
+
+                ObjectMapper objectMapper = new ObjectMapper();
+                Map<String, Object> responseJson = objectMapper.readValue(response.body(), Map.class);
+                List<Map<String, Object>> valueList = (List<Map<String, Object>>) responseJson.get("value");
+                Map<String, Object> fileMetadataMap = valueList.get(0);
+                return RemoteFileMetadata.fromDict(fileMetadataMap);
 
             } catch (Exception e) {
                 throw new RuntimeException("Failed to upload file: " + e.getMessage() + " API URL: " + apiUrl, e);
@@ -312,87 +384,91 @@ public class SessionsREPLTool {
         }
     }
 
-    public class MyFileDownloader implements FileDownloader {
+    /**
+     * Implementation of the FileDownloader interface that downloads files from Azure Container Apps.
+     */
+    public class FileDownloaderImpl implements FileDownloader {
         @Override
         public String downloadFile(String remoteFilePath) {
             String accessToken = getAccessToken();
             String apiUrl = buildUrl("files/content/" + remoteFilePath);
             System.out.println("Downloading: API URL:" + apiUrl);
 
-            OkHttpClient client = new OkHttpClient();
-
-            Request request = new Request.Builder()
+            HttpRequest request = HttpRequest.builder()
+                    .method(HttpMethod.GET)
                     .url(apiUrl)
-                    .get()
                     .addHeader("Authorization", "Bearer " + accessToken)
                     .build();
 
-            try (Response response = client.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    if (response.code() == 404) {
-                        return "File not found: " + remoteFilePath;
-                    }
-                    throw new IOException("Unexpected code " + response);
+            try {
+                SuccessfulHttpResponse response = langchainHttpClient.execute(request);
+
+                if (response.statusCode() == 404) {
+                    return "File not found: " + remoteFilePath;
                 }
 
-                byte[] fileBytes = response.body().bytes();
+                // Convert response body to Base64
+                byte[] fileBytes = response.body().getBytes(StandardCharsets.UTF_8);
                 return Base64.getEncoder().encodeToString(fileBytes);
 
             } catch (Exception e) {
+                if (e.getMessage().contains("404")) {
+                    return "File not found: " + remoteFilePath;
+                }
                 throw new RuntimeException("Failed to download file: " + e.getMessage() + " API URL: " + apiUrl, e);
             }
         }
     }
 
-    public class MyFileLister implements FileLister {
+    /**
+     * Implementation of the FileLister interface that lists files in Azure Container Apps.
+     */
+    public class FileListerImpl implements FileLister {
         @Override
         public String listFiles() {
             String accessToken = getAccessToken();
             String apiUrl = buildUrl("files");
 
-            OkHttpClient client = new OkHttpClient();
-
-            Request request = new Request.Builder()
+            HttpRequest request = HttpRequest.builder()
+                    .method(HttpMethod.GET)
                     .url(apiUrl)
-                    .get()
                     .addHeader("Authorization", "Bearer " + accessToken)
                     .build();
 
-            try (Response response = client.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    throw new IOException("Unexpected code " + response);
-                }
+            try {
+                SuccessfulHttpResponse response = langchainHttpClient.execute(request);
 
-                // Parse the response body as JSON
-                JSONObject json = new JSONObject(response.body().string());
+                // Parse the response body as JSON using Jackson
+                ObjectMapper objectMapper = new ObjectMapper();
+                JsonNode json = objectMapper.readTree(response.body());
 
                 // Create a StringBuilder to store the filenames
                 StringBuilder filenames = new StringBuilder();
 
                 // Get the "value" array from the JSON object
-                JSONArray valueArray = json.getJSONArray("value");
+                JsonNode valueArray = json.get("value");
 
                 // Check if the "value" array is empty
-                if (valueArray.length() == 0) {
+                if (valueArray.isEmpty()) {
                     return "No files were found at " + apiUrl;
                 }
 
                 // Loop through each object in the "value" array
-                for (int i = 0; i < valueArray.length(); i++) {
+                for (int i = 0; i < valueArray.size(); i++) {
                     // Get the current object
-                    JSONObject currentObject = valueArray.getJSONObject(i);
+                    JsonNode currentObject = valueArray.get(i);
 
                     // Get the "properties" object from the current object
-                    JSONObject properties = currentObject.getJSONObject("properties");
+                    JsonNode properties = currentObject.get("properties");
 
                     // Get the filename from the "properties" object
-                    String filename = properties.getString("filename");
+                    String filename = properties.get("filename").asText();
 
                     // Append the filename to the StringBuilder
                     filenames.append(filename);
 
                     // If this is not the last filename, append a comma and a space
-                    if (i < valueArray.length() - 1) {
+                    if (i < valueArray.size() - 1) {
                         filenames.append(", ");
                     }
                 }
