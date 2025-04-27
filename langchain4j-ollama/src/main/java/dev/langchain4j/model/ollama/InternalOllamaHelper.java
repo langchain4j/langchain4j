@@ -2,7 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 
@@ -23,7 +23,6 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -90,8 +89,7 @@ class InternalOllamaHelper {
         } else if (responseFormat == ResponseFormat.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
-            return toJson(
-                    JsonSchemaElementHelper.toMap(responseFormat.jsonSchema().rootElement()));
+            return toJson(toMap(responseFormat.jsonSchema().rootElement()));
         }
     }
 
