@@ -275,6 +275,13 @@ class UtilsTest {
     }
 
     @Test
+    void copy_map() {
+        assertThat(Utils.copy((Map<?, ?>) null)).isEmpty();
+        assertThat(Utils.copy(emptyMap())).isEmpty();
+        assertThat(Utils.copy(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
+    }
+
+    @Test
     void ensure_trailing_forward_slash() {
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com")).isEqualTo("https://example.com/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/")).isEqualTo("https://example.com/");
