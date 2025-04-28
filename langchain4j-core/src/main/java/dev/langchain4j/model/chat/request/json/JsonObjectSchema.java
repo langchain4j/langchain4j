@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Arrays.asList;
 
