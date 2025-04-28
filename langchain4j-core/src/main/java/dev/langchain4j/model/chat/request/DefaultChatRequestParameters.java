@@ -6,7 +6,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.List;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
@@ -33,8 +33,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         this.frequencyPenalty = builder.frequencyPenalty;
         this.presencePenalty = builder.presencePenalty;
         this.maxOutputTokens = builder.maxOutputTokens;
-        this.stopSequences = copyIfNotNull(builder.stopSequences);
-        this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
+        this.stopSequences = copy(builder.stopSequences);
+        this.toolSpecifications = copy(builder.toolSpecifications);
         this.toolChoice = builder.toolChoice;
         this.responseFormat = builder.responseFormat;
     }
@@ -180,8 +180,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), frequencyPenalty));
             presencePenalty(getOrDefault(parameters.presencePenalty(), presencePenalty));
             maxOutputTokens(getOrDefault(parameters.maxOutputTokens(), maxOutputTokens));
-            stopSequences(copyIfNotNull(getOrDefault(parameters.stopSequences(), stopSequences)));
-            toolSpecifications(copyIfNotNull(getOrDefault(parameters.toolSpecifications(), toolSpecifications)));
+            stopSequences(copy(getOrDefault(parameters.stopSequences(), stopSequences)));
+            toolSpecifications(copy(getOrDefault(parameters.toolSpecifications(), toolSpecifications)));
             toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
             responseFormat(getOrDefault(parameters.responseFormat(), responseFormat));
             return (T) this;

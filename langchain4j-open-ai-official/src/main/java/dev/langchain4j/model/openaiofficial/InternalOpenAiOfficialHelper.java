@@ -391,10 +391,6 @@ class InternalOpenAiOfficialHelper {
     }
 
     static List<ChatCompletionTool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
-        if (toolSpecifications == null) {
-            return null;
-        }
-
         return toolSpecifications.stream()
                 .map((ToolSpecification toolSpecification) -> toTool(toolSpecification, strict))
                 .collect(toList());
@@ -713,11 +709,11 @@ class InternalOpenAiOfficialHelper {
             builder.presencePenalty(parameters.presencePenalty());
         }
 
-        if (parameters.stopSequences() != null) {
+        if (!parameters.stopSequences().isEmpty()) {
             builder.stop(ChatCompletionCreateParams.Stop.ofStrings(parameters.stopSequences()));
         }
 
-        if (parameters.toolSpecifications() != null) {
+        if (!parameters.toolSpecifications().isEmpty()) {
             builder.tools(toTools(parameters.toolSpecifications(), strictTools));
         }
 

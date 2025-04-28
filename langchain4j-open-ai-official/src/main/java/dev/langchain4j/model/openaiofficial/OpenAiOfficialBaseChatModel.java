@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.detectModelHost;
@@ -137,19 +138,19 @@ abstract class OpenAiOfficialBaseChatModel {
                 .topP(getOrDefault(topP, commonParameters.topP()))
                 .frequencyPenalty(getOrDefault(frequencyPenalty, commonParameters.frequencyPenalty()))
                 .presencePenalty(getOrDefault(presencePenalty, commonParameters.presencePenalty()))
-                .stopSequences(getOrDefault(stop, () -> copyIfNotNull(commonParameters.stopSequences())))
-                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
+                .stopSequences(getOrDefault(stop, () -> copy(commonParameters.stopSequences())))
+                .toolSpecifications(copy(commonParameters.toolSpecifications()))
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(
                         getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
-                .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
+                .logitBias(getOrDefault(logitBias, () -> copy(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
                 .seed(getOrDefault(seed, openAiParameters.seed()))
                 .user(getOrDefault(user, openAiParameters.user()))
                 .store(getOrDefault(store, openAiParameters.store()))
-                .metadata(getOrDefault(metadata, () -> copyIfNotNull(openAiParameters.metadata())))
+                .metadata(getOrDefault(metadata, () -> copy(openAiParameters.metadata())))
                 .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
