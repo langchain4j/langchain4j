@@ -11,7 +11,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
@@ -82,7 +82,7 @@ class CompressingQueryTransformerTest {
 
         Query query = Query.from(userMessage.singleText(), metadata);
 
-        ChatLanguageModel model = mock(ChatLanguageModel.class);
+        ChatModel model = mock(ChatModel.class);
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
 
         // when
@@ -144,7 +144,7 @@ class CompressingQueryTransformerTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
 
         CompressingQueryTransformer transformer = CompressingQueryTransformer.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .promptTemplate(promptTemplate)
                 .build();
 

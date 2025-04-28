@@ -13,7 +13,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
@@ -37,7 +37,7 @@ class ConversationalRetrievalChainTest {
     private static final String ANSWER = "answer";
 
     @Mock
-    ChatLanguageModel chatLanguageModel;
+    ChatModel chatModel;
 
     @Mock
     ContentRetriever contentRetriever;
@@ -50,7 +50,7 @@ class ConversationalRetrievalChainTest {
 
     @BeforeEach
     void beforeEach() {
-        when(chatLanguageModel.chat(anyList())).thenReturn(ChatResponse.builder().aiMessage(aiMessage(ANSWER)).build());
+        when(chatModel.chat(anyList())).thenReturn(ChatResponse.builder().aiMessage(aiMessage(ANSWER)).build());
     }
 
     @Test
@@ -60,7 +60,7 @@ class ConversationalRetrievalChainTest {
         when(contentRetriever.retrieve(any())).thenReturn(asList(Content.from("Segment 1"), Content.from("Segment 2")));
 
         ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .chatMemory(chatMemory)
                 .contentRetriever(contentRetriever)
                 .build();
@@ -71,7 +71,7 @@ class ConversationalRetrievalChainTest {
         // then
         assertThat(answer).isEqualTo(ANSWER);
 
-        verify(chatLanguageModel).chat(messagesCaptor.capture());
+        verify(chatModel).chat(messagesCaptor.capture());
         UserMessage expectedUserMessage = UserMessage.from(
                 "query\n" + "\n" + "Answer using the following information:\n" + "Segment 1\n" + "\n" + "Segment 2");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
@@ -88,7 +88,7 @@ class ConversationalRetrievalChainTest {
         PromptTemplate promptTemplate = PromptTemplate.from("Answer '{{userMessage}}' using '{{contents}}'");
 
         ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .chatMemory(chatMemory)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .contentRetriever(contentRetriever)
@@ -104,7 +104,7 @@ class ConversationalRetrievalChainTest {
         // then
         assertThat(answer).isEqualTo(ANSWER);
 
-        verify(chatLanguageModel).chat(messagesCaptor.capture());
+        verify(chatModel).chat(messagesCaptor.capture());
         UserMessage expectedUserMessage = UserMessage.from("Answer 'query' using 'Segment 1\n\nSegment 2'");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
 

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -140,16 +141,17 @@ public final class AssistantMessage implements Message {
             return this;
         }
 
-        public Builder toolCalls(ToolCall... toolCalls) {
-            return toolCalls(asList(toolCalls));
-        }
-
         @JsonSetter
         public Builder toolCalls(List<ToolCall> toolCalls) {
             if (toolCalls != null) {
                 this.toolCalls = unmodifiableList(toolCalls);
             }
             return this;
+        }
+
+        @JsonIgnore
+        public Builder toolCalls(ToolCall... toolCalls) {
+            return toolCalls(asList(toolCalls));
         }
 
         public Builder refusal(Boolean refusal) {

@@ -6,7 +6,7 @@ sidebar_position: 31
 
 ## Chat Model Observability
 
-[Certain](/integrations/language-models) implementations of `ChatLanguageModel` and `StreamingChatLanguageModel`
+[Certain](/integrations/language-models) implementations of `ChatModel` and `StreamingChatModel`
 (see "Observability" column") allow configuring `ChatModelListener`(s) to listen for events such as:
 - Requests to the LLM
 - Response from the LLM
@@ -124,7 +124,7 @@ ChatModelListener listener = new ChatModelListener() {
     }
 };
 
-ChatLanguageModel model = OpenAiChatModel.builder()
+ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName(GPT_4_O_MINI)
         .listeners(List.of(listener))
@@ -153,13 +153,13 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
 - If an exception is thrown from one of the `ChatModelListener` methods,
   it will be logged at the `WARN` level. The execution of subsequent listeners will continue as usual.
 - The `ChatRequest` provided via `ChatModelRequestContext`, `ChatModelResponseContext`, and `ChatModelErrorContext`
-  is the final request, containing both the default `ChatRequestParameters` configured on the `ChatLanguageModel`
+  is the final request, containing both the default `ChatRequestParameters` configured on the `ChatModel`
   and the request-specific `ChatRequestParameters` merged together.
-- For `StreamingChatLanguageModel`, the `ChatModelListener.onResponse()` and `ChatModelListener.onError()`
+- For `StreamingChatModel`, the `ChatModelListener.onResponse()` and `ChatModelListener.onError()`
   are called on a different thread than the `ChatModelListener.onRequest()`.
   The thread context is currently not propagated automatically, so you might want to use the `attributes` map
   to propagate any necessary data from `ChatModelListener.onRequest()` to `ChatModelListener.onResponse()` or `ChatModelListener.onError()`.
-- For `StreamingChatLanguageModel`, the `ChatModelListener.onResponse()` is called before the
+- For `StreamingChatModel`, the `ChatModelListener.onResponse()` is called before the
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
 

@@ -6,10 +6,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
@@ -46,7 +46,7 @@ import static java.util.Collections.emptySet;
  * <br>
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values">Ollama API parameters</a>.
  */
-public class OllamaChatModel implements ChatLanguageModel {
+public class OllamaChatModel implements ChatModel {
 
     private final OllamaClient client;
     private final String modelName;
@@ -102,7 +102,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .stop(stop)
                 .build();
         this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.listeners = new ArrayList<>(getOrDefault(listeners, emptyList()));
         this.supportedCapabilities = new HashSet<>(getOrDefault(supportedCapabilities, emptySet()));
     }
@@ -118,8 +118,8 @@ public class OllamaChatModel implements ChatLanguageModel {
     public dev.langchain4j.model.chat.response.ChatResponse chat(dev.langchain4j.model.chat.request.ChatRequest request) {
 
         ChatRequestParameters parameters = request.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
 
         Response<AiMessage> response = doGenerate(
                 request.messages(),

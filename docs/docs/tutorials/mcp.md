@@ -73,7 +73,7 @@ of an AI service builder:
 
 ```java
 Bot bot = AiServices.builder(Bot.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .toolProvider(toolProvider)
     .build();
 ```
@@ -171,7 +171,7 @@ Here's the implementation:
 ```java
 public static void main(String[] args) throws Exception {
 
-    ChatLanguageModel model = OpenAiChatModel.builder()
+    ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
         .logRequests(true)
@@ -192,7 +192,7 @@ public static void main(String[] args) throws Exception {
         .build();
 
     Bot bot = AiServices.builder(Bot.class)
-        .chatLanguageModel(model)
+        .chatModel(model)
         .toolProvider(toolProvider)
         .build();
 
@@ -204,6 +204,13 @@ public static void main(String[] args) throws Exception {
     }
 }
 ```
+
+:::note
+Not all LLMs support tools equally well.
+The ability to understand, select, and correctly use tools depends heavily on the specific model and its capabilities.
+Some models may not support tools at all, while others might require careful prompt engineering
+or additional system instructions.
+:::
 
 > **Note**: This example uses Docker and therefore executes a Docker command available in `/usr/local/bin/docker` (change the path according to your operating system). If you want to use Podman instead of Docker, change the command accordingly.
 

@@ -53,7 +53,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
      *                      Default value is 60 seconds.
      * @param maxRetries    the maximum number of retries for API requests
      *                      <p>
-     *                      Default value is 10.
+     *                      Default value is 2.
      * @param logRequests   whether to log API requests
      *                      <p>
      *                      Default value is false.
@@ -75,7 +75,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
                 .csi(csi)
                 .siteRestrict(getOrDefault(siteRestrict, false))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .maxRetries(getOrDefault(maxRetries, 3))
+                .maxRetries(getOrDefault(maxRetries, 2))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();

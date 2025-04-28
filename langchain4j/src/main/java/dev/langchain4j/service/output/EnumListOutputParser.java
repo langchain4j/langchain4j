@@ -1,20 +1,25 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
+
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
-import static java.util.Arrays.asList;
+@Internal
+class EnumListOutputParser<E extends Enum<E>> extends EnumCollectionOutputParser<E, List<E>> {
 
-@SuppressWarnings("rawtypes")
-class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
-
-    EnumListOutputParser(Class<? extends Enum> enumClass) {
+    EnumListOutputParser(Class<E> enumClass) {
         super(enumClass);
     }
 
     @Override
-    public List<Enum> parse(String text) {
-        List<String> stringsList = asList(text.split("\n"));
-        return stringsList.stream().map(enumOutputParser::parse).collect(Collectors.toList());
+    Supplier<List<E>> emptyCollectionSupplier() {
+        return ArrayList::new;
+    }
+
+    @Override
+    Class<?> collectionType() {
+        return List.class;
     }
 }

@@ -8,18 +8,24 @@ sidebar_position: 5
 If you are using Quarkus, see [Quarkus Integration](/tutorials/quarkus-integration/).
 
 If you are using Spring Boot, see [Spring Boot Integration](/tutorials/spring-boot-integration).
+
+If you are using Helidon, see [Helidon Integration](/tutorials/helidon-integration)
 :::
 
-LangChain4j offers [integration with many LLM providers](/integrations/language-models/).
+LangChain4j offers integrations with many [LLM providers](/integrations/language-models/),
+[embedding/vector stores](/integrations/embedding-stores), etc.
 Each integration has its own maven dependency.
-The simplest way to begin is with the OpenAI integration:
+
+The minimum supported JDK version is 17.
+
+As an example, let's import the OpenAI dependency:
 
 - For Maven in `pom.xml`:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -30,14 +36,14 @@ the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
 - For Gradle in `build.gradle`:
 ```groovy
-implementation 'dev.langchain4j:langchain4j-open-ai:1.0.0-beta2'
-implementation 'dev.langchain4j:langchain4j:1.0.0-beta2'
+implementation 'dev.langchain4j:langchain4j-open-ai:1.0.0-beta3'
+implementation 'dev.langchain4j:langchain4j:1.0.0-beta3'
 ```
 
 <details>
@@ -49,7 +55,7 @@ implementation 'dev.langchain4j:langchain4j:1.0.0-beta2'
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>1.0.0-beta2</version>
+            <version>1.0.0-beta3</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -78,7 +84,7 @@ you can use the most recent SNAPSHOT dependency:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j</artifactId>
-        <version>1.0.0-beta3-SNAPSHOT</version>
+        <version>1.0.0-beta4-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```

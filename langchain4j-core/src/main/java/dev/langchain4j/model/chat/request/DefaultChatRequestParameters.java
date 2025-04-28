@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 
@@ -12,7 +11,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
 
-@Experimental
 public class DefaultChatRequestParameters implements ChatRequestParameters {
 
     private final String modelName;

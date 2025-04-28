@@ -373,9 +373,5 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         public DefaultRetrievalAugmentor build() {
             return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor);
         }
-
-        public String toString() {
-            return "DefaultRetrievalAugmentor.DefaultRetrievalAugmentorBuilder(queryTransformer=" + this.queryTransformer + ", queryRouter=" + this.queryRouter + ", contentAggregator=" + this.contentAggregator + ", contentInjector=" + this.contentInjector + ", executor=" + this.executor + ")";
-        }
     }
 }

@@ -11,7 +11,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 class JlamaStreamingChatModelToolsIT {
 
     static File tmpDir;
-    static StreamingChatLanguageModel model;
+    static StreamingChatModel model;
 
     @BeforeAll
     static void setup() {

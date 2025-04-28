@@ -20,10 +20,10 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.RetryUtils;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.jlama.spi.JlamaChatModelBuilderFactory;
@@ -41,7 +41,7 @@ import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
 import static dev.langchain4j.model.jlama.Json.fromJson;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-public class JlamaChatModel implements ChatLanguageModel {
+public class JlamaChatModel implements ChatModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;
@@ -85,11 +85,11 @@ public class JlamaChatModel implements ChatLanguageModel {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.toolChoice());
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         Response<AiMessage> response;
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();

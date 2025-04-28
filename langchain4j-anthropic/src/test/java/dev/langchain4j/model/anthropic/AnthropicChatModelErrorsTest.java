@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import io.ktor.http.HttpStatusCode;
 import java.util.Random;
@@ -22,7 +22,7 @@ class AnthropicChatModelErrorsTest {
 
     private static final MockAnthropic MOCK = new MockAnthropic(0, true);
 
-    private static final ChatLanguageModel model = AnthropicChatModel.builder()
+    private static final ChatModel model = AnthropicChatModel.builder()
             .apiKey("dummy-key")
             .baseUrl(MOCK.baseUrl() + "/v1")
             .modelName(CLAUDE_3_5_HAIKU_20241022)

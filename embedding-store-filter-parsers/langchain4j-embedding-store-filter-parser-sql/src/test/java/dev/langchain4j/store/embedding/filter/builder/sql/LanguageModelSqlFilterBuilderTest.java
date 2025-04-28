@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.filter.builder.sql;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.parser.sql.SqlFilterParser;
@@ -30,10 +30,10 @@ class LanguageModelSqlFilterBuilderTest {
     void should_parse_valid_SQL(String validSql) {
 
         // given
-        ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds(validSql);
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(validSql);
 
         LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .tableDefinition(tableDefinition)
                 .sqlFilterParser(sqlFilterParser)
                 .build();
@@ -70,10 +70,10 @@ class LanguageModelSqlFilterBuilderTest {
     void should_fail_to_parse_then_extract_valid_SQL(String dirtySql) {
 
         // given
-        ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds(dirtySql);
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(dirtySql);
 
         LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .tableDefinition(tableDefinition)
                 .sqlFilterParser(sqlFilterParser)
                 .build();
