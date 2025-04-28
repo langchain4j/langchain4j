@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
@@ -21,7 +22,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     private final List<String> tokens;
 
     public StreamingChatModelMock(List<String> tokens) {
-        this.tokens = new ArrayList<>(ensureNotEmpty(tokens, "tokens"));
+        this.tokens = copy(ensureNotEmpty(tokens, "tokens"));
     }
 
     @Override

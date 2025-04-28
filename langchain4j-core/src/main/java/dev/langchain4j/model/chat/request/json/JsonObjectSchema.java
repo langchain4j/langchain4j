@@ -21,8 +21,8 @@ public class JsonObjectSchema implements JsonSchemaElement {
 
     public JsonObjectSchema(Builder builder) {
         this.description = builder.description;
-        this.properties = copyIfNotNull(builder.properties);
-        this.required = copyIfNotNull(builder.required);
+        this.properties = copy(builder.properties);
+        this.required = copy(builder.required);
         this.additionalProperties = builder.additionalProperties;
         this.definitions = copy(builder.definitions);
     }
@@ -59,7 +59,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
 
         private String description;
         private final Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
-        private List<String> required = new ArrayList<>();
+        private List<String> required;
         private Boolean additionalProperties;
         private Map<String, JsonSchemaElement> definitions;
 
