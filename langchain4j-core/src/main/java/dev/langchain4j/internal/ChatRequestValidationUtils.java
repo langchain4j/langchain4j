@@ -1,10 +1,15 @@
-package dev.langchain4j.model.chat.request;
+package dev.langchain4j.internal;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
 
 import java.util.List;
 import java.util.Locale;
@@ -13,7 +18,8 @@ import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 
-public class ChatRequestValidator {
+@Internal
+public class ChatRequestValidationUtils {
 
     public static void validateMessages(List<ChatMessage> messages) {
         for (ChatMessage message : messages) {
@@ -74,7 +80,6 @@ public class ChatRequestValidator {
     public static void validate(ResponseFormat responseFormat) {
         String errorTemplate = "%s is not supported yet by this model provider";
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
-            // TODO check supportedCapabilities() instead?
             throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
         }
     }

@@ -38,7 +38,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
     @Builder.Default
     private final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.builder().build();
     @Builder.Default
-    private final Integer maxRetries = 5;
+    private final Integer maxRetries = 2;
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {

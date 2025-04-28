@@ -60,9 +60,5 @@ public class AugmentationResult {
         public AugmentationResult build() {
             return new AugmentationResult(this.chatMessage, this.contents);
         }
-
-        public String toString() {
-            return "AugmentationResult.AugmentationResultBuilder(chatMessage=" + this.chatMessage + ", contents=" + this.contents + ")";
-        }
     }
 }

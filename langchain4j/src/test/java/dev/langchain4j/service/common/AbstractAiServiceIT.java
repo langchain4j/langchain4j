@@ -58,12 +58,9 @@ public abstract class AbstractAiServiceIT {
         // then
         assertThat(result.content()).containsIgnoringCase("Berlin");
 
-        TokenUsage tokenUsage = result.tokenUsage();
-        assertThat(tokenUsage).isNotNull();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        if (assertTokenUsage()) {
+            assertTokenUsage(result.tokenUsage());
+        }
 
         if (assertFinishReason()) {
             assertThat(result.finishReason()).isEqualTo(STOP);
@@ -98,7 +95,7 @@ public abstract class AbstractAiServiceIT {
 
         interface WeatherAssistant {
 
-            WeatherReport chat(String city);
+            Result<WeatherReport> chat(String city);
         }
 
         class WeatherTools {
@@ -119,7 +116,8 @@ public abstract class AbstractAiServiceIT {
         String userMessage = "What is the weather in Munich?";
 
         // when
-        WeatherReport weatherReport = weatherAssistant.chat(userMessage);
+        Result<WeatherReport> result = weatherAssistant.chat(userMessage);
+        WeatherReport weatherReport = result.content();
 
         // then
         assertThat(weatherReport.city()).isEqualTo("Munich");
@@ -152,6 +150,10 @@ public abstract class AbstractAiServiceIT {
 //                .build());
 //        verifyNoMoreInteractions(model);
 
+        if (assertTokenUsage()) {
+            assertTokenUsage(result.tokenUsage());
+        }
+
         if (assertToolInteractions()) {
             verify(weatherTools).getWeather("Munich");
             verifyNoMoreInteractions(weatherTools);
@@ -168,6 +170,22 @@ public abstract class AbstractAiServiceIT {
 
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return supportsTools() && supportsJsonResponseFormatWithSchema();
+    }
+
+    protected boolean assertTokenUsage() {
+        return true;
+    }
+
+    private void assertTokenUsage(TokenUsage tokenUsage) {
+        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType());
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    protected Class<? extends TokenUsage> tokenUsageType() {
+        return TokenUsage.class;
     }
 
     protected boolean assertFinishReason() {

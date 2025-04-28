@@ -358,7 +358,7 @@ class AnthropicChatModelIT {
                 .maxTokens(3)
                 .stopSequences(asList("hello", "world"))
                 .timeout(Duration.ofSeconds(30))
-                .maxRetries(1)
+                .maxRetries(2)
                 .logRequests(true)
                 .logResponses(true)
                 .build();

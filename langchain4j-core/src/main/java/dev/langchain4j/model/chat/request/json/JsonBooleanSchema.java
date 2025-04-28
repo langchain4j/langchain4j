@@ -16,6 +16,7 @@ public class JsonBooleanSchema implements JsonSchemaElement {
         this.description = builder.description;
     }
 
+    @Override
     public String description() {
         return description;
     }

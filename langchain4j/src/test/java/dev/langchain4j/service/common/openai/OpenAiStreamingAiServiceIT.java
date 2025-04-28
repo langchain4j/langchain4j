@@ -1,7 +1,11 @@
 package dev.langchain4j.service.common.openai;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 
 import java.util.List;
@@ -25,5 +29,15 @@ class OpenAiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
                 defaultStreamingModelBuilder().build()
                 // TODO more configs?
         );
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
+        return OpenAiChatResponseMetadata.class;
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType() {
+        return OpenAiTokenUsage.class;
     }
 }

@@ -17,13 +17,10 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0125;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0125_PREVIEW;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIEW;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K_0613;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.O3;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_2025_04_16;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Collections.singletonList;
@@ -37,22 +34,14 @@ class OpenAiTokenCountEstimatorIT {
 
     // my API key does not have access to these models
     private static final Set<OpenAiChatModelName> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
-            GPT_3_5_TURBO_0125,
             GPT_4_32K,
-            GPT_4_32K_0613
-    ));
-
-    private static final Set<OpenAiChatModelName> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
-            // TODO add GPT_3_5_TURBO once it points to GPT_3_5_TURBO_1106
-            GPT_3_5_TURBO_1106,
-            GPT_3_5_TURBO_0125,
-            GPT_4_TURBO_PREVIEW,
-            GPT_4_1106_PREVIEW,
-            GPT_4_0125_PREVIEW
+            GPT_4_32K_0613,
+            O3,
+            O3_2025_04_16
     ));
 
     @ParameterizedTest
-    @MethodSource
+    @MethodSource("should_count_tokens_in_messages")
     void should_count_tokens_in_messages(List<ChatMessage> messages, OpenAiChatModelName modelName) {
 
         // given
@@ -60,7 +49,7 @@ class OpenAiTokenCountEstimatorIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName)
-                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(modelName.toString().startsWith("o") ? 100 : 1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -117,7 +106,7 @@ class OpenAiTokenCountEstimatorIT {
     }
 
     @ParameterizedTest
-    @MethodSource
+    @MethodSource("should_count_tokens_in_messages_with_single_tool")
     void should_count_tokens_in_messages_with_single_tool(List<ChatMessage> messages, OpenAiChatModelName modelName) {
 
         // given
@@ -125,7 +114,7 @@ class OpenAiTokenCountEstimatorIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName)
-                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(modelName.toString().startsWith("o") ? 100 : 1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -333,7 +322,7 @@ class OpenAiTokenCountEstimatorIT {
     }
 
     @ParameterizedTest
-    @MethodSource
+    @MethodSource("should_count_tokens_in_messages_with_multiple_tools")
     void should_count_tokens_in_messages_with_multiple_tools(List<ChatMessage> messages,
                                                              OpenAiChatModelName modelName) {
         // given
@@ -341,7 +330,7 @@ class OpenAiTokenCountEstimatorIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName)
-                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(modelName.toString().startsWith("o") ? 100 : 1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -360,7 +349,6 @@ class OpenAiTokenCountEstimatorIT {
     static Stream<Arguments> should_count_tokens_in_messages_with_multiple_tools() {
         return stream(OpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
-                .filter(MODELS_WITH_PARALLEL_TOOL_SUPPORT::contains)
                 .flatMap(model -> Stream.of(
 
                         // various tool "name" lengths

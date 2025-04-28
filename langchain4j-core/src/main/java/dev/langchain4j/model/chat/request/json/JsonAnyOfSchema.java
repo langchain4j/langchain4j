@@ -18,6 +18,7 @@ public class JsonAnyOfSchema implements JsonSchemaElement {
         this.anyOf = new ArrayList<>(ensureNotEmpty(builder.anyOf, "anyOf"));
     }
 
+    @Override
     public String description() {
         return description;
     }

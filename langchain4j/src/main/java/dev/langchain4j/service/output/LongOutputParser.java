@@ -1,5 +1,6 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 
@@ -8,6 +9,7 @@ import java.util.Optional;
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 import static dev.langchain4j.service.tool.DefaultToolExecutor.getBoundedLongValue;
 
+@Internal
 class LongOutputParser implements OutputParser<Long> {
 
     @Override

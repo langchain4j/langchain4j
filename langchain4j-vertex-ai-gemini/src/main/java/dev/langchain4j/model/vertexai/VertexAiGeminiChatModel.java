@@ -34,7 +34,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -211,7 +211,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI)
                 .withGenerationConfig(generationConfig);
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
 
         if (logRequests != null) {
             this.logRequests = logRequests;
@@ -227,13 +227,16 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
-    public VertexAiGeminiChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
-        this(generativeModel, generationConfig, 3);
+
+    public VertexAiGeminiChatModel(GenerativeModel generativeModel,
+                                   GenerationConfig generationConfig) {
+        this(generativeModel, generationConfig, 2);
     }
 
     public VertexAiGeminiChatModel(
             GenerativeModel generativeModel, GenerationConfig generationConfig, Integer maxRetries) {
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
+
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel").withGenerationConfig(generationConfig);
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.vertexAI = null;
@@ -254,9 +257,9 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.toolChoice());
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         Response<AiMessage> response;
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();

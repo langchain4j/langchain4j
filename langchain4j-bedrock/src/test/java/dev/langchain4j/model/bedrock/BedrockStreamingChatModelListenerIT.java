@@ -1,15 +1,17 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.AfterEach;
 
 import java.util.concurrent.CompletionException;
 
 import static dev.langchain4j.model.bedrock.BedrockAnthropicStreamingChatModel.Types.AnthropicClaudeV2_1;
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
 import static java.util.Collections.singletonList;
 
-class BedrockStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+class BedrockStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {
@@ -63,5 +65,10 @@ class BedrockStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
         return CompletionException.class;
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

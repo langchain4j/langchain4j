@@ -69,9 +69,5 @@ public class WebSearchContentRetriever implements ContentRetriever {
         public WebSearchContentRetriever build() {
             return new WebSearchContentRetriever(this.webSearchEngine, this.maxResults);
         }
-
-        public String toString() {
-            return "WebSearchContentRetriever.WebSearchContentRetrieverBuilder(webSearchEngine=" + this.webSearchEngine + ", maxResults=" + this.maxResults + ")";
-        }
     }
 }
