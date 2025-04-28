@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Arrays.asList;
@@ -23,7 +24,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
         this.properties = copyIfNotNull(builder.properties);
         this.required = copyIfNotNull(builder.required);
         this.additionalProperties = builder.additionalProperties;
-        this.definitions = copyIfNotNull(builder.definitions);
+        this.definitions = copy(builder.definitions);
     }
 
     @Override

@@ -439,7 +439,7 @@ class InternalOpenAiOfficialHelper {
             } else {
                 parametersBuilder.putAdditionalProperty("required", JsonValue.from(parameters.required()));
             }
-            if (parameters.definitions() != null) {
+            if (!parameters.definitions().isEmpty()) {
                 parametersBuilder.putAdditionalProperty(
                         "$defs", JsonValue.from(toMap(parameters.definitions(), strict)));
             }
