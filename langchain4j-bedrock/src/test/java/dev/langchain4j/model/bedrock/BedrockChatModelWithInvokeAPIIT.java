@@ -154,7 +154,7 @@ public class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(318);
@@ -237,7 +237,7 @@ public class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessageCalc = secondResponseCalc.aiMessage();
         assertThat(secondAiMessageCalc.text()).contains("4");
-        assertThat(secondAiMessageCalc.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessageCalc.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsageCalc = secondResponseCalc.tokenUsage();
         assertThat(secondTokenUsageCalc.inputTokenCount()).isGreaterThan(0);
@@ -290,7 +290,7 @@ public class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessageTemp = secondResponseTemp.aiMessage();
         assertThat(secondAiMessageTemp.text()).contains("25");
-        assertThat(secondAiMessageTemp.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessageTemp.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsageTemp = secondResponseTemp.tokenUsage();
         assertThat(secondTokenUsageTemp.inputTokenCount()).isGreaterThan(0);
@@ -372,7 +372,7 @@ public class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessage = secondeResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsage = secondeResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -441,7 +441,7 @@ public class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessageCalc = secondResponseCalc.aiMessage();
         assertThat(secondAiMessageCalc.text()).contains(nowDateTime);
-        assertThat(secondAiMessageCalc.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessageCalc.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsageCalc = secondResponseCalc.tokenUsage();
         assertThat(secondTokenUsageCalc.inputTokenCount()).isGreaterThan(0);
