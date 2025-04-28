@@ -20,7 +20,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -238,6 +237,7 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
             assertThat(toolExecutionRequest.arguments()).isNotEmpty();
         }
     }
+
     @AfterEach
     void afterEach() {
         sleepIfNeeded();
