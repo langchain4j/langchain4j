@@ -23,7 +23,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("textembedding-gecko@001")
+                .modelName("text-embedding-005")
                 .maxRetries(2)
                 .build();
 
@@ -58,7 +58,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("textembedding-gecko@001")
+                .modelName("text-embedding-005")
                 .build();
 
         List<Integer> tokenCounts = model.calculateTokensCounts(createRandomSegments(5000, 1000));
@@ -109,7 +109,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("textembedding-gecko@003")
+                .modelName("text-embedding-005")
                 .build();
 
         // 1234 segments requires splitting in batches of 250 or less
@@ -136,7 +136,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("textembedding-gecko@003")
+                .modelName("text-embedding-005")
                 .maxSegmentsPerBatch(50)
                 .maxTokensPerBatch(1000)
                 .build();
@@ -165,7 +165,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("textembedding-gecko@003")
+                .modelName("text-embedding-005")
                 .taskType(SEMANTIC_SIMILARITY)
                 .build();
 
@@ -193,7 +193,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("textembedding-gecko@003")
+                .modelName("text-embedding-005")
                 .taskType(CLASSIFICATION)
                 .build();
 
@@ -244,7 +244,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("textembedding-gecko@003")
+                .modelName("text-embedding-005")
                 .taskType(RETRIEVAL_DOCUMENT)
                 .titleMetadataKey("customTitle")
                 .build();
@@ -260,7 +260,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("textembedding-gecko@003")
+                .modelName("text-embedding-005")
                 .titleMetadataKey("customTitle")
                 .build();
 

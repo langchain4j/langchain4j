@@ -5,7 +5,9 @@ import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Typ
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import static java.util.Collections.singletonList;
 
 class BedrockChatModelListenerIT extends AbstractChatModelListenerIT {
 
@@ -37,5 +39,10 @@ class BedrockChatModelListenerIT extends AbstractChatModelListenerIT {
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
         return software.amazon.awssdk.services.bedrockruntime.model.ValidationException.class;
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

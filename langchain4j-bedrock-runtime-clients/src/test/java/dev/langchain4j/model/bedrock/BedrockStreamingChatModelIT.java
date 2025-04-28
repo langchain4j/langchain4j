@@ -1,12 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
@@ -52,5 +54,10 @@ class BedrockStreamingChatModelIT {
                 .build();
 
         assertThat(model.getAsyncClient().serviceName()).isEqualTo(serviceName);
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

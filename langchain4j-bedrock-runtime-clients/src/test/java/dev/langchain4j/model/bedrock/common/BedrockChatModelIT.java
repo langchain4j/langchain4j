@@ -6,7 +6,11 @@ import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Typ
 import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import org.junit.jupiter.api.AfterEach;
+
 import java.util.List;
+
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
 
 class BedrockChatModelIT extends AbstractChatModelIT {
 
@@ -79,5 +83,10 @@ class BedrockChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean assertResponseModel() {
         return false; // TODO implement
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

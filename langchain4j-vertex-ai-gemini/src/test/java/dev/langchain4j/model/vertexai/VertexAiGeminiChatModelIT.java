@@ -339,13 +339,14 @@ class VertexAiGeminiChatModelIT {
         assertThat(weatherResponse.aiMessage().text()).containsIgnoringCase("sunny");
     }
 
-    @RetryingTest(5)
+    @Test
     void should_handle_parallel_function_calls() {
+
         // given
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName("gemini-2.0-flash")
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -363,7 +364,8 @@ class VertexAiGeminiChatModelIT {
 
         List<ChatMessage> allMessages = new ArrayList<>();
 
-        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789?");
+        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789? " +
+                "Output just a (single) name of the product with more stock.");
         allMessages.add(inventoryQuestion);
 
         ChatRequest request = ChatRequest.builder()
@@ -397,9 +399,9 @@ class VertexAiGeminiChatModelIT {
         messageResponse = model.chat(allMessages);
 
         // then
-        String text = messageResponse.aiMessage().text();
-        List<String> sequence = Arrays.asList("ABC123", "more", "XYZ789");
-        assertThat(text.split(" ")).containsSubsequence(sequence);
+        assertThat(messageResponse.aiMessage().text())
+                .contains("ABC123")
+                .doesNotContain("XYZ789");
     }
 
     static class Calculator {
