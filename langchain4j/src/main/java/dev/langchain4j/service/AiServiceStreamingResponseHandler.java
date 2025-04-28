@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -7,7 +8,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -27,6 +27,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * Handles response from a language model for AI Service that is streamed token-by-token.
  * Handles both regular (text) responses and responses with the request to execute one or multiple tools.
  */
+@Internal
 class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler {
 
     private final Logger log = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);

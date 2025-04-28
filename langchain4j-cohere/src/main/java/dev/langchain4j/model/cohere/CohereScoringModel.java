@@ -47,7 +47,7 @@ public class CohereScoringModel implements ScoringModel {
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = modelName;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     /**

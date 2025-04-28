@@ -1,18 +1,23 @@
 package dev.langchain4j.model.vertexai.common;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
 import org.junit.jupiter.api.AfterEach;
 
 import java.util.List;
 
-import static dev.langchain4j.model.vertexai.common.VertexAiGeminiChatModelIT.VERTEX_AI_GEMINI_CHAT_MODEL;
-
 class VertexAiGeminiAiServiceIT extends AbstractAiServiceIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(VERTEX_AI_GEMINI_CHAT_MODEL);
+        return List.of(
+                VertexAiGeminiChatModel.builder()
+                        .project(System.getenv("GCP_PROJECT_ID"))
+                        .location(System.getenv("GCP_LOCATION"))
+                        .modelName("gemini-2.0-flash")
+                        .build()
+        );
     }
 
     @Override

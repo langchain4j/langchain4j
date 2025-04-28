@@ -176,9 +176,5 @@ public class ReRankingContentAggregator implements ContentAggregator {
         public ReRankingContentAggregator build() {
             return new ReRankingContentAggregator(this.scoringModel, this.querySelector, this.minScore, this.maxResults);
         }
-
-        public String toString() {
-            return "ReRankingContentAggregator.ReRankingContentAggregatorBuilder(scoringModel=" + this.scoringModel + ", querySelector=" + this.querySelector + ", minScore=" + this.minScore + ")";
-        }
     }
 }

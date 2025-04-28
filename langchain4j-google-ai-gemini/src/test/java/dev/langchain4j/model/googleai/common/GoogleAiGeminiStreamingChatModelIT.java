@@ -4,6 +4,10 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
@@ -113,5 +117,13 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean assertExceptionType() {
         return false; // TODO fix
+    }
+
+    @Disabled("Gemini cannot do it properly")
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingTools")
+    @EnabledIf("supportsTools")
+    protected void should_execute_a_tool_then_answer(StreamingChatModel model) {
     }
 }

@@ -2,7 +2,7 @@ package dev.langchain4j.model.openaiofficial.openai;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -10,7 +10,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import static java.util.Collections.singletonList;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class OpenAiOfficialStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+class OpenAiOfficialStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {

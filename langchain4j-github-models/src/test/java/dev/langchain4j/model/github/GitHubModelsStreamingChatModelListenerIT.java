@@ -2,14 +2,14 @@ package dev.langchain4j.model.github;
 
 import com.azure.core.exception.ClientAuthenticationException;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static java.util.Collections.singletonList;
 
 @EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
-class GitHubModelsStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+class GitHubModelsStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {

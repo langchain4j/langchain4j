@@ -392,15 +392,10 @@ Gemini is a multimodal model, which means it outputs text, but in input, it acce
 * videos (`VideoContent`)
 * audio files (`AudioContent`)
 * PDF files (`PdfFileContent`)
-* text documents (`TextFileContent`)
 
-The example below shows how to mix a text prompt, with an image, and a Markdown document:
+The example below shows how to mix a text prompt with an image:
 
 ```java
-// README.md markdown file from LangChain4j's project Github repos
-String base64Text = b64encoder.encodeToString(readBytes(
-  "https://github.com/langchain4j/langchain4j/blob/main/README.md"));
-
 // PNG of the cute colorful parrot mascot of the LangChain4j project
 String base64Img = b64encoder.encodeToString(readBytes(
   "https://avatars.githubusercontent.com/u/132277850?v=4"));
@@ -412,7 +407,6 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
 
 ChatResponse response = gemini.chat(
     UserMessage.from(
-        TextFileContent.from(base64Text, "text/x-markdown"),
         ImageContent.from(base64Img, "image/png"),
         TextContent.from("""
             Do you think this logo fits well
