@@ -6,6 +6,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -25,12 +26,16 @@ public class Result<T> {
     private final FinishReason finishReason;
     private final List<ToolExecution> toolExecutions;
 
-    public Result(T content, TokenUsage tokenUsage, List<Content> sources, FinishReason finishReason, List<ToolExecution> toolExecutions) {
+    public Result(T content,
+                  TokenUsage tokenUsage,
+                  List<Content> sources,
+                  FinishReason finishReason,
+                  List<ToolExecution> toolExecutions) {
         this.content = ensureNotNull(content, "content");
         this.tokenUsage = tokenUsage;
-        this.sources = copyIfNotNull(sources);
+        this.sources = copy(sources);
         this.finishReason = finishReason;
-        this.toolExecutions = copyIfNotNull(toolExecutions);
+        this.toolExecutions = copy(toolExecutions);
     }
 
     public static <T> ResultBuilder<T> builder() {
@@ -58,6 +63,7 @@ public class Result<T> {
     }
 
     public static class ResultBuilder<T> {
+
         private T content;
         private TokenUsage tokenUsage;
         private List<Content> sources;
