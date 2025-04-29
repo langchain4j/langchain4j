@@ -539,7 +539,7 @@ class GoogleAiGeminiStreamingChatModelIT {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.0-flash")
                 .logRequestsAndResponses(true)
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -553,7 +553,7 @@ class GoogleAiGeminiStreamingChatModelIT {
                 List.of(
                         SystemMessage.from("Your role is to extract information from the description of a color"),
                         UserMessage.from(
-                                "Cobalt blue is a blend of a lot of blue, a bit of green, and almost no red.")),
+                                "'Cobalt blue' is a blend of a lot of blue, a bit of green, and almost no red.")),
                 handler);
         ChatResponse response = handler.get();
 

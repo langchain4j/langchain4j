@@ -229,9 +229,6 @@ public class AnthropicMapper {
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
-        if (toolSpecifications == null) {
-            return null;
-        }
         return toolSpecifications.stream()
                 .map(toolSpecification -> toAnthropicTool(toolSpecification, cacheToolsPrompt))
                 .collect(toList());

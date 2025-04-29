@@ -98,7 +98,7 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Lorem");
         assertThat(aiMessage.text()).doesNotContainIgnoringCase("dolor");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -128,7 +128,7 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Lorem");
         assertThat(aiMessage.text()).doesNotContainIgnoringCase("dolor");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);

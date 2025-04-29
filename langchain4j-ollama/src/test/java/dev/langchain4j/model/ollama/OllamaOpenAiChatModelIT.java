@@ -38,7 +38,7 @@ class OllamaOpenAiChatModelIT extends AbstractOllamaLanguageModelInfrastructure 
         // then
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).contains("Berlin");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         OpenAiTokenUsage tokenUsage = (OpenAiTokenUsage) response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
