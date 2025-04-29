@@ -7,7 +7,6 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupASyncClient;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
-import static java.util.Collections.emptyList;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
@@ -138,19 +137,18 @@ abstract class OpenAiOfficialBaseChatModel {
                 .topP(getOrDefault(topP, commonParameters.topP()))
                 .frequencyPenalty(getOrDefault(frequencyPenalty, commonParameters.frequencyPenalty()))
                 .presencePenalty(getOrDefault(presencePenalty, commonParameters.presencePenalty()))
-                .stopSequences(getOrDefault(stop, () -> copy(commonParameters.stopSequences())))
-                .toolSpecifications(copy(commonParameters.toolSpecifications()))
+                .stopSequences(getOrDefault(stop, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(
-                        getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
-                .logitBias(getOrDefault(logitBias, () -> copy(openAiParameters.logitBias())))
+                .logitBias(getOrDefault(logitBias, openAiParameters.logitBias()))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
                 .seed(getOrDefault(seed, openAiParameters.seed()))
                 .user(getOrDefault(user, openAiParameters.user()))
                 .store(getOrDefault(store, openAiParameters.store()))
-                .metadata(getOrDefault(metadata, () -> copy(openAiParameters.metadata())))
+                .metadata(getOrDefault(metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
@@ -169,8 +167,8 @@ abstract class OpenAiOfficialBaseChatModel {
 
         this.tokenCountEstimator = tokenCountEstimator;
 
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        this.supportedCapabilities = getOrDefault(copyIfNotNull(capabilities), new HashSet<>());
+        this.listeners = copy(listeners);
+        this.supportedCapabilities = copy(capabilities);
     }
 
     public OpenAiOfficialChatRequestParameters defaultRequestParameters() {

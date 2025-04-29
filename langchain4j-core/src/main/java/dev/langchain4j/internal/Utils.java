@@ -305,6 +305,22 @@ public class Utils {
         return unmodifiableSet(set);
     }
 
+    /**
+     * Returns an (unmodifiable) copy of the provided set.
+     * Returns an empty set if the provided set is <code>null</code>.
+     *
+     * @param set The set to copy.
+     * @param <T>  Generic type of the set.
+     * @return The copy of the provided set or an empty set.
+     */
+    public static <T> Set<T> copy(Set<T> set) {
+        if (set == null) {
+            return Set.of();
+        }
+
+        return unmodifiableSet(set);
+    }
+
   /**
    * Returns an (unmodifiable) copy of the provided list.
    * Returns <code>null</code> if the provided list is <code>null</code>.

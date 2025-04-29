@@ -37,8 +37,6 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptySet;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
@@ -96,26 +94,26 @@ public class OpenAiChatModel implements ChatModel {
                 .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
                 .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens()))
-                .stopSequences(getOrDefault(builder.stop, () -> copy(commonParameters.stopSequences())))
-                .toolSpecifications(copy(commonParameters.toolSpecifications()))
+                .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
-                .logitBias(getOrDefault(builder.logitBias, () -> copy(openAiParameters.logitBias())))
+                .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, openAiParameters.parallelToolCalls()))
                 .seed(getOrDefault(builder.seed, openAiParameters.seed()))
                 .user(getOrDefault(builder.user, openAiParameters.user()))
                 .store(getOrDefault(builder.store, openAiParameters.store()))
-                .metadata(getOrDefault(builder.metadata, () -> copy(openAiParameters.metadata())))
+                .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
         this.responseFormat = builder.responseFormat;
-        this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
-        this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
+        this.listeners = copy(builder.listeners);
     }
 
     @Override
