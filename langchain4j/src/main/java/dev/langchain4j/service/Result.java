@@ -7,7 +7,6 @@ import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
