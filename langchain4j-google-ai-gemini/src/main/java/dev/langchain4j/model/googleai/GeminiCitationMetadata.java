@@ -1,11 +1,17 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiCitationMetadata {
     private List<GeminiCitationSource> citationSources;
 
-    GeminiCitationMetadata(List<GeminiCitationSource> citationSources) {
+    @JsonCreator
+    GeminiCitationMetadata(@JsonProperty("citationSources") List<GeminiCitationSource> citationSources) {
         this.citationSources = citationSources;
     }
 

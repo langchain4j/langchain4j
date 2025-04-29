@@ -1,5 +1,10 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiPart {
     private String text;
     private GeminiBlob inlineData;
@@ -9,7 +14,16 @@ class GeminiPart {
     private GeminiExecutableCode executableCode;
     private GeminiCodeExecutionResult codeExecutionResult;
 
-    GeminiPart(String text, GeminiBlob inlineData, GeminiFunctionCall functionCall, GeminiFunctionResponse functionResponse, GeminiFileData fileData, GeminiExecutableCode executableCode, GeminiCodeExecutionResult codeExecutionResult) {
+    @JsonCreator
+    GeminiPart(
+            @JsonProperty("text") String text,
+            @JsonProperty("inlineData") GeminiBlob inlineData,
+            @JsonProperty("functionCall") GeminiFunctionCall functionCall,
+            @JsonProperty("functionResponse") GeminiFunctionResponse functionResponse,
+            @JsonProperty("fileData") GeminiFileData fileData,
+            @JsonProperty("executableCode") GeminiExecutableCode executableCode,
+            @JsonProperty("codeExecutionResult") GeminiCodeExecutionResult codeExecutionResult
+    ) {
         this.text = text;
         this.inlineData = inlineData;
         this.functionCall = functionCall;
