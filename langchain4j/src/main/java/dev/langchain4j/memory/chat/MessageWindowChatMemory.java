@@ -8,8 +8,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -36,8 +34,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * The state of chat memory is stored in {@link ChatMemoryStore} ({@link SingleSlotChatMemoryStore} is used by default).
  */
 public class MessageWindowChatMemory implements ChatMemory {
-
-    private static final Logger log = LoggerFactory.getLogger(MessageWindowChatMemory.class);
 
     private final Object id;
     private final Integer maxMessages;
@@ -95,15 +91,12 @@ public class MessageWindowChatMemory implements ChatMemory {
             }
 
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
-            log.trace("Evicting the following message to comply with the capacity requirement: {}", evictedMessage);
-
-            if (evictedMessage instanceof AiMessage && ((AiMessage) evictedMessage).hasToolExecutionRequests()) {
+            if (evictedMessage instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
                 while (messages.size() > messageToEvictIndex
                         && messages.get(messageToEvictIndex) instanceof ToolExecutionResultMessage) {
                     // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding AiMessage,
                     // so we have to automatically evict orphan ToolExecutionResultMessage(s) if AiMessage was evicted
-                    ChatMessage orphanToolExecutionResultMessage = messages.remove(messageToEvictIndex);
-                    log.trace("Evicting orphan {}", orphanToolExecutionResultMessage);
+                    messages.remove(messageToEvictIndex);
                 }
             }
         }

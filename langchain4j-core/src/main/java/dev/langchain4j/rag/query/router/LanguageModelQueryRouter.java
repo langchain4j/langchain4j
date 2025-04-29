@@ -6,8 +6,6 @@ import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,8 +40,6 @@ import static java.util.stream.Collectors.toList;
  * @see DefaultQueryRouter
  */
 public class LanguageModelQueryRouter implements QueryRouter {
-
-    private static final Logger log = LoggerFactory.getLogger(LanguageModelQueryRouter.class);
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             """
@@ -105,7 +101,6 @@ public class LanguageModelQueryRouter implements QueryRouter {
             String response = chatModel.chat(prompt.text());
             return parse(response);
         } catch (Exception e) {
-            log.warn("Failed to route query '{}'", query.text(), e);
             return fallback(query, e);
         }
     }
@@ -113,11 +108,9 @@ public class LanguageModelQueryRouter implements QueryRouter {
     protected Collection<ContentRetriever> fallback(Query query, Exception e) {
         return switch (fallbackStrategy) {
             case DO_NOT_ROUTE -> {
-                log.debug("Fallback: query '{}' will not be routed", query.text());
                 yield emptyList();
             }
             case ROUTE_TO_ALL -> {
-                log.debug("Fallback: query '{}' will be routed to all available content retrievers", query.text());
                 yield new ArrayList<>(idToRetriever.values());
             }
             default -> throw new RuntimeException(e);
