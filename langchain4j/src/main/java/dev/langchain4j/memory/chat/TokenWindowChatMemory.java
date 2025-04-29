@@ -9,8 +9,6 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -38,8 +36,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * The state of chat memory is stored in {@link ChatMemoryStore} ({@link SingleSlotChatMemoryStore} is used by default).
  */
 public class TokenWindowChatMemory implements ChatMemory {
-
-    private static final Logger log = LoggerFactory.getLogger(TokenWindowChatMemory.class);
 
     private final Object id;
     private final Integer maxTokens;
@@ -90,37 +86,34 @@ public class TokenWindowChatMemory implements ChatMemory {
         return messages;
     }
 
-    private static void ensureCapacity(List<ChatMessage> messages, int maxTokens, TokenCountEstimator tokenCountEstimator) {
+    private static void ensureCapacity(List<ChatMessage> messages, int maxTokens, TokenCountEstimator estimator) {
 
         if (messages.isEmpty()) {
             return;
         }
 
-        int currentTokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
+        int currentTokenCount = estimator.estimateTokenCountInMessages(messages);
         while (currentTokenCount > maxTokens && !messages.isEmpty()) {
 
             int messageToEvictIndex = 0;
             if (messages.get(0) instanceof SystemMessage) {
-                if (messages.size() == 1){
+                if (messages.size() == 1) {
                     return;
                 }
                 messageToEvictIndex = 1;
             }
 
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
-            int tokenCountOfEvictedMessage = tokenCountEstimator.estimateTokenCountInMessage(evictedMessage);
-            log.trace("Evicting the following message ({} tokens) to comply with the capacity requirement: {}",
-                    tokenCountOfEvictedMessage, evictedMessage);
+            int tokenCountOfEvictedMessage = estimator.estimateTokenCountInMessage(evictedMessage);
             currentTokenCount -= tokenCountOfEvictedMessage;
 
-            if (evictedMessage instanceof AiMessage && ((AiMessage) evictedMessage).hasToolExecutionRequests()) {
+            if (evictedMessage instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
                 while (messages.size() > messageToEvictIndex
                         && messages.get(messageToEvictIndex) instanceof ToolExecutionResultMessage) {
                     // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding AiMessage,
                     // so we have to automatically evict orphan ToolExecutionResultMessage(s) if AiMessage was evicted
                     ChatMessage orphanToolExecutionResultMessage = messages.remove(messageToEvictIndex);
-                    log.trace("Evicting orphan {}", orphanToolExecutionResultMessage);
-                    currentTokenCount -= tokenCountEstimator.estimateTokenCountInMessage(orphanToolExecutionResultMessage);
+                    currentTokenCount -= estimator.estimateTokenCountInMessage(orphanToolExecutionResultMessage);
                 }
             }
         }
