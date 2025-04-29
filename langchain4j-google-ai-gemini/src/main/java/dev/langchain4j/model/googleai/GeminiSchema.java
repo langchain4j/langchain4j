@@ -1,6 +1,6 @@
 package dev.langchain4j.model.googleai;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 import java.util.Map;
@@ -10,7 +10,7 @@ class GeminiSchema {
     private String format;
     private String description;
     private Boolean nullable;
-    @SerializedName("enum")
+    @JsonProperty("enum")
     private List<String> enumeration;
     private String maxItems;
     private Map<String, GeminiSchema> properties;

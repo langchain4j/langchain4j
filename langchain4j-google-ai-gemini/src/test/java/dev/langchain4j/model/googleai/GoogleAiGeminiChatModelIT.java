@@ -13,7 +13,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -540,7 +541,7 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Test
-    void should_allow_array_as_response_schema() {
+    void should_allow_array_as_response_schema() throws JsonProcessingException {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -566,7 +567,7 @@ class GoogleAiGeminiChatModelIT {
         System.out.println("response = " + response);
 
         // then
-        Integer[] diceRolls = new Gson().fromJson(response.aiMessage().text(), Integer[].class);
+        Integer[] diceRolls = new ObjectMapper().readValue(response.aiMessage().text(), Integer[].class);
         assertThat(diceRolls.length).isEqualTo(3);
     }
 
@@ -579,7 +580,7 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Test
-    void should_deserialize_to_POJO() {
+    void should_deserialize_to_POJO() throws JsonProcessingException {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -617,7 +618,7 @@ class GoogleAiGeminiChatModelIT {
 
         System.out.println("response = " + response);
 
-        Color color = new Gson().fromJson(response.aiMessage().text(), Color.class);
+        Color color = new ObjectMapper().readValue(response.aiMessage().text(), Color.class);
 
         // then
         assertThat(color.name).isEqualToIgnoringCase("Cobalt blue");
