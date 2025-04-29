@@ -236,7 +236,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();

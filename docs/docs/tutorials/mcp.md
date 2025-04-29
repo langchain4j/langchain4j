@@ -205,6 +205,13 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
+:::note
+Not all LLMs support tools equally well.
+The ability to understand, select, and correctly use tools depends heavily on the specific model and its capabilities.
+Some models may not support tools at all, while others might require careful prompt engineering
+or additional system instructions.
+:::
+
 > **Note**: This example uses Docker and therefore executes a Docker command available in `/usr/local/bin/docker` (change the path according to your operating system). If you want to use Podman instead of Docker, change the command accordingly.
 
 ## Executing the Code

@@ -260,10 +260,25 @@ class UtilsTest {
     }
 
     @Test
+    void copy_list() {
+        assertThat(Utils.copy((List<?>) null)).isEmpty();
+        assertThat(Utils.copy(emptyList())).isEmpty();
+        assertThat(Utils.copy(singletonList("one"))).containsExactly("one");
+        assertThat(Utils.copy(asList("one", "two"))).containsExactly("one", "two");
+    }
+
+    @Test
     void copy_if_not_null_map() {
         assertThat(Utils.copyIfNotNull((Map<?, ?>) null)).isNull();
         assertThat(Utils.copyIfNotNull(emptyMap())).isEmpty();
         assertThat(Utils.copyIfNotNull(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_map() {
+        assertThat(Utils.copy((Map<?, ?>) null)).isEmpty();
+        assertThat(Utils.copy(emptyMap())).isEmpty();
+        assertThat(Utils.copy(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
     }
 
     @Test

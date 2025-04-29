@@ -321,6 +321,21 @@ public class Utils {
     return unmodifiableList(list);
   }
 
+    /**
+     * Returns an (unmodifiable) copy of the provided list.
+     * Returns an empty list if the provided list is <code>null</code>.
+     *
+     * @param list The list to copy.
+     * @param <T>  Generic type of the list.
+     * @return The copy of the provided list or an empty list.
+     */
+    public static <T> List<T> copy(List<T> list) {
+        if (list == null) {
+            return List.of();
+        }
+
+        return unmodifiableList(list);
+    }
 
   /**
    * Returns an (unmodifiable) copy of the provided map.
@@ -336,6 +351,21 @@ public class Utils {
 
     return unmodifiableMap(map);
   }
+
+    /**
+     * Returns an (unmodifiable) copy of the provided map.
+     * Returns an empty map if the provided map is <code>null</code>.
+     *
+     * @param map The map to copy.
+     * @return The copy of the provided map or an empty map.
+     */
+    public static <K,V> Map<K,V> copy(Map<K,V> map) {
+        if (map == null) {
+            return Map.of();
+        }
+
+        return unmodifiableMap(map);
+    }
 
     public static Map<String, String> toStringValueMap(Map<String, Object> map) {
         if (map == null) {
