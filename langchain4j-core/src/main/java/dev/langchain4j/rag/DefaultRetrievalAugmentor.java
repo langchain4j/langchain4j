@@ -247,7 +247,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     }
 
     private static void log(Query query, Collection<ContentRetriever> retrievers) {
-        // TODO use retriever id
         if (retrievers.size() == 1) {
             log.debug("Routing query '{}' to the following retriever: {}",
                 query.text(), retrievers.iterator().next());
@@ -260,7 +259,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     }
 
     private static void log(Query query, ContentRetriever retriever, List<Content> contents) {
-        // TODO use retriever id
         log.debug("Retrieved {} contents using query '{}' and retriever '{}'",
             contents.size(), query.text(), retriever);
 
