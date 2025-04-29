@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat
 
-import dev.langchain4j.Experimental
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.request.ChatRequestBuilder
 import dev.langchain4j.model.chat.request.chatRequest
@@ -31,7 +30,6 @@ import kotlin.coroutines.CoroutineContext
  * @see ChatResponse
  * @author Konstantin Pavlov
  */
-@Experimental
 @JvmOverloads
 public suspend fun ChatModel.chatAsync(
     request: ChatRequest,
@@ -69,7 +67,6 @@ public suspend fun ChatModel.chatAsync(
  * @see chatAsync
  * @author Konstantin Pavlov
  */
-@Experimental
 @JvmOverloads
 public suspend fun ChatModel.chat(
     requestBuilder: ChatRequest.Builder,
@@ -101,13 +98,11 @@ public suspend fun ChatModel.chat(
  * @throws Exception if the chat request fails or encounters an error during execution.
  * @author Konstantin Pavlov
  */
-@Experimental
 public suspend fun ChatModel.chat(
     coroutineContext: CoroutineContext = defaultCoroutineContext(),
     block: ChatRequestBuilder.() -> Unit
 ): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = chatRequest(block))
 
-@Experimental
 public suspend fun ChatModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse =
     chatAsync(coroutineContext = defaultCoroutineContext(), request = chatRequest(block))
 
