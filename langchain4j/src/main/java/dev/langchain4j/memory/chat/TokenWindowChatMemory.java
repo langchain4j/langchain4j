@@ -168,7 +168,7 @@ public class TokenWindowChatMemory implements ChatMemory {
             return this;
         }
 
-        public ChatMemoryStore store() {
+        private ChatMemoryStore store() {
             return store != null ? store : new SingleSlotChatMemoryStore(id);
         }
 

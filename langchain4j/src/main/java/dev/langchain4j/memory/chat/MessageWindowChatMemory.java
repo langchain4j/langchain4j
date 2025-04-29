@@ -147,12 +147,12 @@ public class MessageWindowChatMemory implements ChatMemory {
             return this;
         }
 
-        public MessageWindowChatMemory build() {
-            return new MessageWindowChatMemory(this);
+        private ChatMemoryStore store() {
+            return store != null ? store : new SingleSlotChatMemoryStore(id);
         }
 
-        public ChatMemoryStore store() {
-            return store != null ? store : new SingleSlotChatMemoryStore(id);
+        public MessageWindowChatMemory build() {
+            return new MessageWindowChatMemory(this);
         }
     }
 
