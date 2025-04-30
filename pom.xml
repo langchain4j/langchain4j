@@ -15,6 +15,7 @@
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
+        <module>langchain4j-kotlin</module>
 
         <module>langchain4j-easy-rag</module>
         <module>langchain4j-mcp</module>
