@@ -445,19 +445,18 @@ public class HelloWorld {
         MistralAiFimModel codestral = MistralAiFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
+                .stops(List.of("}")) // must stop at the first occurrence of "}"
                 .build();
         
         // I want to generate a code completion for a simple hello world program using MistralAI of LangChain4j framework.
         String codePrompt = """
-                            public class HelloWorld {
-                                public static void main(String[] args) {
-                                    ChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);
-                            """;
-        String suffix     = """
-                                    System.out.println(response);
-                                }
-                            }
-                            """;
+                  public static void main(String[] args) {
+                      // Create a function to multiply two numbers
+                """;
+        String suffix = """
+                    System.out.println(result);
+                  }
+                """;
 
         // Asking to Codestral model to complete the code with given prompt and suffix
         Response<String> response = codestral.generate(prompt, suffix);
@@ -474,13 +473,11 @@ public class HelloWorld {
 Running the program will print of the following output
 
 ```console
-public class HelloWorld {
-	public static void main(String[] args) {
-		ChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);
-		String response = model.generate("Hello, how are you?");
-		System.out.println(response);
-    }
-}
+public static void main(String[] args) {
+      // Create a function to multiply two numbers
+      int result = multiply(5, 3);
+      System.out.println(result);
+  }
 ```
 
 ### FIM Streaming
