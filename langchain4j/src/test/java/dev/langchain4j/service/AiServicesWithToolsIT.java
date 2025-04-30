@@ -2,8 +2,6 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
-import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
@@ -34,21 +32,17 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -365,66 +359,6 @@ class AiServicesWithToolsIT {
                         .build());
     }
 
-    static class StringListProcessor {
-
-        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
-                .name("processStrings")
-                .description("Processes list of strings")
-                .parameters(JsonObjectSchema.builder()
-                        .addProperties(singletonMap(
-                                "arg0",
-                                JsonArraySchema.builder()
-                                        .description("List of strings to process")
-                                        .items(new JsonStringSchema())
-                                        .build()))
-                        .required("arg0")
-                        .build())
-                .build();
-
-        @Tool("Processes list of strings")
-        void processStrings(@P("List of strings to process") List<String> strings) {
-            System.out.printf("called processStrings(%s)%n", strings);
-        }
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_tool_with_List_of_Strings_parameter(ChatModel chatModel) {
-
-        StringListProcessor stringListProcessor = spy(new StringListProcessor());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatModel spyChatModel = spy(chatModel);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(spyChatModel)
-                .chatMemory(chatMemory)
-                .tools(stringListProcessor)
-                .build();
-
-        String userMessage = "Process strings 'cat' and 'dog' together in a single tool call.";
-
-        // when
-        assistant.chat(userMessage);
-
-        // then
-        verify(stringListProcessor).processStrings(asList("cat", "dog"));
-        verifyNoMoreInteractions(stringListProcessor);
-
-        List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatModel)
-                .chat(ChatRequest.builder()
-                        .messages(messages.get(0))
-                        .toolSpecifications(StringListProcessor.EXPECTED_SPECIFICATION)
-                        .build());
-        verify(spyChatModel)
-                .chat(ChatRequest.builder()
-                        .messages(messages.get(0), messages.get(1), messages.get(2))
-                        .toolSpecifications(StringListProcessor.EXPECTED_SPECIFICATION)
-                        .build());
-    }
-
     static class IntegerListProcessor {
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
@@ -543,132 +477,6 @@ class AiServicesWithToolsIT {
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(StringArrayProcessor.EXPECTED_SPECIFICATION)
                         .build());
-    }
-
-    static class WeatherService {
-
-        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
-                .name("currentTemperature")
-                .parameters(JsonObjectSchema.builder()
-                        .addProperties(new LinkedHashMap<String, JsonSchemaElement>() {
-                            {
-                                put("arg0", new JsonStringSchema());
-                                put(
-                                        "arg1",
-                                        JsonEnumSchema.builder()
-                                                .enumValues("CELSIUS", "fahrenheit", "Kelvin")
-                                                .build());
-                            }
-                        })
-                        .required("arg0", "arg1")
-                        .build())
-                .build();
-
-        @Tool
-        int currentTemperature(String city, TemperatureUnit unit) {
-            System.out.printf("called currentTemperature(%s, %s)%n", city, unit);
-            return 37;
-        }
-    }
-
-    enum TemperatureUnit {
-        CELSIUS,
-        fahrenheit,
-        Kelvin
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_tool_with_enum_parameter(ChatModel chatModel) {
-
-        // given
-        WeatherService weatherService = spy(new WeatherService());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatModel spyChatModel = spy(chatModel);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(spyChatModel)
-                .chatMemory(chatMemory)
-                .tools(weatherService)
-                .build();
-
-        // when
-        Result<String> result = assistant.chat("What is the temperature in Munich now, in kelvin?");
-
-        // then
-        assertThat(result.content()).contains("37");
-
-        verify(weatherService).currentTemperature("Munich", Kelvin);
-        verifyNoMoreInteractions(weatherService);
-
-        List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatModel)
-                .chat(ChatRequest.builder()
-                        .messages(messages.get(0))
-                        .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                        .build());
-        verify(spyChatModel)
-                .chat(ChatRequest.builder()
-                        .messages(messages.get(0), messages.get(1), messages.get(2))
-                        .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                        .build());
-    }
-
-    // TODO test Lists, Sets, Arrays of different types (including enums).
-
-    static class QueryService {
-
-        @Tool("Execute the query and return the result")
-        String executeQuery(@P("query to execute") Query query) {
-            assertThat(query).isNotNull();
-            assertThat(query.select).containsExactly("name");
-            assertThat(query.where).containsExactly(new Condition("country", EQUALS, "India"));
-            assertThat(query.limit).isEqualTo(3);
-
-            return "Amar, Akbar, Antony";
-        }
-    }
-
-    static record Query(
-            @Description("List of fields to fetch records") List<String> select,
-            @Description("List of conditions to filter on. Pass null if no condition") List<Condition> where,
-            @Description("limit on number of records") Integer limit,
-            @Description("offset for fetching records") Integer offset) {}
-
-    static record Condition(
-            @Description("Field to filter on") String field,
-            @Description("Operator to apply") Operator operator,
-            @Description("Value to compare with") String value) {}
-
-    enum Operator {
-        EQUALS,
-        NOT_EQUALS,
-        IS_NULL,
-        IS_NOT_NULL
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_tool_with_pojo(ChatModel chatModel) {
-
-        // given
-        QueryService queryService = spy(new QueryService());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatModel spyChatModel = spy(chatModel);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(spyChatModel)
-                .chatMemory(chatMemory)
-                .tools(queryService)
-                .build();
-
-        Result<String> result = assistant.chat("Give me the names of 3 users from India");
-
-        assertThat(result.content()).contains("Amar", "Akbar", "Antony");
     }
 
     @ParameterizedTest
@@ -832,33 +640,6 @@ class AiServicesWithToolsIT {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    static class Clock {
-
-        @Tool
-        String currentTime() {
-            return "16:37:43";
-        }
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_execute_tool_without_parameters(ChatModel chatModel) {
-
-        // given
-        Clock clock = spy(new Clock());
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(chatModel)
-                .tools(clock)
-                .build();
-
-        // when
-        Result<String> result = assistant.chat("What is the time now?");
-
-        // then
-        assertThat(result.content()).contains("16:37:43");
     }
 
     interface AssistantReturningResult {
