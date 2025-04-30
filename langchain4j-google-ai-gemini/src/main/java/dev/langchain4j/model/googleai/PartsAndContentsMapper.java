@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
@@ -30,7 +31,7 @@ class PartsAndContentsMapper {
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector =
         new CustomMimeTypesFileTypeDetector();
 
-    private static final Gson GSON = new Gson();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static GeminiPart fromContentToGPart(Content content) {
         if (content.type().equals(ContentType.TEXT)) {
@@ -201,12 +202,18 @@ class PartsAndContentsMapper {
                             return GeminiContent.builder()
                                 .role(GeminiRole.MODEL.toString())
                                 .parts(((AiMessage) msg).toolExecutionRequests().stream()
-                                    .map(toolExecutionRequest -> GeminiPart.builder()
-                                        .functionCall(GeminiFunctionCall.builder()
-                                            .name(toolExecutionRequest.name())
-                                            .args(GSON.fromJson(toolExecutionRequest.arguments(), Map.class))
-                                            .build())
-                                        .build())
+                                    .map(toolExecutionRequest -> {
+                                        try {
+                                            return GeminiPart.builder()
+                                                .functionCall(GeminiFunctionCall.builder()
+                                                    .name(toolExecutionRequest.name())
+                                                    .args(MAPPER.readValue(toolExecutionRequest.arguments(), Map.class))
+                                                    .build())
+                                                .build();
+                                        } catch (JsonProcessingException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    })
                                     .collect(Collectors.toList()))
                                 .build();
                         } else {
