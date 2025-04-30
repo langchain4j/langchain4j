@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -23,7 +24,6 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
 
     private final MistralAiClient client;
     private final String modelName;
-    private String suffix;
     private final Double temperature;
     private final Integer maxTokens;
     private final Integer minTokens;
@@ -71,13 +71,12 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = getOrDefault(modelName, MistralAiFimModelName.CODESTRAL_LATEST.toString());
-        this.suffix = "";
         this.temperature = temperature;
         this.maxTokens = maxTokens;
         this.minTokens = getOrDefault(minTokens, 0);
         this.topP = topP;
         this.randomSeed = randomSeed;
-        this.stops = stops;
+        this.stops = copyIfNotNull(stops);
     }
 
     /**
@@ -88,8 +87,7 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
      * @param handler the handler to process the completion response
      */
     public void generate(String prompt, String suffix, StreamingResponseHandler<String> handler) {
-        this.suffix = suffix;
-        generate(prompt, handler);
+        completion(prompt, suffix, handler);
     }
 
     /**
@@ -100,12 +98,16 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
      */
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
+        generate(prompt, null, handler);
+    }
+
+    private void completion(String prompt, String suffix, StreamingResponseHandler<String> handler) {
         ensureNotBlank(prompt, "Prompt");
 
         MistralAiFimCompletionRequest request = MistralAiFimCompletionRequest.builder()
                 .model(this.modelName)
                 .prompt(prompt)
-                .suffix(this.suffix)
+                .suffix(suffix)
                 .temperature(this.temperature)
                 .maxTokens(this.maxTokens)
                 .minTokens(this.minTokens)

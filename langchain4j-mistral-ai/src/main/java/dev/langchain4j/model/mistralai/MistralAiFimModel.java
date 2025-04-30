@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
@@ -27,14 +28,12 @@ public class MistralAiFimModel implements LanguageModel {
 
     private final MistralAiClient client;
     private final String modelName;
-    private String suffix;
     private final Double temperature;
     private final Integer maxTokens;
     private final Integer minTokens;
     private final Double topP;
     private final Integer randomSeed;
     private final List<String> stops;
-
     private final Integer maxRetries;
 
     /**
@@ -79,13 +78,12 @@ public class MistralAiFimModel implements LanguageModel {
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.suffix = "";
         this.temperature = temperature;
         this.maxTokens = maxTokens;
         this.minTokens = getOrDefault(minTokens, 0);
         this.topP = topP;
         this.randomSeed = randomSeed;
-        this.stops = stops;
+        this.stops = copyIfNotNull(stops);
         this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
@@ -97,8 +95,7 @@ public class MistralAiFimModel implements LanguageModel {
      * @return a response containing the generated text/code
      */
     public Response<String> generate(String prompt, String suffix) {
-        this.suffix = suffix;
-        return generate(prompt);
+        return completion(prompt, suffix);
     }
 
     /**
@@ -109,11 +106,15 @@ public class MistralAiFimModel implements LanguageModel {
      */
     @Override
     public Response<String> generate(String prompt) {
+        return generate(prompt, null);
+    }
+
+    private Response<String> completion(String prompt, String suffix) {
         ensureNotBlank(prompt, "Prompt");
         MistralAiFimCompletionRequest request = MistralAiFimCompletionRequest.builder()
                 .model(this.modelName)
                 .prompt(prompt)
-                .suffix(this.suffix)
+                .suffix(suffix)
                 .temperature(this.temperature)
                 .maxTokens(this.maxTokens)
                 .minTokens(this.minTokens)

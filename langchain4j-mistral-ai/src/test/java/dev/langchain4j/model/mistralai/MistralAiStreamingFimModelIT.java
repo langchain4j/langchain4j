@@ -23,7 +23,7 @@ class MistralAiStreamingFimModelIT {
     @Test
     void should_stream_code_completion_and_return_token_usage_and_finish_reason_length() {
         // Given
-        String codePrompt = "public static void main(String[] args) {";
+        String codePrompt = "public static void main(String[]";
 
         // When
         TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
@@ -53,14 +53,12 @@ class MistralAiStreamingFimModelIT {
                 .build();
 
         String codePrompt = """
-                          public class HelloWorld {
                             public static void main(String[] args) {
-                                ChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);
+                                // Create a function to multiply two numbers
                           """;
         String suffix = """
-                          System.out.println(response);
+                          System.out.println(result);
                         }
-                      }
                       """;
 
         // When
@@ -78,21 +76,22 @@ class MistralAiStreamingFimModelIT {
     }
 
     @Test
-    void should_stream_generate_code_completion_with_suffix_and_stops() {
+    void should_stream_generate_code_completion_with_stops() {
         // Given
         MistralAiStreamingFimModel codestral = MistralAiStreamingFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
-                .stops(List.of("\n\n"))
+                .stops(List.of("{")) // must stop at the first occurrence of "{"
                 .logRequests(true)
                 .build();
 
-        String codePrompt = "def is_odd(n): \n return n % 2 == 1 \n def test_is_odd():";
-        String suffix = "test_is_odd()";
+        String codePrompt = """
+                            public static void main
+                          """;
 
         // When
         TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
-        codestral.generate(codePrompt, suffix, handler);
+        codestral.generate(codePrompt, handler);
 
         Response<String> response = handler.get();
 
