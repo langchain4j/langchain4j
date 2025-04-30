@@ -182,12 +182,12 @@ System.out.println(response.content().url());
 After introduce `langchain4j-community-dashscope-spring-boot-starter` dependency, you can simply register `QwenChatModel` bean by using below configuration:
 
 ```properties
-langchain4j.community.dashscope.api-key=<You API Key here>
-langchain4j.community.dashscope.model-name=qwen-max
+langchain4j.community.dashscope.chat-model.api-key=<You API Key here>
+langchain4j.community.dashscope.chat-model.model-name=qwen-max
 # The properties are the same as `QwenChatModel`
 # e.g.
-# langchain4j.community.dashscope.temperature=0.7
-# langchain4j.community.dashscope.max-tokens=4096
+# langchain4j.community.dashscope.chat-model.temperature=0.7
+# langchain4j.community.dashscope.chat-model.max-tokens=4096
 ```
 
 ### More Examples
