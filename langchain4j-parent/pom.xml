@@ -585,9 +585,10 @@
                         <jvmTarget>${java.version}</jvmTarget>
                         <javaParameters>true</javaParameters>
                         <args>
-                            <arg>-Xjsr305=strict</arg>
+                            <arg>-progressive</arg>
                             <arg>-Werror</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
+                            <arg>-Xjsr305=strict</arg>
                             <arg>-Xtype-enhancement-improvements-strict-mode</arg>
                         </args>
                     </configuration>
@@ -916,7 +917,7 @@
                                 </license>
                                 <license>
                                     <name>Apache 2.0</name>
-                                    <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+                                    <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
                                 </license>
                                 <license>
                                     <name>(The MIT License|MIT License|MIT)</name>
