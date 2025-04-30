@@ -4,6 +4,10 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotSameInstanceAs
 import dev.langchain4j.data.document.Metadata
+import io.kotest.matchers.maps.shouldContainExactly
+import io.kotest.matchers.maps.shouldNotContainAll
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldNotBeSameInstanceAs
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -22,14 +26,14 @@ internal class MergeMetadataTest {
 
         val result = metadata1.merge(metadata2)
 
-        assertThat(result.toMap()).isEqualTo(
-            mapOf(
-                "key1" to "value1",
-                "key2" to "value2",
-                "key3" to "value3",
-                "key4" to "value4"
-            )
-        )
+        result.toMap() shouldContainExactly
+                mapOf(
+                    "key1" to "value1",
+                    "key2" to "value2",
+                    "key3" to "value3",
+                    "key4" to "value4"
+                )
+
     }
 
     @Test
@@ -41,13 +45,12 @@ internal class MergeMetadataTest {
 
         val result = metadata.merge(null)
 
-        assertThat(result).isNotSameInstanceAs(metadata)
-        assertThat(result.toMap()).isEqualTo(
-            mapOf(
-                "key1" to "value1",
-                "key2" to "value2"
-            )
-        )
+        result shouldNotBeSameInstanceAs metadata
+        result.toMap() shouldContainExactly
+                mapOf(
+                    "key1" to "value1",
+                    "key2" to "value2"
+                )
     }
 
     @Test
@@ -59,13 +62,12 @@ internal class MergeMetadataTest {
 
         val result = metadata.merge(Metadata())
 
-        assertThat(result).isNotSameInstanceAs(metadata)
-        assertThat(result.toMap()).isEqualTo(
+        result shouldNotBeSameInstanceAs metadata
+        result.toMap() shouldContainExactly
             mapOf(
                 "key1" to "value1",
                 "key2" to "value2"
             )
-        )
     }
 
     @Test
@@ -84,7 +86,6 @@ internal class MergeMetadataTest {
                 metadata1.merge(metadata2)
             }
 
-        assertThat(exception.message)
-            .isEqualTo("Metadata keys are not unique. Common keys: [key2]")
+       exception.message shouldBe "Metadata keys are not unique. Common keys: [key2]"
     }
 }

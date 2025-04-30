@@ -11,6 +11,7 @@ import dev.langchain4j.data.document.DocumentParser
 import dev.langchain4j.data.document.DocumentSource
 import dev.langchain4j.data.document.Metadata
 import dev.langchain4j.kotlin.data.document.parseAsync
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
@@ -73,7 +74,7 @@ internal class DocumentParserExtensionsKtTest {
 
             val result = documentParser.parseAsync(documentSource, Dispatchers.IO)
 
-            assertThat(result).isSameInstanceAs(document)
+            result shouldBeSameInstanceAs document
         }
     }
 }

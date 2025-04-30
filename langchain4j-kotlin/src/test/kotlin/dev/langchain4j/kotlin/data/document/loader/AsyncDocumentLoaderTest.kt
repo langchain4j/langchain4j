@@ -2,15 +2,15 @@ package dev.langchain4j.kotlin.data.document.loader
 
 import assertk.assertThat
 import assertk.assertions.contains
-import assertk.assertions.containsExactlyInAnyOrder
-import assertk.assertions.hasSize
 import assertk.assertions.isNotEmpty
 import assertk.assertions.isNotNull
 import dev.langchain4j.data.document.DocumentSource
-import dev.langchain4j.kotlin.data.document.loadAsync
 import dev.langchain4j.data.document.parser.TextDocumentParser
 import dev.langchain4j.data.document.source.FileSystemSource
-import dev.langchain4j.kotlin.data.document.loader.loadDocuments
+import dev.langchain4j.kotlin.data.document.loadAsync
+import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.test.runTest
@@ -58,21 +58,20 @@ internal class AsyncDocumentLoaderTest {
                     documentParser = parser,
                     directoryPaths = listOf(Path.of("./src/test/resources/asyncDocumentLoaderTest"))
                 )
-            assertThat(documents)
-                .hasSize(4)
+            documents shouldHaveSize 4
 
             documents.forEach {
                 assertThat(it.text()).isNotEmpty()
-                assertThat(it.metadata()).isNotNull()
+                it.metadata().shouldNotBeNull {}
             }
 
             val documentNames = documents.map { it.metadata().getString("file_name") }
-            assertThat(documentNames)
-                .containsExactlyInAnyOrder(
-                    "file1.txt",
-                    "file2.txt",
-                    "test-file-3.banana",
-                    "test-file-4.banana"
-                )
+            documentNames shouldContainExactlyInAnyOrder
+                    listOf(
+                        "file1.txt",
+                        "file2.txt",
+                        "test-file-3.banana",
+                        "test-file-4.banana"
+                    )
         }
 }
