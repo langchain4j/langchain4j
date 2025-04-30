@@ -10,6 +10,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
+import static java.time.Duration.ofSeconds;
+
 class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL = AzureOpenAiStreamingChatModel.builder()
@@ -17,6 +19,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-4o-mini")
             .logRequestsAndResponses(true)
+            .timeout(ofSeconds(120))
             .build();
 
     static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA = AzureOpenAiStreamingChatModel.builder()
