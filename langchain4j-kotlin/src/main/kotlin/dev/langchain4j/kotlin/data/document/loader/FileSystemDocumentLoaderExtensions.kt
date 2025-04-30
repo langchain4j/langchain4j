@@ -1,8 +1,9 @@
-package dev.langchain4j.data.document.loader
+package dev.langchain4j.kotlin.data.document.loader
 
 import dev.langchain4j.data.document.Document
 import dev.langchain4j.data.document.DocumentParser
-import dev.langchain4j.data.document.parseAsync
+import dev.langchain4j.data.document.loader.FileSystemDocumentLoader
+import dev.langchain4j.kotlin.data.document.parseAsync
 import dev.langchain4j.data.document.source.FileSystemSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

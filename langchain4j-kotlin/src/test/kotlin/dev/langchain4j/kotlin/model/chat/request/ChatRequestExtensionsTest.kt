@@ -1,4 +1,4 @@
-package dev.langchain4j.model.chat.request
+package dev.langchain4j.kotlin.model.chat.request
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
@@ -8,6 +8,7 @@ import assertk.assertions.isInstanceOf
 import dev.langchain4j.agent.tool.ToolSpecification
 import dev.langchain4j.data.message.SystemMessage.systemMessage
 import dev.langchain4j.data.message.UserMessage.userMessage
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -19,7 +20,7 @@ internal class ChatRequestExtensionsTest {
     fun `Should build ChatRequest`() {
         val systemMessage = systemMessage("You are a helpful assistant")
         val userMessage = userMessage("Send greeting")
-        val params: ChatRequestParameters = mock()
+        val params: dev.langchain4j.model.chat.request.ChatRequestParameters = mock()
         val result =
             chatRequest {
                 messages += systemMessage
@@ -55,8 +56,8 @@ internal class ChatRequestExtensionsTest {
                     maxOutputTokens = 6
                     stopSequences = listOf("halt", "stop")
                     toolSpecifications = toolSpecs
-                    toolChoice = ToolChoice.REQUIRED
-                    responseFormat = ResponseFormat.JSON
+                    toolChoice = dev.langchain4j.model.chat.request.ToolChoice.REQUIRED
+                    responseFormat = dev.langchain4j.model.chat.request.ResponseFormat.JSON
                 }
             }
         val parameters = result.parameters()
@@ -70,8 +71,8 @@ internal class ChatRequestExtensionsTest {
         assertThat(parameters.maxOutputTokens()).isEqualTo(6)
         assertThat(parameters.stopSequences()).containsExactly("halt", "stop")
         assertThat(parameters.toolSpecifications()).containsExactly(toolSpec)
-        assertThat(parameters.toolChoice()).isEqualTo(ToolChoice.REQUIRED)
-        assertThat(parameters.responseFormat()).isEqualTo(ResponseFormat.JSON)
+        assertThat(parameters.toolChoice()).isEqualTo(dev.langchain4j.model.chat.request.ToolChoice.REQUIRED)
+        assertThat(parameters.responseFormat()).isEqualTo(dev.langchain4j.model.chat.request.ResponseFormat.JSON)
     }
 
     @Test
@@ -88,7 +89,7 @@ internal class ChatRequestExtensionsTest {
                 }
             }
         val parameters = result.parameters() as TestChatRequestParameters
-        assertThat(parameters.temperature()).isCloseTo(0.1, 0.000001)
+        assertk.assertThat(parameters.temperature()).isCloseTo(0.1, 0.000001)
         assertThat(parameters.seed).isEqualTo(42)
     }
 }

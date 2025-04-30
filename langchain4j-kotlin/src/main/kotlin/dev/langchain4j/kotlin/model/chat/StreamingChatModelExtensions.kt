@@ -1,8 +1,8 @@
-package dev.langchain4j.model.chat
+package dev.langchain4j.kotlin.model.chat
 
 import dev.langchain4j.internal.Markers
-import dev.langchain4j.model.chat.request.ChatRequestBuilder
-import dev.langchain4j.model.chat.request.chatRequest
+import dev.langchain4j.kotlin.model.chat.request.ChatRequestBuilder
+import dev.langchain4j.kotlin.model.chat.request.chatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler
 import kotlinx.coroutines.channels.awaitClose
@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import org.slf4j.LoggerFactory
 
-private val logger = LoggerFactory.getLogger(StreamingChatModel::class.java)
+private val logger = LoggerFactory.getLogger(dev.langchain4j.model.chat.StreamingChatModel::class.java)
 
 /**
  * Represents different types of replies that can be received from an AI language model during streaming.
@@ -80,7 +80,7 @@ public sealed interface StreamingChatModelReply {
  *
  * @author Konstantin Pavlov
  */
-public fun StreamingChatModel.chatFlow(
+public fun dev.langchain4j.model.chat.StreamingChatModel.chatFlow(
     block: ChatRequestBuilder.() -> Unit
 ): Flow<StreamingChatModelReply> =
     callbackFlow {

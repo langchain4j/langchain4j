@@ -1,11 +1,16 @@
-package dev.langchain4j.data.document
+package dev.langchain4j.kotlin.data.document
 
 import assertk.assertThat
 import assertk.assertions.containsOnly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isSameInstanceAs
+import dev.langchain4j.data.document.Document
 import dev.langchain4j.data.document.Document.ABSOLUTE_DIRECTORY_PATH
 import dev.langchain4j.data.document.Document.FILE_NAME
+import dev.langchain4j.data.document.DocumentParser
+import dev.langchain4j.data.document.DocumentSource
+import dev.langchain4j.data.document.Metadata
+import dev.langchain4j.kotlin.data.document.parseAsync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test

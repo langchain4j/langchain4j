@@ -1,4 +1,4 @@
-package dev.langchain4j.data.document.loader
+package dev.langchain4j.kotlin.data.document.loader
 
 import assertk.assertThat
 import assertk.assertions.contains
@@ -7,9 +7,10 @@ import assertk.assertions.hasSize
 import assertk.assertions.isNotEmpty
 import assertk.assertions.isNotNull
 import dev.langchain4j.data.document.DocumentSource
-import dev.langchain4j.data.document.loadAsync
+import dev.langchain4j.kotlin.data.document.loadAsync
 import dev.langchain4j.data.document.parser.TextDocumentParser
 import dev.langchain4j.data.document.source.FileSystemSource
+import dev.langchain4j.kotlin.data.document.loader.loadDocuments
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.test.runTest

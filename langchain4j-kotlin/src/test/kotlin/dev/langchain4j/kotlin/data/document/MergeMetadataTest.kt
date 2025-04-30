@@ -1,8 +1,9 @@
-package dev.langchain4j.data.document
+package dev.langchain4j.kotlin.data.document
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotSameInstanceAs
+import dev.langchain4j.data.document.Metadata
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 

@@ -1,11 +1,12 @@
-package dev.langchain4j.model.chat
+package dev.langchain4j.kotlin.model.chat
 
 import assertk.assertFailure
 import assertk.assertions.hasMessage
 import dev.langchain4j.data.message.AiMessage.aiMessage
 import dev.langchain4j.data.message.UserMessage.userMessage
-import dev.langchain4j.model.chat.StreamingChatModelReply.CompleteResponse
-import dev.langchain4j.model.chat.StreamingChatModelReply.PartialResponse
+import dev.langchain4j.kotlin.model.chat.StreamingChatModelReply.CompleteResponse
+import dev.langchain4j.kotlin.model.chat.StreamingChatModelReply.PartialResponse
+import dev.langchain4j.kotlin.model.chat.chatFlow
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler
@@ -24,7 +25,7 @@ import org.mockito.kotlin.whenever
 @ExtendWith(MockitoExtension::class)
 internal class StreamingChatModelExtensionsKtTest {
     @Mock
-    private lateinit var mockModel: StreamingChatModel
+    private lateinit var mockModel: dev.langchain4j.model.chat.StreamingChatModel
 
     @Test
     fun `chatFlow should handle partial and complete responses correctly`() =
@@ -63,7 +64,7 @@ internal class StreamingChatModelExtensionsKtTest {
     }
 
     private suspend fun verifyFlowResponse(
-        flow: Flow<StreamingChatModelReply>,
+        flow: Flow<dev.langchain4j.kotlin.model.chat.StreamingChatModelReply>,
         completeResponse: ChatResponse,
         vararg tokens: String
     ) {

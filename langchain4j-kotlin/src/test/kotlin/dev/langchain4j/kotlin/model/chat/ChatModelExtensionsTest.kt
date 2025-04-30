@@ -1,10 +1,12 @@
-package dev.langchain4j.model.chat
+package dev.langchain4j.kotlin.model.chat
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import dev.langchain4j.data.message.UserMessage.userMessage
 import dev.langchain4j.internal.VirtualThreadUtils
+import dev.langchain4j.kotlin.model.chat.chat
+import dev.langchain4j.kotlin.model.chat.chatAsync
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
 import io.kotest.matchers.shouldBe
@@ -27,7 +29,7 @@ import kotlin.coroutines.CoroutineContext
 @TestInstance(Lifecycle.PER_CLASS)
 internal class ChatModelExtensionsTest {
     @Mock
-    private lateinit var chatModel: ChatModel
+    private lateinit var chatModel: dev.langchain4j.model.chat.ChatModel
 
     @Mock
     private lateinit var chatResponse: ChatResponse

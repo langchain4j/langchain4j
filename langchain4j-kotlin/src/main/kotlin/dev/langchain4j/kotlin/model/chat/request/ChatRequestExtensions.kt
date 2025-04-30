@@ -1,12 +1,13 @@
-package dev.langchain4j.model.chat.request
+package dev.langchain4j.kotlin.model.chat.request
 
 import dev.langchain4j.agent.tool.ToolSpecification
 import dev.langchain4j.data.message.ChatMessage
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters
 
 /**
- * Builds and returns a [ChatRequest] using the provided configuration block.
+ * Builds and returns a [dev.langchain4j.model.chat.request.ChatRequest] using the provided configuration block.
  * The configuration is applied on a [ChatRequestBuilder] instance to customize
- * messages and parameters that will be part of the resulting [ChatRequest].
+ * messages and parameters that will be part of the resulting [dev.langchain4j.model.chat.request.ChatRequest].
  *
  * Sample usage:
  * ```kotlin
@@ -16,11 +17,12 @@ import dev.langchain4j.data.message.ChatMessage
  * }
  * ```
  * @param block A lambda with receiver on [ChatRequestBuilder] to configure messages
- * and/or parameters for the [ChatRequest] .
- * @return A fully constructed [ChatRequest]  instance based on the applied configurations.
+ * and/or parameters for the [dev.langchain4j.model.chat.request.ChatRequest] .
+ * @return A fully constructed [dev.langchain4j.model.chat.request.ChatRequest] instance,
+ * based on the applied configurations.
  * @author Konstantin Pavlov
  */
-public fun chatRequest(block: ChatRequestBuilder.() -> Unit): ChatRequest {
+public fun chatRequest(block: ChatRequestBuilder.() -> Unit): dev.langchain4j.model.chat.request.ChatRequest {
     val builder = ChatRequestBuilder()
     builder.apply { block() }
     return builder.build()
@@ -60,20 +62,20 @@ public open class ChatRequestParametersBuilder<B : DefaultChatRequestParameters.
     public var maxOutputTokens: Int? = null,
     public var stopSequences: List<String>? = null,
     public var toolSpecifications: List<ToolSpecification>? = null,
-    public var toolChoice: ToolChoice? = null,
-    public var responseFormat: ResponseFormat? = null
+    public var toolChoice: dev.langchain4j.model.chat.request.ToolChoice? = null,
+    public var responseFormat: dev.langchain4j.model.chat.request.ResponseFormat? = null
 )
 
 /**
- * Builder class for constructing a [ChatRequest] instance. Allows configuring
+ * Builder class for constructing a [dev.langchain4j.model.chat.request.ChatRequest] instance. Allows configuring
  * messages and request parameters to customize the resulting request.
  *
  * This builder provides methods to add individual or multiple chat messages,
- * as well as set request parameters for the generated [ChatRequest].
+ * as well as set request parameters for the generated [dev.langchain4j.model.chat.request.ChatRequest].
  */
 public open class ChatRequestBuilder(
     public var messages: MutableList<ChatMessage> = mutableListOf(),
-    public var parameters: ChatRequestParameters? = null
+    public var parameters: dev.langchain4j.model.chat.request.ChatRequestParameters? = null
 ) {
     /**
      * Adds a list of [ChatMessage] objects to the builder's messages collection.
@@ -84,7 +86,7 @@ public open class ChatRequestBuilder(
     public open fun messages(value: List<ChatMessage>): ChatRequestBuilder = apply { this.messages.addAll(value) }
 
     /**
-     * Adds a chat message to the messages list.
+     * Adds a chat message to the message list.
      *
      * @param value The chat message to be added.
      * @return The current instance for method chaining.
@@ -96,8 +98,8 @@ public open class ChatRequestBuilder(
      *
      * @return A new instance of ChatRequest configured with the provided messages and parameters.
      */
-    public open fun build(): ChatRequest =
-        ChatRequest
+    public open fun build(): dev.langchain4j.model.chat.request.ChatRequest =
+        dev.langchain4j.model.chat.request.ChatRequest
             .Builder()
             .messages(this.messages)
             .parameters(this.parameters)

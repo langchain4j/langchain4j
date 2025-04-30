@@ -1,8 +1,8 @@
-package dev.langchain4j.model.chat
+package dev.langchain4j.kotlin.model.chat
 
 import dev.langchain4j.model.chat.request.ChatRequest
-import dev.langchain4j.model.chat.request.ChatRequestBuilder
-import dev.langchain4j.model.chat.request.chatRequest
+import dev.langchain4j.kotlin.model.chat.request.ChatRequestBuilder
+import dev.langchain4j.kotlin.model.chat.request.chatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -11,7 +11,7 @@ import kotlin.coroutines.CoroutineContext
 /**
  * Asynchronously processes a chat request using the language model within
  * a coroutine scope. This extension function provides a structured
- * concurrency wrapper around the synchronous [ChatModel.chat] method.
+ * concurrency wrapper around the synchronous [dev.langchain4j.model.chat.ChatModel.chat] method.
  *
  * Example usage:
  * ```kotlin
@@ -25,13 +25,13 @@ import kotlin.coroutines.CoroutineContext
  * @return [ChatResponse] containing the model's response and any additional
  *    metadata.
  * @throws Exception if the chat request fails or is interrupted.
- * @see ChatModel.chat(ChatRequest)
+ * @see dev.langchain4j.model.chat.ChatModel.chat(ChatRequest)
  * @see ChatRequest
  * @see ChatResponse
  * @author Konstantin Pavlov
  */
 @JvmOverloads
-public suspend fun ChatModel.chatAsync(
+public suspend fun dev.langchain4j.model.chat.ChatModel.chatAsync(
     request: ChatRequest,
     coroutineContext: CoroutineContext = defaultCoroutineContext()
 ): ChatResponse {
@@ -68,7 +68,7 @@ public suspend fun ChatModel.chatAsync(
  * @author Konstantin Pavlov
  */
 @JvmOverloads
-public suspend fun ChatModel.chat(
+public suspend fun dev.langchain4j.model.chat.ChatModel.chat(
     requestBuilder: ChatRequest.Builder,
     coroutineContext: CoroutineContext = defaultCoroutineContext()
 ): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = requestBuilder.build())
@@ -77,7 +77,7 @@ public suspend fun ChatModel.chat(
  * Asynchronously processes a chat request by configuring a [ChatRequest]
  * using a provided builder block. This method facilitates the creation
  * of well-structured chat requests using a [ChatRequestBuilder] and
- * executes the request using the associated [ChatModel].
+ * executes the request using the associated [dev.langchain4j.model.chat.ChatModel].
  *
  * Example usage:
  * ```kotlin
@@ -98,12 +98,12 @@ public suspend fun ChatModel.chat(
  * @throws Exception if the chat request fails or encounters an error during execution.
  * @author Konstantin Pavlov
  */
-public suspend fun ChatModel.chat(
+public suspend fun dev.langchain4j.model.chat.ChatModel.chat(
     coroutineContext: CoroutineContext = defaultCoroutineContext(),
     block: ChatRequestBuilder.() -> Unit
 ): ChatResponse = chatAsync(coroutineContext = coroutineContext, request = chatRequest(block))
 
-public suspend fun ChatModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse =
+public suspend fun dev.langchain4j.model.chat.ChatModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse =
     chatAsync(coroutineContext = defaultCoroutineContext(), request = chatRequest(block))
 
 /**
