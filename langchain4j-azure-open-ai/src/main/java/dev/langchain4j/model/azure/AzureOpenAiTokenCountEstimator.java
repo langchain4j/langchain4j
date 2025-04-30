@@ -140,7 +140,7 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
             tokenCount += estimateTokenCountInText(aiMessage.text());
         }
 
-        if (aiMessage.toolExecutionRequests() != null) {
+        if (aiMessage.hasToolExecutionRequests()) {
             if (isOneOfLatestModels()) {
                 tokenCount += 6;
             } else {

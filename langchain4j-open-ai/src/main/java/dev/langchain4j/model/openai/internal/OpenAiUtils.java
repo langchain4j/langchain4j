@@ -207,10 +207,6 @@ public class OpenAiUtils {
     }
 
     public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
-        if (toolSpecifications == null) {
-            return null;
-        }
-
         return toolSpecifications.stream()
                 .map((ToolSpecification toolSpecification) -> toTool(toolSpecification, strict))
                 .collect(toList());

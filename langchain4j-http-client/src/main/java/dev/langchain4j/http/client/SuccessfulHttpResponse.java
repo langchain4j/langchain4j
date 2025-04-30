@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
-import static java.util.Collections.emptyMap;
 
 public class SuccessfulHttpResponse {
 
@@ -15,7 +15,7 @@ public class SuccessfulHttpResponse {
 
     public SuccessfulHttpResponse(Builder builder) {
         this.statusCode = ensureBetween(builder.statusCode, 200, 299, "statusCode");
-        this.headers = builder.headers == null ? emptyMap() : new HashMap<>(builder.headers);
+        this.headers = copy(builder.headers);
         this.body = builder.body;
     }
 

@@ -345,7 +345,7 @@ class MistralAiChatModelIT {
         AiMessage aiMessage2 = response2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -409,7 +409,7 @@ class MistralAiChatModelIT {
         AiMessage aiMessage2 = response2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
         assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -533,7 +533,7 @@ class MistralAiChatModelIT {
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
         assertThat(aiMessage2.text()).contains("11", "2024");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);

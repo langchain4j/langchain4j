@@ -125,7 +125,7 @@ public class OpenAiTokenCountEstimator implements TokenCountEstimator {
             tokenCount += estimateTokenCountInText(aiMessage.text());
         }
 
-        if (aiMessage.toolExecutionRequests() != null) {
+        if (aiMessage.hasToolExecutionRequests()) {
             tokenCount += 6;
             if (aiMessage.toolExecutionRequests().size() == 1) {
                 tokenCount -= 1;

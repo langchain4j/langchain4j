@@ -246,7 +246,7 @@ public class JsonSchemaElementUtils {
                 map.put("additionalProperties", false);
             }
 
-            if (jsonObjectSchema.definitions() != null) {
+            if (!jsonObjectSchema.definitions().isEmpty()) {
                 map.put("$defs", toMap(jsonObjectSchema.definitions(), strict));
             }
 

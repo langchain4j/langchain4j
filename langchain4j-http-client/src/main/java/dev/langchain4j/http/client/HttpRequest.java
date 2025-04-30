@@ -4,12 +4,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyMap;
 
 public class HttpRequest {
 
@@ -21,7 +21,7 @@ public class HttpRequest {
     public HttpRequest(Builder builder) {
         this.method = ensureNotNull(builder.method, "method");
         this.url = ensureNotBlank(builder.url, "url");
-        this.headers = builder.headers == null ? emptyMap() : new HashMap<>(builder.headers);
+        this.headers = copy(builder.headers);
         this.body = builder.body;
     }
 

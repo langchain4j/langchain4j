@@ -88,7 +88,7 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Hello");
         assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
