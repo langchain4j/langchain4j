@@ -8,7 +8,7 @@
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
-    <description>Parent POM for langchain4j submodules</description>
+    <description>Parent POM for LangChain4j submodules</description>
     <url>https://github.com/langchain4j/langchain4j</url>
 
     <licenses>
@@ -22,14 +22,10 @@
 
     <developers>
         <developer>
-            <id>deep-learning-dynamo</id>
-            <email>deeplearningdynamo@gmail.com</email>
-            <url>https://github.com/deep-learning-dynamo</url>
-        </developer>
-        <developer>
-            <id>kuraleta</id>
-            <email>digital.kuraleta@gmail.com</email>
-            <url>https://github.com/kuraleta</url>
+            <id>dliubarskyi</id>
+            <name>Dmytro Liubarskyi</name>
+            <email>info@langchain4j.dev</email>
+            <url>https://github.com/dliubarskyi</url>
         </developer>
     </developers>
 

@@ -96,7 +96,7 @@ public class SearchApiTool {
 }
 ```
 
-### Available engines in Langchain4j
+### Available engines in LangChain4j
 
 | SearchApi Engine                                          | Available |
 |-----------------------------------------------------------|-----------|
