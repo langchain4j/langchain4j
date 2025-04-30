@@ -11,8 +11,7 @@
 
     <artifactId>langchain4j</artifactId>
     <name>LangChain4j</name>
-    <description>Java implementation of LangChain: Integrate your Java application with countless AI
-        tools and services smoothly</description>
+    <description>Build LLM-powered applications in Java: chatbots, agents, RAG, and much more</description>
 
     <licenses>
         <license>
