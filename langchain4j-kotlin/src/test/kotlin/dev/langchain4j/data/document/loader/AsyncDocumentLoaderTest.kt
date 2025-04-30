@@ -55,7 +55,7 @@ internal class AsyncDocumentLoaderTest {
                 loadDocuments(
                     recursive = true,
                     documentParser = parser,
-                    directoryPaths = listOf(Path.of("./src/test/resources/classPathSourceTests"))
+                    directoryPaths = listOf(Path.of("./src/test/resources/asyncDocumentLoaderTest"))
                 )
             assertThat(documents)
                 .hasSize(4)
