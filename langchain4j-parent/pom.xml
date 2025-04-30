@@ -555,13 +555,13 @@
                 <plugin>
                     <groupId>com.diffplug.spotless</groupId>
                     <artifactId>spotless-maven-plugin</artifactId>
-                    <version>2.43.0</version>
+                    <version>2.44.4</version>
                     <configuration>
                         <!-- optional: limit format enforcement to just the files changed by this feature branch -->
                         <ratchetFrom>origin/main</ratchetFrom>
                         <java>
                             <palantirJavaFormat>
-                                <version>2.50.0</version>
+                                <version>2.63.0</version>
                             </palantirJavaFormat>
                         </java>
                         <pom>
@@ -586,6 +586,7 @@
                         <javaParameters>true</javaParameters>
                         <args>
                             <arg>-Xjsr305=strict</arg>
+                            <arg>-Werror</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
                             <arg>-Xtype-enhancement-improvements-strict-mode</arg>
                         </args>
@@ -606,6 +607,10 @@
                                 <version>${dokka.version}</version>
                             </plugin>
                         </dokkaPlugins>
+                        <sourceDirectories>
+                            <dir>${project.basedir}/src/main/kotlin</dir>
+                            <dir>${project.basedir}/src/main/java</dir>
+                        </sourceDirectories>
                     </configuration>
                 </plugin>
                 <plugin>
