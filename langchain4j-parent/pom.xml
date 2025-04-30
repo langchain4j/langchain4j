@@ -65,7 +65,7 @@
         <github-api.version>1.318</github-api.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <infinispan.version>15.0.14.Final</infinispan.version>
-        <jackson.version>2.18.3</jackson.version>
+        <jackson.version>2.19.0</jackson.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
         <jtokkit.version>1.1.0</jtokkit.version>
