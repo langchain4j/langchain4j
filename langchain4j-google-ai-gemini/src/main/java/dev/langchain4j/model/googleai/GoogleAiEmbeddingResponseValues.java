@@ -1,7 +1,10 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GoogleAiEmbeddingResponseValues {
     List<Float> values;
 

@@ -1,13 +1,22 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiGenerateContentResponse {
     private List<GeminiCandidate> candidates;
     private GeminiPromptFeedback promptFeedback;
     private GeminiUsageMetadata usageMetadata;
 
-    GeminiGenerateContentResponse(List<GeminiCandidate> candidates, GeminiPromptFeedback promptFeedback, GeminiUsageMetadata usageMetadata) {
+    @JsonCreator
+    GeminiGenerateContentResponse(
+            @JsonProperty("candidates") List<GeminiCandidate> candidates,
+            @JsonProperty("promptFeedback") GeminiPromptFeedback promptFeedback,
+            @JsonProperty("usageMetadata") GeminiUsageMetadata usageMetadata) {
         this.candidates = candidates;
         this.promptFeedback = promptFeedback;
         this.usageMetadata = usageMetadata;

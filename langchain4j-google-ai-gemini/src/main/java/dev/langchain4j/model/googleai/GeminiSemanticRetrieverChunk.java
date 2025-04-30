@@ -1,10 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiSemanticRetrieverChunk {
     private String source;
     private String chunk;
 
-    GeminiSemanticRetrieverChunk(String source, String chunk) {
+    @JsonCreator
+    GeminiSemanticRetrieverChunk(@JsonProperty("source") String source, @JsonProperty("chunk") String chunk) {
         this.source = source;
         this.chunk = chunk;
     }

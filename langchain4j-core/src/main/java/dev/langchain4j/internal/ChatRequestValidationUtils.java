@@ -59,7 +59,7 @@ public class ChatRequestValidationUtils {
         if (parameters.maxOutputTokens() != null) {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'maxOutputTokens' parameter"));
         }
-        if (parameters.stopSequences() != null) {
+        if (!parameters.stopSequences().isEmpty()) {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'stopSequences' parameter"));
         }
     }

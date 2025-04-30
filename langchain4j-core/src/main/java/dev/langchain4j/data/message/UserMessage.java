@@ -6,10 +6,10 @@ import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.USER;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableList;
 
 /**
  * Represents a message from a user, typically an end user of the application.
@@ -76,7 +76,7 @@ public class UserMessage implements ChatMessage {
      */
     public UserMessage(List<Content> contents) {
         this.name = null;
-        this.contents = unmodifiableList(ensureNotEmpty(contents, "contents"));
+        this.contents = copy(ensureNotEmpty(contents, "contents"));
     }
 
     /**
@@ -87,7 +87,7 @@ public class UserMessage implements ChatMessage {
      */
     public UserMessage(String name, List<Content> contents) {
         this.name = name;
-        this.contents = unmodifiableList(ensureNotEmpty(contents, "contents"));
+        this.contents = copy(ensureNotEmpty(contents, "contents"));
     }
 
     /**

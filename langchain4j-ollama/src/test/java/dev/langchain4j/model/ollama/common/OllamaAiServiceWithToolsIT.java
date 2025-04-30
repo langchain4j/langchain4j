@@ -108,7 +108,7 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("32");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
     }
 
     @Test
@@ -127,7 +127,7 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
         // then
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNotNull();
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
     }
 
     @Test
@@ -200,7 +200,7 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
 
         // then
         assertThat(secondAiMessage.text()).contains("32");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
         assertThat(onPartialResponseCounter.get()).isPositive();
     }
 

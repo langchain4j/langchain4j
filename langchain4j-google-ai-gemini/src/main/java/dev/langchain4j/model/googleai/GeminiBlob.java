@@ -1,10 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiBlob {
     private String mimeType;
     private String data;
 
-    GeminiBlob(String mimeType, String data) {
+    @JsonCreator
+    GeminiBlob(@JsonProperty("mimeType") String mimeType, @JsonProperty("data") String data) {
         this.mimeType = mimeType;
         this.data = data;
     }

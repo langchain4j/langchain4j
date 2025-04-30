@@ -13,10 +13,10 @@ class WebSearchInformationResultTest {
 
         assertThat(webSearchInformationResult.totalResults()).isEqualTo(1L);
         assertThat(webSearchInformationResult.pageNumber()).isNull();
-        assertThat(webSearchInformationResult.metadata()).isNull();
+        assertThat(webSearchInformationResult.metadata()).isEmpty();
 
         assertThat(webSearchInformationResult)
-                .hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}");
+                .hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata={}}");
     }
 
     @Test
@@ -25,10 +25,10 @@ class WebSearchInformationResultTest {
 
         assertThat(webSearchInformationResult.totalResults()).isEqualTo(1L);
         assertThat(webSearchInformationResult.pageNumber()).isNull();
-        assertThat(webSearchInformationResult.metadata()).isNull();
+        assertThat(webSearchInformationResult.metadata()).isEmpty();
 
         assertThat(webSearchInformationResult)
-                .hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}");
+                .hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata={}}");
     }
 
     @Test

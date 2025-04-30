@@ -52,7 +52,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isEqualTo(answer);
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         ChatResponseMetadata metadata = response.metadata();
 

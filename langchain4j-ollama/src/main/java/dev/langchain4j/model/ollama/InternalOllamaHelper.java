@@ -7,6 +7,7 @@ import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -33,6 +34,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+@Internal
 class InternalOllamaHelper {
 
     private static final Predicate<ChatMessage> isUserMessage = UserMessage.class::isInstance;
