@@ -358,7 +358,7 @@ class AnthropicChatModelIT {
                 .maxTokens(3)
                 .stopSequences(asList("hello", "world"))
                 .timeout(Duration.ofSeconds(30))
-                .maxRetries(1)
+                .maxRetries(2)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -483,7 +483,7 @@ class AnthropicChatModelIT {
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -650,7 +650,7 @@ class AnthropicChatModelIT {
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);

@@ -32,11 +32,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithConverseAPIIT {
 
-    @AfterEach
-    void afterEach() {
-        sleepIfNeeded();
-    }
-
     @Test
     void should_generate_with_default_config() {
 
@@ -130,7 +125,7 @@ class BedrockChatModelWithConverseAPIIT {
 
         // then
         assertThat(aiMessage2.text()).contains("4", "16", "512");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isPositive();
@@ -194,5 +189,10 @@ class BedrockChatModelWithConverseAPIIT {
 
         // when then
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> model.chat(userMessage));
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

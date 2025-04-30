@@ -1,13 +1,13 @@
 package dev.langchain4j.model.googleai;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.AfterEach;
 
 import static java.util.Collections.singletonList;
 
-class GoogleAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+class GoogleAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
     @Override

@@ -46,7 +46,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             Boolean logResponses,
             Integer maxSegmentsPerBatch
     ) {
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 128);
         this.truncation = truncation;

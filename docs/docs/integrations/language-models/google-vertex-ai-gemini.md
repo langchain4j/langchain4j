@@ -193,7 +193,7 @@ ChatModel model = VertexAiGeminiChatModel.builder()
     .topP(0.95)                 // topP (between 0 and 1) — cumulative probability of the most probable tokens
     .topK(3)                    // topK (positive integer) — pick a token among the most probable ones
     .seed(1234)                 // seed for the random number generator
-    .maxRetries(3)              // maximum number of retries
+    .maxRetries(2)              // maximum number of retries
     .responseMimeType("application/json") // to get JSON structured outputs
     .responseSchema(/*...*/)    // structured output following the provided schema
     .safetySettings(/*...*/)    // specify safety settings to filter inappropriate content

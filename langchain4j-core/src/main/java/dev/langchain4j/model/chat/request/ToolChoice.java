@@ -1,16 +1,19 @@
 package dev.langchain4j.model.chat.request;
 
+import dev.langchain4j.model.chat.ChatModel;
+
+/**
+ * Specifies how {@link ChatModel} should use tools.
+ */
 public enum ToolChoice {
 
-    // TODO improve javadoc
-
     /**
-     * The chat model is free to decide whether to call tool(s).
+     * The chat model can choose whether to use tools, which ones to use, and how many.
      */
     AUTO,
 
     /**
-     * The chat model is required to call one or more tools.
+     * The chat model is required to use one or more tools.
      */
     REQUIRED
 }

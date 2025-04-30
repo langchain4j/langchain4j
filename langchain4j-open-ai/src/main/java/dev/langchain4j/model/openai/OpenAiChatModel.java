@@ -22,22 +22,21 @@ import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptySet;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
@@ -71,7 +70,7 @@ public class OpenAiChatModel implements ChatModel {
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
                 .build();
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -95,26 +94,26 @@ public class OpenAiChatModel implements ChatModel {
                 .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
                 .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens()))
-                .stopSequences(getOrDefault(builder.stop, () -> copyIfNotNull(commonParameters.stopSequences())))
-                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
+                .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
-                .logitBias(getOrDefault(builder.logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
+                .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, openAiParameters.parallelToolCalls()))
                 .seed(getOrDefault(builder.seed, openAiParameters.seed()))
                 .user(getOrDefault(builder.user, openAiParameters.user()))
                 .store(getOrDefault(builder.store, openAiParameters.store()))
-                .metadata(getOrDefault(builder.metadata, () -> copyIfNotNull(openAiParameters.metadata())))
+                .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
         this.responseFormat = builder.responseFormat;
-        this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
-        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
-        this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
-        this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.strictTools = getOrDefault(builder.strictTools, false);
+        this.listeners = copy(builder.listeners);
     }
 
     @Override
@@ -135,7 +134,7 @@ public class OpenAiChatModel implements ChatModel {
     public ChatResponse doChat(ChatRequest chatRequest) {
 
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
-        InternalOpenAiHelper.validate(parameters);
+        validate(parameters);
 
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();

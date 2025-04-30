@@ -193,7 +193,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         ChatModel chatModel = defaultModelBuilder()
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .maxRetries(1) // it will fail, so no need to retry
+                .maxRetries(0) // it will fail, so no need to retry
                 .build();
 
         // when
@@ -236,7 +236,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
@@ -304,7 +304,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         ChatModel chatModel = defaultModelBuilder()
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .customHeaders(customHeaders)
-                .maxRetries(1) // it will fail, so no need to retry
+                .maxRetries(0) // it will fail, so no need to retry
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()

@@ -2,9 +2,11 @@ package dev.langchain4j.data.document.loader;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.spi.data.document.parser.DocumentParserFactory;
 
+@Internal
 class DocumentParserLoader {
     static DocumentParser loadDocumentParser() {
         var factories = loadFactories(DocumentParserFactory.class);

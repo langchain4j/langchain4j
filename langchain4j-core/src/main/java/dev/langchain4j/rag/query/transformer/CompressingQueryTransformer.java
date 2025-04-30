@@ -132,9 +132,5 @@ public class CompressingQueryTransformer implements QueryTransformer {
         public CompressingQueryTransformer build() {
             return new CompressingQueryTransformer(this.chatModel, this.promptTemplate);
         }
-
-        public String toString() {
-            return "CompressingQueryTransformer.CompressingQueryTransformerBuilder(chatModel=" + this.chatModel + ", promptTemplate=" + this.promptTemplate + ")";
-        }
     }
 }

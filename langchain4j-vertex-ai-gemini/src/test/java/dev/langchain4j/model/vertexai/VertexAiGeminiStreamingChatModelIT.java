@@ -311,7 +311,8 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName("gemini-2.0-flash")
+                .temperature(0.0f)
                 .build();
 
         ToolSpecification weatherToolSpec = ToolSpecification.builder()

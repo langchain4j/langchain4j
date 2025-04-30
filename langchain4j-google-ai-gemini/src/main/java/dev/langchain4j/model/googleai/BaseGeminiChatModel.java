@@ -82,7 +82,7 @@ abstract class BaseGeminiChatModel {
         this.safetySettings = copyIfNotNull(safetySettings);
         this.responseFormat = responseFormat;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.geminiService = new GeminiService(
                 getOrDefault(logRequestsAndResponses, false) ? log : null,
                 getOrDefault(timeout, ofSeconds(60))

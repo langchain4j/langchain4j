@@ -1,7 +1,10 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
+
 import java.math.BigDecimal;
 
+@Internal
 class BigDecimalOutputParser implements OutputParser<BigDecimal> {
 
     @Override

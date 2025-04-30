@@ -36,7 +36,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
     ) {
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.geminiService = new GeminiService(
                 getOrDefault(logRequestsAndResponses, false) ? log : null,
                 timeout != null ? timeout : Duration.ofSeconds(60)

@@ -1,29 +1,38 @@
-package dev.langchain4j.model.chat.request.json;
+package dev.langchain4j.internal;
 
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonSchemaElementFrom;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.isJsonArray;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.isJsonString;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Deque;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-class JsonSchemaElementHelperTest {
+class JsonSchemaElementUtilsTest {
 
     static class CustomClass {}
 
     @Test
     void is_custom_class() {
 
-        assertThat(JsonSchemaElementHelper.isCustomClass(CustomClass.class)).isTrue();
+        assertThat(JsonSchemaElementUtils.isCustomClass(CustomClass.class)).isTrue();
 
-        assertThat(JsonSchemaElementHelper.isCustomClass(Integer.class)).isFalse();
-        assertThat(JsonSchemaElementHelper.isCustomClass(LocalDateTime.class)).isFalse();
+        assertThat(JsonSchemaElementUtils.isCustomClass(Integer.class)).isFalse();
+        assertThat(JsonSchemaElementUtils.isCustomClass(LocalDateTime.class)).isFalse();
     }
 
     static class Order {
@@ -191,5 +200,29 @@ class JsonSchemaElementHelperTest {
                 }
                 """
         );
+    }
+
+    @Test
+    void stringIsJsonCompatible() {
+        assertThat(isJsonString(char.class)).isTrue();
+        assertThat(isJsonString(String.class)).isTrue();
+        assertThat(isJsonString(Character.class)).isTrue();
+        assertThat(isJsonString(StringBuffer.class)).isTrue();
+        assertThat(isJsonString(StringBuilder.class)).isTrue();
+        assertThat(isJsonString(CharSequence.class)).isTrue();
+        assertThat(isJsonString(UUID.class)).isTrue();
+    }
+
+    @Test
+    void collectionIsJsonCompatible() {
+        assertThat(isJsonArray(String[].class)).isTrue();
+        assertThat(isJsonArray(Integer[].class)).isTrue();
+        assertThat(isJsonArray(int[].class)).isTrue();
+
+        assertThat(isJsonArray(List.class)).isTrue();
+        assertThat(isJsonArray(Set.class)).isTrue();
+        assertThat(isJsonArray(Deque.class)).isTrue();
+        assertThat(isJsonArray(Collection.class)).isTrue();
+        assertThat(isJsonArray(Iterable.class)).isTrue();
     }
 }
