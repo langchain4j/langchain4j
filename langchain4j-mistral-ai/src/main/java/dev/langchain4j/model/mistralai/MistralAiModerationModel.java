@@ -1,26 +1,25 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiCategories;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationResponse;
-import dev.langchain4j.model.mistralai.internal.api.MistralCategories;
-import dev.langchain4j.model.mistralai.internal.api.MistralModerationResult;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationResult;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Response;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.singletonList;
 
 public class MistralAiModerationModel implements ModerationModel {
 
@@ -28,26 +27,26 @@ public class MistralAiModerationModel implements ModerationModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    public MistralAiModerationModel(String baseUrl,
-                                    String apiKey,
-                                    Duration timeout,
-                                    Integer maxRetries,
-                                    String modelName,
-                                    Boolean logRequests,
-                                    Boolean logResponses) {
+    public MistralAiModerationModel(
+            String baseUrl,
+            String apiKey,
+            Duration timeout,
+            Integer maxRetries,
+            String modelName,
+            Boolean logRequests,
+            Boolean logResponses) {
 
         this.client = MistralAiClient.builder()
-            .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-            .apiKey(apiKey)
-            .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-            .logRequests(getOrDefault(logRequests, false))
-            .logResponses(getOrDefault(logResponses, false))
-            .build();
+                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
+                .apiKey(apiKey)
+                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses, false))
+                .build();
 
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 2);
     }
-
 
     @Override
     public Response<Moderation> moderate(String text) {
@@ -56,9 +55,8 @@ public class MistralAiModerationModel implements ModerationModel {
 
     @Override
     public Response<Moderation> moderate(List<ChatMessage> messages) {
-        return moderateInternal(messages.stream()
-                .map(MistralAiModerationModel::toText)
-                .toList());
+        return moderateInternal(
+                messages.stream().map(MistralAiModerationModel::toText).toList());
     }
 
     private static String toText(ChatMessage chatMessage) {
@@ -82,7 +80,7 @@ public class MistralAiModerationModel implements ModerationModel {
         MistralAiModerationResponse response = withRetryMappingExceptions(() -> client.moderation(request), maxRetries);
 
         int i = 0;
-        for (MistralModerationResult moderationResult : response.results()) {
+        for (MistralAiModerationResult moderationResult : response.results()) {
 
             if (isAnyCategoryFlagged(moderationResult.getCategories())) {
                 return Response.from(Moderation.flagged(inputs.get(i)));
@@ -93,16 +91,15 @@ public class MistralAiModerationModel implements ModerationModel {
         return Response.from(Moderation.notFlagged());
     }
 
-
-    private boolean isAnyCategoryFlagged(MistralCategories categories) {
-        return (categories.getSexual() != null && categories.getSexual()) ||
-            (categories.getHateAndDiscrimination() != null && categories.getHateAndDiscrimination()) ||
-            (categories.getViolenceAndThreats() != null && categories.getViolenceAndThreats()) ||
-            (categories.getDangerousAndCriminalContent() != null && categories.getDangerousAndCriminalContent()) ||
-            (categories.getSelfHarm() != null && categories.getSelfHarm()) ||
-            (categories.getHealth() != null && categories.getHealth()) ||
-            (categories.getLaw() != null && categories.getLaw()) ||
-            (categories.getPii() != null && categories.getPii());
+    private boolean isAnyCategoryFlagged(MistralAiCategories categories) {
+        return (categories.getSexual() != null && categories.getSexual())
+                || (categories.getHateAndDiscrimination() != null && categories.getHateAndDiscrimination())
+                || (categories.getViolenceAndThreats() != null && categories.getViolenceAndThreats())
+                || (categories.getDangerousAndCriminalContent() != null && categories.getDangerousAndCriminalContent())
+                || (categories.getSelfHarm() != null && categories.getSelfHarm())
+                || (categories.getHealth() != null && categories.getHealth())
+                || (categories.getLaw() != null && categories.getLaw())
+                || (categories.getPii() != null && categories.getPii());
     }
 
     public static class Builder {
@@ -150,7 +147,8 @@ public class MistralAiModerationModel implements ModerationModel {
         }
 
         public MistralAiModerationModel build() {
-            return new MistralAiModerationModel(baseUrl, apiKey, timeout, maxRetries, modelName, logRequests, logResponses);
+            return new MistralAiModerationModel(
+                    baseUrl, apiKey, timeout, maxRetries, modelName, logRequests, logResponses);
         }
     }
 }

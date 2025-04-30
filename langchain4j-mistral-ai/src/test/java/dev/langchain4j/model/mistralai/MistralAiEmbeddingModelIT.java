@@ -1,17 +1,16 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.model.mistralai.MistralAiEmbeddingModelName.MISTRAL_EMBED;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static dev.langchain4j.model.mistralai.MistralAiEmbeddingModelName.MISTRAL_EMBED;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class MistralAiEmbeddingModelIT {
 
@@ -63,6 +62,5 @@ class MistralAiEmbeddingModelIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(7 + 8);
 
         assertThat(response.finishReason()).isNull();
-
     }
 }
