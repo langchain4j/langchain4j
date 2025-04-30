@@ -107,7 +107,7 @@ runBlocking { // must run in a coroutine context
 }
 ```
 
-Check out [this test](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/test/kotlin/dev/langchain4j/model/chat/StreamingChatModelExtensionsKtTest.kt) as example.
+Check out [this test](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-kotlin/src/test/kotlin/dev/langchain4j/kotlin/model/chat/StreamingChatModelExtensionsKtTest.kt) as an example.
 
 ## Compiler Compatibility
 
