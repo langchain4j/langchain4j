@@ -66,7 +66,7 @@ public abstract class AbstractAiServiceIT {
             assertThat(result.finishReason()).isEqualTo(STOP);
         }
 
-        assertThat(result.sources()).isNull();
+        assertThat(result.sources()).isEmpty();
 
         assertThat(result.toolExecutions()).isEmpty();
 
