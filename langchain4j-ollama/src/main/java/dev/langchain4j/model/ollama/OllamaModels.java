@@ -27,7 +27,7 @@ public class OllamaModels {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static OllamaModelsBuilder builder() {

@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.0.0-beta3-SNAPSHOT</version>
+        <version>1.0.0-beta4-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
     <artifactId>langchain4j-cassandra</artifactId>
@@ -14,7 +14,6 @@
 
     <properties>
         <astra-db-client.version>1.2.4</astra-db-client.version>
-        <jackson.version>2.16.1</jackson.version>
         <maven.compiler.release>11</maven.compiler.release>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>

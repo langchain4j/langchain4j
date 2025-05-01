@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.spi.prompt.structured.StructuredPromptFactory;
@@ -16,7 +17,8 @@ import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 /**
  * Default implementation of {@link StructuredPromptFactory}.
  */
-public class DefaultStructuredPromptFactory implements StructuredPromptFactory {
+@Internal
+class DefaultStructuredPromptFactory implements StructuredPromptFactory {
 
     private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
             .visibility(FIELD, ANY)

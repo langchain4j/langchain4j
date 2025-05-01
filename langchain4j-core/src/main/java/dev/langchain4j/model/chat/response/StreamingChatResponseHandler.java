@@ -1,13 +1,12 @@
 package dev.langchain4j.model.chat.response;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 
 /**
- * TODO review all javadoc in this class
- * Represents a handler for streaming a response from a {@link StreamingChatLanguageModel}.
+ * Represents a handler for a {@link StreamingChatModel} response.
  *
- * @see StreamingChatLanguageModel
+ * @see StreamingChatModel
  */
 public interface StreamingChatResponseHandler {
 

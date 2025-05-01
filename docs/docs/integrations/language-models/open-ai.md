@@ -32,7 +32,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -41,7 +41,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -73,14 +73,14 @@ OpenAiChatModel model = OpenAiChatModel.builder()
 
 ### Plain Java
 ```java
-ChatLanguageModel model = OpenAiChatModel.builder()
+ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
         .build();
 
 
 // You can also specify default chat request parameters using ChatRequestParameters or OpenAiChatRequestParameters
-ChatLanguageModel model = OpenAiChatModel.builder()
+ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                 .modelName("gpt-4o-mini")
@@ -133,17 +133,17 @@ or autowired where needed, for example:
 
 ```java
 @RestController
-class ChatLanguageModelController {
+class ChatModelController {
 
-    ChatLanguageModel chatLanguageModel;
+    ChatModel chatModel;
 
-    ChatLanguageModelController(ChatLanguageModel chatLanguageModel) {
-        this.chatLanguageModel = chatLanguageModel;
+    ChatModelController(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @GetMapping("/model")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.chat(message);
+        return chatModel.chat(message);
     }
 }
 ```
@@ -175,24 +175,19 @@ OpenAiChatModel.builder()
     .strictJsonSchema(true)
     .build();
 ```
-In this case AI Service will not append "You must answer strictly in the following JSON format: ..." string
-to the end of the last `UserMessage`, but will create a JSON schema from the given POJO and pass it to the LLM.
-Please note that this works only when method return type is a POJO.
-If the return type is something else, (like an `enum` or a `List<String>`),
-the old behaviour is applied (with "You must answer strictly ...").
-Other return types will be supported in the near future.
+In this case AI Service will automatically generate a JSON schema from the given POJO and pass it to the LLM.
 
 ## Creating `OpenAiStreamingChatModel`
 
 ### Plain Java
 ```java
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
         .build();
 
 // You can also specify default chat request parameters using ChatRequestParameters or OpenAiChatRequestParameters
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                 .modelName("gpt-4o-mini")
@@ -266,17 +261,11 @@ langchain4j.open-ai.moderation-model.timeout=...
 ```
 
 
-## Creating `OpenAiTokenizer`
+## Creating `OpenAiTokenCountEstimator`
 
-### Plain Java
 ```java
-Tokenizer tokenizer = new OpenAiTokenizer();
-// or
-Tokenizer tokenizer = new OpenAiTokenizer("gpt-4o");
+TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator("gpt-4o-mini");
 ```
-
-### Spring Boot
-The `OpenAiTokenizer` bean is created automatically by the Spring Boot starter.
 
 
 ## HTTP Client

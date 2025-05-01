@@ -1,6 +1,6 @@
 package dev.langchain4j.http.client.log;
 
-import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.HttpRequest;
 import org.slf4j.Logger;
 
@@ -14,7 +14,7 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
-@Experimental
+@Internal
 class HttpRequestLogger {
 
     private static final Set<String> COMMON_SECRET_HEADERS =

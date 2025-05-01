@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta3</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.0.0-beta2'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:1.0.0-beta2'
+implementation 'dev.langchain4j:langchain4j:1.0.0-beta3'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:1.0.0-beta3'
 ```
 ### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -75,12 +75,12 @@ The chat models allow you to generate human-like responses with a model fined-tu
 Create a class and add the following code.
 
 ```java
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        ChatLanguageModel model = MistralAiChatModel.builder()
+        ChatModel model = MistralAiChatModel.builder()
                 .apiKey(ApiKeys.MISTRALAI_API_KEY)
                 .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
                 .build();
@@ -234,14 +234,14 @@ interface PaymentTransactionAgent {
 
 ```java
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModelName;
 import dev.langchain4j.service.AiServices;
 
 public class PaymentDataAssistantApp {
 
-    ChatLanguageModel mistralAiModel = MistralAiChatModel.builder()
+    ChatModel mistralAiModel = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
             .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST) // Also you can use MistralAiChatModelName.OPEN_MIXTRAL_8X22B as open source model
             .logRequests(true)
@@ -255,7 +255,7 @@ public class PaymentDataAssistantApp {
 
         // STEP 2: User asks the agent and AiServices call to the functions
         PaymentTransactionAgent agent = AiServices.builder(PaymentTransactionAgent.class)
-                .chatLanguageModel(mistralAiModel)
+                .chatModel(mistralAiModel)
                 .tools(paymentTool)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .build();
@@ -273,14 +273,14 @@ and expect an answer like this:
 The status of transaction T1005 is Pending. The payment date is October 8, 2021.
 ```
 ### JSON mode
-You can also use the JSON mode to get the response in JSON format. To do this, you need to set the `responseFormat` parameter to `json_object` or the java enum `MistralAiResponseFormatType.JSON_OBJECT`  in the `MistralAiChatModel` builder OR `MistralAiStreamingChatModel` builder.
+You can also use the JSON mode to get the response in JSON format. To do this, you need to set the `responseFormat` parameter to `ResponseFormat.JSON`  in the `MistralAiChatModel` builder OR `MistralAiStreamingChatModel` builder.
 
 Syncronous example:
 
 ```java
-ChatLanguageModel model = MistralAiChatModel.builder()
+ChatModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
-                .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+                .responseFormat(ResponseFormat.JSON)
                 .build();
 
 String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
@@ -292,7 +292,7 @@ System.out.println(json); // {"transactionId":"T123","status":"paid"}
 Streaming example:
 
 ```java
-StreamingChatLanguageModel streamingModel = MistralAiStreamingChatModel.builder()
+StreamingChatModel streamingModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
                 .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
                 .build();
@@ -324,13 +324,45 @@ String json = futureResponse.get().content().text();
 System.out.println(json); // {"transactionId":"T123","status":"paid"}
 ```                
 
+### Structured Outputs
+
+Structured Outputs ensure that a model's responses adhere to a JSON schema.
+
+:::note
+The documentation for using Structured Outputs in LangChain4j is available [here](/tutorials/structured-outputs), and in the section below you will find MistralAI-specific information.
+:::
+
+If desired, the model may be configured with a default JSON Schema that will be used as fallback if no schema is provided in the request.
+
+```java
+ChatModel model = MistralAiChatModel.builder()
+        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+        .modelName(MISTRAL_SMALL_LATEST)
+        .supportedCapabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA)) // Enable structured outputs
+        .responseFormat(ResponseFormat.builder() // Set the fallback JSON Schema (optional)
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder().rootElement(JsonObjectSchema.builder()
+                                .addProperty("name", JsonStringSchema.builder().build())
+                                .addProperty("capital", JsonStringSchema.builder().build())
+                                .addProperty(
+                                        "languages",
+                                        JsonArraySchema.builder()
+                                                .items(JsonStringSchema.builder().build())
+                                                .build())
+                                .required("name", "capital", "languages")
+                                .build())
+                        .build())
+                .build())
+        .build();
+```
+
 ### Guardrailing
 Guardrails are a way to limit the behavior of the model to prevent it from generating harmful or unwanted content. You can set optionally `safePrompt` parameter in the `MistralAiChatModel` builder or `MistralAiStreamingChatModel` builder.
 
 Syncronous example:
 
 ```java
-ChatLanguageModel model = MistralAiChatModel.builder()
+ChatModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .safePrompt(true)
                 .build();
@@ -342,7 +374,7 @@ String response = model.chat(userMessage);
 Streaming example:
 
 ```java
-StreamingChatLanguageModel streamingModel = MistralAiStreamingChatModel.builder()
+StreamingChatModel streamingModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .safePrompt(true)
                 .build();

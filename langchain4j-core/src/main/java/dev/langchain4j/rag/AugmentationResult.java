@@ -5,7 +5,7 @@ import dev.langchain4j.rag.content.Content;
 
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -25,7 +25,7 @@ public class AugmentationResult {
 
     public AugmentationResult(ChatMessage chatMessage, List<Content> contents) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
-        this.contents = copyIfNotNull(contents);
+        this.contents = copy(contents);
     }
 
     public static AugmentationResultBuilder builder() {
@@ -41,6 +41,7 @@ public class AugmentationResult {
     }
 
     public static class AugmentationResultBuilder {
+
         private ChatMessage chatMessage;
         private List<Content> contents;
 
@@ -59,10 +60,6 @@ public class AugmentationResult {
 
         public AugmentationResult build() {
             return new AugmentationResult(this.chatMessage, this.contents);
-        }
-
-        public String toString() {
-            return "AugmentationResult.AugmentationResultBuilder(chatMessage=" + this.chatMessage + ", contents=" + this.contents + ")";
         }
     }
 }

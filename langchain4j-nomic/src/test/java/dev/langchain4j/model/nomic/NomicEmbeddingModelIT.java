@@ -48,7 +48,6 @@ class NomicEmbeddingModelIT {
                 .taskType("clustering")
                 .maxSegmentsPerBatch(1)
                 .timeout(ofSeconds(10))
-                .maxRetries(2)
                 .logRequests(true)
                 .logResponses(true)
                 .build();

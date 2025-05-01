@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
 import static dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel.InputType.SEARCH_QUERY;
 import static dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel.Model.COHERE_EMBED_ENGLISH_V3;
 import static dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel.Model.COHERE_EMBED_MULTILINGUAL_V3;
@@ -10,6 +11,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -65,5 +68,10 @@ class BedrockCohereEmbeddingModelIT {
         assertThat(response.finishReason()).isNull();
 
         assertThat(embeddingModel.dimension()).isEqualTo(1024);
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

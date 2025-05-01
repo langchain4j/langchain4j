@@ -34,7 +34,7 @@ class DocumentTest implements WithAssertions {
         assertThat(document.text()).isEqualTo("foo bar");
         assertThat(document.metadata().toMap()).isEmpty();
 
-        assertThat(document).hasToString("DefaultDocument[text=foo bar, metadata=Metadata { metadata = {} }]");
+        assertThat(document).hasToString("DefaultDocument { text = \"foo bar\", metadata = Metadata { metadata = {} } }");
 
         final var expectedMetadata = new HashMap<String, Object>();
         expectedMetadata.put("index", "0");
@@ -49,7 +49,7 @@ class DocumentTest implements WithAssertions {
         assertThat(document.metadata().toMap()).hasSize(1);
         assertThat(document.metadata().getString("foo")).isEqualTo("bar");
 
-        assertThat(document).hasToString("DefaultDocument[text=foo bar, metadata=Metadata { metadata = {foo=bar} }]");
+        assertThat(document).hasToString("DefaultDocument { text = \"foo bar\", metadata = Metadata { metadata = {foo=bar} } }");
 
         final var expectedMetadata = new HashMap<String, Object>();
         expectedMetadata.put("index", "0");

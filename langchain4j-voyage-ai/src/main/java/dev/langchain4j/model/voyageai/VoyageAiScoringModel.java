@@ -40,7 +40,7 @@ public class VoyageAiScoringModel implements ScoringModel {
             Boolean logResponses
     ) {
         // Below attributes are force to non-null
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.modelName = ensureNotBlank(modelName, "modelName");
         // Below attributes can be null
         this.truncation = truncation;

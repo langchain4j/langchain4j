@@ -1,7 +1,7 @@
 package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
@@ -10,6 +10,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
+import static java.time.Duration.ofSeconds;
+
 class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL = AzureOpenAiStreamingChatModel.builder()
@@ -17,6 +19,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-4o-mini")
             .logRequestsAndResponses(true)
+            .timeout(ofSeconds(120))
             .build();
 
     static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA = AzureOpenAiStreamingChatModel.builder()
@@ -28,7 +31,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<StreamingChatModel> models() {
         return List.of(
                 AZURE_OPEN_AI_STREAMING_CHAT_MODEL,
                 AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA
@@ -39,7 +42,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Disabled
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_single_image_as_public_URL(StreamingChatLanguageModel model) {
+    protected void should_accept_single_image_as_public_URL(StreamingChatModel model) {
         // TODO fix
     }
 
@@ -47,7 +50,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Disabled
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_public_URLs(StreamingChatLanguageModel model) {
+    protected void should_accept_multiple_images_as_public_URLs(StreamingChatModel model) {
         // TODO fix
     }
 

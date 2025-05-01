@@ -46,7 +46,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-class BedrockChatModelWithInvokeAPIIT {
+public class BedrockChatModelWithInvokeAPIIT {
 
     private static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
@@ -59,7 +59,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
-                .maxRetries(1)
                 .timeout(Duration.ofMinutes(2L))
                 .build();
 
@@ -80,7 +79,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
-                .maxRetries(1)
                 .build();
 
         assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(1L);
@@ -104,7 +102,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
-                .maxRetries(1)
                 .build();
 
         ToolSpecification calculator = ToolSpecification.builder()
@@ -157,7 +154,7 @@ class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(318);
@@ -176,7 +173,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
-                .maxRetries(1)
                 .build();
 
         ToolSpecification calculator = ToolSpecification.builder()
@@ -241,7 +237,7 @@ class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessageCalc = secondResponseCalc.aiMessage();
         assertThat(secondAiMessageCalc.text()).contains("4");
-        assertThat(secondAiMessageCalc.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessageCalc.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsageCalc = secondResponseCalc.tokenUsage();
         assertThat(secondTokenUsageCalc.inputTokenCount()).isGreaterThan(0);
@@ -294,7 +290,7 @@ class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessageTemp = secondResponseTemp.aiMessage();
         assertThat(secondAiMessageTemp.text()).contains("25");
-        assertThat(secondAiMessageTemp.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessageTemp.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsageTemp = secondResponseTemp.tokenUsage();
         assertThat(secondTokenUsageTemp.inputTokenCount()).isGreaterThan(0);
@@ -313,7 +309,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
-                .maxRetries(1)
                 .build();
 
         ToolSpecification calculator = ToolSpecification.builder()
@@ -377,7 +372,7 @@ class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessage = secondeResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsage = secondeResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -396,7 +391,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
-                .maxRetries(1)
                 .build();
 
         ToolSpecification currentDateTime = ToolSpecification.builder()
@@ -447,7 +441,7 @@ class BedrockChatModelWithInvokeAPIIT {
 
         AiMessage secondAiMessageCalc = secondResponseCalc.aiMessage();
         assertThat(secondAiMessageCalc.text()).contains(nowDateTime);
-        assertThat(secondAiMessageCalc.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessageCalc.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsageCalc = secondResponseCalc.tokenUsage();
         assertThat(secondTokenUsageCalc.inputTokenCount()).isGreaterThan(0);
@@ -465,7 +459,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
-                .maxRetries(1)
                 .build();
 
         ToolSpecification calculator = ToolSpecification.builder()
@@ -549,7 +542,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue())
-                .maxRetries(1)
                 .build();
 
         ToolSpecification calculator = ToolSpecification.builder()
@@ -613,7 +605,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue())
-                .maxRetries(1)
                 .build();
 
         ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
@@ -631,7 +622,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue())
-                .maxRetries(1)
                 .build();
 
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
@@ -653,7 +643,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicCompletionChatModel.Types.AnthropicClaudeV2.getValue())
-                .maxRetries(1)
                 .build();
 
         ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
@@ -671,7 +660,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model("anthropic.claude-v2")
-                .maxRetries(1)
                 .build();
 
         ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
@@ -689,7 +677,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockTitanChatModel.Types.TitanTextExpressV1.getValue())
-                .maxRetries(1)
                 .build();
 
         ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
@@ -713,7 +700,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
-                .maxRetries(1)
                 .build();
 
         ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
@@ -731,7 +717,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .stylePreset(BedrockStabilityAIChatModel.StylePreset.Anime)
-                .maxRetries(1)
                 .build();
 
         ChatResponse response =
@@ -780,7 +765,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(Mistral7bInstructV0_2.getValue())
-                .maxRetries(1)
                 .build();
 
         List<ChatMessage> messages = Arrays.asList(
@@ -802,7 +786,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(MistralMixtral8x7bInstructV0_1.getValue())
-                .maxRetries(1)
                 .build();
 
         ChatResponse response = bedrockChatModel.chat(UserMessage.from("hi, how are you doing?"));
@@ -824,7 +807,6 @@ class BedrockChatModelWithInvokeAPIIT {
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2.getValue())
-                .maxRetries(1)
                 .build();
 
         ChatResponse response = bedrockChatModel.chat(messages);
@@ -859,7 +841,7 @@ class BedrockChatModelWithInvokeAPIIT {
         sleepIfNeeded();
     }
 
-    static void sleepIfNeeded() {
+    public static void sleepIfNeeded() {
         try {
             String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_BEDROCK");
             if (ciDelaySeconds != null) {
