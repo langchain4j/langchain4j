@@ -2,6 +2,7 @@ package dev.langchain4j.model.oracle;
 
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
+import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -78,7 +79,10 @@ public class OracleSummaryLanguageModel implements LanguageModel {
             String query = "select dbms_vector_chain.utl_to_summary(?, json(?)) data from dual";
 
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
-                stmt.setObject(1, input);
+                Clob clob = conn.createClob();
+                clob.setString(1, input);
+
+                stmt.setObject(1, clob);
                 stmt.setObject(2, pref);
 
                 try (ResultSet rs = stmt.executeQuery()) {

@@ -6,6 +6,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
+import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -79,8 +80,12 @@ public class OracleDocumentSplitter implements DocumentSplitter {
 
         String query = "select t.column_value as data from dbms_vector_chain.utl_to_chunks(?, json(?)) t";
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setObject(1, content);
+            Clob clob = conn.createClob();
+            clob.setString(1, content);
+
+            stmt.setObject(1, clob);
             stmt.setObject(2, pref);
+
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String text = rs.getString("data");
