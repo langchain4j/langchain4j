@@ -579,7 +579,7 @@
                 <plugin>
                     <groupId>org.jetbrains.kotlin</groupId>
                     <artifactId>kotlin-maven-plugin</artifactId>
-                    <version>2.1.20</version>
+                    <version>${kotlin.version}</version>
                     <extensions>true</extensions>
                     <configuration combine.self="append">
                         <jvmTarget>${java.version}</jvmTarget>
@@ -587,6 +587,7 @@
                         <args>
                             <arg>-progressive</arg>
                             <arg>-Werror</arg>
+                            <arg>-Xexplicit-api=strict</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
                             <arg>-Xjsr305=strict</arg>
                             <arg>-Xtype-enhancement-improvements-strict-mode</arg>
@@ -633,18 +634,7 @@
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
-                <version>${kotlin.version}</version>
                 <extensions>true</extensions>
-                <configuration>
-                    <jvmTarget>${java.version}</jvmTarget>
-                    <javaParameters>true</javaParameters>
-                    <args>
-                        <arg>-Werror</arg>
-                        <arg>-Xjspecify-annotations=strict</arg>
-                        <arg>-Xjsr305=strict</arg>
-                        <arg>-Xtype-enhancement-improvements-strict-mode</arg>
-                    </args>
-                </configuration>
                 <executions>
                     <execution>
                         <id>compile</id>
