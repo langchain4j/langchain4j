@@ -579,7 +579,7 @@
                 <plugin>
                     <groupId>org.jetbrains.kotlin</groupId>
                     <artifactId>kotlin-maven-plugin</artifactId>
-                    <version>${kotlin.version}</version>
+                    <version>2.1.20</version>
                     <extensions>true</extensions>
                     <configuration combine.self="append">
                         <jvmTarget>${java.version}</jvmTarget>
