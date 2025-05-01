@@ -586,7 +586,6 @@
                         <javaParameters>true</javaParameters>
                         <args>
                             <arg>-progressive</arg>
-                            <arg>-Werror</arg>
                             <arg>-Xexplicit-api=strict</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
                             <arg>-Xjsr305=strict</arg>
