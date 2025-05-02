@@ -1,15 +1,15 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
-
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 /**
  * Utility class responsible for resolving variable names and values for prompt templates
@@ -20,10 +20,12 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
  */
 public class ReflectionVariableResolver {
 
-    private ReflectionVariableResolver() {
-    }
+    private ReflectionVariableResolver() {}
 
     public static Map<String, Object> findTemplateVariables(String template, Method method, Object[] args) {
+        if (args == null) {
+            return Collections.emptyMap();
+        }
         Parameter[] parameters = method.getParameters();
 
         Map<String, Object> variables = new HashMap<>();
@@ -62,7 +64,7 @@ public class ReflectionVariableResolver {
                 }
             }
 
-            for (int i = 0; i < parameters.length; i++) {
+            for (int i = 0; i < args.length; i++) {
                 if (isAnnotatedWithIt(parameters[i])) {
                     return asString(args[i]);
                 }
