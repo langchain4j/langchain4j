@@ -5,11 +5,13 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.0.0-beta4-SNAPSHOT</version>
+        <version>1.0.0-beta4</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-http-client-jdk</artifactId>
+    <version>1.0.0-rc1</version>
+
     <name>LangChain4j :: HTTP Client :: JDK HttpClient</name>
 
     <dependencies>
@@ -17,7 +19,6 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- test dependencies -->
@@ -25,7 +26,6 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>${project.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
