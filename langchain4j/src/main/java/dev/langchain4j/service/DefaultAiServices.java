@@ -1,5 +1,13 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -22,7 +30,6 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
-
 import java.io.InputStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -39,14 +46,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -98,7 +97,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
             Class<?> returnType = method.getReturnType();
             if (returnType == void.class) {
-                throw illegalConfiguration("'%s' is not a supported return type of an AI Service method", returnType.getName());
+                throw illegalConfiguration(
+                        "'%s' is not a supported return type of an AI Service method", returnType.getName());
             }
             if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
@@ -117,7 +117,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
-                new Class<?>[]{context.aiServiceClass},
+                new Class<?>[] {context.aiServiceClass},
                 new InvocationHandler() {
 
                     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -134,8 +134,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return switch (method.getName()) {
                                 case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
                                 case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
-                                default -> throw new UnsupportedOperationException(
-                                        "Unknown method on ChatMemoryAccess class : " + method.getName());
+                                default ->
+                                    throw new UnsupportedOperationException(
+                                            "Unknown method on ChatMemoryAccess class : " + method.getName());
                             };
                         }
 
@@ -418,7 +419,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return null;
         }
         try (Scanner scanner = new Scanner(inputStream);
-             Scanner s = scanner.useDelimiter("\\A")) {
+                Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
     }
