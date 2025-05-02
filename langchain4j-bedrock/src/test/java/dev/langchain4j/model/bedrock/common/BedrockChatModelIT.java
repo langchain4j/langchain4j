@@ -1,15 +1,14 @@
 package dev.langchain4j.model.bedrock.common;
 
-import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import org.junit.jupiter.api.AfterEach;
-
-import java.util.List;
-
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1;
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
 import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
+
+import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 
 class BedrockChatModelIT extends AbstractChatModelIT {
 
@@ -26,7 +25,7 @@ class BedrockChatModelIT extends AbstractChatModelIT {
                 BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL
                 // TODO add more models from other providers
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
@@ -39,38 +38,31 @@ class BedrockChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsModelNameParameter() {
+    protected static boolean supportsModelNameParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
+    protected static boolean supportsMaxOutputTokensParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsStopSequencesParameter() {
+    protected static boolean supportsStopSequencesParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+    protected static boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsJsonResponseFormat() {
+    protected static boolean supportsJsonResponseFormat() {
         return false; // TODO check if supported
     }
 
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
+    protected static boolean supportsJsonResponseFormatWithSchema() {
         return false; // TODO check if supported
     }
 
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
+    protected static boolean supportsSingleImageInputAsPublicURL() {
         return false; // Bedrock supports only Base64-encoded images
     }
 

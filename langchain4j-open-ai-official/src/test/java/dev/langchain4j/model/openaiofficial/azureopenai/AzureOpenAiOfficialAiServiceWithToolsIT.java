@@ -13,15 +13,13 @@ class AzureOpenAiOfficialAiServiceWithToolsIT extends AbstractAiServiceWithTools
         return InternalAzureOpenAiOfficialTestHelper.chatModelsNormalAndStrictTools();
     }
 
-    @Override
-    protected boolean supportsMapParameters() {
+    protected static boolean supportsMapParameters() {
         // When strictTools=true , Map parameters are not supported as there is no JsonSchemaElement for them at the
         // moment.
         return false;
     }
 
-    @Override
-    protected boolean supportsRecursion() {
+    protected static boolean supportsRecursion() {
         return true;
     }
 

@@ -1,17 +1,16 @@
 package dev.langchain4j.model.googleai.common;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
 
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
@@ -29,7 +28,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return List.of(
                 GOOGLE_AI_GEMINI_CHAT_MODEL
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
@@ -50,7 +49,6 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
                 .maxOutputTokens(parameters.maxOutputTokens())
                 .stopSequences(parameters.stopSequences())
                 .responseFormat(parameters.responseFormat())
-
                 .build();
     }
 
@@ -66,18 +64,15 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsToolChoiceRequired() {
+    protected static boolean supportsToolChoiceRequired() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
+    protected static boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // TODO fix
     }
 
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
+    protected static boolean supportsSingleImageInputAsPublicURL() {
         return false; // TODO check if supported
     }
 
@@ -105,6 +100,5 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
     @EnabledIf("supportsTools")
-    protected void should_execute_a_tool_then_answer(ChatModel model) {
-    }
+    protected void should_execute_a_tool_then_answer(ChatModel model) {}
 }

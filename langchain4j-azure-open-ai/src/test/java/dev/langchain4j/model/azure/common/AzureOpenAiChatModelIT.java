@@ -2,7 +2,6 @@ package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
@@ -54,28 +53,23 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsModelNameParameter() {
+    protected static boolean supportsModelNameParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
+    protected static boolean supportsMaxOutputTokensParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsStopSequencesParameter() {
+    protected static boolean supportsStopSequencesParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+    protected static boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
+    protected static boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // Azure OpenAI does not support base64-encoded images
     }
 

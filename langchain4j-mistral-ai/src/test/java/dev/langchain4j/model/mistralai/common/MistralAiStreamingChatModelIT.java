@@ -27,33 +27,27 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsModelNameParameter() {
+    protected static boolean supportsModelNameParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
+    protected static boolean supportsMaxOutputTokensParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsStopSequencesParameter() {
+    protected static boolean supportsStopSequencesParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+    protected static boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
+    protected static boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
+    protected static boolean supportsSingleImageInputAsPublicURL() {
         return false; // TODO implement
     }
 
@@ -67,8 +61,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
+    protected static boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // TODO implement
     }
 }

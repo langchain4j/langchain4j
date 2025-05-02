@@ -1,35 +1,5 @@
 package dev.langchain4j.service.common;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.Result;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.condition.EnabledIf;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
@@ -44,6 +14,35 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
+import java.time.LocalTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @TestInstance(PER_CLASS)
 @ExtendWith(MockitoExtension.class)
@@ -91,10 +90,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithPrimitiveParameters tool = spy(new ToolWithPrimitiveParameters());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "How much is 37 plus 87?";
 
@@ -123,21 +120,21 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     static class ToolWithPojoParameter {
 
-        record Person(String name, int age, Double height, boolean married) {
-        }
+        record Person(String name, int age, Double height, boolean married) {}
 
         @Tool
-        void process(Person person) {
-        }
+        void process(Person person) {}
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .addProperty("arg0", JsonObjectSchema.builder()
-                        .addStringProperty("name")
-                        .addIntegerProperty("age")
-                        .addNumberProperty("height")
-                        .addBooleanProperty("married")
-                        .required("name", "age", "height", "married")
-                        .build())
+                .addProperty(
+                        "arg0",
+                        JsonObjectSchema.builder()
+                                .addStringProperty("name")
+                                .addIntegerProperty("age")
+                                .addNumberProperty("height")
+                                .addBooleanProperty("married")
+                                .required("name", "age", "height", "married")
+                                .build())
                 .required("arg0")
                 .build();
     }
@@ -151,10 +148,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithPojoParameter tool = spy(new ToolWithPojoParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Use 'process' tool to process the following: Klaus is 37 years old, 1.78m height and single";
 
@@ -181,27 +176,26 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     static class ToolWithNestedPojoParameter {
 
-        record Person(String name, Address address) {
-        }
+        record Person(String name, Address address) {}
 
-        record Address(String city) {
-        }
+        record Address(String city) {}
 
         @Tool
-        void process(Person person) {
-        }
+        void process(Person person) {}
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .addProperty("arg0", JsonObjectSchema.builder()
-                        .addProperty("name", new JsonStringSchema())
-                        .addProperty(
-                                "address",
-                                JsonObjectSchema.builder()
-                                        .addProperty("city", new JsonStringSchema())
-                                        .required("city")
-                                        .build())
-                        .required("name", "address")
-                        .build())
+                .addProperty(
+                        "arg0",
+                        JsonObjectSchema.builder()
+                                .addProperty("name", new JsonStringSchema())
+                                .addProperty(
+                                        "address",
+                                        JsonObjectSchema.builder()
+                                                .addProperty("city", new JsonStringSchema())
+                                                .required("city")
+                                                .build())
+                                .required("name", "address")
+                                .build())
                 .required("arg0")
                 .build();
     }
@@ -215,10 +209,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithNestedPojoParameter tool = spy(new ToolWithNestedPojoParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Use 'process' tool to process the following: Klaus lives in Langley Falls";
 
@@ -247,22 +239,22 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     static class ToolWithRecursion {
 
-        record Person(String name, List<Person> children) {
-        }
+        record Person(String name, List<Person> children) {}
 
         @Tool
-        void process(Person person) {
-        }
+        void process(Person person) {}
 
         static final String REFERENCE = generateUUIDFrom(ToolWithRecursion.Person.class.getName());
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
                 .addStringProperty("name")
-                .addProperty("children", JsonArraySchema.builder()
-                        .items(JsonReferenceSchema.builder()
-                                .reference(REFERENCE)
+                .addProperty(
+                        "children",
+                        JsonArraySchema.builder()
+                                .items(JsonReferenceSchema.builder()
+                                        .reference(REFERENCE)
+                                        .build())
                                 .build())
-                        .build())
                 .required("name", "children")
                 .build();
 
@@ -283,10 +275,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithRecursion tool = spy(new ToolWithRecursion());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Use 'process' tool to process the following: Francine has 2 children: Steve and Hayley";
 
@@ -316,7 +306,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         }
     }
 
-    protected boolean supportsRecursion() {
+    protected static boolean supportsRecursion() {
         return false;
     }
 
@@ -403,10 +393,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithEnumParameter tool = spy(new ToolWithEnumParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "What is the current temperature in Munich in celsius?";
 
@@ -433,8 +421,7 @@ public abstract class AbstractAiServiceWithToolsIT {
     static class ToolWithMapParameter {
 
         @Tool
-        void process(@P("map from name to age") Map<String, Integer> ages) {
-        }
+        void process(@P("map from name to age") Map<String, Integer> ages) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -459,10 +446,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithMapParameter tool = spy(new ToolWithMapParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following: Klaus is 42 years old and Francine is 47 years old";
 
@@ -487,15 +472,14 @@ public abstract class AbstractAiServiceWithToolsIT {
         }
     }
 
-    protected boolean supportsMapParameters() {
+    protected static boolean supportsMapParameters() {
         return true;
     }
 
     static class ToolWithListOfStringsParameter {
 
         @Tool
-        void processNames(List<String> names) {
-        }
+        void processNames(List<String> names) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNames")
@@ -519,10 +503,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithListOfStringsParameter tool = spy(new ToolWithListOfStringsParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following names: Klaus and Franny";
 
@@ -553,8 +535,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         }
 
         @Tool
-        void process(Set<Color> colors) {
-        }
+        void process(Set<Color> colors) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -580,10 +561,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithSetOfEnumsParameter tool = spy(new ToolWithSetOfEnumsParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following colors: RED and GREEN";
 
@@ -608,8 +587,7 @@ public abstract class AbstractAiServiceWithToolsIT {
     static class ToolWithCollectionOfIntegersParameter {
 
         @Tool
-        void processNumbers(Collection<Integer> names) {
-        }
+        void processNumbers(Collection<Integer> names) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNumbers")
@@ -633,10 +611,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithCollectionOfIntegersParameter tool = spy(new ToolWithCollectionOfIntegersParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following integers: 37, 73";
 
@@ -661,12 +637,10 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     static class ToolWithListOfPojoParameter {
 
-        record Person(String name) {
-        }
+        record Person(String name) {}
 
         @Tool
-        void process(List<Person> people) {
-        }
+        void process(List<Person> people) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -693,10 +667,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithListOfPojoParameter tool = spy(new ToolWithListOfPojoParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following people: Klaus and Franny";
 
@@ -759,10 +731,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithUUIDParameter tool = spy(new ToolWithUUIDParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "What is the username with ID 62dbcc27-aaf3-449a-b12d-5a904271a57f?";
 

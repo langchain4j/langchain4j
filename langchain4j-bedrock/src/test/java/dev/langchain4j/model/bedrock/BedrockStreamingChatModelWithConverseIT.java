@@ -20,7 +20,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -60,14 +59,12 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
     }
 
     // output format not supported
-    @Override
-    protected boolean supportsJsonResponseFormat() {
+    protected static boolean supportsJsonResponseFormat() {
         return false;
     }
 
     // output format not supported
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
+    protected static boolean supportsJsonResponseFormatWithSchema() {
         return false;
     }
 

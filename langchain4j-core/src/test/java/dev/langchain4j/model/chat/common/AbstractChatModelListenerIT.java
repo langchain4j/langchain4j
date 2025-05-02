@@ -178,7 +178,7 @@ public abstract class AbstractChatModelListenerIT {
         assertThat(onResponseInvocations).hasValue(1);
     }
 
-    protected boolean supportsTools() {
+    protected static boolean supportsTools() {
         return true;
     }
 

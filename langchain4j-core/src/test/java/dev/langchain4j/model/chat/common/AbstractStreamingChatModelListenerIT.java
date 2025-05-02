@@ -183,7 +183,7 @@ public abstract class AbstractStreamingChatModelListenerIT {
         assertThat(onResponseInvocations).hasValue(1);
     }
 
-    protected boolean supportsTools() {
+    protected static boolean supportsTools() {
         return true;
     }
 
