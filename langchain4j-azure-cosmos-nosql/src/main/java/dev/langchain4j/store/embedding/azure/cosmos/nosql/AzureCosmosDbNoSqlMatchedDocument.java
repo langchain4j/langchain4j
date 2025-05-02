@@ -3,6 +3,10 @@ package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Represents a document matched in a Cosmos DB NoSQL vector search operation.
+ * Contains the document data along with its similarity score.
+ */
 public class AzureCosmosDbNoSqlMatchedDocument {
 
     private String id;
@@ -11,7 +15,17 @@ public class AzureCosmosDbNoSqlMatchedDocument {
     private Map<String, String> metadata;
     private Double score;
 
-    public AzureCosmosDbNoSqlMatchedDocument(String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
+    /**
+     * Creates a new document with the specified properties.
+     *
+     * @param id        The document ID
+     * @param embedding The vector embedding
+     * @param text      The document text
+     * @param metadata  The document metadata
+     * @param score     The similarity score
+     */
+    public AzureCosmosDbNoSqlMatchedDocument(
+            String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
@@ -19,45 +33,97 @@ public class AzureCosmosDbNoSqlMatchedDocument {
         this.score = score;
     }
 
-    public AzureCosmosDbNoSqlMatchedDocument() {
-    }
+    /**
+     * Default constructor for deserialization.
+     */
+    public AzureCosmosDbNoSqlMatchedDocument() {}
 
+    /**
+     * Gets the document ID.
+     *
+     * @return the document ID
+     */
     public String getId() {
         return this.id;
     }
 
+    /**
+     * Gets the vector embedding.
+     *
+     * @return the vector embedding
+     */
     public List<Float> getEmbedding() {
         return this.embedding;
     }
 
+    /**
+     * Gets the document text.
+     *
+     * @return the document text
+     */
     public String getText() {
         return this.text;
     }
 
+    /**
+     * Gets the document metadata.
+     *
+     * @return the document metadata
+     */
     public Map<String, String> getMetadata() {
         return this.metadata;
     }
 
+    /**
+     * Gets the similarity score.
+     *
+     * @return the similarity score
+     */
     public Double getScore() {
         return this.score;
     }
 
+    /**
+     * Sets the document ID.
+     *
+     * @param id the document ID
+     */
     public void setId(String id) {
         this.id = id;
     }
 
+    /**
+     * Sets the vector embedding.
+     *
+     * @param embedding the vector embedding
+     */
     public void setEmbedding(List<Float> embedding) {
         this.embedding = embedding;
     }
 
+    /**
+     * Sets the document text.
+     *
+     * @param text the document text
+     */
     public void setText(String text) {
         this.text = text;
     }
 
+    /**
+     * Sets the document metadata.
+     *
+     * @param metadata the document metadata
+     */
     public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 
+    /**
+     * Sets the similarity score.
+     *
+     * @param score the similarity score
+     */
     public void setScore(Double score) {
         this.score = score;
     }
@@ -85,6 +151,12 @@ public class AzureCosmosDbNoSqlMatchedDocument {
         return true;
     }
 
+    /**
+     * Support method for equals, used to check if the other object can be equal to this one.
+     *
+     * @param other the other object to check
+     * @return true if the other object could be equal to this one
+     */
     protected boolean canEqual(final Object other) {
         return other instanceof AzureCosmosDbNoSqlMatchedDocument;
     }
@@ -106,6 +178,7 @@ public class AzureCosmosDbNoSqlMatchedDocument {
     }
 
     public String toString() {
-        return "AzureCosmosDbNoSqlMatchedDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text=" + this.getText() + ", metadata=" + this.getMetadata() + ", score=" + this.getScore() + ")";
+        return "AzureCosmosDbNoSqlMatchedDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text="
+                + this.getText() + ", metadata=" + this.getMetadata() + ", score=" + this.getScore() + ")";
     }
 }
