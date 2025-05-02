@@ -3,7 +3,7 @@ package dev.langchain4j.service;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 class AiServicesWithToolsWithoutMemoryIT {
 
     @Spy
-    ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
+    ChatModel chatModel = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -38,7 +38,7 @@ class AiServicesWithToolsWithoutMemoryIT {
 
     interface Assistant {
 
-        Response<AiMessage> chat(String userMessage);
+        Result<String> chat(String userMessage);
     }
 
     static class Calculator {
@@ -56,23 +56,23 @@ class AiServicesWithToolsWithoutMemoryIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .tools(calculator)
                 .build();
 
         String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("6.97");
+        assertThat(result.content()).contains("6.97");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
 
         verify(calculator).squareRoot(485906798473894056.0);
@@ -80,9 +80,10 @@ class AiServicesWithToolsWithoutMemoryIT {
     }
 
     @Test
-    void should_execute_multiple_tools_sequentially_then_answer() {
+    void should_execute_multiple_tools_sequentially_then_return_result_with_accumulated_token_usage() {
 
-        ChatLanguageModel chatLanguageModel = spy(OpenAiChatModel.builder()
+        // given
+        ChatModel chatModel = spy(OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -96,14 +97,64 @@ class AiServicesWithToolsWithoutMemoryIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .tools(calculator)
                 .build();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
+        // when
+        Result<String> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content()).contains("6.97", "9.89");
+
+        TokenUsage tokenUsage = result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(77 + 114 + 148);
+        assertThat(tokenUsage.outputTokenCount()).isCloseTo(20 + 19 + 68, withPercentage(5));
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(result.finishReason()).isEqualTo(STOP);
+
+        verify(calculator).squareRoot(485906798473894056.0);
+        verify(calculator).squareRoot(97866249624785.0);
+        verifyNoMoreInteractions(calculator);
+    }
+
+    @Test
+    void should_execute_multiple_tools_sequentially_then_return_legacy_response_with_accumulated_token_usage() {
+
+        // given
+        interface Assistant {
+
+            Response<AiMessage> chat(String userMessage);
+        }
+
+        ChatModel chatModel = spy(OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .parallelToolCalls(false) // to force the model to call tools sequentially
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
+
+        Calculator calculator = spy(new Calculator());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(calculator)
+                .build();
+
+        String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
+
+        // when
         Response<AiMessage> response = assistant.chat(userMessage);
 
+        // then
         assertThat(response.content().text()).contains("6.97", "9.89");
 
         TokenUsage tokenUsage = response.tokenUsage();
@@ -113,7 +164,6 @@ class AiServicesWithToolsWithoutMemoryIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
-
 
         verify(calculator).squareRoot(485906798473894056.0);
         verify(calculator).squareRoot(97866249624785.0);
@@ -126,23 +176,23 @@ class AiServicesWithToolsWithoutMemoryIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .tools(calculator)
                 .build();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("6.97", "9.89");
+        assertThat(result.content()).contains("6.97", "9.89");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
 
         verify(calculator).squareRoot(485906798473894056.0);

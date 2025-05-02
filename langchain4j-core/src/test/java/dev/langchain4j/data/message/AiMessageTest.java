@@ -12,10 +12,10 @@ class AiMessageTest implements WithAssertions {
             AiMessage m = new AiMessage("text");
             assertThat(m.type()).isEqualTo(ChatMessageType.AI);
             assertThat(m.text()).isEqualTo("text");
-            assertThat(m.toolExecutionRequests()).isNull();
+            assertThat(m.toolExecutionRequests()).isEmpty();
             assertThat(m.hasToolExecutionRequests()).isFalse();
 
-            assertThat(m).hasToString("AiMessage { text = \"text\" toolExecutionRequests = null }");
+            assertThat(m).hasToString("AiMessage { text = \"text\" toolExecutionRequests = [] }");
         }
         {
             AiMessage m = new AiMessage(Arrays.asList(
@@ -91,12 +91,12 @@ class AiMessageTest implements WithAssertions {
         {
             AiMessage m = AiMessage.from("text");
             assertThat(m.text()).isEqualTo("text");
-            assertThat(m.toolExecutionRequests()).isNull();
+            assertThat(m.toolExecutionRequests()).isEmpty();
         }
         {
             AiMessage m = AiMessage.aiMessage("text");
             assertThat(m.text()).isEqualTo("text");
-            assertThat(m.toolExecutionRequests()).isNull();
+            assertThat(m.toolExecutionRequests()).isEmpty();
         }
     }
 

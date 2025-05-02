@@ -22,7 +22,7 @@ class WebSearchOrganicResultTest {
         assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isNull();
         assertThat(webSearchOrganicResult.content()).isNull();
-        assertThat(webSearchOrganicResult.metadata()).isNull();
+        assertThat(webSearchOrganicResult.metadata()).isEmpty();
     }
 
     @Test
@@ -34,11 +34,11 @@ class WebSearchOrganicResultTest {
         assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isEqualTo("snippet");
         assertThat(webSearchOrganicResult.content()).isNull();
-        assertThat(webSearchOrganicResult.metadata()).isNull();
+        assertThat(webSearchOrganicResult.metadata()).isEmpty();
 
         assertThat(webSearchOrganicResult)
                 .hasToString(
-                        "WebSearchOrganicResult{title='title', url=https://google.com, snippet='snippet', content='null', metadata=null}");
+                        "WebSearchOrganicResult{title='title', url=https://google.com, snippet='snippet', content='null', metadata={}}");
     }
 
     @Test
@@ -50,11 +50,11 @@ class WebSearchOrganicResultTest {
         assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isNull();
         assertThat(webSearchOrganicResult.content()).isEqualTo("content");
-        assertThat(webSearchOrganicResult.metadata()).isNull();
+        assertThat(webSearchOrganicResult.metadata()).isEmpty();
 
         assertThat(webSearchOrganicResult)
                 .hasToString(
-                        "WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='content', metadata=null}");
+                        "WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='content', metadata={}}");
     }
 
     @Test

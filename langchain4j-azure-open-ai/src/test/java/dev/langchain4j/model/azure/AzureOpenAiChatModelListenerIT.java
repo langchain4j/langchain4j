@@ -1,16 +1,16 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.core.exception.ClientAuthenticationException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.ChatModelListenerIT;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
 import static java.util.Collections.singletonList;
 
-class AzureOpenAiChatModelListenerIT extends ChatModelListenerIT {
+class AzureOpenAiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
-    protected ChatLanguageModel createModel(ChatModelListener listener) {
+    protected ChatModel createModel(ChatModelListener listener) {
         return AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
@@ -29,11 +29,12 @@ class AzureOpenAiChatModelListenerIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected ChatModel createFailingModel(ChatModelListener listener) {
         return AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey("banana")
                 .deploymentName(modelName())
+                .maxRetries(0)
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();

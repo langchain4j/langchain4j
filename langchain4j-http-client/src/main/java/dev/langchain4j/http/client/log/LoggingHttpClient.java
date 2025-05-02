@@ -1,6 +1,6 @@
 package dev.langchain4j.http.client.log;
 
-import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-@Experimental
+@Internal
 public class LoggingHttpClient implements HttpClient {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingHttpClient.class);

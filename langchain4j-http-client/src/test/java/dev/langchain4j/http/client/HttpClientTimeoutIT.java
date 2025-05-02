@@ -3,6 +3,7 @@ package dev.langchain4j.http.client;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
@@ -32,13 +33,7 @@ public abstract class HttpClientTimeoutIT {
 
     protected abstract List<HttpClient> clients(Duration readTimeout);
 
-    protected abstract Class<? extends Exception> expectedReadTimeoutExceptionTypeSync();
-
-    protected abstract Class<? extends Exception> expectedReadTimeoutCauseExceptionTypeSync();
-
-    protected abstract Class<? extends Exception> expectedReadTimeoutExceptionTypeAsync();
-
-    protected abstract Class<? extends Exception> expectedReadTimeoutCauseExceptionTypeAsync();
+    protected abstract Class<? extends Exception> expectedReadTimeoutRootCauseExceptionType();
 
     private WireMockServer wireMockServer;
 
@@ -77,8 +72,8 @@ public abstract class HttpClientTimeoutIT {
 
             // when-then
             assertThatThrownBy(() -> client.execute(request))
-                    .isExactlyInstanceOf(expectedReadTimeoutExceptionTypeSync())
-                    .hasCauseExactlyInstanceOf(expectedReadTimeoutCauseExceptionTypeSync())
+                    .isExactlyInstanceOf(TimeoutException.class)
+                    .hasRootCauseExactlyInstanceOf(expectedReadTimeoutRootCauseExceptionType())
                     .hasMessageContainingAll("time", "out");
         }
     }
@@ -138,8 +133,8 @@ public abstract class HttpClientTimeoutIT {
             StreamingResult streamingResult = completableFuture.get(readTimeoutMillis * 3, MILLISECONDS);
 
             assertThat(streamingResult.throwable())
-                    .isExactlyInstanceOf(expectedReadTimeoutExceptionTypeAsync())
-                    .hasCauseExactlyInstanceOf(expectedReadTimeoutCauseExceptionTypeAsync())
+                    .isExactlyInstanceOf(TimeoutException.class)
+                    .hasRootCauseExactlyInstanceOf(expectedReadTimeoutRootCauseExceptionType())
                     .hasMessageContainingAll("time", "out");
 
             assertThat(streamingResult.threads()).hasSize(1);

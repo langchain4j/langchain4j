@@ -17,8 +17,8 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
@@ -55,7 +55,7 @@ public class OpenAiImageModel implements ImageModel {
 
         this.client = cBuilder.build();
 
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.modelName = builder.modelName;
         this.size = builder.size;
         this.quality = builder.quality;
@@ -207,16 +207,6 @@ public class OpenAiImageModel implements ImageModel {
         public OpenAiImageModel build() {
             return new OpenAiImageModel(this);
         }
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiImageModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
     }
 
     private static Image fromImageData(ImageData data) {

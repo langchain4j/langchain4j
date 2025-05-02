@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.AI;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -30,7 +30,7 @@ public class AiMessage implements ChatMessage {
      */
     public AiMessage(String text) {
         this.text = ensureNotNull(text, "text");
-        this.toolExecutionRequests = null;
+        this.toolExecutionRequests = List.of();
     }
 
     /**
@@ -51,7 +51,7 @@ public class AiMessage implements ChatMessage {
      */
     public AiMessage(String text, List<ToolExecutionRequest> toolExecutionRequests) {
         this.text = text;
-        this.toolExecutionRequests = copyIfNotNull(toolExecutionRequests);
+        this.toolExecutionRequests = copy(toolExecutionRequests);
     }
 
     /**

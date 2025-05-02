@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -24,9 +25,9 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -110,8 +111,8 @@ public class BedrockAnthropicMessageChatModel
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         Response<AiMessage> response;
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
@@ -297,7 +298,7 @@ public class BedrockAnthropicMessageChatModel
     private Object toAnthropicToolParameters(ToolSpecification toolSpecification) {
 
         if (toolSpecification.parameters() != null) {
-            return JsonSchemaElementHelper.toMap(toolSpecification.parameters());
+            return JsonSchemaElementUtils.toMap(toolSpecification.parameters());
         } else {
             ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
             inputSchemaNode.put("type", "object");
@@ -457,7 +458,7 @@ public class BedrockAnthropicMessageChatModel
     private String getAnthropicSystemPrompt(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(message -> message.type() == ChatMessageType.SYSTEM)
-                .map(ChatMessage::text)
+                .map(message -> ((SystemMessage) message).text())
                 .collect(joining("\n"));
     }
 

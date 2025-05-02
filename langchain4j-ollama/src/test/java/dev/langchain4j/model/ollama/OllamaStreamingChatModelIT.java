@@ -5,7 +5,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
-    StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+    StreamingChatModel model = OllamaStreamingChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollama))
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
@@ -48,7 +48,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isEqualTo(answer);
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -65,7 +65,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // given
         int numPredict = 1; // max output tokens
 
-        StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
@@ -133,7 +133,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     void should_generate_valid_json() {
 
         // given
-        StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
@@ -159,7 +159,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // given
         String wrongModelName = "banana";
 
-        StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(wrongModelName)
                 .build();

@@ -1,22 +1,5 @@
 package dev.langchain4j.model.mistralai;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_MEDIUM_LATEST;
@@ -27,6 +10,27 @@ import static dev.langchain4j.model.mistralai.internal.api.MistralAiResponseForm
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MistralAiStreamingChatModelIT {
@@ -40,7 +44,7 @@ class MistralAiStreamingChatModelIT {
                     .build())
             .build();
 
-    StreamingChatLanguageModel ministral3b = MistralAiStreamingChatModel.builder()
+    StreamingChatModel ministral3b = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName("ministral-3b-latest")
             .temperature(0.0)
@@ -48,7 +52,7 @@ class MistralAiStreamingChatModelIT {
             .logResponses(true)
             .build();
 
-    StreamingChatLanguageModel defaultModel = MistralAiStreamingChatModel.builder()
+    StreamingChatModel defaultModel = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(OPEN_MISTRAL_7B)
             .temperature(0.1)
@@ -56,7 +60,7 @@ class MistralAiStreamingChatModelIT {
             .logResponses(true)
             .build();
 
-    StreamingChatLanguageModel openMixtral8x22BModel = MistralAiStreamingChatModel.builder()
+    StreamingChatModel openMixtral8x22BModel = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(OPEN_MIXTRAL_8X22B)
             .temperature(0.1)
@@ -92,7 +96,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_and_return_token_usage_and_finish_reason_length() {
 
         // given
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(OPEN_MISTRAL_7B)
                 .maxTokens(10)
@@ -123,7 +127,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_and_system_prompt_to_enforce_guardrails() {
 
         // given
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(OPEN_MISTRAL_7B)
                 .safePrompt(true)
@@ -181,7 +185,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_in_french_using_model_small_and_return_token_usage_and_finish_reason_stop() {
 
         // given - Mistral Small = Mistral-8X7B
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.1)
@@ -210,7 +214,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_in_spanish_using_model_small_and_return_token_usage_and_finish_reason_stop() {
 
         // given - Mistral Small = Mistral-8X7B
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.1)
@@ -239,7 +243,7 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_using_model_medium_and_return_token_usage_and_finish_reason_length() {
 
         // given - Mistral Medium = currently relies on an internal prototype model.
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_MEDIUM_LATEST)
                 .maxTokens(10)
@@ -354,7 +358,7 @@ class MistralAiStreamingChatModelIT {
         AiMessage aiMessage2 = response2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -422,7 +426,7 @@ class MistralAiStreamingChatModelIT {
         AiMessage aiMessage2 = response2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
         assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -494,7 +498,7 @@ class MistralAiStreamingChatModelIT {
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
         assertThat(aiMessage2.text()).contains("11", "2024");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -513,7 +517,7 @@ class MistralAiStreamingChatModelIT {
 
         String expectedJson = "{\"transactionId\":\"T123\",\"status\":\"paid\"}";
 
-        StreamingChatLanguageModel mistralLargeStreamingModel = MistralAiStreamingChatModel.builder()
+        StreamingChatModel mistralLargeStreamingModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_LARGE_LATEST)
                 .temperature(0.1)
@@ -532,9 +536,43 @@ class MistralAiStreamingChatModelIT {
     }
 
     @Test
+    void should_fallback_to_default_format_when_no_message_response_format_given() {
+        // given
+        String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
+
+        String expectedJson = "{\"transactionId\":\"T123\",\"status\":\"paid\"}";
+
+        StreamingChatModel mistralSmallModel = MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .temperature(0.1)
+                .logRequests(true)
+                .logResponses(true)
+                .responseFormat(ResponseFormat.builder()
+                        .type(ResponseFormatType.JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .name("TransactionStatus")
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addStringProperty("transactionId")
+                                        .addStringProperty("status")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        mistralSmallModel.chat(userMessage, handler);
+        String json = handler.get().aiMessage().text();
+
+        // then
+        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
+    }
+
+    @Test
     void bugfix_1218_allow_blank() {
         // given
-        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0d)

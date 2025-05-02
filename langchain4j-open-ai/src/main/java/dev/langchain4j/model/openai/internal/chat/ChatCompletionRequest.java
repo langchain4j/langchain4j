@@ -20,7 +20,7 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 
 @JsonDeserialize(builder = ChatCompletionRequest.Builder.class)
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class ChatCompletionRequest {
 
@@ -456,10 +456,6 @@ public final class ChatCompletionRequest {
             return stop(asList(stop));
         }
 
-        /**
-         * @deprecated use {@link #maxCompletionTokens(Integer)} instead
-         */
-        @Deprecated
         public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;

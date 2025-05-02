@@ -1,6 +1,10 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -17,8 +21,8 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -34,14 +38,6 @@ public class OpenAiModerationModel implements ModerationModel {
 
     public OpenAiModerationModel(OpenAiModerationModelBuilder builder) {
 
-        if ("demo".equals(builder.apiKey)) {
-            // TODO remove before releasing 1.0.0
-            throw new RuntimeException("""
-                    If you wish to continue using the 'demo' key, please specify the base URL explicitly:
-                    OpenAiModerationModel.builder().baseUrl("http://langchain4j.dev/demo/openai/v1").apiKey("demo").build();
-                    """);
-        }
-
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
@@ -56,7 +52,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 .customHeaders(builder.customHeaders)
                 .build();
         this.modelName = builder.modelName;
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     public String modelName() {
@@ -89,23 +85,26 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public Response<Moderation> moderate(List<ChatMessage> messages) {
         List<String> inputs = messages.stream()
-                .map(ChatMessage::text)
+                .map(OpenAiModerationModel::toText)
                 .toList();
 
         return moderateInternal(inputs);
     }
 
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default value for the model name will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiModerationModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
+    private static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            return toolExecutionResultMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
     }
 
     public static OpenAiModerationModelBuilder builder() {

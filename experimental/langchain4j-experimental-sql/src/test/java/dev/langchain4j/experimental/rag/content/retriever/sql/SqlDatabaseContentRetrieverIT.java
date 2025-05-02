@@ -1,6 +1,6 @@
 package dev.langchain4j.experimental.rag.content.retriever.sql;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.rag.content.Content;
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 @Testcontainers
 class SqlDatabaseContentRetrieverIT {
 
-    static ChatLanguageModel openAiChatModel = OpenAiChatModel.builder()
+    static ChatModel openAiChatModel = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -45,7 +45,7 @@ class SqlDatabaseContentRetrieverIT {
             .logResponses(true)
             .build();
 
-    static ChatLanguageModel mistralAiChatModel = MistralAiChatModel.builder()
+    static ChatModel mistralAiChatModel = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(MISTRAL_LARGE_LATEST)
             .temperature(0.0)
@@ -297,11 +297,11 @@ class SqlDatabaseContentRetrieverIT {
                         .dataSource(dataSource)
                         .sqlDialect("PostgreSQL")
                         .databaseStructure(read("sql/create_tables.sql"))
-                        .chatLanguageModel(openAiChatModel)
+                        .chatModel(openAiChatModel)
                         .build(),
                 dataSource -> SqlDatabaseContentRetriever.builder()
                         .dataSource(dataSource)
-                        .chatLanguageModel(openAiChatModel)
+                        .chatModel(openAiChatModel)
                         .build(),
 
                 // Mistral
@@ -309,11 +309,11 @@ class SqlDatabaseContentRetrieverIT {
                         .dataSource(dataSource)
                         .sqlDialect("PostgreSQL")
                         .databaseStructure(read("sql/create_tables.sql"))
-                        .chatLanguageModel(mistralAiChatModel)
+                        .chatModel(mistralAiChatModel)
                         .build(),
                 dataSource -> SqlDatabaseContentRetriever.builder()
                         .dataSource(dataSource)
-                        .chatLanguageModel(mistralAiChatModel)
+                        .chatModel(mistralAiChatModel)
                         .build()
         );
     }

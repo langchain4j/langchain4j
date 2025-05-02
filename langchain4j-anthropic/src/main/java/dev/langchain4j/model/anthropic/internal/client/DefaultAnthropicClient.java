@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicApi;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -12,11 +13,9 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRespon
 import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
-import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import okhttp3.sse.EventSource;
@@ -309,8 +308,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         .filter(content -> !content.isEmpty())
                         .collect(joining("\n"));
 
-                TokenUsage tokenUsage = new AnthropicTokenUsage(inputTokenCount.get(), outputTokenCount.get(), cacheCreationInputTokens.get(), cacheReadInputTokens.get());
+                AnthropicTokenUsage tokenUsage = AnthropicTokenUsage.builder()
+                        .inputTokenCount(inputTokenCount.get())
+                        .outputTokenCount(outputTokenCount.get())
+                        .cacheCreationInputTokens(cacheCreationInputTokens.get())
+                        .cacheReadInputTokens(cacheReadInputTokens.get())
+                        .build();
+
                 FinishReason finishReason = toFinishReason(stopReason);
+
                 Map<String, Object> metadata = createMetadata();
 
                 if (toolExecutionRequestBuilderMap.isEmpty()) {
