@@ -13,13 +13,13 @@ https://neo4j.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-neo4j</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.0-beta4</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-neo4j-retriever</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.0-beta4</version>
 </dependency>
 ```
 

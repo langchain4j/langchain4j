@@ -15,14 +15,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-web-search-engine-searchapi</artifactId>
-  <version>1.0.0-beta3</version>
+  <version>1.0.0-beta4</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-web-search-engine-searchapi:1.0.0-beta3'
+implementation 'dev.langchain4j:langchain4j-web-search-engine-searchapi:1.0.0-beta4'
 ```
 
 ### Example code:
