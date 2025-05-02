@@ -80,7 +80,9 @@ public class ReflectionVariableResolver {
     }
 
     static String asString(Object arg) {
-        if (arg.getClass().isArray()) {
+        if (arg == null) {
+            return "null";
+        } else if (arg.getClass().isArray()) {
             return arrayAsString(arg);
         } else if (arg.getClass().isAnnotationPresent(StructuredPrompt.class)) {
             return StructuredPromptProcessor.toPrompt(arg).text();
