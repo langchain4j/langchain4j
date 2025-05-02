@@ -73,8 +73,6 @@
                         <id>attach-sources</id>
                         <goals>
                             <goal>jar-no-fork</goal>
-                            <!-- For getting test source -->
-                            <goal>test-jar-no-fork</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -94,6 +92,15 @@
             <plugin>
                 <groupId>org.jetbrains.dokka</groupId>
                 <artifactId>dokka-maven-plugin</artifactId>
+                <configuration combine.self="append">
+                    <sourceLinks>
+                        <link>
+                            <path>src/main/kotlin</path>
+                            <url>https://github.com/langchain4j/langchain4j/tree/main/langchain4j-kotlin/src/main/kotlin</url>
+                            <lineSuffix>#L</lineSuffix>
+                        </link>
+                    </sourceLinks>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -105,6 +112,8 @@
                 </executions>
             </plugin>
         </plugins>
+        <sourceDirectory>src/main/kotlin</sourceDirectory>
+        <testSourceDirectory>src/test/kotlin</testSourceDirectory>
     </build>
 
     <profiles>
