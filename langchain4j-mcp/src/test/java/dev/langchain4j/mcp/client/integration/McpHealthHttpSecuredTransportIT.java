@@ -17,7 +17,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class McpHealthHttpTransportIT {
+public class McpHealthHttpSecuredTransportIT {
 
     static McpClient mcpClient;
     static McpTransport transport;
@@ -26,9 +26,16 @@ public class McpHealthHttpTransportIT {
     @BeforeAll
     static void setup() throws IOException, InterruptedException, TimeoutException {
         skipTestsIfJbangNotAvailable();
-        process = startServerHttp("logging_mcp_server.java");
+        process = startServerHttp("logging_secured_mcp_server.java");
         McpTransport transport = new HttpMcpTransport.Builder()
                 .sseUrl("http://localhost:8080/mcp/sse")
+                .addModifier(builder -> builder.authenticator((route, response) -> {
+                    var credentials = "Bearer your_secret_bearer_token";
+                    return response.request()
+                            .newBuilder()
+                            .header("Authorization", credentials)
+                            .build();
+                }))
                 .logRequests(true)
                 .logResponses(true)
                 .build();
