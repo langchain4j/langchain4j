@@ -100,4 +100,11 @@ internal class VirtualThreadUtilsTest {
             task.get()
         }
     }
+
+    @Test
+    fun `Test isVirtualThreadsSupported()`() {
+        // get java version
+        val javaVersion = System.getProperty("java.version").substringBefore(".").toInt()
+        VirtualThreadUtils.isVirtualThreadsSupported() shouldBe (javaVersion >= 21)
+    }
 }

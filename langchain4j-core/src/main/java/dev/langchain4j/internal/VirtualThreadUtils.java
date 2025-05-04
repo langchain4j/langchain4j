@@ -63,6 +63,20 @@ public class VirtualThreadUtils {
     }
 
     /**
+     * Creates a virtual thread per task executor, assuming virtual threads are supported.
+     *
+     * @return an {@link ExecutorService} using virtual threads if supported, otherwise a {@link RuntimeException}.
+     * @throws RuntimeException if virtual threads are not supported.
+     */
+    public static ExecutorService createVirtualThreadExecutor() {
+        if (isVirtualThreadsSupported()) {
+            return createVirtualThreadExecutor(null);
+        } else {
+            throw runtime("Virtual threads not supported");
+        }
+    }
+
+    /**
      * Checks if the current thread is a virtual thread.
      *
      * @return true if the current thread is a virtual thread, false otherwise
@@ -77,5 +91,14 @@ public class VirtualThreadUtils {
             return false;
         }
         return false;
+    }
+
+    /**
+     * Checks if virtual threads are supported in the current runtime environment.
+     *
+     * @return true if the current runtime supports virtual threads, false otherwise.
+     */
+    public static boolean isVirtualThreadsSupported() {
+        return newVirtualThreadPerTaskExecutorMethod != null;
     }
 }
