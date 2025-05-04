@@ -555,13 +555,13 @@
                 <plugin>
                     <groupId>com.diffplug.spotless</groupId>
                     <artifactId>spotless-maven-plugin</artifactId>
-                    <version>2.43.0</version>
+                    <version>2.44.4</version>
                     <configuration>
                         <!-- optional: limit format enforcement to just the files changed by this feature branch -->
                         <ratchetFrom>origin/main</ratchetFrom>
                         <java>
                             <palantirJavaFormat>
-                                <version>2.50.0</version>
+                                <version>2.63.0</version>
                             </palantirJavaFormat>
                         </java>
                         <pom>
@@ -585,8 +585,10 @@
                         <jvmTarget>${java.version}</jvmTarget>
                         <javaParameters>true</javaParameters>
                         <args>
-                            <arg>-Xjsr305=strict</arg>
+                            <arg>-progressive</arg>
+                            <arg>-Xexplicit-api=strict</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
+                            <arg>-Xjsr305=strict</arg>
                             <arg>-Xtype-enhancement-improvements-strict-mode</arg>
                         </args>
                     </configuration>
@@ -606,6 +608,10 @@
                                 <version>${dokka.version}</version>
                             </plugin>
                         </dokkaPlugins>
+                        <sourceDirectories>
+                            <dir>${project.basedir}/src/main/kotlin</dir>
+                            <dir>${project.basedir}/src/main/java</dir>
+                        </sourceDirectories>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -627,18 +633,7 @@
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
-                <version>${kotlin.version}</version>
                 <extensions>true</extensions>
-                <configuration>
-                    <jvmTarget>${java.version}</jvmTarget>
-                    <javaParameters>true</javaParameters>
-                    <args>
-                        <arg>-Werror</arg>
-                        <arg>-Xjspecify-annotations=strict</arg>
-                        <arg>-Xjsr305=strict</arg>
-                        <arg>-Xtype-enhancement-improvements-strict-mode</arg>
-                    </args>
-                </configuration>
                 <executions>
                     <execution>
                         <id>compile</id>
@@ -911,7 +906,7 @@
                                 </license>
                                 <license>
                                     <name>Apache 2.0</name>
-                                    <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+                                    <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
                                 </license>
                                 <license>
                                     <name>(The MIT License|MIT License|MIT)</name>
