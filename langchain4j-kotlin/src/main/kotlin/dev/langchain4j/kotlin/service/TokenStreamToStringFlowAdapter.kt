@@ -1,7 +1,6 @@
 package dev.langchain4j.kotlin.service
 
 import dev.langchain4j.Internal
-import dev.langchain4j.kotlin.model.chat.asFlow
 import dev.langchain4j.service.TokenStream
 import dev.langchain4j.spi.services.TokenStreamAdapter
 import kotlinx.coroutines.flow.Flow
