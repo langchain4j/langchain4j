@@ -7,7 +7,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.flow
 
 /**
  * Defines the default buffer capacity used for buffering operations or TokenStream processing.
@@ -31,16 +30,27 @@ public const val DEFAULT_BUFFER_CAPACITY: Int = 16384
  *    from the associated language model.
  */
 @JvmOverloads
-public fun TokenStream.asFlow(bufferCapacity: Int = DEFAULT_BUFFER_CAPACITY): Flow<String> =
-    flow {
-        callbackFlow {
-            onPartialResponse { trySend(it) }
-            onCompleteResponse { close() }
-            onError { close(it) }
-            start()
-            awaitClose()
-        }.buffer(bufferCapacity).collect(this)
-    }
+public fun TokenStream.asFlow(
+    bufferCapacity: Int = DEFAULT_BUFFER_CAPACITY,
+    onBufferOverflow: BufferOverflow = BufferOverflow.SUSPEND,
+    includeCompleteResponse: Boolean = false
+): Flow<String> =
+    callbackFlow {
+        onPartialResponse { trySend(it) }
+        onCompleteResponse {
+            it.aiMessage()?.text()?.let { text ->
+                if (includeCompleteResponse) {
+                    trySend(text)
+                }
+            }
+            close()
+        }
+        onError { close(it) }
+        start()
+        awaitClose()
+    }.buffer(
+        capacity = bufferCapacity, onBufferOverflow = onBufferOverflow
+    )
 
 /**
  * Converts a `TokenStream` into a `Flow` of `StreamingChatModelReply` instances, where each
