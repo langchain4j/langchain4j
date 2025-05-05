@@ -144,8 +144,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return switch (method.getName()) {
                                 case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
                                 case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
-                                default -> throw new UnsupportedOperationException(
-                                        "Unknown method on ChatMemoryAccess class : " + method.getName());
+                                default ->
+                                    throw new UnsupportedOperationException(
+                                            "Unknown method on ChatMemoryAccess class : " + method.getName());
                             };
                         }
 
