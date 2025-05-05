@@ -83,7 +83,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected Class<? extends TokenUsage> tokenUsageType() {
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         return AnthropicTokenUsage.class;
     }
 }

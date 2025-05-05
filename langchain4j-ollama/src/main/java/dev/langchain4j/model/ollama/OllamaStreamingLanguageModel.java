@@ -1,18 +1,17 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaResponseFormat;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingLanguageModelBuilderFactory;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -26,24 +25,24 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
     private final Options options;
     private final ResponseFormat responseFormat;
 
-    public OllamaStreamingLanguageModel(HttpClientBuilder httpClientBuilder,
-                                        String baseUrl,
-                                        String modelName,
-                                        Double temperature,
-                                        Integer topK,
-                                        Double topP,
-                                        Double repeatPenalty,
-                                        Integer seed,
-                                        Integer numPredict,
-                                        Integer numCtx,
-                                        List<String> stop,
-                                        String format,
-                                        ResponseFormat responseFormat,
-                                        Duration timeout,
-                                        Boolean logRequests,
-                                        Boolean logResponses,
-                                        Map<String, String> customHeaders
-    ) {
+    public OllamaStreamingLanguageModel(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            String modelName,
+            Double temperature,
+            Integer topK,
+            Double topP,
+            Double repeatPenalty,
+            Integer seed,
+            Integer numPredict,
+            Integer numCtx,
+            List<String> stop,
+            String format,
+            ResponseFormat responseFormat,
+            Duration timeout,
+            Boolean logRequests,
+            Boolean logResponses,
+            Map<String, String> customHeaders) {
         if (format != null && responseFormat != null) {
             throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
         }
@@ -70,7 +69,8 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     public static OllamaStreamingLanguageModelBuilder builder() {
-        for (OllamaStreamingLanguageModelBuilderFactory factory : loadFactories(OllamaStreamingLanguageModelBuilderFactory.class)) {
+        for (OllamaStreamingLanguageModelBuilderFactory factory :
+                loadFactories(OllamaStreamingLanguageModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OllamaStreamingLanguageModelBuilder();
@@ -232,8 +232,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                     timeout,
                     logRequests,
                     logResponses,
-                    customHeaders
-            );
+                    customHeaders);
         }
     }
 }
