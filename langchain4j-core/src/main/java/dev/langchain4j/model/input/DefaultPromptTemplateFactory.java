@@ -29,7 +29,8 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
          * This pattern is used to match and extract variables from a template string for further processing,
          * such as replacing these placeholders with their corresponding values.
          */
-        private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
+        @SuppressWarnings({"RegExpRedundantEscape"})
+        private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{\\s*(.+?)\\s*\\}\\}");
 
         private final String template;
         private final Set<String> allVariables;
