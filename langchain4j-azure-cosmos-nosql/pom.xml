@@ -11,6 +11,7 @@
 
     <artifactId>langchain4j-azure-cosmos-nosql</artifactId>
     <name>LangChain4j :: Integration :: Azure CosmosDB NoSQL</name>
+    <description>LangChain4j integration with Azure CosmosDB NoSQL API for vector storage and retrieval</description>
 
     <properties>
         <!-- TODO: remove enforcer.skipRules -->
@@ -28,6 +29,20 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-cosmos</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>net.minidev</groupId>
+                    <artifactId>json-smart</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Adding dependency on json-smart with minimum version -->
+        <dependency>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+            <version>[2.5.2,)</version>
+
         </dependency>
 
         <dependency>
