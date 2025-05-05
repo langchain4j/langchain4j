@@ -79,10 +79,29 @@ class ChromaClient {
         }
     }
 
+    /**
+     * @Deprecated since API V2
+     * Please use {@link #createCollection(String, String, CreateCollectionRequest)}
+     * with specific tenant & database.
+     */
+    @Deprecated
     Collection createCollection(CreateCollectionRequest createCollectionRequest) {
+        return createCollection("default_tenant", "default_database", createCollectionRequest);
+    }
+
+    /**
+     * API V2 create collection
+     * @param tenantName   tenant name
+     * @param databaseName database name
+     * @param createCollectionRequest  request (collection name & metadata)
+     * @return newly created collection object
+     */
+    Collection createCollection(
+            String tenantName, String databaseName, CreateCollectionRequest createCollectionRequest) {
         try {
-            Response<Collection> response =
-                    chromaApi.createCollection(createCollectionRequest).execute();
+            Response<Collection> response = chromaApi
+                    .createCollection(tenantName, databaseName, createCollectionRequest)
+                    .execute();
             if (response.isSuccessful()) {
                 return response.body();
             } else {
@@ -93,11 +112,35 @@ class ChromaClient {
         }
     }
 
+    /**
+     * @Deprecated since API V2
+     * Please use {@link #collection(String, String, String)}
+     * with specific tenant & database.
+     */
+    @Deprecated
     Collection collection(String collectionName) {
+        return collection("default_tenant", "default_database", collectionName);
+    }
+
+    /**
+     * API V2 get collection
+     * @param tenantName   tenant name
+     * @param databaseName database name
+     * @param collectionName  collection name
+     * @return Collection object
+     */
+    Collection collection(String tenantName, String databaseName, String collectionName) {
         try {
-            Response<Collection> response = chromaApi.collection(collectionName).execute();
+            Response<List<Collection>> response =
+                    chromaApi.collections(tenantName, databaseName).execute();
             if (response.isSuccessful()) {
-                return response.body();
+                List<Collection> collections = response.body();
+                for (Collection collection : collections) {
+                    if (collection.getName().equals(collectionName)) {
+                        return collection;
+                    }
+                }
+                return null;
             } else {
                 // if collection is not present, Chroma returns: Status - 500
                 return null;
@@ -107,12 +150,32 @@ class ChromaClient {
         }
     }
 
+    /**
+     * @Deprecated since API V2
+     * Please use {@link #addEmbeddings(String, String, String, AddEmbeddingsRequest)}
+     * with specific tenant & database.
+     */
+    @Deprecated
     boolean addEmbeddings(String collectionId, AddEmbeddingsRequest addEmbeddingsRequest) {
+        return addEmbeddings("default_tenant", "default_database", collectionId, addEmbeddingsRequest);
+    }
+
+    /**
+     * API V2 add records to a collection
+     * @param tenantName   tenant name
+     * @param databaseName database name
+     * @param collectionId  collection id
+     * @param addEmbeddingsRequest  request (embedding ids, vectors, metadatas, documents)
+     * @return true if successful
+     */
+    boolean addEmbeddings(
+            String tenantName, String databaseName, String collectionId, AddEmbeddingsRequest addEmbeddingsRequest) {
         try {
-            Response<Boolean> retrofitResponse =
-                    chromaApi.addEmbeddings(collectionId, addEmbeddingsRequest).execute();
+            Response<Void> retrofitResponse = chromaApi
+                    .addEmbeddings(tenantName, databaseName, collectionId, addEmbeddingsRequest)
+                    .execute();
             if (retrofitResponse.isSuccessful()) {
-                return Boolean.TRUE.equals(retrofitResponse.body());
+                return true;
             } else {
                 throw toException(retrofitResponse);
             }
@@ -121,10 +184,30 @@ class ChromaClient {
         }
     }
 
+    /**
+     * @Deprecated since API V2
+     * Please use {@link #queryCollection(String, String, String, QueryRequest)}
+     * with specific tenant & database.
+     */
+    @Deprecated
     QueryResponse queryCollection(String collectionId, QueryRequest queryRequest) {
+        return queryCollection("default_tenant", "default_database", collectionId, queryRequest);
+    }
+
+    /**
+     * API V2 query a collection
+     * @param tenantName   tenant name
+     * @param databaseName database name
+     * @param collectionId  collection id
+     * @param queryRequest  request (query embedding, filter, limit, n_results)
+     * @return QueryResponse result (ids, distances, metadatas, documents)
+     */
+    QueryResponse queryCollection(
+            String tenantName, String databaseName, String collectionId, QueryRequest queryRequest) {
         try {
-            Response<QueryResponse> retrofitResponse =
-                    chromaApi.queryCollection(collectionId, queryRequest).execute();
+            Response<QueryResponse> retrofitResponse = chromaApi
+                    .queryCollection(tenantName, databaseName, collectionId, queryRequest)
+                    .execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -135,10 +218,31 @@ class ChromaClient {
         }
     }
 
+    /**
+     * @Deprecated since API V2
+     * Please use {@link #deleteEmbeddings(String, String, String, DeleteEmbeddingsRequest)}
+     * with specific tenant & database.
+     */
+    @Deprecated
     void deleteEmbeddings(String collectionId, DeleteEmbeddingsRequest deleteEmbeddingsRequest) {
+        deleteEmbeddings("default_tenant", "default_database", collectionId, deleteEmbeddingsRequest);
+    }
+
+    /**
+     * API V2 delete records from a collection
+     * @param tenantName   tenant name
+     * @param databaseName database name
+     * @param collectionId  collection id
+     * @param deleteEmbeddingsRequest  request (embedding ids)
+     */
+    void deleteEmbeddings(
+            String tenantName,
+            String databaseName,
+            String collectionId,
+            DeleteEmbeddingsRequest deleteEmbeddingsRequest) {
         try {
-            Response<List<String>> retrofitResponse = chromaApi
-                    .deleteEmbeddings(collectionId, deleteEmbeddingsRequest)
+            Response<Void> retrofitResponse = chromaApi
+                    .deleteEmbeddings(tenantName, databaseName, collectionId, deleteEmbeddingsRequest)
                     .execute();
             if (!retrofitResponse.isSuccessful()) {
                 throw toException(retrofitResponse);
@@ -148,9 +252,25 @@ class ChromaClient {
         }
     }
 
+    /**
+     * @Deprecated since API V2
+     * Please use {@link #deleteCollection(String, String, String)}
+     * with specific tenant & database.
+     */
+    @Deprecated
     void deleteCollection(String collectionName) {
+        deleteCollection("default_tenant", "default_database", collectionName);
+    }
+
+    /**
+     * API V2 delete a collection
+     * @param tenantName   tenant name
+     * @param databaseName database name
+     * @param collectionName  collection name (it's id in API V2's docs)
+     */
+    void deleteCollection(String tenantName, String databaseName, String collectionName) {
         try {
-            chromaApi.deleteCollection(collectionName).execute();
+            chromaApi.deleteCollection(tenantName, databaseName, collectionName).execute();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
