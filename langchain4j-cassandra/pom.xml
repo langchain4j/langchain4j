@@ -28,22 +28,13 @@
         </dependency>
 
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>com.datastax.astra</groupId>
             <artifactId>astra-db-client</artifactId>
             <version>${astra-db-client.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
 
-        <!-- TESTS -->
+        <!-- test dependencies -->
 
         <!-- Visibility for EmbeddingStoreIT -->
         <dependency>

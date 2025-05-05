@@ -87,10 +87,11 @@
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <reactor-bom.version>2024.0.3</reactor-bom.version>
         <retrofit.version>2.9.0</retrofit.version>
-        <slf4j-api.version>2.0.17</slf4j-api.version>
+        <slf4j.version>2.0.17</slf4j.version>
         <testcontainers.version>1.20.4</testcontainers.version>
         <tinylog.version>2.6.2</tinylog.version>
         <wiremock.version>3.12.1</wiremock.version>
+        <opennlp-tools.version>2.5.4</opennlp-tools.version>
     </properties>
 
     <dependencyManagement>
@@ -105,12 +106,6 @@
             </dependency>
 
             <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-ai-openai</artifactId>
-                <version>${azure-ai-openai.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
                 <version>${langchain4j-embeddings.version}</version>
@@ -120,18 +115,6 @@
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
                 <version>${langchain4j-embeddings.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.squareup.retrofit2</groupId>
-                <artifactId>retrofit</artifactId>
-                <version>${retrofit.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.squareup.retrofit2</groupId>
-                <artifactId>converter-jackson</artifactId>
-                <version>${retrofit.version}</version>
             </dependency>
 
             <dependency>
@@ -190,47 +173,7 @@
                 <scope>test</scope>
             </dependency>
 
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp-bom</artifactId>
-                <version>${okhttp.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
 
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>mockwebserver</artifactId>
-                <version>${okhttp.version}</version>
-                <scope>test</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>com.knuddels</groupId>
-                <artifactId>jtokkit</artifactId>
-                <version>${jtokkit.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>${lombok.version}</version>
-                <scope>provided</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-bom</artifactId>
-                <version>${slf4j-api.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.jspecify</groupId>
-                <artifactId>jspecify</artifactId>
-                <version>${jspecify.version}</version>
-            </dependency>
 
             <dependency>
                 <groupId>org.junit</groupId>
@@ -289,44 +232,6 @@
             </dependency>
 
             <dependency>
-                <groupId>org.apache.httpcomponents.client5</groupId>
-                <artifactId>httpclient5</artifactId>
-                <version>${httpclient5.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.openai</groupId>
-                <artifactId>openai-java</artifactId>
-                <version>${openai-java.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.opensearch.client</groupId>
-                <artifactId>opensearch-java</artifactId>
-                <version>${opensearch-java.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>co.elastic.clients</groupId>
-                <artifactId>elasticsearch-java</artifactId>
-                <version>${elastic.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.fasterxml.jackson</groupId>
-                <artifactId>jackson-bom</artifactId>
-                <version>${jackson.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.opennlp</groupId>
-                <artifactId>opennlp-tools</artifactId>
-                <version>2.5.4</version>
-            </dependency>
-
-            <dependency>
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
                 <version>${aws.java.sdk.version}</version>
@@ -359,26 +264,6 @@
                 <groupId>com.jayway.jsonpath</groupId>
                 <artifactId>json-path</artifactId>
                 <version>${jsonpath.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.kohsuke</groupId>
-                <artifactId>github-api</artifactId>
-                <version>${github-api.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>io.milvus</groupId>
-                <artifactId>milvus-sdk-java</artifactId>
-                <version>${milvus-sdk-java.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-bom</artifactId>
-                <version>${infinispan.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
             </dependency>
 
             <dependency>

@@ -32,7 +32,9 @@
         <dependency>
             <groupId>com.knuddels</groupId>
             <artifactId>jtokkit</artifactId>
+            <version>${jtokkit.version}</version>
         </dependency>
+
 
         <!-- test dependencies -->
 
