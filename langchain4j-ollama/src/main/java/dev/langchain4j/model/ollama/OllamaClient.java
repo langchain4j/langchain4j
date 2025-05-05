@@ -5,6 +5,7 @@ import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
@@ -147,9 +148,12 @@ class OllamaClient {
             public void onEvent(ServerSentEvent event) {
 
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
-                String content = ollamaChatResponse.getMessage().getContent();
                 responseBuilder.append(ollamaChatResponse);
-                handler.onPartialResponse(content);
+
+                String content = ollamaChatResponse.getMessage().getContent();
+                if (!isNullOrEmpty(content)) {
+                    handler.onPartialResponse(content);
+                }
 
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
                     ChatResponse response = responseBuilder.build(ollamaChatResponse.getDoneReason());

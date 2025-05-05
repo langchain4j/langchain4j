@@ -15,14 +15,19 @@ import static java.time.Duration.ofSeconds;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatRequestParameters;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
 
 class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -80,7 +85,6 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     static final OpenAiStreamingChatModel OPEN_AI_CHAT_MODEL_WITH_TOOLS = OpenAiStreamingChatModel.builder()
-            .apiKey("does not matter")
             .baseUrl(ollamaBaseUrl(ollamaWithTools) + "/v1")
             .modelName(MODEL_WITH_TOOLS)
             .temperature(0.0)
@@ -90,7 +94,6 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     static final OpenAiStreamingChatModel OPEN_AI_CHAT_MODEL_WITH_VISION = OpenAiStreamingChatModel.builder()
-            .apiKey("does not matter")
             .baseUrl(ollamaBaseUrl(ollamaWithVision) + "/v1")
             .modelName(MODEL_WITH_VISION)
             .temperature(0.0)
@@ -225,5 +228,27 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean assertTimesOnPartialResponseWasCalled() {
         return false; // TODO
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel streamingChatModel) {
+        if (streamingChatModel instanceof OpenAiStreamingChatModel) {
+            return OpenAiChatResponseMetadata.class;
+        } else if (streamingChatModel instanceof OllamaStreamingChatModel) {
+            return ChatResponseMetadata.class;
+        } else {
+            throw new IllegalStateException("Unknown model type: " + streamingChatModel.getClass());
+        }
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
+        if (streamingChatModel instanceof OpenAiStreamingChatModel) {
+            return OpenAiTokenUsage.class;
+        } else if (streamingChatModel instanceof OllamaStreamingChatModel) {
+            return TokenUsage.class;
+        } else {
+            throw new IllegalStateException("Unknown model type: " + streamingChatModel.getClass());
+        }
     }
 }

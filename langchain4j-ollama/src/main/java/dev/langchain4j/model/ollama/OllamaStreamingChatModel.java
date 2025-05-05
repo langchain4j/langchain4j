@@ -23,7 +23,6 @@ import java.util.Set;
 public class OllamaStreamingChatModel extends OllamaBaseChatModel implements StreamingChatModel {
 
     public OllamaStreamingChatModel(OllamaStreamingChatModelBuilder builder) {
-
         init(builder);
     }
 
