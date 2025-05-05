@@ -22,7 +22,7 @@ class HttpRequestLogger {
 
     static void log(Logger log, HttpRequest httpRequest) {
         try {
-            log.debug("""
+            log.info("""
                             HTTP request:
                             - method: {}
                             - url: {}

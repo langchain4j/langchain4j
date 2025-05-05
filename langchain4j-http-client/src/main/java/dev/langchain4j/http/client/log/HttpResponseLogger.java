@@ -11,7 +11,7 @@ class HttpResponseLogger {
 
     static void log(Logger log, SuccessfulHttpResponse response) {
         try {
-            log.debug("""
+            log.info("""
                             HTTP response:
                             - status code: {}
                             - headers: {}
