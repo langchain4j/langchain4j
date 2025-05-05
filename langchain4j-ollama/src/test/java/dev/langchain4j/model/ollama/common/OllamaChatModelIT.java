@@ -15,6 +15,7 @@ import static java.time.Duration.ofSeconds;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaChatRequestParameters;
@@ -22,6 +23,10 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
 
 class OllamaChatModelIT extends AbstractChatModelIT {
@@ -81,7 +86,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
             .build();
 
     static final OpenAiChatModel OPEN_AI_CHAT_MODEL_WITH_TOOLS = OpenAiChatModel.builder()
-            .apiKey("does not matter")
             .baseUrl(ollamaBaseUrl(ollamaWithTools) + "/v1")
             .modelName(MODEL_WITH_TOOLS)
             .temperature(0.0)
@@ -91,7 +95,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
             .build();
 
     static final OpenAiChatModel OPEN_AI_CHAT_MODEL_WITH_VISION = OpenAiChatModel.builder()
-            .apiKey("does not matter")
             .baseUrl(ollamaBaseUrl(ollamaWithVision) + "/v1")
             .modelName(MODEL_WITH_VISION)
             .temperature(0.0)
@@ -221,5 +224,27 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean assertResponseId() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel chatModel) {
+        if (chatModel instanceof OpenAiChatModel) {
+            return OpenAiChatResponseMetadata.class;
+        } else if (chatModel instanceof OllamaChatModel) {
+            return ChatResponseMetadata.class;
+        } else {
+            throw new IllegalStateException("Unknown model type: " + chatModel.getClass());
+        }
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
+        if (chatModel instanceof OpenAiChatModel) {
+            return OpenAiTokenUsage.class;
+        } else if (chatModel instanceof OllamaChatModel) {
+            return TokenUsage.class;
+        } else {
+            throw new IllegalStateException("Unknown model type: " + chatModel.getClass());
+        }
     }
 }

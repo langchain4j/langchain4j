@@ -23,7 +23,7 @@ class OllamaChatRequest {
 
     private Boolean stream;
     private List<Tool> tools;
-    private Long keepAlive;
+    private Integer keepAlive;
 
     OllamaChatRequest() {}
 
@@ -89,11 +89,11 @@ class OllamaChatRequest {
         this.tools = tools;
     }
 
-    public Long getKeepAlive() {
+    public Integer getKeepAlive() {
         return keepAlive;
     }
 
-    public void setKeepAlive(Long keepAlive) {
+    public void setKeepAlive(Integer keepAlive) {
         this.keepAlive = keepAlive;
     }
 
@@ -105,7 +105,7 @@ class OllamaChatRequest {
         private String format;
         private Boolean stream;
         private List<Tool> tools;
-        private Long keepAlive;
+        private Integer keepAlive;
 
         Builder model(String model) {
             this.model = model;
@@ -137,7 +137,7 @@ class OllamaChatRequest {
             return this;
         }
 
-        Builder keepAlive(Long keepAlive) {
+        Builder keepAlive(Integer keepAlive) {
             this.keepAlive = keepAlive;
             return this;
         }

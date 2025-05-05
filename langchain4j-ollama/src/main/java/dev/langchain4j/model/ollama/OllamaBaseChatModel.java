@@ -28,7 +28,7 @@ abstract class OllamaBaseChatModel {
     void init(Builder<? extends OllamaBaseChatModel, ? extends Builder<?, ?>> builder) {
 
         if (builder.format != null && builder.responseFormat != null) {
-            throw new IllegalStateException("CanB use both 'format' and 'responseFormat' parameters");
+            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
         }
 
         this.client = OllamaClient.builder()
@@ -42,7 +42,7 @@ abstract class OllamaBaseChatModel {
 
         ChatRequestParameters commonParameters = getOrDefault(
                 builder.defaultRequestParameters,
-                DefaultChatRequestParameters.builder().build());
+                () -> DefaultChatRequestParameters.builder().build());
         OllamaChatRequestParameters ollamaParameters;
         if (builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters) {
             ollamaParameters = ollamaChatRequestParameters;
@@ -50,14 +50,14 @@ abstract class OllamaBaseChatModel {
             ollamaParameters = OllamaChatRequestParameters.builder().build();
         }
 
-        ResponseFormat responseFormat = "json".equals(builder.format) ? ResponseFormat.JSON : builder.responseFormat;
+        ResponseFormat responseFormat = "json".equals(builder.format) ? ResponseFormat.JSON : builder.responseFormat; // TODO
         this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
-                .topK(getOrDefault(builder.topK, commonParameters.topK()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
-                .maxOutputTokens(getOrDefault(builder.numPredict, commonParameters.maxOutputTokens()))
+                .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .maxOutputTokens(getOrDefault(builder.numPredict, commonParameters.maxOutputTokens())) // TODO
                 .stopSequences(getOrDefault(builder.stop, () -> copyIfNotNull(commonParameters.stopSequences())))
                 .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
                 .responseFormat(getOrDefault(responseFormat, commonParameters.responseFormat()))
@@ -70,6 +70,7 @@ abstract class OllamaBaseChatModel {
                 .repeatPenalty(getOrDefault(builder.repeatPenalty, ollamaParameters.repeatPenalty()))
                 .seed(getOrDefault(builder.seed, ollamaParameters.seed()))
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
+                .keepAlive(ollamaParameters.keepAlive()) // TODO
                 .build();
 
         this.listeners = copyIfNotNull(getOrDefault(builder.listeners, emptyList()));

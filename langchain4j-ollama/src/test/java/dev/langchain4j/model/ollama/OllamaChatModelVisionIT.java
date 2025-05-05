@@ -25,7 +25,7 @@ class OllamaChatModelVisionIT extends AbstractOllamaVisionModelInfrastructure {
                 .timeout(Duration.ofMinutes(30))
                 .modelName(MODEL_NAME)
                 .temperature(0.0)
-                .logRequests(true)
+                .logRequests(false) // base64-encoded images are huge in logs
                 .logResponses(true)
                 .build();
 

@@ -109,13 +109,13 @@ class InternalOllamaHelper {
 
     static void validate(OllamaChatRequestParameters parameters) {
         if (parameters.frequencyPenalty() != null) {
-            throw new IllegalArgumentException("'frequencyPenalty' parameter is not suppoerted by Ollama");
+            throw new IllegalArgumentException("'frequencyPenalty' parameter is not supported by Ollama");
         }
         if (parameters.presencePenalty() != null) {
-            throw new IllegalArgumentException("'presencePenalty' parameter is not suppoerted by Ollama");
+            throw new IllegalArgumentException("'presencePenalty' parameter is not supported by Ollama");
         }
         if (parameters.toolChoice() != null) {
-            throw new IllegalArgumentException("'toolChoice' parameter is not suppoerted by Ollama");
+            throw new IllegalArgumentException("'toolChoice' parameter is not supported by Ollama");
         }
     }
 

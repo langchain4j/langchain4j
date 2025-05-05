@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.quoted;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+
 import java.util.Objects;
 
 @Experimental
@@ -19,7 +20,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
     private final Double repeatPenalty;
     private final Integer seed;
     private final Double minP;
-    private final Long keepAlive;
+    private final Integer keepAlive;
 
     private OllamaChatRequestParameters(Builder builder) {
         super(builder);
@@ -66,7 +67,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         return minP;
     }
 
-    public Long keepAlive() {
+    public Integer keepAlive() {
         return keepAlive;
     }
 
@@ -103,26 +104,28 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
 
     @Override
     public String toString() {
-        return "OllamaChatRequestParameters{" + "modelName="
-                + quoted(modelName()) + ", temperature="
-                + temperature() + ", topP="
-                + topP() + ", topK="
-                + topK() + ", frequencyPenalty="
-                + frequencyPenalty() + ", presencePenalty="
-                + presencePenalty() + ", maxOutputTokens="
-                + maxOutputTokens() + ", stopSequences="
-                + stopSequences() + ", toolSpecifications="
-                + toolSpecifications() + ", toolChoice="
-                + toolChoice() + ", responseFormat="
-                + responseFormat() + ", mirostat="
-                + mirostat + ", mirostatEta="
-                + mirostatEta + ", mirostatTau="
-                + mirostatTau + ", numCtx="
-                + numCtx + ", repeatLastN="
-                + repeatLastN + ", repeatPenalty="
-                + repeatPenalty + ", seed="
-                + seed + ", minP="
-                + minP + '}';
+        return "OllamaChatRequestParameters{"
+                + "modelName=" + quoted(modelName())
+                + ", temperature=" + temperature()
+                + ", topP=" + topP()
+                + ", topK=" + topK()
+                + ", frequencyPenalty=" + frequencyPenalty()
+                + ", presencePenalty=" + presencePenalty()
+                + ", maxOutputTokens=" + maxOutputTokens()
+                + ", stopSequences=" + stopSequences()
+                + ", toolSpecifications=" + toolSpecifications()
+                + ", toolChoice=" + toolChoice()
+                + ", responseFormat=" + responseFormat()
+                + ", mirostat=" + mirostat
+                + ", mirostatEta=" + mirostatEta
+                + ", mirostatTau=" + mirostatTau
+                + ", numCtx=" + numCtx
+                + ", repeatLastN=" + repeatLastN
+                + ", repeatPenalty=" + repeatPenalty
+                + ", seed=" + seed
+                + ", minP=" + minP
+                + ", keepAlive=" + keepAlive
+                + '}';
     }
 
     @Override
@@ -147,7 +150,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         private Double repeatPenalty;
         private Integer seed;
         private Double minP;
-        private Long keepAlive;
+        private Integer keepAlive;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -158,7 +161,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 mirostatTau(getOrDefault(ollamaChatRequestParameters.mirostatTau, mirostatTau));
                 numCtx(getOrDefault(ollamaChatRequestParameters.numCtx, numCtx));
                 repeatLastN(getOrDefault(ollamaChatRequestParameters.repeatLastN, repeatLastN));
-                repeatPenalty(getOrDefault(ollamaChatRequestParameters.frequencyPenalty(), repeatPenalty));
+                repeatPenalty(getOrDefault(ollamaChatRequestParameters.repeatPenalty, repeatPenalty));
                 seed(getOrDefault(ollamaChatRequestParameters.seed, seed));
                 minP(getOrDefault(ollamaChatRequestParameters.minP, minP));
                 keepAlive(getOrDefault(ollamaChatRequestParameters.keepAlive, keepAlive));
@@ -179,7 +182,8 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
 
         /**
          * Influences how quickly the algorithm responds to feedback from the generated text.
-         * <p>A lower learning rate will result in slower adjustments, while a higher learning rate will make the algorithm more responsive.</p>
+         * <p>A lower learning rate will result in slower adjustments,
+         * while a higher learning rate will make the algorithm more responsive.</p>
          * <p>Default: 0.1</p>
          *
          * @return builder
@@ -222,18 +226,11 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         /**
-         * This parameter is semantically equal to {@link DefaultChatRequestParameters#maxOutputTokens}.
-         * <p>Setting this parameter is actually setting {@link DefaultChatRequestParameters#maxOutputTokens}</p>
-         *
-         * @return builder
-         */
-        public Builder numPredict(Integer numPredict) {
-            return maxOutputTokens(numPredict);
-        }
-
-        /**
-         * Alternative to the {@code topP}, and aims to ensure a balance of quality and variety. The parameter p represents the minimum probability for a token to be considered, relative to the probability of the most likely token.
-         * <p>For example, with p=0.05 and the most likely token having a probability of 0.9, logits with a value less than 0.045 are filtered out.</p>
+         * Alternative to the {@code topP}, and aims to ensure a balance of quality and variety.
+         * The parameter p represents the minimum probability for a token to be considered,
+         * relative to the probability of the most likely token.
+         * <p>For example, with p=0.05 and the most likely token having a probability of 0.9,
+         * logits with a value less than 0.045 are filtered out.</p>
          * <p>Default: 0.0</p>
          *
          * @return builder
@@ -244,12 +241,12 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         /**
-         * controls how long the model will stay loaded into memory following the request
+         * Controls how long the model will stay loaded into memory following the request
          * <p>Default: 5m</p>
          *
          * @return builder
          */
-        public Builder keepAlive(Long keepAlive) {
+        public Builder keepAlive(Integer keepAlive) {
             this.keepAlive = keepAlive;
             return this;
         }
