@@ -7,7 +7,6 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
