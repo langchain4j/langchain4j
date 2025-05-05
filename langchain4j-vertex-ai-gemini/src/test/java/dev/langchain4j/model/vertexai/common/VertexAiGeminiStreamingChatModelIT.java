@@ -3,9 +3,8 @@ package dev.langchain4j.model.vertexai.common;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
-import org.junit.jupiter.api.AfterEach;
-
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 
 class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -18,7 +17,7 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         .modelName("gemini-2.0-flash")
                         .build()
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
@@ -26,33 +25,27 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsModelNameParameter() {
+    protected static boolean supportsModelNameParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
+    protected static boolean supportsMaxOutputTokensParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsStopSequencesParameter() {
+    protected static boolean supportsStopSequencesParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsToolChoiceRequired() {
+    protected static boolean supportsToolChoiceRequired() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsJsonResponseFormat() {
+    protected static boolean supportsJsonResponseFormat() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
+    protected static boolean supportsJsonResponseFormatWithSchema() {
         return false; // TODO implement
     }
 

@@ -1,14 +1,13 @@
 package dev.langchain4j.model.azure.common;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
-import org.junit.jupiter.api.AfterEach;
-
 import java.util.List;
 import java.util.Set;
-
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import org.junit.jupiter.api.AfterEach;
 
 class AzureOpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
@@ -37,8 +36,7 @@ class AzureOpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSche
         return List.of(model, modelWithStrictJsonSchema);
     }
 
-    @Override
-    protected boolean supportsRecursion() {
+    protected static boolean supportsRecursion() {
         return true;
     }
 

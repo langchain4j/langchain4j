@@ -13,7 +13,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -48,14 +47,12 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     }
 
     // output format not supported
-    @Override
-    protected boolean supportsJsonResponseFormat() {
+    protected static boolean supportsJsonResponseFormat() {
         return false;
     }
 
     // output format not supported
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
+    protected static boolean supportsJsonResponseFormatWithSchema() {
         return false;
     }
 

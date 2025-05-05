@@ -1,12 +1,10 @@
 package dev.langchain4j.model.googleai.common;
 
-import dev.langchain4j.model.chat.ChatModel;
+import static dev.langchain4j.model.googleai.common.GoogleAiGeminiChatModelIT.GOOGLE_AI_GEMINI_CHAT_MODEL;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
-
 import java.util.List;
-
-import static dev.langchain4j.model.googleai.common.GoogleAiGeminiChatModelIT.GOOGLE_AI_GEMINI_CHAT_MODEL;
 
 class GoogleAiGeminiAiServiceIT extends AbstractAiServiceIT {
 
@@ -15,8 +13,7 @@ class GoogleAiGeminiAiServiceIT extends AbstractAiServiceIT {
         return List.of(GOOGLE_AI_GEMINI_CHAT_MODEL);
     }
 
-    @Override
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
+    protected static boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // TODO fix
     }
 }

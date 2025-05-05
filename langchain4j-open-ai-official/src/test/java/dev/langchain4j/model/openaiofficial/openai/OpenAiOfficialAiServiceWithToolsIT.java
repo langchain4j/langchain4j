@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -14,15 +13,13 @@ class OpenAiOfficialAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
         return InternalOpenAiOfficialTestHelper.chatModelsNormalAndStrictTools();
     }
 
-    @Override
-    protected boolean supportsMapParameters() {
+    protected static boolean supportsMapParameters() {
         // When strictTools=true , Map parameters are not supported as there is no JsonSchemaElement for them at the
         // moment.
         return false;
     }
 
-    @Override
-    protected boolean supportsRecursion() {
+    protected static boolean supportsRecursion() {
         return true;
     }
 

@@ -1,14 +1,5 @@
 package dev.langchain4j.model.ollama.common;
 
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.ollama.LC4jOllamaContainer;
-import dev.langchain4j.model.ollama.OllamaChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import org.junit.jupiter.api.Disabled;
-
-import java.util.List;
-
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
@@ -17,6 +8,14 @@ import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2_VISION;
 import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
+
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.ollama.LC4jOllamaContainer;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import java.util.List;
+import org.junit.jupiter.api.Disabled;
 
 class OllamaChatModelIT extends AbstractChatModelIT {
 
@@ -71,19 +70,17 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatModel> models() {
         return List.of(
-                OLLAMA_CHAT_MODEL_WITH_TOOLS,
-                OPEN_AI_CHAT_MODEL_WITH_TOOLS
+                OLLAMA_CHAT_MODEL_WITH_TOOLS, OPEN_AI_CHAT_MODEL_WITH_TOOLS
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
     protected List<ChatModel> modelsSupportingImageInputs() {
         return List.of(
-                OLLAMA_CHAT_MODEL_WITH_VISION,
-                OPEN_AI_CHAT_MODEL_WITH_VISION
+                OLLAMA_CHAT_MODEL_WITH_VISION, OPEN_AI_CHAT_MODEL_WITH_VISION
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
@@ -148,43 +145,35 @@ class OllamaChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsModelNameParameter() {
+    protected static boolean supportsModelNameParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
+    protected static boolean supportsMaxOutputTokensParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsStopSequencesParameter() {
+    protected static boolean supportsStopSequencesParameter() {
         return false; // TODO implement
     }
 
-    @Override
-    protected boolean supportsToolChoiceRequired() {
+    protected static boolean supportsToolChoiceRequired() {
         return false; // TODO check if Ollama supports this
     }
 
-    @Override
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
+    protected static boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // TODO fix
     }
 
-    @Override
-    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
+    protected static boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
         return false; // vision model only supports a single image per message
     }
 
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
+    protected static boolean supportsSingleImageInputAsPublicURL() {
         return false; // Ollama supports only base64-encoded images
     }
 
-    @Override
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
+    protected static boolean supportsMultipleImageInputsAsPublicURLs() {
         return false; // Ollama supports only base64-encoded images
     }
 

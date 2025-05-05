@@ -1169,59 +1169,59 @@ public abstract class AbstractBaseChatModelIT<M> {
         return true;
     }
 
-    protected boolean supportsModelNameParameter() {
+    protected static boolean supportsModelNameParameter() {
         return true;
     }
 
-    protected boolean supportsMaxOutputTokensParameter() {
+    protected static boolean supportsMaxOutputTokensParameter() {
         return true;
     }
 
-    protected boolean supportsStopSequencesParameter() {
+    protected static boolean supportsStopSequencesParameter() {
         return true;
     }
 
-    protected boolean supportsTools() {
+    protected static boolean supportsTools() {
         return true;
     }
 
-    protected boolean supportsToolChoiceRequired() {
+    protected static boolean supportsToolChoiceRequired() {
         return true;
     }
 
-    protected boolean supportsToolChoiceRequiredWithSingleTool() {
+    protected static boolean supportsToolChoiceRequiredWithSingleTool() {
         return supportsToolChoiceRequired();
     }
 
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+    protected static boolean supportsToolChoiceRequiredWithMultipleTools() {
         return supportsToolChoiceRequired();
     }
 
-    protected boolean supportsJsonResponseFormat() {
+    protected static boolean supportsJsonResponseFormat() {
         return true;
     }
 
-    protected boolean supportsJsonResponseFormatWithSchema() {
+    protected static boolean supportsJsonResponseFormatWithSchema() {
         return true;
     }
 
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
+    protected static boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return supportsTools() && supportsJsonResponseFormatWithSchema();
     }
 
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
+    protected static boolean supportsSingleImageInputAsBase64EncodedString() {
         return true;
     }
 
-    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
+    protected static boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
         return supportsSingleImageInputAsBase64EncodedString();
     }
 
-    protected boolean supportsSingleImageInputAsPublicURL() {
+    protected static boolean supportsSingleImageInputAsPublicURL() {
         return true;
     }
 
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
+    protected static boolean supportsMultipleImageInputsAsPublicURLs() {
         return supportsSingleImageInputAsPublicURL();
     }
 
