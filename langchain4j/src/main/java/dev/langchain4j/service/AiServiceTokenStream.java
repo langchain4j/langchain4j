@@ -18,12 +18,17 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
+
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.emptyList;
 
 @Internal
 public class AiServiceTokenStream implements TokenStream {
@@ -57,12 +62,13 @@ public class AiServiceTokenStream implements TokenStream {
      */
     public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
         ensureNotNull(parameters, "parameters");
-        this.messages = parameters.messages();
-        this.toolSpecifications = parameters.toolSpecifications();
-        this.toolExecutors = parameters.toolExecutors();
-        this.retrievedContents = parameters.gretrievedContents();
-        this.context = parameters.context();
-        this.memoryId = parameters.memoryId();
+        this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
+        this.toolSpecifications = copy(parameters.toolSpecifications());
+        this.toolExecutors = copy(parameters.toolExecutors());
+        this.retrievedContents = copy(parameters.gretrievedContents());
+        this.context = ensureNotNull(parameters.context(), "context");
+        ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
+        this.memoryId = ensureNotNull(parameters.memoryId(), "memoryId");
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
     }

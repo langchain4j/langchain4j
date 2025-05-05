@@ -84,8 +84,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
         this.commonGuardrailParams = commonGuardrailParams;
 
-        this.toolSpecifications = copyIfNotNull(toolSpecifications);
-        this.toolExecutors = copyIfNotNull(toolExecutors);
+        this.toolSpecifications = copy(toolSpecifications);
+        this.toolExecutors = copy(toolExecutors);
     }
 
     @Override

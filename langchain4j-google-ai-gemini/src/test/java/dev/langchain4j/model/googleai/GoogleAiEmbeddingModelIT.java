@@ -17,6 +17,7 @@ class GoogleAiEmbeddingModelIT {
 
     @Test
     void should_embed_one_text() {
+
         // given
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -32,6 +33,8 @@ class GoogleAiEmbeddingModelIT {
         assertThat(content).isNotNull();
         assertThat(content.vector()).isNotNull();
         assertThat(content.vector()).hasSize(768);
+
+        assertThat(embeddingModel.dimension()).isEqualTo(768);
     }
 
     @Test
@@ -58,12 +61,15 @@ class GoogleAiEmbeddingModelIT {
 
     @Test
     void should_embed_in_batch() {
+
         // given
+        int outputDimensionality = 512;
+
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("embedding-001")
                 .logRequestsAndResponses(true)
-                .outputDimensionality(512)
+                .outputDimensionality(outputDimensionality)
                 .build();
 
         // when
@@ -77,9 +83,11 @@ class GoogleAiEmbeddingModelIT {
         List<Embedding> embeddings = embed.content();
         assertThat(embeddings).isNotNull().hasSize(2);
         assertThat(embeddings.get(0).vector()).isNotNull();
-        assertThat(embeddings.get(0).vector()).hasSize(512);
+        assertThat(embeddings.get(0).vector()).hasSize(outputDimensionality);
         assertThat(embeddings.get(1).vector()).isNotNull();
-        assertThat(embeddings.get(1).vector()).hasSize(512);
+        assertThat(embeddings.get(1).vector()).hasSize(outputDimensionality);
+
+        assertThat(embeddingModel.dimension()).isEqualTo(outputDimensionality);
     }
 
     @Test

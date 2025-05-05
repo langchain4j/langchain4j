@@ -78,7 +78,7 @@ We also recommend adding the LangChain4j BOM:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-bom</artifactId>
-        <version>1.0.0-beta3</version>
+        <version>1.0.0-beta4</version>
         <type>pom</type>
     </dependency>
 </dependencyManagement>

@@ -23,7 +23,6 @@
 
     <properties>
         <jlama.version>0.8.3</jlama.version>
-        <jackson.version>2.16.1</jackson.version>
         <spotless.version>2.40.0</spotless.version>
         <java.version>21</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>

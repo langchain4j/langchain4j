@@ -4,6 +4,14 @@ sidebar_position: 9
 
 # Google Vertex AI PaLM 2
 
+:::note
+The "Bison" models have been discontinued by Google.
+Thus, `VertexAiChatModel` and `VertexAiLanguageModel` are now deprecated and will be removed
+in future versions.
+Please use one of the "Gemini" models with `VertexAiGeminiChatModel`
+from the [`langchain4j-vertex-ai-gemini`](/integrations/language-models/google-vertex-ai-gemini) module instead.
+:::
+
 ## Get started
 
 To get started follow the steps outlined in the `Get started` section of [Vertex AI Gemini integration tutorial](/integrations/language-models/google-vertex-ai-gemini) to create a 
@@ -17,14 +25,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai</artifactId>
-  <version>1.0.0-beta3</version>
+  <version>1.0.0-beta4</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai:1.0.0-beta3'
+implementation 'dev.langchain4j:langchain4j-vertex-ai:1.0.0-beta4'
 ```
 
 ### Try out an example code:

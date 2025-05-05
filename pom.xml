@@ -16,8 +16,10 @@
         <module>langchain4j-core</module>
         <module>langchain4j-test</module>
         <module>langchain4j</module>
+        <module>langchain4j-kotlin</module>
 
         <module>langchain4j-easy-rag</module>
+        <module>langchain4j-mcp</module>
 
         <!-- http clients -->
         <module>langchain4j-http-client</module>
@@ -34,6 +36,7 @@
         <module>langchain4j-mistral-ai</module>
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
+        <module>langchain4j-onnx-scoring</module>
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-open-ai-official</module>
@@ -96,8 +99,6 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
-        <module>langchain4j-onnx-scoring</module>
-        <module>langchain4j-mcp</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>

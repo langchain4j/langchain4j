@@ -122,6 +122,7 @@ public class AiServiceTokenStreamParameters {
      * Builder for {@link AiServiceTokenStreamParameters}.
      */
     public static class Builder {
+
         private List<ChatMessage> messages;
         private List<ToolSpecification> toolSpecifications;
         private Map<String, ToolExecutor> toolExecutors;
