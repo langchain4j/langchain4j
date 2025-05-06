@@ -54,7 +54,7 @@
         <argLine></argLine>
         <!-- Dependency Versions -->
         <dokka.version>2.0.0</dokka.version>
-        <ai-mocks.version>0.1.10</ai-mocks.version>
+        <ai-mocks.version>0.3.5</ai-mocks.version>
         <assertj.version>3.27.3</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.2.2</awaitility.version>
@@ -585,7 +585,6 @@
                         <jvmTarget>${java.version}</jvmTarget>
                         <javaParameters>true</javaParameters>
                         <args>
-                            <arg>-progressive</arg>
                             <arg>-Xexplicit-api=strict</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
                             <arg>-Xjsr305=strict</arg>
