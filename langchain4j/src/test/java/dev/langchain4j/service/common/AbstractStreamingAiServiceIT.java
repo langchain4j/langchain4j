@@ -75,12 +75,10 @@ public abstract class AbstractStreamingAiServiceIT {
 
         ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
         if (assertChatResponseMetadataType()) {
-            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType(model));
         }
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponseMetadata.tokenUsage());
-        }
+        assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
 
         if (assertFinishReason()) {
             assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
@@ -134,12 +132,10 @@ public abstract class AbstractStreamingAiServiceIT {
 
         ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
         if (assertChatResponseMetadataType()) {
-            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType());
+            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType(model));
         }
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponseMetadata.tokenUsage());
-        }
+        assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
 
         if (assertFinishReason()) {
             assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
@@ -153,23 +149,19 @@ public abstract class AbstractStreamingAiServiceIT {
         return true;
     }
 
-    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel streamingChatModel) {
         return ChatResponseMetadata.class;
     }
 
-    protected boolean assertTokenUsage() {
-        return true;
-    }
-
-    private void assertTokenUsage(TokenUsage tokenUsage) {
-        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType());
+    private void assertTokenUsage(TokenUsage tokenUsage, StreamingChatModel streamingChatModel) {
+        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(streamingChatModel));
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 
-    protected Class<? extends TokenUsage> tokenUsageType() {
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
         return TokenUsage.class;
     }
 

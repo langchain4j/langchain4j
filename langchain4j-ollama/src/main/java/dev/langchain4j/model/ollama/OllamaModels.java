@@ -1,25 +1,25 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.output.Response;
-
-import java.time.Duration;
-import java.util.List;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.output.Response;
+import java.time.Duration;
+import java.util.List;
 
 public class OllamaModels {
 
     private final OllamaClient client;
     private final Integer maxRetries;
 
-    public OllamaModels(HttpClientBuilder httpClientBuilder,
-                        String baseUrl,
-                        Duration timeout,
-                        Integer maxRetries,
-                        Boolean logRequests,
-                        Boolean logResponses) {
+    public OllamaModels(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses) {
         this.client = OllamaClient.builder()
                 .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
@@ -44,11 +44,10 @@ public class OllamaModels {
     }
 
     public Response<OllamaModelCard> modelCard(String modelName) {
-        OllamaModelCard response = withRetryMappingExceptions(() -> client.showInformation(
-                ShowModelInformationRequest.builder()
-                        .name(modelName)
-                        .build()
-        ), maxRetries);
+        OllamaModelCard response = withRetryMappingExceptions(
+                () -> client.showInformation(
+                        ShowModelInformationRequest.builder().name(modelName).build()),
+                maxRetries);
         return Response.from(response);
     }
 
@@ -57,11 +56,10 @@ public class OllamaModels {
     }
 
     public void deleteModel(String ollamaModelName) {
-        withRetryMappingExceptions(() -> client.deleteModel(
-                DeleteModelRequest.builder()
-                        .name(ollamaModelName)
-                        .build()
-        ), maxRetries);
+        withRetryMappingExceptions(
+                () -> client.deleteModel(
+                        DeleteModelRequest.builder().name(ollamaModelName).build()),
+                maxRetries);
     }
 
     public Response<List<RunningOllamaModel>> runningModels() {

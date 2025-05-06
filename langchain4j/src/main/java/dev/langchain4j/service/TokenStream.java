@@ -4,14 +4,13 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
-
 import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Represents a token stream from language model to which you can subscribe and receive updates
+ * Represents a token stream from the model to which you can subscribe and receive updates
  * when a new partial response (usually a single token) is available,
- * when language model finishes streaming, or when an error occurs during streaming.
+ *  when the model finishes streaming, or when an error occurs during streaming.
  * It is intended to be used as a return type in AI Service.
  */
 public interface TokenStream {
@@ -20,7 +19,7 @@ public interface TokenStream {
      * The provided consumer will be invoked every time a new partial response (usually a single token)
      * from a language model is available.
      *
-     * @param partialResponseHandler lambda that will be invoked when language model generates new partial response
+     * @param partialResponseHandler lambda that will be invoked when a model generates a new partial response
      * @return token stream instance used to configure or start stream processing
      */
     TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
