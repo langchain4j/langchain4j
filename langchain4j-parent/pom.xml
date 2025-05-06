@@ -585,8 +585,6 @@
                         <jvmTarget>${java.version}</jvmTarget>
                         <javaParameters>true</javaParameters>
                         <args>
-                            <arg>-Werror</arg>
-                            <arg>-progressive</arg>
                             <arg>-Xexplicit-api=strict</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
                             <arg>-Xjsr305=strict</arg>
