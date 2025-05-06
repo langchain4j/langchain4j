@@ -9,9 +9,10 @@ import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
  * This follows the pattern described in https://assertj.github.io/doc/#assertj-core-custom-assertions-creation
  * </p>
  */
-public class OutputGuardrailResultAssert
+public final class OutputGuardrailResultAssert
         extends GuardrailResultAssert<OutputGuardrailResultAssert, OutputGuardrailResult, Failure> {
-    protected OutputGuardrailResultAssert(OutputGuardrailResult outputGuardrailResult) {
+
+    private OutputGuardrailResultAssert(OutputGuardrailResult outputGuardrailResult) {
         super(outputGuardrailResult, OutputGuardrailResultAssert.class, Failure.class);
     }
 

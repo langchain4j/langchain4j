@@ -22,9 +22,10 @@ import org.assertj.core.api.ListAssert;
  * @param <R> The type of {@link GuardrailResult}
  * @param <F> The type of {@link Failure}
  */
-public abstract class GuardrailResultAssert<
+public abstract sealed class GuardrailResultAssert<
                 A extends GuardrailResultAssert<A, R, F>, R extends GuardrailResult<R>, F extends Failure>
-        extends AbstractObjectAssert<A, R> {
+        extends AbstractObjectAssert<A, R> permits InputGuardrailResultAssert, OutputGuardrailResultAssert {
+
     private final Class<F> failureClass;
 
     protected GuardrailResultAssert(R r, Class<A> resultType, Class<F> failureClass) {
@@ -46,6 +47,31 @@ public abstract class GuardrailResultAssert<
         if (!Objects.equals(actual.result(), result)) {
             throw failureWithActualExpected(
                     actual.result(), result, "Expected result to be <%s> but was <%s>", result, actual.result());
+        }
+
+        return (A) this;
+    }
+
+    /**
+     * Asserts that the actual {@link Result} contains the specified successful text.
+     * This method verifies that the actual instance is in a successful state and that
+     * the successful text matches the expected value. If the assertion fails, an error
+     * is thrown, detailing the mismatch.
+     *
+     * @param successfulText the expected text for the successful state
+     * @return this assertion object for method chaining
+     * @throws AssertionError if the actual object is not successful or if the successful text does not match the expected text
+     */
+    public A hasSuccessfulText(String successfulText) {
+        isSuccessful();
+
+        if (!Objects.equals(actual.successfulText(), successfulText)) {
+            throw failureWithActualExpected(
+                    actual.successfulText(),
+                    successfulText,
+                    "Expected successful text to be <%s> but was <%s>",
+                    successfulText,
+                    actual.successfulText());
         }
 
         return (A) this;
