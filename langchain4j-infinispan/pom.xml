@@ -55,12 +55,6 @@
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-remote-query-client</artifactId>
             <version>${infinispan.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-core</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>

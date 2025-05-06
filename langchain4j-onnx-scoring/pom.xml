@@ -43,13 +43,6 @@
             <groupId>ai.djl</groupId>
             <artifactId>api</artifactId>
             <version>${ai.djl.version}</version>
-            <exclusions>
-                <exclusion>
-                    <!-- due to version conflict between dev.langchain4j:langchain4j-core and ai.djl:api -->
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
