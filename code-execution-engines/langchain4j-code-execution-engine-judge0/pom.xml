@@ -28,8 +28,10 @@
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
-            <version>${okhttp.version}</version>
         </dependency>
+
+
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
