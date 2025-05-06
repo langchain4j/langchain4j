@@ -21,9 +21,17 @@
         </license>
     </licenses>
 
-    <properties>
-        <maven.compiler.release>17</maven.compiler.release>
-    </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.infinispan</groupId>
+                <artifactId>infinispan-bom</artifactId>
+                <version>${infinispan.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 
@@ -36,13 +44,11 @@
         <dependency>
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-api</artifactId>
-            <version>${infinispan.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-client-hotrod</artifactId>
-            <version>${infinispan.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.jboss.logging</groupId>
@@ -54,14 +60,15 @@
         <dependency>
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-remote-query-client</artifactId>
-            <version>${infinispan.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-query-dsl</artifactId>
-            <version>${infinispan.version}</version>
         </dependency>
+
+
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -95,7 +102,6 @@
         <dependency>
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-server-testdriver-core</artifactId>
-            <version>${infinispan.version}</version>
             <scope>test</scope>
         </dependency>
 

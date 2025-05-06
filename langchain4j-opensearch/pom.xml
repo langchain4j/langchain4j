@@ -24,7 +24,6 @@
     <properties>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
-        <maven.compiler.release>11</maven.compiler.release>
     </properties>
 
     <dependencies>
