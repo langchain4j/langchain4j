@@ -102,6 +102,7 @@
         <dependency>
             <groupId>org.opensearch</groupId>
             <artifactId>opensearch-testcontainers</artifactId>
+            <version>${opensearch-containers.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -114,6 +115,7 @@
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
             <artifactId>json-path</artifactId>
+            <version>${jsonpath.version}</version>
             <scope>test</scope>
         </dependency>
 
