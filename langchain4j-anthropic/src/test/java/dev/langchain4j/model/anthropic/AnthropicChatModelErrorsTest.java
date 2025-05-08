@@ -111,6 +111,7 @@ class AnthropicChatModelErrorsTest {
         assertThatExceptionOfType(RuntimeException.class)
                 // when
                 .isThrownBy(() -> model.chat(chatRequest))
-                .withMessageContaining("timeout");
+                // both socket timeout and read timeout are currently possible
+                .withMessageMatching(".*(timeout|Read timed out)");
     }
 }
