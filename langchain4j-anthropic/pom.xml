@@ -12,15 +12,6 @@
     <artifactId>langchain4j-anthropic</artifactId>
     <name>LangChain4j :: Integration :: Anthropic</name>
 
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
     <properties>
         <skipAnthropicITs>false</skipAnthropicITs>
     </properties>
@@ -78,6 +69,7 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>

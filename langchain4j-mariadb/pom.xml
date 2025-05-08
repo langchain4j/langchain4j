@@ -15,7 +15,6 @@
 
     <properties>
         <mariadb-client.version>3.5.1</mariadb-client.version>
-        <jspecify.version>1.0.0</jspecify.version>
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
 

@@ -10,7 +10,6 @@
     </parent>
     <artifactId>langchain4j-cassandra</artifactId>
     <name>LangChain4j :: Integration :: Cassandra and AstraDb</name>
-    <description>Some dependencies have a "Public Domain" license</description>
 
     <properties>
         <astra-db-client.version>1.2.4</astra-db-client.version>

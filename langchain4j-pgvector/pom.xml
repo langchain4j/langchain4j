@@ -11,7 +11,6 @@
 
     <artifactId>langchain4j-pgvector</artifactId>
     <name>LangChain4j :: Integration :: PGVector</name>
-    <description>It uses the pgvector-java library</description>
 
     <properties>
         <pgvector.version>0.1.6</pgvector.version>

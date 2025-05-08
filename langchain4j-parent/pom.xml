@@ -8,15 +8,14 @@
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
-    <description>Parent POM for LangChain4j submodules</description>
-    <url>https://github.com/langchain4j/langchain4j</url>
+    <description>${name}</description>
+    <url>https://github.com/langchain4j/langchain4j/tree/main</url>
 
     <licenses>
         <license>
-            <name>Apache-2.0</name>
+            <name>The Apache Software License, Version 2.0</name>
             <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
             <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
         </license>
     </licenses>
 
@@ -32,7 +31,7 @@
     <scm>
         <connection>scm:git:git://github.com/langchain4j/langchain4j.git</connection>
         <developerConnection>scm:git:git@github.com:langchain4j/langchain4j.git</developerConnection>
-        <url>https://github.com/langchain4j/langchain4j</url>
+        <url>https://github.com/langchain4j/langchain4j/tree/main</url>
     </scm>
 
     <distributionManagement>
@@ -525,6 +524,11 @@
                     <version>4.6.0</version>
                     <extensions>true</extensions>
                 </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>flatten-maven-plugin</artifactId>
+                    <version>1.7.0</version>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -746,6 +750,33 @@
                                 <!-- TODO: Add requireUpperBoundDeps -->
                             </rules>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <configuration>
+                    <flattenMode>ossrh</flattenMode>
+                    <pomElements>
+                        <build>remove</build>
+                        <repositories>remove</repositories>
+                    </pomElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>

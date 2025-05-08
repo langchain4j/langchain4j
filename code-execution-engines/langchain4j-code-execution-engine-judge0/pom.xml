@@ -13,10 +13,6 @@
     <name>LangChain4j :: Integration :: Judge0</name>
     <description>Implementation of JavaScript code execution engine and tool using Judge0</description>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
     <dependencies>
 
         <dependency>

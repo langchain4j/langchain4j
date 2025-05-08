@@ -13,21 +13,6 @@
     <name>LangChain4j :: Core</name>
     <description>Core classes and interfaces of LangChain4j</description>
 
-    <licenses>
-        <license>
-            <name>Apache License, Version 2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
-
-    <properties>
-        <!-- Tell the compiler to stop warning us about Java8 -->
-        <Xlint>-options</Xlint>
-        <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
-    </properties>
-
     <dependencies>
 
         <dependency>
@@ -81,6 +66,7 @@
         </dependency>
 
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
