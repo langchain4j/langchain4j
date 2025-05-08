@@ -555,6 +555,9 @@
                 <artifactId>flatten-maven-plugin</artifactId>
                 <configuration>
                     <flattenMode>bom</flattenMode>
+                    <pomElements>
+                        <distributionManagement>remove</distributionManagement>
+                    </pomElements>
                 </configuration>
                 <executions>
                     <execution>
