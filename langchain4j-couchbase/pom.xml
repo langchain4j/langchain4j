@@ -12,15 +12,6 @@
     <artifactId>langchain4j-couchbase</artifactId>
     <name>LangChain4j :: Integration :: Couchbase</name>
 
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
     <dependencies>
 
         <dependency>

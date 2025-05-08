@@ -13,22 +13,17 @@
     <name>LangChain4j :: Core</name>
     <description>Core classes and interfaces of LangChain4j</description>
 
-    <licenses>
-        <license>
-            <name>Apache License, Version 2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
-
-    <properties>
-        <!-- Tell the compiler to stop warning us about Java8 -->
-        <Xlint>-options</Xlint>
-        <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
-    </properties>
-
     <dependencies>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -43,7 +38,11 @@
         <dependency>
             <groupId>org.jspecify</groupId>
             <artifactId>jspecify</artifactId>
+            <version>${jspecify.version}</version>
         </dependency>
+
+
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
@@ -51,8 +50,6 @@
             <scope>test</scope>
             <optional>true</optional>
         </dependency>
-
-        <!-- test dependencies -->
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -79,6 +76,7 @@
         </dependency>
 
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
