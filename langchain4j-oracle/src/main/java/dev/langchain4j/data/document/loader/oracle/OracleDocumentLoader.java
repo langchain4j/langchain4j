@@ -41,6 +41,7 @@ public class OracleDocumentLoader {
 
     private final Connection conn;
 
+    private final String COLUMN_ROWID = "rowid";
     private final String COLUMN_TEXT = "text";
     private final String COLUMN_METADATA = "metadata";
     private static final String META_TAG = "meta";
@@ -172,7 +173,7 @@ public class OracleDocumentLoader {
         // run utl_to_text twice to get both the plain text and HTML output
         // the HTML Output is needed for the metadata
         String query = String.format(
-                "select dbms_vector_chain.utl_to_text(t.%s, json(?)) text, "
+                "select rowid, dbms_vector_chain.utl_to_text(t.%s, json(?)) text, "
                         + "dbms_vector_chain.utl_to_text(t.%s, json('{\"plaintext\": \"false\"}')) metadata "
                         + "from %s.%s t",
                 column, column, owner, table);
@@ -180,10 +181,14 @@ public class OracleDocumentLoader {
             stmt.setObject(1, pref);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
+                    String rowid = rs.getString(COLUMN_ROWID);
                     String text = rs.getString(COLUMN_TEXT);
                     String html = rs.getString(COLUMN_METADATA);
 
                     Metadata metadata = getMetadata(html);
+                    metadata.put("table", table);
+                    metadata.put("column", column);
+                    metadata.put("rowid", rowid);
                     Document doc = Document.from(text, metadata);
                     documents.add(doc);
                 }
