@@ -8,7 +8,7 @@
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
-    <description>${name}</description>
+    <description>${project.name}</description>
     <url>https://github.com/langchain4j/langchain4j/tree/main</url>
 
     <licenses>
