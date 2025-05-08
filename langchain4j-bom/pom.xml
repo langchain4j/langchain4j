@@ -556,6 +556,7 @@
                 <configuration>
                     <flattenMode>bom</flattenMode>
                     <pomElements>
+                        <properties>remove</properties>
                         <distributionManagement>remove</distributionManagement>
                     </pomElements>
                 </configuration>
