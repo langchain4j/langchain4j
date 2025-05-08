@@ -120,7 +120,7 @@ public class BedrockChatModelWithInvokeAPIIT {
                 .messages(userMessage)
                 .toolSpecifications(calculator)
                 .build();
-        
+
         ChatResponse response = bedrockChatModel.chat(request);
 
         AiMessage aiMessage = response.aiMessage();
@@ -142,14 +142,14 @@ public class BedrockChatModelWithInvokeAPIIT {
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         sleepIfNeeded();
-        
+
         ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
 
         ChatRequest secondRequest = ChatRequest.builder()
                 .messages(userMessage, aiMessage, toolExecutionResultMessage)
                 .toolSpecifications(calculator)
                 .build();
-        
+
         ChatResponse secondResponse = bedrockChatModel.chat(secondRequest);
 
         AiMessage secondAiMessage = secondResponse.aiMessage();
@@ -558,7 +558,10 @@ public class BedrockChatModelWithInvokeAPIIT {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> bedrockChatModel.chat(ChatRequest.builder().messages(userMessage).toolSpecifications(calculator).build()),
+                () -> bedrockChatModel.chat(ChatRequest.builder()
+                        .messages(userMessage)
+                        .toolSpecifications(calculator)
+                        .build()),
                 "Expected generate() to throw, but it didn't");
 
         assertThat(exception.getMessage()).isEqualTo("Tools are currently not supported by this model");

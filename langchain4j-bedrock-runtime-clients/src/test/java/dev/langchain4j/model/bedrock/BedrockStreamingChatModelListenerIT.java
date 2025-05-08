@@ -1,15 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.model.bedrock.BedrockAnthropicStreamingChatModel.Types.AnthropicClaudeV2_1;
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
+
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import org.junit.jupiter.api.AfterEach;
-
+import java.util.List;
 import java.util.concurrent.CompletionException;
-
-import static dev.langchain4j.model.bedrock.BedrockAnthropicStreamingChatModel.Types.AnthropicClaudeV2_1;
-import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
-import static java.util.Collections.singletonList;
+import org.junit.jupiter.api.AfterEach;
 
 class BedrockStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
@@ -20,7 +19,7 @@ class BedrockStreamingChatModelListenerIT extends AbstractStreamingChatModelList
                 .temperature(temperature())
                 .topP(topP().floatValue())
                 .maxTokens(maxTokens())
-                .listeners(singletonList(listener))
+                .listeners(List.of(listener))
                 .build();
     }
 
@@ -58,7 +57,7 @@ class BedrockStreamingChatModelListenerIT extends AbstractStreamingChatModelList
     protected StreamingChatModel createFailingModel(ChatModelListener listener) {
         return BedrockAnthropicStreamingChatModel.builder()
                 .model("banana")
-                .listeners(singletonList(listener))
+                .listeners(List.of(listener))
                 .build();
     }
 
