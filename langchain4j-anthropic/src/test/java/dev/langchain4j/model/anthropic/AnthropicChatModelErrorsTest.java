@@ -25,7 +25,7 @@ class AnthropicChatModelErrorsTest {
     private static final MockAnthropic MOCK = new MockAnthropic(0, true);
 
     public static final Duration TIMEOUT = Duration.ofSeconds(2);
-  
+
     private static final ChatModel model = AnthropicChatModel.builder()
             .apiKey("dummy-key")
             .baseUrl(MOCK.baseUrl() + "/v1")
@@ -74,24 +74,22 @@ class AnthropicChatModelErrorsTest {
                         """
                         .formatted(type, message);
 
-        MOCK.messages(req -> {
-                    req.userMessageContains(question);
-                })
-                .respondsError(res -> {
-                    res.setBody(responseBody);
-                    res.setHttpStatus(HttpStatusCode.Companion.fromValue(httpStatusCode));
-                });
+        MOCK.messages(req -> req.userMessageContains(question)).respondsError(res -> {
+            res.setBody(responseBody);
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(httpStatusCode));
+        });
 
         // when-then
+        final var chatRequest =
+                ChatRequest.builder().messages(userMessage(question)).build();
         assertThatExceptionOfType(AnthropicHttpException.class)
                 // when
-                .isThrownBy(() -> model.chat(
-                        ChatRequest.builder().messages(userMessage(question)).build()))
+                .isThrownBy(() -> model.chat(chatRequest))
                 .satisfies(ex -> {
                     assertThat(ex.statusCode()).as("statusCode").isEqualTo(httpStatusCode);
                     assertThat(ex.getMessage())
                             .as("message")
-                            .isEqualTo(responseBody); // not sure, if returning full body is right
+                            .isEqualTo(responseBody); // not sure if returning full body is right
                 });
     }
 
@@ -99,13 +97,12 @@ class AnthropicChatModelErrorsTest {
     void should_handle_timeout() {
         // given
         final var question = "Simulate timeout " + System.currentTimeMillis();
-        MOCK.messages(req -> {
-                    req.userMessageContains(question);
-                })
-                .responds(res -> {
-                    res.delayMillis(TIMEOUT.plusMillis(200).toMillis());
-                    res.assistantContent("You should never see this");
-                });
+        MOCK.messages(req -> req.userMessageContains(question)).respondsError(res -> {
+            // don't really care about the response, just simulate a timeout
+            res.delayMillis(TIMEOUT.plusMillis(250).toMillis());
+            res.setHttpStatus(HttpStatusCode.Companion.getNoContent());
+            res.setBody("");
+        });
 
         // when-then
         final var chatRequest =
