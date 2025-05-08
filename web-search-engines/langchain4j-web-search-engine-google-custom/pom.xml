@@ -28,12 +28,19 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Custom Search API Client Library for Java -->
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-customsearch</artifactId>
             <version>v1-rev20240821-2.0.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
