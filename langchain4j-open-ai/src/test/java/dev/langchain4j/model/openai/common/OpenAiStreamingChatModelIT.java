@@ -69,12 +69,12 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel streamingChatModel) {
         return OpenAiChatResponseMetadata.class;
     }
 
     @Override
-    protected Class<? extends TokenUsage> tokenUsageType() {
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
         return OpenAiTokenUsage.class;
     }
 

@@ -1,11 +1,11 @@
 package dev.langchain4j.http.client.sse;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-
-import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 
 public class DefaultServerSentEventParser implements ServerSentEventParser {
 

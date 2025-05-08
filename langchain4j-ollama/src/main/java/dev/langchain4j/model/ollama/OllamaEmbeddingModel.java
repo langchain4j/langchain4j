@@ -1,21 +1,20 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.ollama.spi.OllamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -26,14 +25,15 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    public OllamaEmbeddingModel(HttpClientBuilder httpClientBuilder,
-                                String baseUrl,
-                                String modelName,
-                                Duration timeout,
-                                Integer maxRetries,
-                                Boolean logRequests,
-                                Boolean logResponses,
-                                Map<String, String> customHeaders) {
+    public OllamaEmbeddingModel(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            String modelName,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses,
+            Map<String, String> customHeaders) {
         this.client = OllamaClient.builder()
                 .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
@@ -55,19 +55,13 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<String> input = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(Collectors.toList());
+        List<String> input = textSegments.stream().map(TextSegment::text).collect(Collectors.toList());
 
-        EmbeddingRequest request = EmbeddingRequest.builder()
-                .model(modelName)
-                .input(input)
-                .build();
+        EmbeddingRequest request =
+                EmbeddingRequest.builder().model(modelName).input(input).build();
         EmbeddingResponse response = withRetryMappingExceptions(() -> client.embed(request), maxRetries);
-        List<Embedding> embeddings = response.getEmbeddings()
-                .stream()
-                .map(Embedding::from)
-                .collect(Collectors.toList());
+        List<Embedding> embeddings =
+                response.getEmbeddings().stream().map(Embedding::from).collect(Collectors.toList());
 
         return Response.from(embeddings);
     }
@@ -136,7 +130,15 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public OllamaEmbeddingModel build() {
-            return new OllamaEmbeddingModel(httpClientBuilder, baseUrl, modelName, timeout, maxRetries, logRequests, logResponses, customHeaders);
+            return new OllamaEmbeddingModel(
+                    httpClientBuilder,
+                    baseUrl,
+                    modelName,
+                    timeout,
+                    maxRetries,
+                    logRequests,
+                    logResponses,
+                    customHeaders);
         }
     }
 }
