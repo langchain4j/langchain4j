@@ -4,7 +4,9 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
+
 import java.util.List;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -37,10 +39,6 @@ public class Result<T> {
         this.toolExecutions = copy(toolExecutions);
     }
 
-    public static <T> ResultBuilder<T> builder() {
-        return new ResultBuilder<T>();
-    }
-
     public T content() {
         return content;
     }
@@ -59,6 +57,38 @@ public class Result<T> {
 
     public List<ToolExecution> toolExecutions() {
         return toolExecutions;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Result<?> that = (Result<?>) o;
+        return Objects.equals(this.content, that.content)
+                && Objects.equals(this.tokenUsage, that.tokenUsage)
+                && Objects.equals(this.sources, that.sources)
+                && Objects.equals(this.finishReason, that.finishReason)
+                && Objects.equals(this.toolExecutions, that.toolExecutions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(content, tokenUsage, sources, finishReason, toolExecutions);
+    }
+
+    @Override
+    public String toString() {
+        return "Result{" +
+                "content=" + content +
+                ", tokenUsage=" + tokenUsage +
+                ", sources=" + sources +
+                ", finishReason=" + finishReason +
+                ", toolExecutions=" + toolExecutions +
+                '}';
+    }
+
+    public static <T> ResultBuilder<T> builder() {
+        return new ResultBuilder<T>();
     }
 
     public static class ResultBuilder<T> {
