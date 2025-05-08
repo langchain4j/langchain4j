@@ -8,6 +8,7 @@
         <version>1.0.0-beta4-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
+
     <artifactId>langchain4j-cassandra</artifactId>
     <name>LangChain4j :: Integration :: Cassandra and AstraDb</name>
 
