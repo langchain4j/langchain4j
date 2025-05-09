@@ -45,16 +45,9 @@ class TablestoreEmbeddingStoreExampleIT {
                         new FieldSchema("meta_example_double", FieldType.DOUBLE),
                         new FieldSchema("meta_example_text", FieldType.TEXT)
                                 .setAnalyzer(FieldSchema.Analyzer.MaxWord)));
-        /*
-         * Step 2: init.
-         *
-         * Note: It only needs to be executed once, and the first execution requires
-         * waiting for table and index initialization
-         */
-        embeddingStore.init();
 
         /*
-         * Step 3: Add some docs.
+         * Step 2: Add some docs.
          */
         TextSegment segment1 = TextSegment.from(
                 "I like football.",
@@ -77,7 +70,7 @@ class TablestoreEmbeddingStoreExampleIT {
         embeddingStore.add(embedding2, segment2);
 
         /*
-         * Step 4: Search
+         * Step 3: Search
          */
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(
@@ -102,7 +95,7 @@ class TablestoreEmbeddingStoreExampleIT {
         }
 
         /*
-         * Step 5: Delete docs.
+         * Step 4: Delete docs.
          */
         embeddingStore.remove("id_example");
         embeddingStore.removeAll();
