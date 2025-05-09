@@ -606,9 +606,9 @@
                             <goal>analyze-only</goal>
                         </goals>
                         <configuration>
-                            <ignoredUsedUndeclaredDependencies>true</ignoredUsedUndeclaredDependencies>
-                            <failOnWarning>false</failOnWarning>
                             <!-- todo: fix dependencies and set to true -->
+                            <failOnWarning>false</failOnWarning>
+                            <outputXML>true</outputXML>
                         </configuration>
                     </execution>
                     <execution>
