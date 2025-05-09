@@ -29,6 +29,7 @@
         <dependency>
             <groupId>io.milvus</groupId>
             <artifactId>milvus-sdk-java</artifactId>
+            <version>${milvus-sdk-java.version}</version>
         </dependency>
 
         <dependency>

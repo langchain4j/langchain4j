@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -240,5 +241,96 @@ class ToolSpecificationHelperTest {
         assertThat(anyOf.anyOf().get(2)).isInstanceOf(JsonBooleanSchema.class);
         assertThat(anyOf.anyOf().get(3)).isInstanceOf(JsonNullSchema.class);
         assertThat(anyOf.anyOf().get(4)).isInstanceOf(JsonIntegerSchema.class);
+    }
+
+    @Test
+    public void arrayWithAnyOf() throws JsonProcessingException {
+        // trimmed version of the tool from @modelcontextprotocol/server-github
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "create_pull_request_review",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "comments": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string",
+                                    "description": "The relative path to the file being commented on"
+                                  },
+                                  "position": {
+                                    "type": "number",
+                                    "description": "The position in the diff where you want to add a review comment"
+                                  },
+                                  "body": {
+                                    "type": "string",
+                                    "description": "Text of the review comment"
+                                  }
+                                },
+                                "required": [
+                                  "path",
+                                  "position",
+                                  "body"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string",
+                                    "description": "The relative path to the file being commented on"
+                                  },
+                                  "line": {
+                                    "type": "number",
+                                    "description": "The line number in the file where you want to add a review comment"
+                                  },
+                                  "body": {
+                                    "type": "string",
+                                    "description": "Text of the review comment"
+                                  }
+                                },
+                                "required": [
+                                  "path",
+                                  "line",
+                                  "body"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "description": "Comments to post as part of the review (specify either position or line, not both)"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "$schema": "http://json-schema.org/draft-07/schema#"
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+        JsonArraySchema comments = (JsonArraySchema) parameters.properties().get("comments");
+        assertThat(comments.items()).isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) comments.items();
+        assertThat(anyOf.anyOf().size()).isEqualTo(2);
+
+        JsonSchemaElement option1 = anyOf.anyOf().get(0);
+        assertThat(option1).isInstanceOf(JsonObjectSchema.class);
+        assertThat(((JsonObjectSchema) option1).properties()).containsOnlyKeys("path", "position", "body");
+
+        JsonSchemaElement option2 = anyOf.anyOf().get(1);
+        assertThat(option2).isInstanceOf(JsonObjectSchema.class);
+        assertThat(((JsonObjectSchema) option2).properties()).containsOnlyKeys("path", "line", "body");
     }
 }
