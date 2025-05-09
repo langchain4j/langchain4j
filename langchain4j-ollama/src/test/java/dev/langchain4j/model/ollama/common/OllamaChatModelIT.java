@@ -80,7 +80,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
             .baseUrl(ollamaBaseUrl(ollamaWithVision))
             .modelName(MODEL_WITH_VISION)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded images are huge in logs
             .logResponses(true)
             .timeout(ofSeconds(180))
             .build();
@@ -98,7 +98,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
             .baseUrl(ollamaBaseUrl(ollamaWithVision) + "/v1")
             .modelName(MODEL_WITH_VISION)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded images are huge in logs
             .logResponses(true)
             .timeout(ofSeconds(180))
             .build();
@@ -192,13 +192,9 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean assertFinishReason() {
-        return false; // TODO: Ollama does not support TOOL_EXECUTION finish reason.
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequired() {
-        return false; // TODO check if Ollama supports this
+        return false; // Ollama does not support tool choice
+        // also for OpenAI-compatible API: https://github.com/ollama/ollama/blob/main/docs/openai.md
     }
 
     @Override
@@ -223,7 +219,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean assertResponseId() {
-        return false; // TODO implement
+        return false; // Ollama does not return response ID
     }
 
     @Override

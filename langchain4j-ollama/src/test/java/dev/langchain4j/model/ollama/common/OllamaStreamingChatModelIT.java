@@ -79,7 +79,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .baseUrl(ollamaBaseUrl(ollamaWithVision))
             .modelName(MODEL_WITH_VISION)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded images are huge in logs
             .logResponses(true)
             .timeout(ofSeconds(180))
             .build();
@@ -97,7 +97,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .baseUrl(ollamaBaseUrl(ollamaWithVision) + "/v1")
             .modelName(MODEL_WITH_VISION)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // base64-encoded images are huge in logs
             .logResponses(true)
             .timeout(ofSeconds(180))
             .build();
@@ -191,11 +191,6 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean assertFinishReason() {
-        return false; // TODO: Ollama does not support TOOL_EXECUTION finish reason.
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequired() {
         return false; // TODO check if Ollama supports this
     }
@@ -222,12 +217,12 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean assertResponseId() {
-        return false; // TODO implement
+        return false; // Ollama does not return response ID
     }
 
     @Override
     protected boolean assertTimesOnPartialResponseWasCalled() {
-        return false; // TODO
+        return false; // Ollama responds with a single SSE event for some reason (perhaps due to tools)
     }
 
     @Override
