@@ -301,10 +301,10 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
-        return findSystemMessageTemplate(memoryId, method)
-                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
-                        .apply(ReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
-                        .toSystemMessage());
+        return findSystemMessageTemplate(memoryId, method).map(systemMessageTemplate -> PromptTemplate.from(
+                        systemMessageTemplate)
+                .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
+                .toSystemMessage());
     }
 
     private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
@@ -321,7 +321,8 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static UserMessage prepareUserMessage(Method method, Object[] args) {
 
         String template = getUserMessageTemplate(method, args);
-        Map<String, Object> variables = ReflectionVariableResolver.findTemplateVariables(template, method, args);
+        Map<String, Object> variables =
+                InternalReflectionVariableResolver.findTemplateVariables(template, method, args);
 
         Prompt prompt = PromptTemplate.from(template).apply(variables);
 
@@ -368,7 +369,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                return Optional.of(ReflectionVariableResolver.asString(args[i]));
+                return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
             }
         }
         return Optional.empty();
@@ -376,7 +377,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null && parameters.length == 1 && parameters[0].getAnnotations().length == 0) {
-            return Optional.of(ReflectionVariableResolver.asString(args[0]));
+            return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
     }

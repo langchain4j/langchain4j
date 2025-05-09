@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import java.lang.reflect.Array;
@@ -18,9 +19,10 @@ import java.util.Map;
  * This class is intended for internal use only and is designed to extract and map
  * parameter values to template variables in methods defined within AI services.
  */
-public class ReflectionVariableResolver {
+@Internal
+public class InternalReflectionVariableResolver {
 
-    private ReflectionVariableResolver() {}
+    private InternalReflectionVariableResolver() {}
 
     public static Map<String, Object> findTemplateVariables(String template, Method method, Object[] args) {
         if (args == null) {
