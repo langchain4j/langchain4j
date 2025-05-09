@@ -1,6 +1,7 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
@@ -132,10 +133,10 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
 
         // then
         Throwable throwable = future.get();
-        assertThat(throwable).isExactlyInstanceOf(HttpException.class);
+        assertThat(throwable).isExactlyInstanceOf(ModelNotFoundException.class);
+        assertThat(throwable.getMessage()).contains("banana", "not found");
 
-        HttpException httpException = (HttpException) throwable;
-        assertThat(httpException.statusCode()).isEqualTo(404);
-        assertThat(httpException.getMessage()).contains("banana", "not found");
+        assertThat(throwable).hasCauseExactlyInstanceOf(HttpException.class);
+        assertThat(((HttpException) throwable.getCause()).statusCode()).isEqualTo(404);
     }
 }

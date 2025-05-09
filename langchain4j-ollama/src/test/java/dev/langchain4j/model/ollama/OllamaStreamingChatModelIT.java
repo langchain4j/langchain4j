@@ -18,6 +18,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
@@ -227,6 +228,9 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         Throwable throwable = future.get();
         assertThat(throwable).isExactlyInstanceOf(ModelNotFoundException.class);
         assertThat(throwable.getMessage()).contains("banana", "not found");
+
+        assertThat(throwable).hasCauseExactlyInstanceOf(HttpException.class);
+        assertThat(((HttpException) throwable.getCause()).statusCode()).isEqualTo(404);
     }
 
     @Test
