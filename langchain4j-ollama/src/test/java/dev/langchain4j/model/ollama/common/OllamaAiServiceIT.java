@@ -20,11 +20,6 @@ class OllamaAiServiceIT extends AbstractAiServiceIT {
     }
 
     @Override
-    protected boolean assertToolInteractions() {
-        return false; // TODO fix
-    }
-
-    @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         if (chatModel instanceof OpenAiChatModel) {
             return OpenAiTokenUsage.class;

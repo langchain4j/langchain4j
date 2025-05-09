@@ -12,15 +12,6 @@
     <artifactId>langchain4j-vertex-ai-gemini</artifactId>
     <name>LangChain4j :: Integration :: Google Vertex AI Gemini</name>
 
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
     <properties>
         <skipVertexAiGeminiITs>false</skipVertexAiGeminiITs>
         <maven.compiler.parameters>true</maven.compiler.parameters>

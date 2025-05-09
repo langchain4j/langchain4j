@@ -8,13 +8,12 @@
         <version>1.0.0-beta4-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
+
     <artifactId>langchain4j-cassandra</artifactId>
     <name>LangChain4j :: Integration :: Cassandra and AstraDb</name>
-    <description>Some dependencies have a "Public Domain" license</description>
 
     <properties>
         <astra-db-client.version>1.2.4</astra-db-client.version>
-        <maven.compiler.release>11</maven.compiler.release>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
@@ -28,14 +27,14 @@
         </dependency>
 
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>com.datastax.astra</groupId>
             <artifactId>astra-db-client</artifactId>
             <version>${astra-db-client.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
         </dependency>
 
         <dependency>
@@ -43,7 +42,8 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
-        <!-- TESTS -->
+
+        <!-- test dependencies -->
 
         <!-- Visibility for EmbeddingStoreIT -->
         <dependency>

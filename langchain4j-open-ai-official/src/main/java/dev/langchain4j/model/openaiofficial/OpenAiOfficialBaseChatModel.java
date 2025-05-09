@@ -1,12 +1,12 @@
 package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.detectModelHost;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupASyncClient;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.validate;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
@@ -21,8 +21,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.net.Proxy;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -117,6 +115,7 @@ abstract class OpenAiOfficialBaseChatModel {
 
         ChatRequestParameters commonParameters;
         if (defaultRequestParameters != null) {
+            validate(defaultRequestParameters);
             commonParameters = defaultRequestParameters;
         } else {
             commonParameters = DefaultChatRequestParameters.builder().build();
@@ -132,11 +131,11 @@ abstract class OpenAiOfficialBaseChatModel {
         this.defaultRequestParameters = OpenAiOfficialChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(modelName, commonParameters.modelName()))
-                .maxOutputTokens(getOrDefault(maxCompletionTokens, commonParameters.maxOutputTokens()))
                 .temperature(getOrDefault(temperature, commonParameters.temperature()))
                 .topP(getOrDefault(topP, commonParameters.topP()))
                 .frequencyPenalty(getOrDefault(frequencyPenalty, commonParameters.frequencyPenalty()))
                 .presencePenalty(getOrDefault(presencePenalty, commonParameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(maxCompletionTokens, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())

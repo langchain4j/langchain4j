@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 
@@ -95,12 +96,18 @@ class InternalOllamaHelper {
         }
     }
 
-    static FinishReason toFinishReason(String reason) {
-        if (reason == null) {
+    static FinishReason toFinishReason(OllamaChatResponse ollamaChatResponse) {
+        if (ollamaChatResponse.getMessage() != null
+                && !isNullOrEmpty(ollamaChatResponse.getMessage().getToolCalls())) {
+            return FinishReason.TOOL_EXECUTION;
+        }
+
+        String doneReason = ollamaChatResponse.getDoneReason();
+        if (doneReason == null) {
             return null;
         }
 
-        return switch (reason) {
+        return switch (doneReason) {
             case "stop" -> FinishReason.STOP;
             case "length" -> FinishReason.LENGTH;
             default -> FinishReason.OTHER;
@@ -129,7 +136,7 @@ class InternalOllamaHelper {
     static ChatResponseMetadata chatResponseMetadataFrom(OllamaChatResponse ollamaChatResponse) {
         return chatResponseMetadataFrom(
                 ollamaChatResponse.getModel(),
-                toFinishReason(ollamaChatResponse.getDoneReason()),
+                toFinishReason(ollamaChatResponse),
                 new TokenUsage(ollamaChatResponse.getPromptEvalCount(), ollamaChatResponse.getEvalCount()));
     }
 

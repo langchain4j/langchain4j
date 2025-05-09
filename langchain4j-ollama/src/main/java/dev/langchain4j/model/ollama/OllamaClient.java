@@ -156,7 +156,7 @@ class OllamaClient {
                 }
 
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
-                    ChatResponse response = responseBuilder.build(ollamaChatResponse.getDoneReason());
+                    ChatResponse response = responseBuilder.build(ollamaChatResponse);
                     handler.onCompleteResponse(response);
                 }
             }
