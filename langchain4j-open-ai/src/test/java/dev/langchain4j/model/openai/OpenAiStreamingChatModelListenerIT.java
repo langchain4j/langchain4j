@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Collections.singletonList;
 
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
@@ -46,6 +47,6 @@ class OpenAiStreamingChatModelListenerIT extends AbstractStreamingChatModelListe
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return HttpException.class;
+        return AuthenticationException.class;
     }
 }
