@@ -192,11 +192,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean assertFinishReason() {
-        return false; // TODO: Ollama does not support TOOL_EXECUTION finish reason.
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequired() {
         return false; // Ollama does not support tool choice
         // also for OpenAI-compatible API: https://github.com/ollama/ollama/blob/main/docs/openai.md

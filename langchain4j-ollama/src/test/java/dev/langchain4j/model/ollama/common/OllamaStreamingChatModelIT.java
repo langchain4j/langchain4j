@@ -191,11 +191,6 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean assertFinishReason() {
-        return false; // TODO: Ollama does not support TOOL_EXECUTION finish reason.
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequired() {
         return false; // TODO check if Ollama supports this
     }

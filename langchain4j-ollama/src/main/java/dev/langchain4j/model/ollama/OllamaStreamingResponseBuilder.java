@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.chatResponseMetadataFrom;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.toFinishReason;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.toToolExecutionRequests;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -53,11 +54,11 @@ class OllamaStreamingResponseBuilder {
         }
     }
 
-    ChatResponse build(String finishReason) {
+    ChatResponse build(OllamaChatResponse ollamaChatResponse) {
         if (!isNullOrEmpty(toolExecutionRequests)) {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from(toolExecutionRequests))
-                    .metadata(chatResponseMetadataFrom(modelName, toFinishReason(finishReason), tokenUsage))
+                    .metadata(chatResponseMetadataFrom(modelName, TOOL_EXECUTION, tokenUsage))
                     .build();
         }
 
@@ -67,7 +68,7 @@ class OllamaStreamingResponseBuilder {
         } else {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from(text))
-                    .metadata(chatResponseMetadataFrom(modelName, toFinishReason(finishReason), tokenUsage))
+                    .metadata(chatResponseMetadataFrom(modelName, toFinishReason(ollamaChatResponse), tokenUsage))
                     .build();
         }
     }
