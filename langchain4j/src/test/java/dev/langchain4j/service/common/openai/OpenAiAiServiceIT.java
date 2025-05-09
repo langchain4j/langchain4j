@@ -1,17 +1,18 @@
 package dev.langchain4j.service.common.openai;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
-
 import java.util.List;
-
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiAiServiceIT extends AbstractAiServiceIT {
 
     private static OpenAiChatModel.OpenAiChatModelBuilder defaultModelBuilder() {
@@ -29,7 +30,7 @@ class OpenAiAiServiceIT extends AbstractAiServiceIT {
         return List.of(
                 defaultModelBuilder().build()
                 // TODO more configs?
-        );
+                );
     }
 
     @Override
@@ -52,7 +53,7 @@ class OpenAiAiServiceIT extends AbstractAiServiceIT {
                         .strictJsonSchema(false)
                         .build()
                 // TODO more configs?
-        );
+                );
     }
 
     @Override
