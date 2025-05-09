@@ -22,6 +22,7 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -163,7 +164,11 @@ class OllamaClient {
 
             @Override
             public void onError(Throwable throwable) {
-                handler.onError(throwable);
+                if (throwable instanceof Exception exception) {
+                    handler.onError(ExceptionMapper.DEFAULT.mapException(exception));
+                } else {
+                    handler.onError(throwable);
+                }
             }
         });
     }

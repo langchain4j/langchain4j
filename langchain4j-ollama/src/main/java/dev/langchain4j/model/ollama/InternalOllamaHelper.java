@@ -181,7 +181,7 @@ class InternalOllamaHelper {
                 userMessage.contents().stream().collect(Collectors.groupingBy(Content::type));
 
         if (groupedContents.get(TEXT).size() != 1) {
-            throw new RuntimeException("Expecting single text content, but got: " + userMessage.contents());
+            throw new IllegalArgumentException("Expecting single text content, but got: " + userMessage.contents());
         }
 
         String text = ((TextContent) groupedContents.get(TEXT).get(0)).text();

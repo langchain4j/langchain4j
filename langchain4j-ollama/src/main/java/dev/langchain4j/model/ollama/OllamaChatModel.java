@@ -48,8 +48,8 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
     }
 
     @Override
-    public Set<Capability> supportedCapabilities() {
-        return supportedCapabilities;
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override
@@ -63,8 +63,8 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
-        return defaultRequestParameters;
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 
     public static OllamaChatModelBuilder builder() {

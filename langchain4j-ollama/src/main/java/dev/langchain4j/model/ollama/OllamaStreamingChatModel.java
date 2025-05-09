@@ -32,13 +32,8 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
     }
 
     @Override
-    public Set<Capability> supportedCapabilities() {
-        return supportedCapabilities;
-    }
-
-    @Override
-    public ModelProvider provider() {
-        return OLLAMA;
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override
@@ -47,8 +42,13 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
-        return defaultRequestParameters;
+    public ModelProvider provider() {
+        return OLLAMA;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 
     public static OllamaStreamingChatModelBuilder builder() {
