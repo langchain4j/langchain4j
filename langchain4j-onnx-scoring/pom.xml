@@ -11,15 +11,6 @@
     <artifactId>langchain4j-onnx-scoring</artifactId>
     <name>langchain4j-onnx-scoring</name>
 
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
     <properties>
         <ai.djl.version>0.31.1</ai.djl.version>
         <onnxruntime.version>1.20.0</onnxruntime.version>
@@ -43,13 +34,6 @@
             <groupId>ai.djl</groupId>
             <artifactId>api</artifactId>
             <version>${ai.djl.version}</version>
-            <exclusions>
-                <exclusion>
-                    <!-- due to version conflict between dev.langchain4j:langchain4j-core and ai.djl:api -->
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
