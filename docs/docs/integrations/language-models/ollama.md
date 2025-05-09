@@ -305,8 +305,6 @@ langchain4j.ollama.chat-model.timeout=PT60S
 
 ### JSON mode
 
-#### JSON mode using builder
-
 ```java
 OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
     .baseUrl("http://localhost:11434")
@@ -317,19 +315,7 @@ OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
     .build();
 ```
 
-#### JSON mode using builder *deprecated*
-
-```java
-OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
-    .baseUrl("http://localhost:11434")
-    .modelName("llama3.1")
-    .format("json")    
-    .temperature(0.8)
-    .timeout(Duration.ofSeconds(60))
-    .build();
-```
-
-### Structured outputs
+### Structured Outputs
 
 #### JSON schema definition using builder
 

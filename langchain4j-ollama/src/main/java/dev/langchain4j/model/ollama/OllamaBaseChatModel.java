@@ -1,12 +1,12 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptySet;
 
+import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -27,10 +27,6 @@ abstract class OllamaBaseChatModel {
 
     void init(Builder<? extends OllamaBaseChatModel, ? extends Builder<?, ?>> builder) {
 
-        if (builder.format != null && builder.responseFormat != null) {
-            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
-        }
-
         this.client = OllamaClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
@@ -40,9 +36,10 @@ abstract class OllamaBaseChatModel {
                 .logResponses(builder.logResponses)
                 .build();
 
-        ChatRequestParameters commonParameters = getOrDefault(
-                builder.defaultRequestParameters,
+        ChatRequestParameters commonParameters = getOrDefault(builder.defaultRequestParameters,
                 () -> DefaultChatRequestParameters.builder().build());
+        validate(commonParameters);
+
         OllamaChatRequestParameters ollamaParameters;
         if (builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters) {
             ollamaParameters = ollamaChatRequestParameters;
@@ -50,17 +47,16 @@ abstract class OllamaBaseChatModel {
             ollamaParameters = OllamaChatRequestParameters.builder().build();
         }
 
-        ResponseFormat responseFormat = "json".equals(builder.format) ? ResponseFormat.JSON : builder.responseFormat; // TODO
         this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
-                .maxOutputTokens(getOrDefault(builder.numPredict, commonParameters.maxOutputTokens())) // TODO
-                .stopSequences(getOrDefault(builder.stop, () -> copyIfNotNull(commonParameters.stopSequences())))
-                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
-                .responseFormat(getOrDefault(responseFormat, commonParameters.responseFormat()))
+                .maxOutputTokens(getOrDefault(builder.numPredict, commonParameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 // Ollama-specific parameters
                 .mirostat(getOrDefault(builder.mirostat, ollamaParameters.mirostat()))
                 .mirostatEta(getOrDefault(builder.mirostatEta, ollamaParameters.mirostatEta()))
@@ -70,11 +66,16 @@ abstract class OllamaBaseChatModel {
                 .repeatPenalty(getOrDefault(builder.repeatPenalty, ollamaParameters.repeatPenalty()))
                 .seed(getOrDefault(builder.seed, ollamaParameters.seed()))
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
-                .keepAlive(ollamaParameters.keepAlive()) // TODO
+                .keepAlive(ollamaParameters.keepAlive())
                 .build();
 
-        this.listeners = copyIfNotNull(getOrDefault(builder.listeners, emptyList()));
-        this.supportedCapabilities = copyIfNotNull(getOrDefault(builder.supportedCapabilities, emptySet()));
+        this.listeners = copy(builder.listeners);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
+    }
+
+    protected void validate(ChatRequestParameters chatRequestParameters) {
+        InternalOllamaHelper.validate(chatRequestParameters);
+        ChatRequestValidationUtils.validate(chatRequestParameters.toolChoice());
     }
 
     protected abstract static class Builder<C extends OllamaBaseChatModel, B extends Builder<C, B>> {
@@ -97,7 +98,6 @@ abstract class OllamaBaseChatModel {
         protected Integer numPredict;
         protected List<String> stop;
         protected Double minP;
-        protected String format;
         protected ResponseFormat responseFormat;
         protected Duration timeout;
         protected Map<String, String> customHeaders;
@@ -111,11 +111,10 @@ abstract class OllamaBaseChatModel {
         }
 
         /**
-         * TODO
-         * TODO {@link #timeout(Duration)} overrides timeouts seB on the {@link HttpClientBuilder}
-         *
-         * @param httpClientBuilder
-         * @return
+         * Sets the {@link HttpClientBuilder} that will be used to create the {@link HttpClient}
+         * that will be used to communicate with Ollama.
+         * <p>
+         * NOTE: {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}.
          */
         public B httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -199,19 +198,6 @@ abstract class OllamaBaseChatModel {
 
         public B minP(Double minP) {
             this.minP = minP;
-            return self();
-        }
-
-        /**
-         * @deprecated Please use {@link #responseFormat(ResponseFormat)} instead.
-         * For example: {@code responseFormat(ResponseFormat.JSON)}.
-         * <br>
-         * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
-         * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
-         */
-        @Deprecated
-        public B format(String format) {
-            this.format = format;
             return self();
         }
 
