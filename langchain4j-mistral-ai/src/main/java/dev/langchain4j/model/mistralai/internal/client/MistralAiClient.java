@@ -10,13 +10,19 @@ public abstract class MistralAiClient {
 
     public abstract MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request);
 
-    public abstract void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler);
+    public abstract void streamingChatCompletion(
+            MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler);
 
     public abstract MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request);
 
     public abstract MistralAiModerationResponse moderation(MistralAiModerationRequest request);
 
     public abstract MistralAiModelResponse listModels();
+
+    public abstract MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request);
+
+    public abstract void streamingFimCompletion(
+            MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler);
 
     @SuppressWarnings("rawtypes")
     public static MistralAiClient.Builder builder() {

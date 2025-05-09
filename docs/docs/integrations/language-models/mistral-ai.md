@@ -48,18 +48,21 @@ SET MISTRAL_AI_API_KEY=your-api-key #For Windows OS
 More details on how to get your MistralAI API key can be found [here](https://docs.mistral.ai/#api-access)
 
 ### Model Selection
-You can use `MistralAiChatModelName.class` enum class to found appropriate model names for your use case.
+You can use `MistralAiChatModelName` and `MistralAiFimModelName` java enums to found appropriate model names for your use case.
 MistralAI updated a new selection and classification of models according to performance and cost trade-offs.
 
-| Model  name                  | Deployment or available from                                                                                                                  | Description                                                                                                                                                                                                                                        |
-|------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| open-mistral-7b              | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>The first dense model released by Mistral AI, <br/> perfect for experimentation, <br/> customization, and quick iteration. <br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MISTRAL_7B`                  |
-| open-mixtral-8x7b            | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>Ideal to handle multi-languages operations, <br/> code generationand fine-tuned.<br/> Excellent cost/performance trade-offs. <br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MIXTRAL_8x7B`                   |
-| open-mixtral-8x22b           | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>It has all Mixtral-8x7B capabilities plus strong maths <br/> and coding natively capable of function calling <br/><br/>Max tokens 64K.<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MIXTRAL_8X22B`                                 |
-| mistral-small-latest         | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Suitable for simple tasks that one can do in bulk <br/>(Classification, Customer Support, or Text Generation).<br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.MISTRAL_SMALL_LATEST`                               |
-| mistral-medium-latest        | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Ideal for intermediate tasks that require moderate <br/> reasoning (Data extraction, Summarizing, <br/>Writing emails, Writing descriptions.<br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.MISTRAL_MEDIUM_LATEST`              |
-| mistral-large-latest         | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Ideal for complex tasks that require large reasoning <br/> capabilities or are highly specialized <br/>(Text Generation, Code Generation, RAG, or Agents).<br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.MISTRAL_LARGE_LATEST` |
-| mistral-embed                | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Converts text into numerical vectors of <br/> embeddings in 1024 dimensions. <br/>Embedding models enable retrieval and RAG applications.<br/><br/>Max tokens 8K<br/><br/>Java Enum<br/>`MistralAiEmbeddingModelName.MISTRAL_EMBED`                     |
+| Model  name           | Deployment or available from                                                                                                                  | Description                                                                                                                                                                                                                                                                                                              |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| open-mistral-7b       | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>The first dense model released by Mistral AI, <br/> perfect for experimentation, <br/> customization, and quick iteration. <br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MISTRAL_7B`                                                                                   |
+| open-mixtral-8x7b     | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>Ideal to handle multi-languages operations, <br/> code generationand fine-tuned.<br/> Excellent cost/performance trade-offs. <br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MIXTRAL_8x7B`                                                                               |
+| open-mixtral-8x22b    | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>It has all Mixtral-8x7B capabilities plus strong maths <br/> and coding natively capable of function calling <br/><br/>Max tokens 64K.<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MIXTRAL_8X22B`                                                                                             |
+| open-mistral-nemo     | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>A 12B model built in collaboration with NVIDIA. <br/>Its reasoning, world knowledge, and coding accuracy are state-of-the-art in its size category.<br/><br/>Max tokens 128K.<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MISTRAL_NEMO`                                                       |
+| open-codestral-mamba  | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>A Mamba2 language model specialised in code generation. <br/>It was trained with advanced code and reasoning capabilities, enabling it to perform on par with SOTA transformer-based models.<br/><br/>Max tokens 256K.<br/><br/>Java Enum<br/>`MistralAiFimModelName.OPEN_CODESTRAL_MAMBA`           |
+| mistral-small-latest  | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Suitable for simple tasks that one can do in bulk <br/>(Classification, Customer Support, or Text Generation).<br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.MISTRAL_SMALL_LATEST`                                                                                           |
+| mistral-medium-latest | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Ideal for intermediate tasks that require moderate <br/> reasoning (Data extraction, Summarizing, <br/>Writing emails, Writing descriptions.<br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.MISTRAL_MEDIUM_LATEST`                                                            |
+| mistral-large-latest  | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Ideal for complex tasks that require large reasoning <br/> capabilities or are highly specialized <br/>(Text Generation, Code Generation, RAG, or Agents).<br/><br/>Max tokens 128K<br/><br/>Java Enum<br/>`MistralAiChatModelName.MISTRAL_LARGE_LATEST`                                              |
+| mistral-embed         | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Converts text into numerical vectors of <br/> embeddings in 1024 dimensions. <br/>Embedding models enable retrieval and RAG applications.<br/><br/>Max tokens 8K<br/><br/>Java Enum<br/>`MistralAiEmbeddingModelName.MISTRAL_EMBED`                                                                   |
+| codestral-latest      | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource (Non-production license) and Commercial**<br/>A cutting-edge generative model that has been specifically designed <br/>and optimized for code generation tasks, including fill-in-the-middle and code completion. <br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiFimModelName.CODESTRAL_LATEST` |
 
 `@Deprecated` models:
 - mistral-tiny (`@Deprecated`)
@@ -164,6 +167,7 @@ Currently, function calling is available for the following models:
 - Mistral Small `MistralAiChatModelName.MISTRAL_SMALL_LATEST`
 - Mistral Large `MistralAiChatModelName.MISTRAL_LARGE_LATEST`
 - Mixtral 8x22B `MistralAiChatModelName.OPEN_MIXTRAL_8X22B`
+- Mistral Nemo `MistralAiChatModelName.OPEN_MISTRAL_NEMO`
 :::
 </details>
 
@@ -409,21 +413,136 @@ Toggling the safe prompt will prepend your messages with the following `@SystemM
 Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity.
 ```
 
-## Creating `MistralAiModerationModel`
+## Moderation
 
-### Plain Java
+It is a classifier model that can be used to detect harmful content in text.
+
+Moderation example:
+
 ```java
 ModerationModel model = new MistralAiModerationModel.Builder()
     .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-    .modelName("mistral-moderation-latest")
+    .modelName(MistralAiModerationModelName.MISTRAL_MODERATION_LATEST)
     .logRequests(true)
     .logResponses(false)
     .build();
-```
-
-```java
+// I want to check if the text contains harmful content
 Moderation moderation = model.moderate("I want to kill them.").content();
 ```
+
+## Code Completion
+The Fill-in-the-Middle (FIM) models allow you to generate code completions, user can define the starting point of the code using a `prompt`, and the ending point of the code using an optional `suffix` and an optional `stop`.
+
+### FIM Synchronous
+Just like how chat completions work, the FIM endpoint works as well. You can test it by adding the following code.
+
+```java
+import dev.langchain4j.model.mistralai.MistralAiFimModel;
+import dev.langchain4j.model.output.Response;
+
+public class HelloWorld {
+    public static void main(String[] args) {
+        MistralAiFimModel codestral = MistralAiFimModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
+                .stops(List.of("}")) // must stop at the first occurrence of "}"
+                .build();
+        
+        // I want to generate a code completion for a simple hello world program using MistralAI of LangChain4j framework.
+        String codePrompt = """
+                  public static void main(String[] args) {
+                      // Create a function to multiply two numbers
+                """;
+        String suffix = """
+                    System.out.println(result);
+                  }
+                """;
+
+        // Asking to Codestral model to complete the code with given prompt and suffix
+        Response<String> response = codestral.generate(prompt, suffix);
+        
+        System.out.println(
+                String.format(
+                        "%s%s%s",
+                        prompt, // print code prompt (prefix)
+                        response.content(), // print code filled-in-the-middle
+                        suffix)); // print code suffix
+    }
+}
+```
+Running the program will print of the following output
+
+```console
+public static void main(String[] args) {
+      // Create a function to multiply two numbers
+      int result = multiply(5, 3);
+      System.out.println(result);
+  }
+```
+
+### FIM Streaming
+
+Create a class and add the following code.
+
+```java
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.language.StreamingLanguageModel;
+import dev.langchain4j.model.mistralai.MistralAiStreamingFimModel;
+import dev.langchain4j.model.output.Response;
+
+import java.util.concurrent.CompletableFuture;
+
+public class HelloWorld {
+    public static void main(String[] args) {
+        StreamingLanguageModel codestralStream = MistralAiStreamingFimModel.builder()
+                .apiKey(ApiKeys.MISTRALAI_API_KEY)
+                .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
+                .build();
+
+        // I want to generate a code completion for a simple hello world program.
+        String prompt = "public static void main(String[] args) {";
+
+        CompletableFuture<Response<String>> futureResponse = new CompletableFuture<>();
+        codestral.generate(prompt, new StreamingResponseHandler() {
+            @Override
+            public void onNext(String token) {
+                System.out.print(token);
+            }
+
+            @Override
+            public void onComplete(Response<String> response) {
+                futureResponse.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse.completeExceptionally(error);
+            }
+        });
+
+        futureResponse.join();
+    }
+}
+```
+You will receive each chunk of text (token) as it is generated by the LLM on the onNext method.
+
+You can see that output below is streamed in real-time.
+
+```console
+public static void main(String[] args) {
+
+        int[] arr = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        int sum = 0;
+
+        for (int i = 0; i < arr.length; i++) {
+            sum += arr[i];
+        }
+
+        System.out.println("Sum of all elements in the array: " + sum);
+    }
+}
+``` 
+
 
 ## Examples
 - [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)

@@ -14,22 +14,22 @@ import java.util.StringJoiner;
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-@JsonDeserialize(builder = MistralModerationResult.MistralModerationResultBuilder.class)
-public class MistralModerationResult {
+@JsonDeserialize(builder = MistralAiModerationResult.MistralModerationResultBuilder.class)
+public class MistralAiModerationResult {
 
-    private final MistralCategories categories;
-    private final MistralCategoryScores categoryScores;
+    private final MistralAiCategories categories;
+    private final MistralAiCategoryScores categoryScores;
 
-    public MistralModerationResult(MistralModerationResultBuilder builder) {
+    public MistralAiModerationResult(MistralModerationResultBuilder builder) {
         this.categories = builder.categories;
         this.categoryScores = builder.categoryScores;
     }
 
-    public MistralCategories getCategories() {
+    public MistralAiCategories getCategories() {
         return categories;
     }
 
-    public MistralCategoryScores getCategoryScores() {
+    public MistralAiCategoryScores getCategoryScores() {
         return categoryScores;
     }
 
@@ -46,14 +46,14 @@ public class MistralModerationResult {
         if (this == obj) return true;
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
-        final MistralModerationResult other = (MistralModerationResult) obj;
+        final MistralAiModerationResult other = (MistralAiModerationResult) obj;
         return Objects.equals(this.categories, other.categories)
                 && Objects.equals(this.categoryScores, other.categoryScores);
     }
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", "MistralModerationResult [", "]")
+        return new StringJoiner(", ", "MistralAiModerationResult [", "]")
                 .add("categories=" + this.getCategories())
                 .add("categoryScores=" + this.getCategoryScores())
                 .toString();
@@ -68,23 +68,23 @@ public class MistralModerationResult {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class MistralModerationResultBuilder {
 
-        private MistralCategories categories;
-        private MistralCategoryScores categoryScores;
+        private MistralAiCategories categories;
+        private MistralAiCategoryScores categoryScores;
 
         private MistralModerationResultBuilder() {}
 
-        public MistralModerationResultBuilder categories(MistralCategories categories) {
+        public MistralModerationResultBuilder categories(MistralAiCategories categories) {
             this.categories = categories;
             return this;
         }
 
-        public MistralModerationResultBuilder categoryScores(MistralCategoryScores categoryScores) {
+        public MistralModerationResultBuilder categoryScores(MistralAiCategoryScores categoryScores) {
             this.categoryScores = categoryScores;
             return this;
         }
 
-        public MistralModerationResult build() {
-            return new MistralModerationResult(this);
+        public MistralAiModerationResult build() {
+            return new MistralAiModerationResult(this);
         }
     }
 }
