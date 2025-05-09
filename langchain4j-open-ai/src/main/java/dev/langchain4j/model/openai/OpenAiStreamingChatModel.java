@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -135,7 +136,13 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                     ChatResponse chatResponse = openAiResponseBuilder.build();
                     handler.onCompleteResponse(chatResponse);
                 })
-                .onError(handler::onError)
+                .onError(throwable -> {
+                    if (throwable instanceof Exception exception) {
+                        handler.onError(ExceptionMapper.DEFAULT.mapException(exception));
+                    } else {
+                        handler.onError(throwable);
+                    }
+                })
                 .execute();
     }
 
