@@ -20,10 +20,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 class OllamaStreamingResponseBuilder {
 
-    private StringBuffer contentBuilder = new StringBuffer();
+    private final StringBuffer contentBuilder = new StringBuffer();
     private volatile String modelName;
     private volatile TokenUsage tokenUsage;
-    private volatile List<ToolExecutionRequest> toolExecutionRequests = new CopyOnWriteArrayList<>();
+    private final List<ToolExecutionRequest> toolExecutionRequests = new CopyOnWriteArrayList<>();
 
     void append(OllamaChatResponse partialResponse) {
         if (partialResponse == null) {

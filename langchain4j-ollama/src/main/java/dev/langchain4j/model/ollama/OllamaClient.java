@@ -3,7 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -56,7 +56,7 @@ class OllamaClient {
         }
 
         this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
-        this.defaultHeaders = copyIfNotNull(builder.customHeaders);
+        this.defaultHeaders = copy(builder.customHeaders);
     }
 
     static Builder builder() {
@@ -250,6 +250,12 @@ class OllamaClient {
         private boolean logResponses;
         private Map<String, String> customHeaders;
 
+        /**
+         * Sets the {@link HttpClientBuilder} that will be used to create the {@link HttpClient}
+         * that will be used to communicate with Ollama.
+         * <p>
+         * NOTE: {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}.
+         */
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;

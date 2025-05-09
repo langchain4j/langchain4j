@@ -1,19 +1,27 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.ollama.OllamaChatModelIT.weatherToolSpecification;
+import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -21,6 +29,8 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
 
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
@@ -30,6 +40,14 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     StreamingChatModel model = OllamaStreamingChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollama))
             .modelName(MODEL_NAME)
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+    OllamaStreamingChatModel toolModel = OllamaStreamingChatModel.builder()
+            .baseUrl(ollamaBaseUrl(ollama))
+            .modelName(LLAMA_3_1)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -223,5 +241,66 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
                 .build();
 
         assertThat(model.supportedCapabilities()).contains(RESPONSE_FORMAT_JSON_SCHEMA);
+    }
+
+    @Test
+    void should_handle_tools_call_in_streaming_scenario() throws Exception {
+        // given
+        UserMessage userMessage = userMessage("What is the weather today in Paris?");
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(weatherToolSpecification)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        toolModel.chat(request, handler);
+
+        ChatResponse response = handler.get();
+        AiMessage aiMessage = response.aiMessage();
+
+        // then
+        assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo("get_current_weather");
+        assertThat(toolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"format\": \"celsius\", \"location\": \"Paris\"}");
+
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage = from(
+                toolExecutionRequest, "{\"format\": \"celsius\", \"location\": \"Paris\", \"temperature\": \"32\"}");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
+
+        AtomicInteger onPartialResponseCounter = new AtomicInteger(0);
+        toolModel.chat(messages, new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                onPartialResponseCounter.incrementAndGet();
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                secondFutureResponse.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                secondFutureResponse.completeExceptionally(error);
+            }
+        });
+
+        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
+        AiMessage secondAiMessage = secondResponse.aiMessage();
+
+        // then
+        assertThat(secondAiMessage.text()).contains("32");
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
+        assertThat(onPartialResponseCounter.get()).isPositive();
     }
 }

@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
@@ -13,21 +14,15 @@ public class OllamaModels {
     private final OllamaClient client;
     private final Integer maxRetries;
 
-    public OllamaModels(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses) {
+    public OllamaModels(OllamaModelsBuilder builder) {
         this.client = OllamaClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(baseUrl)
-                .timeout(timeout)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(builder.baseUrl)
+                .timeout(builder.timeout)
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
                 .build();
-        this.maxRetries = getOrDefault(maxRetries, 2);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     public static OllamaModelsBuilder builder() {
@@ -77,11 +72,10 @@ public class OllamaModels {
         private Boolean logResponses;
 
         /**
-         * TODO
-         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
-         *
-         * @param httpClientBuilder
-         * @return
+         * Sets the {@link HttpClientBuilder} that will be used to create the {@link HttpClient}
+         * that will be used to communicate with Ollama.
+         * <p>
+         * NOTE: {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}.
          */
         public OllamaModelsBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -114,7 +108,7 @@ public class OllamaModels {
         }
 
         public OllamaModels build() {
-            return new OllamaModels(httpClientBuilder, baseUrl, timeout, maxRetries, logRequests, logResponses);
+            return new OllamaModels(this);
         }
     }
 }

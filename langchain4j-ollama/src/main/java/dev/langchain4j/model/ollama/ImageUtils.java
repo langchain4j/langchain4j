@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.Utils;
@@ -13,6 +14,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Internal
 class ImageUtils {
 
     private static final List<String> SUPPORTED_URL_SCHEMES = Arrays.asList("http", "https", "file");

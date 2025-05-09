@@ -1,7 +1,6 @@
 package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.model.ModelProvider.OLLAMA;
-import static dev.langchain4j.model.ollama.InternalOllamaHelper.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.model.ModelProvider;
@@ -28,9 +27,7 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        OllamaChatRequestParameters parameters = (OllamaChatRequestParameters) chatRequest.parameters();
-        validate(parameters);
-
+        validate(chatRequest.parameters());
         client.streamingChat(chatRequest, handler);
     }
 
