@@ -2,6 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
@@ -11,7 +12,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -19,6 +20,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -29,7 +32,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModelIT {
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<StreamingChatModel> models() {
         return List.of(
                 //                TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_MICRO,
                 TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_LITE,
@@ -41,7 +44,7 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
     }
 
     @Override
-    protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         BedrockStreamingChatModel.Builder bedrockStreamingChatModelBuilder = BedrockStreamingChatModel.builder()
                 .defaultRequestParameters(parameters)
                 .logRequests(true)
@@ -69,13 +72,10 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
     }
 
     @Override
-    protected boolean assertExceptionType() {
-        return false;
-    }
-
-    @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        return BedrockChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     // Nova models support StopSequence but have an incoherent behavior, it includes the stopSequence in the
@@ -84,12 +84,13 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsStopSequencesParameter")
-    protected void should_respect_stopSequences_in_chat_request(StreamingChatLanguageModel model) {
+    protected void should_respect_stopSequences_in_chat_request(StreamingChatModel model) {
 
         // given
         List<String> stopSequences = List.of("ipsum", " Ipsum");
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().stopSequences(stopSequences).build();
+        ChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+                .stopSequences(stopSequences)
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Lorem ipsum dolor sit amet'"))
@@ -103,7 +104,7 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Lorem");
         assertThat(aiMessage.text()).doesNotContainIgnoringCase("dolor");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -116,9 +117,10 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
 
         // given
         List<String> stopSequences = List.of("ipsum", " Ipsum");
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().stopSequences(stopSequences).build();
-        StreamingChatLanguageModel model = createModelWith(parameters);
+        ChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+                .stopSequences(stopSequences)
+                .build();
+        StreamingChatModel model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Lorem ipsum dolor sit amet'"))
@@ -132,7 +134,7 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Lorem");
         assertThat(aiMessage.text()).doesNotContainIgnoringCase("dolor");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -142,10 +144,10 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
     @Test
     void should_reason() {
         // given
-        StreamingChatLanguageModel model = BedrockStreamingChatModel.builder()
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .enableReasoning(1024L)
+                        .enableReasoning(1024)
                         .build())
                 .build();
 
@@ -164,10 +166,10 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
     @Test
     void should_fail_if_reasoning_enabled() {
         // given
-        StreamingChatLanguageModel model = BedrockStreamingChatModel.builder()
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId("us.amazon.nova-lite-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .enableReasoning(1024L)
+                        .enableReasoning(1024)
                         .build())
                 .build();
 
@@ -177,6 +179,32 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
 
         // when then
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> chat(model, chatRequest));
+    }
+
+    static final ToolSpecification TODAY_TOOL =
+            ToolSpecification.builder().name("getTodayDate").build();
+
+    @Test
+    void should_call_tool_with_no_parameters() {
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .build();
+        UserMessage userMessage = userMessage("What's today's date?");
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(TODAY_TOOL)
+                        .build())
+                .build();
+
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+            assertThat(toolExecutionRequest.name()).isEqualTo("getTodayDate");
+        }
     }
 
     record Dinosaur(String name, String periodOfActivity, String description) {}
@@ -190,8 +218,7 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
 
     @Test
     void should_call_tool_with_chunked_parameters() {
-
-        StreamingChatLanguageModel model = TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU;
+        StreamingChatModel model = TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU;
 
         UserMessage userMessage = userMessage(
                 "Create a clear timeline to be displayed in mermaid.live with iconic dinosaurs and major milestones of the Mesozoic era.");
@@ -215,5 +242,10 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
             assertThat(toolExecutionRequest.name()).isEqualTo("mermaidTimelineDiagram");
             assertThat(toolExecutionRequest.arguments()).isNotEmpty();
         }
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

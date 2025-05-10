@@ -1,14 +1,6 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
-import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -23,16 +15,16 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
-import dev.langchain4j.service.tool.ToolExecutionContext;
-import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.service.tool.ToolServiceContext;
+import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
+
 import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
@@ -52,6 +44,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
+@Internal
 class DefaultAiServices<T> extends AiServices<T> {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
@@ -98,9 +99,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         "The @Moderate annotation is present, but the moderationModel is not set up. "
                                 + "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
-            if (method.getReturnType() == Result.class
-                    || method.getReturnType() == List.class
-                    || method.getReturnType() == Set.class) {
+
+            Class<?> returnType = method.getReturnType();
+            if (returnType == void.class) {
+                throw illegalConfiguration("'%s' is not a supported return type of an AI Service method", returnType.getName());
+            }
+            if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }
 
@@ -117,7 +121,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
-                new Class<?>[] {context.aiServiceClass},
+                new Class<?>[]{context.aiServiceClass},
                 new InvocationHandler() {
 
                     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -165,7 +169,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
                         if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
-                            // TODO append after storing in the memory?
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
@@ -182,14 +185,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        ToolExecutionContext toolExecutionContext =
-                                context.toolService.executionContext(memoryId, userMessage);
+                        ToolServiceContext toolServiceContext =
+                                context.toolService.createContext(memoryId, userMessage);
 
                         if (streaming) {
                             TokenStream tokenStream = new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
-                                    .toolSpecifications(toolExecutionContext.toolSpecifications())
-                                    .toolExecutors(toolExecutionContext.toolExecutors())
+                                    .toolSpecifications(toolServiceContext.toolSpecifications())
+                                    .toolExecutors(toolServiceContext.toolExecutors())
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
                                     .context(context)
@@ -212,7 +215,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         ChatRequestParameters parameters = ChatRequestParameters.builder()
-                                .toolSpecifications(toolExecutionContext.toolSpecifications())
+                                .toolSpecifications(toolServiceContext.toolSpecifications())
                                 .responseFormat(responseFormat)
                                 .build();
 
@@ -225,28 +228,25 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
-                        ToolExecutionResult toolExecutionResult = context.toolService.executeInferenceAndToolsLoop(
+                        ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
                                 chatResponse,
                                 parameters,
                                 messages,
                                 context.chatModel,
                                 chatMemory,
                                 memoryId,
-                                toolExecutionContext.toolExecutors());
+                                toolServiceContext.toolExecutors());
 
-                        chatResponse = toolExecutionResult.chatResponse();
-                        FinishReason finishReason = chatResponse.metadata().finishReason();
-                        Response<AiMessage> response = Response.from(
-                                chatResponse.aiMessage(), toolExecutionResult.tokenUsageAccumulator(), finishReason);
+                        chatResponse = toolServiceResult.chatResponse();
 
-                        Object parsedResponse = serviceOutputParser.parse(response, returnType);
+                        Object parsedResponse = serviceOutputParser.parse(chatResponse, returnType);
                         if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
-                                    .tokenUsage(toolExecutionResult.tokenUsageAccumulator())
+                                    .tokenUsage(chatResponse.tokenUsage())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(finishReason)
-                                    .toolExecutions(toolExecutionResult.toolExecutions())
+                                    .finishReason(chatResponse.finishReason())
+                                    .toolExecutions(toolServiceResult.toolExecutions())
                                     .build();
                         } else {
                             return parsedResponse;
@@ -474,7 +474,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return null;
         }
         try (Scanner scanner = new Scanner(inputStream);
-                Scanner s = scanner.useDelimiter("\\A")) {
+             Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
     }

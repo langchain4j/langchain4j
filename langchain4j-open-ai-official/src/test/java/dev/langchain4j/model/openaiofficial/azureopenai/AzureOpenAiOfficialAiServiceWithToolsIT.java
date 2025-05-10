@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openaiofficial.azureopenai;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -9,7 +9,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class AzureOpenAiOfficialAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return InternalAzureOpenAiOfficialTestHelper.chatModelsNormalAndStrictTools();
     }
 

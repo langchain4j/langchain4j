@@ -17,14 +17,14 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -69,7 +69,7 @@ import static java.util.Collections.emptyList;
  * <br>
  * 3. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#prerequisites">Prerequisites</a>
  */
-public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
+public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
@@ -202,7 +202,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
                 ensureNotBlank(modelName, "modelName"), vertexAI)
                 .withGenerationConfig(generationConfig);
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
 
         if (logRequests != null) {
             this.logRequests = logRequests;
@@ -220,7 +220,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
                                    GenerationConfig generationConfig) {
-        this(generativeModel, generationConfig, 3);
+        this(generativeModel, generationConfig, 2);
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
@@ -229,7 +229,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel")
                 .withGenerationConfig(generationConfig);
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.vertexAI = null;
         this.safetySettings = Collections.emptyMap();
         this.googleSearch = null;
@@ -248,9 +248,9 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.toolChoice());
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         Response<AiMessage> response;
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();

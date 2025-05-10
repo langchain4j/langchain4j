@@ -2,9 +2,10 @@ package dev.langchain4j.service.common;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
@@ -28,13 +29,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
- * This test makes sure that all {@link StreamingChatLanguageModel} implementations behave consistently
+ * This test makes sure that all {@link StreamingChatModel} implementations behave consistently
  * when used with {@link AiServices}.
  */
 @TestInstance(PER_CLASS)
 public abstract class AbstractStreamingAiServiceIT {
 
-    protected abstract List<StreamingChatLanguageModel> models();
+    protected abstract List<StreamingChatModel> models();
 
     interface Assistant {
 
@@ -43,13 +44,13 @@ public abstract class AbstractStreamingAiServiceIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_answer_simple_question(StreamingChatLanguageModel model) throws Exception {
+    void should_answer_simple_question(StreamingChatModel model) throws Exception {
 
         // given
         model = spy(model);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(model)
+                .streamingChatModel(model)
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();
@@ -73,16 +74,15 @@ public abstract class AbstractStreamingAiServiceIT {
         assertThat(answer).containsIgnoringCase("Berlin");
         assertThat(chatResponse.aiMessage().text()).isEqualTo(answer);
 
-        if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
+        if (assertChatResponseMetadataType()) {
+            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType(model));
         }
 
+        assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
+
         if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
         }
 
         verify(model).chat(
@@ -93,7 +93,7 @@ public abstract class AbstractStreamingAiServiceIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_tool_without_arguments(StreamingChatLanguageModel model) throws Exception {
+    protected void should_execute_tool_without_arguments(StreamingChatModel model) throws Exception {
 
         // given
         class Tools {
@@ -107,7 +107,7 @@ public abstract class AbstractStreamingAiServiceIT {
         Tools tools = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(model)
+                .streamingChatModel(model)
                 .tools(tools)
                 .build();
 
@@ -115,7 +115,8 @@ public abstract class AbstractStreamingAiServiceIT {
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
 
         assistant.chat("What is the date today?")
-                .onPartialResponse(ignored -> {})
+                .onPartialResponse(ignored -> {
+                })
                 .onError(futureChatResponse::completeExceptionally)
                 .onCompleteResponse(futureChatResponse::complete)
                 .start();
@@ -127,13 +128,40 @@ public abstract class AbstractStreamingAiServiceIT {
 
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);
+
+        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
+        if (assertChatResponseMetadataType()) {
+            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType(model));
+        }
+
+        assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
+
+        if (assertFinishReason()) {
+            assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
+        }
     }
 
     // TODO test threads
     // TODO all tests from sync, perhaps reuse the same test logic
 
-    protected boolean assertTokenUsage() {
+    protected boolean assertChatResponseMetadataType() {
         return true;
+    }
+
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel streamingChatModel) {
+        return ChatResponseMetadata.class;
+    }
+
+    private void assertTokenUsage(TokenUsage tokenUsage, StreamingChatModel streamingChatModel) {
+        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(streamingChatModel));
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
+        return TokenUsage.class;
     }
 
     protected boolean assertFinishReason() {

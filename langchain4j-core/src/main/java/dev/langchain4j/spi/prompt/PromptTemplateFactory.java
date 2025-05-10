@@ -1,15 +1,21 @@
 package dev.langchain4j.spi.prompt;
 
+import dev.langchain4j.Internal;
+
 import java.util.Map;
 
 /**
  * A factory for creating prompt templates.
  */
+@Internal
 public interface PromptTemplateFactory {
+
     /**
      * Interface for input for the factory.
      */
+    @Internal
     interface Input {
+
         /**
          * Get the template string.
          * @return the template string.
@@ -26,6 +32,7 @@ public interface PromptTemplateFactory {
     /**
      * Interface for a prompt template.
      */
+    @Internal
     interface Template {
         /**
          * Render the template.
@@ -41,5 +48,4 @@ public interface PromptTemplateFactory {
      * @return the prompt template.
      */
     Template create(Input input);
-
 }

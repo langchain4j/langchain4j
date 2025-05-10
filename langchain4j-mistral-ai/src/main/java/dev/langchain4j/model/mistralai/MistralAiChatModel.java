@@ -17,10 +17,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  * You can find description of parameters
  * <a href="https://docs.mistral.ai/api/#operation/createChatCompletion">here</a>.
  */
-public class MistralAiChatModel implements ChatLanguageModel {
+public class MistralAiChatModel implements ChatModel {
 
     private final MistralAiClient client;
     private final String modelName;
@@ -109,7 +109,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
         this.safePrompt = safePrompt;
         this.randomSeed = randomSeed;
         this.responseFormat = responseFormat;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.supportedCapabilities = getOrDefault(supportedCapabilities, Set.of());
     }
 
@@ -120,9 +120,9 @@ public class MistralAiChatModel implements ChatLanguageModel {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidationUtils.validateParameters(parameters);
         ResponseFormat responseFormat = parameters.responseFormat();
 
         Response<AiMessage> response;

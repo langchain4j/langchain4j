@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -40,9 +41,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO: currently we request a new list of tools every time, so we should
-// add support for the `ToolListChangedNotification` message, and then we can
-// cache the list
 public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
@@ -52,6 +50,7 @@ public class DefaultMcpClient implements McpClient {
     private final String clientName;
     private final String clientVersion;
     private final String protocolVersion;
+    private final Duration initializationTimeout;
     private final Duration toolExecutionTimeout;
     private final Duration resourcesTimeout;
     private final Duration promptsTimeout;
@@ -67,17 +66,20 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicReference<List<ToolSpecification>> toolListRefs = new AtomicReference<>();
     private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
     private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
+    private final Duration reconnectInterval;
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
         clientName = getOrDefault(builder.clientName, "langchain4j");
         clientVersion = getOrDefault(builder.clientVersion, "1.0");
         protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
+        initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
         toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
         resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
         promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
         logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
         pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
+        reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
         toolExecutionTimeoutErrorMessage =
                 getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
         RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
@@ -89,6 +91,15 @@ public class DefaultMcpClient implements McpClient {
                 .addObject()
                 .put("type", "text")
                 .put("text", toolExecutionTimeoutErrorMessage);
+        transport.onFailure(() -> {
+            try {
+                TimeUnit.MILLISECONDS.sleep(reconnectInterval.toMillis());
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            log.info("Trying to reconnect...");
+            initialize();
+        });
         initialize();
     }
 
@@ -99,7 +110,8 @@ public class DefaultMcpClient implements McpClient {
         InitializeParams params = createInitializeParams();
         request.setParams(params);
         try {
-            JsonNode capabilities = transport.initialize(request).get();
+            JsonNode capabilities =
+                    transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
             log.debug("MCP server capabilities: {}", capabilities.get("result"));
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -156,7 +168,11 @@ public class DefaultMcpClient implements McpClient {
     public String executeTool(ToolExecutionRequest executionRequest) {
         ObjectNode arguments = null;
         try {
-            arguments = OBJECT_MAPPER.readValue(executionRequest.arguments(), ObjectNode.class);
+            String args = executionRequest.arguments();
+            if (isNullOrBlank(args)) {
+                args = "{}";
+            }
+            arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -344,11 +360,13 @@ public class DefaultMcpClient implements McpClient {
         private String clientName;
         private String clientVersion;
         private String protocolVersion;
+        private Duration initializationTimeout;
         private Duration toolExecutionTimeout;
         private Duration resourcesTimeout;
         private Duration pingTimeout;
         private Duration promptsTimeout;
         private McpLogMessageHandler logHandler;
+        private Duration reconnectInterval;
 
         public Builder transport(McpTransport transport) {
             this.transport = transport;
@@ -383,6 +401,15 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder protocolVersion(String protocolVersion) {
             this.protocolVersion = protocolVersion;
+            return this;
+        }
+
+        /**
+         * Sets the timeout for initializing the client.
+         * The default value is 30 seconds.
+         */
+        public Builder initializationTimeout(Duration initializationTimeout) {
+            this.initializationTimeout = initializationTimeout;
             return this;
         }
 
@@ -442,6 +469,15 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder pingTimeout(Duration pingTimeout) {
             this.pingTimeout = pingTimeout;
+            return this;
+        }
+
+        /**
+         * The delay before attempting to reconnect after a failed connection.
+         * The default is 5 seconds.
+         */
+        public Builder reconnectInterval(Duration reconnectInterval) {
+            this.reconnectInterval = reconnectInterval;
             return this;
         }
 

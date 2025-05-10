@@ -1,26 +1,5 @@
 package dev.langchain4j.model.ollama.common;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.ollama.OllamaChatModel;
-import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -32,13 +11,36 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
 class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrastructure {
 
     ToolSpecification weatherToolSpecification = ToolSpecification.builder()
             .name("get_current_weather")
             .description("Get the current weather for a location")
             .parameters(JsonObjectSchema.builder()
-                    .addEnumProperty("format", List.of("celsius", "fahrenheit"), "The format to return the weather in, e.g. 'celsius' or 'fahrenheit'")
+                    .addEnumProperty(
+                            "format",
+                            List.of("celsius", "fahrenheit"),
+                            "The format to return the weather in, e.g. 'celsius' or 'fahrenheit'")
                     .addStringProperty("location", "The location to get the weather for, e.g. San Francisco, CA")
                     .required("format", "location")
                     .build())
@@ -49,7 +51,7 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
             .description("Get the current time")
             .build();
 
-    ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
+    ChatModel ollamaChatModel = OllamaChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollama))
             .modelName(LLAMA_3_1)
             .temperature(0.0)
@@ -66,7 +68,7 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return singletonList(ollamaChatModel);
     }
 
@@ -89,12 +91,15 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("get_current_weather");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"format\": \"celsius\", \"location\": \"Paris\"}");
+        assertThat(toolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"format\": \"celsius\", \"location\": \"Paris\"}");
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "{\"format\": \"celsius\", \"location\": \"Paris\", \"temperature\": \"32\"}");
+        ToolExecutionResultMessage toolExecutionResultMessage = from(
+                toolExecutionRequest, "{\"format\": \"celsius\", \"location\": \"Paris\", \"temperature\": \"32\"}");
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         // when
@@ -103,7 +108,7 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("32");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
     }
 
     @Test
@@ -122,7 +127,7 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
         // then
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNotNull();
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
     }
 
     @Test
@@ -158,12 +163,15 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("get_current_weather");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"format\": \"celsius\", \"location\": \"Paris\"}");
+        assertThat(toolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"format\": \"celsius\", \"location\": \"Paris\"}");
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "{\"format\": \"celsius\", \"location\": \"Paris\", \"temperature\": \"32\"}");
+        ToolExecutionResultMessage toolExecutionResultMessage = from(
+                toolExecutionRequest, "{\"format\": \"celsius\", \"location\": \"Paris\", \"temperature\": \"32\"}");
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
@@ -192,37 +200,32 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
 
         // then
         assertThat(secondAiMessage.text()).contains("32");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
         assertThat(onPartialResponseCounter.get()).isPositive();
     }
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_pojo_with_primitives(ChatLanguageModel model) {
-    }
+    protected void should_execute_tool_with_pojo_with_primitives(ChatModel model) {}
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_pojo_with_nested_pojo(ChatLanguageModel model) {
-    }
+    protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel model) {}
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_list_of_strings_parameter(ChatLanguageModel model) {
-    }
+    protected void should_execute_tool_with_list_of_strings_parameter(ChatModel model) {}
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_list_of_POJOs_parameter(ChatLanguageModel model) {
-    }
+    protected void should_execute_tool_with_list_of_POJOs_parameter(ChatModel model) {}
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
-    protected void should_execute_tool_with_collection_of_integers_parameter(ChatLanguageModel model) {
-    }
+    protected void should_execute_tool_with_collection_of_integers_parameter(ChatModel model) {}
 }

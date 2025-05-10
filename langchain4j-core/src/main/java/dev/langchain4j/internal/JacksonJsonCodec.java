@@ -17,6 +17,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import dev.langchain4j.Internal;
+
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.time.LocalDate;
@@ -30,6 +32,7 @@ import java.util.Optional;
  * Customizes the behavior of the Jackson {@link ObjectMapper} to support serialization and deserialization
  * of Java 8 date/time types such as {@link LocalDate}, {@link LocalTime}, and {@link LocalDateTime}.
  */
+@Internal
 class JacksonJsonCodec implements Json.JsonCodec {
 
     private final ObjectMapper objectMapper;

@@ -1,31 +1,35 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.Test;
+
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
-    StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+    static final String MODEL_NAME = TINY_DOLPHIN_MODEL;
+
+    StreamingChatModel model = OllamaStreamingChatModel.builder()
             .baseUrl(ollamaBaseUrl(ollama))
-            .modelName(TINY_DOLPHIN_MODEL)
+            .modelName(MODEL_NAME)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -40,7 +44,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(userMessage, handler);
-        dev.langchain4j.model.chat.response.ChatResponse response = handler.get();
+        ChatResponse response = handler.get();
         String answer = response.aiMessage().text();
 
         // then
@@ -48,15 +52,19 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isEqualTo(answer);
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        ChatResponseMetadata metadata = response.metadata();
+
+        assertThat(metadata.modelName()).isEqualTo(MODEL_NAME);
+
+        TokenUsage tokenUsage = metadata.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isNull();
+        assertThat(metadata.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
@@ -65,9 +73,9 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // given
         int numPredict = 1; // max output tokens
 
-        StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(TINY_DOLPHIN_MODEL)
+                .modelName(MODEL_NAME)
                 .numPredict(numPredict)
                 .temperature(0.0)
                 .logRequests(true)
@@ -79,14 +87,17 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(singletonList(userMessage), handler);
-        dev.langchain4j.model.chat.response.ChatResponse response = handler.get();
+        ChatResponse response = handler.get();
         String answer = response.aiMessage().text();
 
         // then
         assertThat(answer).doesNotContain("Berlin");
         assertThat(response.aiMessage().text()).isEqualTo(answer);
 
-        assertThat(response.tokenUsage().outputTokenCount()).isBetween(numPredict, numPredict + 2); // bug in Ollama
+        ChatResponseMetadata metadata = response.metadata();
+        assertThat(metadata.modelName()).isEqualTo(MODEL_NAME);
+        assertThat(metadata.finishReason()).isEqualTo(FinishReason.LENGTH);
+        assertThat(metadata.tokenUsage().outputTokenCount()).isBetween(numPredict, numPredict + 2); // bug in Ollama
     }
 
     @Test
@@ -105,6 +116,9 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // then
         assertThat(answer).containsIgnoringCase("liebe");
         assertThat(response.aiMessage().text()).isEqualTo(answer);
+        ChatResponseMetadata metadata = response.metadata();
+        assertThat(metadata.modelName()).isEqualTo(MODEL_NAME);
+        assertThat(metadata.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
@@ -127,16 +141,19 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // then
         assertThat(answer).startsWith(">>> 8");
         assertThat(response.aiMessage().text()).isEqualTo(answer);
+        ChatResponseMetadata metadata = response.metadata();
+        assertThat(metadata.modelName()).isEqualTo(MODEL_NAME);
+        assertThat(metadata.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
     void should_generate_valid_json() {
 
         // given
-        StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(TINY_DOLPHIN_MODEL)
-                .format("json")
+                .modelName(MODEL_NAME)
+                .responseFormat(JSON)
                 .temperature(0.0)
                 .build();
 
@@ -151,6 +168,9 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // then
         assertThat(answer).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
         assertThat(response.aiMessage().text()).isEqualTo(answer);
+        ChatResponseMetadata metadata = response.metadata();
+        assertThat(metadata.modelName()).isEqualTo(MODEL_NAME);
+        assertThat(metadata.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
@@ -159,7 +179,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // given
         String wrongModelName = "banana";
 
-        StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(wrongModelName)
                 .build();
@@ -198,7 +218,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     void should_return_set_capabilities() {
         OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(TINY_DOLPHIN_MODEL)
+                .modelName(MODEL_NAME)
                 .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                 .build();
 

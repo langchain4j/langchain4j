@@ -6,7 +6,6 @@ package dev.langchain4j.model.openai.internal;
 public class ResponseHandle {
 
     public void cancel() {
-        // TODO implement
         throw new UnsupportedOperationException("Not supported yet");
     }
 }

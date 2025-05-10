@@ -22,7 +22,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -55,7 +55,7 @@ class VertexAiGeminiChatModelIT {
 
     public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-001";
 
-    ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+    ChatModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
@@ -63,7 +63,7 @@ class VertexAiGeminiChatModelIT {
             .logResponses(true)
             .build();
 
-    ChatLanguageModel imageModel = VertexAiGeminiChatModel.builder()
+    ChatModel imageModel = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
@@ -129,7 +129,7 @@ class VertexAiGeminiChatModelIT {
     void should_respect_maxOutputTokens() {
 
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -161,7 +161,7 @@ class VertexAiGeminiChatModelIT {
         GenerativeModel generativeModel = new GenerativeModel(GEMINI_1_5_PRO, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
-        ChatLanguageModel model = new VertexAiGeminiChatModel(generativeModel, generationConfig);
+        ChatModel model = new VertexAiGeminiChatModel(generativeModel, generationConfig);
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
@@ -290,7 +290,7 @@ class VertexAiGeminiChatModelIT {
     void should_accept_tools_for_function_calling() {
 
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -339,13 +339,14 @@ class VertexAiGeminiChatModelIT {
         assertThat(weatherResponse.aiMessage().text()).containsIgnoringCase("sunny");
     }
 
-    @RetryingTest(5)
+    @Test
     void should_handle_parallel_function_calls() {
+
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName("gemini-2.0-flash")
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -363,7 +364,8 @@ class VertexAiGeminiChatModelIT {
 
         List<ChatMessage> allMessages = new ArrayList<>();
 
-        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789?");
+        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789? " +
+                "Output just a (single) name of the product with more stock.");
         allMessages.add(inventoryQuestion);
 
         ChatRequest request = ChatRequest.builder()
@@ -397,9 +399,9 @@ class VertexAiGeminiChatModelIT {
         messageResponse = model.chat(allMessages);
 
         // then
-        String text = messageResponse.aiMessage().text();
-        List<String> sequence = Arrays.asList("ABC123", "more", "XYZ789");
-        assertThat(text.split(" ")).containsSubsequence(sequence);
+        assertThat(messageResponse.aiMessage().text())
+                .contains("ABC123")
+                .doesNotContain("XYZ789");
     }
 
     static class Calculator {
@@ -429,7 +431,7 @@ class VertexAiGeminiChatModelIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .tools(calculator)
                 .build();
@@ -451,7 +453,7 @@ class VertexAiGeminiChatModelIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .tools(calculator)
                 .build();
@@ -480,7 +482,7 @@ class VertexAiGeminiChatModelIT {
         PetName petName = new PetName();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(petName)
                 .build();
 
@@ -549,13 +551,12 @@ class VertexAiGeminiChatModelIT {
                 .topK(1)
                 .logRequests(true)
                 .logResponses(true)
-                .maxRetries(1)
                 .build();
 
         FunctionCallingService service = new FunctionCallingService();
 
         FunctionCallingAssistant assistant = AiServices.builder(FunctionCallingAssistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
                 .tools(service)
                 .build();
@@ -674,7 +675,7 @@ class VertexAiGeminiChatModelIT {
         Schema schema = SchemaHelper.fromClass(Artist.class);
 
         // when
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -704,7 +705,7 @@ class VertexAiGeminiChatModelIT {
     @Test
     void should_honor_subset_of_function_calls() {
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -743,7 +744,7 @@ class VertexAiGeminiChatModelIT {
     @Test
     void should_forbid_function_calls() {
         // given
-        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .modelName(GEMINI_1_5_PRO)
@@ -812,7 +813,7 @@ class VertexAiGeminiChatModelIT {
 
         // when
         UserMessage msg = UserMessage.from(
-                AudioContent.from("gs://cloud-samples-data/video/animals.mp4"),
+                VideoContent.from("gs://cloud-samples-data/video/animals.mp4"),
                 TextContent.from("What is in this video?"));
 
         // when

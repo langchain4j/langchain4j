@@ -18,10 +18,10 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createChatCompletion">here</a>.
  */
-public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
+public class MistralAiStreamingChatModel implements StreamingChatModel {
 
     private final MistralAiClient client;
     private final String modelName;
@@ -113,9 +113,9 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
 
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidationUtils.validateParameters(parameters);
         ResponseFormat responseFormat = parameters.responseFormat();
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
