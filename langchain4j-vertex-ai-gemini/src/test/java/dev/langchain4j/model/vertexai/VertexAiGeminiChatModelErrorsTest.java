@@ -45,13 +45,13 @@ class VertexAiGeminiChatModelErrorsTest {
         Runtime.getRuntime().addShutdownHook(new Thread(MOCK::stop));
     }
 
-    public static final Duration TIMEOUT = Duration.ofSeconds(20);
+    public static final Duration TIMEOUT = Duration.ofMillis(250);
 
     private final String project = "proj12345";
     private final String location = "us-central1";
     private final String modelName = "gemini-2.0-flash";
 
-    private final VertexAI vertexAI = createTestVertexAI(MOCK.baseUrl(), project, location);
+    private final VertexAI vertexAI = createTestVertexAI(MOCK.baseUrl(), project, location, TIMEOUT);
 
     ChatModel model = VertexAiGeminiChatModel.builder()
             .vertexAI(vertexAI)
@@ -118,9 +118,7 @@ class VertexAiGeminiChatModelErrorsTest {
                 .build();
         MOCK.addStubMapping(stubMapping);
 
-        log.warn(
-                "⏳ Mocking timeout: {}. I don't know how to set a smaller timeout in VertexAI. Please be patient",
-                TIMEOUT);
+        log.debug("⏳ Mocking timeout: {}.", TIMEOUT);
         final var chatRequest = ChatRequest.builder()
                 .messages(
                         SystemMessage.systemMessage("you are a smart-ass assistant"),
