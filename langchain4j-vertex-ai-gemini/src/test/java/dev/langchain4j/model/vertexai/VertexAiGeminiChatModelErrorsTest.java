@@ -1,11 +1,5 @@
 package dev.langchain4j.model.vertexai;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.containing;
-import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static dev.langchain4j.model.vertexai.VertexAiFactory.createTestVertexAI;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -22,8 +16,6 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import java.time.Duration;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -33,7 +25,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Execution(ExecutionMode.SAME_THREAD) // to enforce unique stubs
+import java.time.Duration;
+import java.util.stream.Stream;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static dev.langchain4j.model.vertexai.VertexAiFactory.createTestVertexAI;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+@Execution(ExecutionMode.CONCURRENT)
 class VertexAiGeminiChatModelErrorsTest {
 
     private static final WireMockServer MOCK =
@@ -45,7 +46,7 @@ class VertexAiGeminiChatModelErrorsTest {
         Runtime.getRuntime().addShutdownHook(new Thread(MOCK::stop));
     }
 
-    private static final Duration TIMEOUT = Duration.ofSeconds(1);
+    private static final Duration TIMEOUT = System.getenv("CI") != null ? Duration.ofSeconds(3) : Duration.ofMillis(250);
 
     private final String project = "proj12345";
     private final String location = "us-central1";
