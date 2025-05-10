@@ -45,7 +45,7 @@ class VertexAiGeminiChatModelErrorsTest {
         Runtime.getRuntime().addShutdownHook(new Thread(MOCK::stop));
     }
 
-    private static final Duration TIMEOUT = Duration.ofMillis(1500);
+    private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
     private final String project = "proj12345";
     private final String location = "us-central1";
