@@ -311,7 +311,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         }
 
         with(this.googleSearch, tools::add);
-        with (this.vertexSearch , tools::add);
+        with(this.vertexSearch, tools::add);
 
         GenerativeModel model = this.generativeModel.withTools(tools).withToolConfig(this.toolConfig);
 
@@ -438,11 +438,11 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
     }
 
     private static VertexAI createVertexAi(final String project, final String location) {
-        return new VertexAI.Builder()
-                .setProjectId(ensureNotBlank(project, "project"))
-                .setLocation(ensureNotBlank(location, "location"))
-                .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
-                .build();
+        final var builder = new VertexAI.Builder()
+                .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"));
+        with(project, builder::setProjectId);
+        with(location, builder::setLocation);
+        return builder.build();
     }
 
     public static VertexAiGeminiChatModelBuilder builder() {
@@ -584,10 +584,10 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             if (this.vertexAI != null) {
                 ValidationUtils.ensureTrue(
                         project == null,
-                        "Both VertexAI and project are provided. Should be either VertexAI or project+location, but not both.");
+                        "Both VertexAI and 'project' are provided. Should be either VertexAI or 'project'+'location', but not both.");
                 ValidationUtils.ensureTrue(
                         location == null,
-                        "Both VertexAI and location are provided. Should be either VertexAI or project+location, but not both.");
+                        "Both VertexAI and 'location' are provided. Should be either VertexAI or 'project'+'location', but not both.");
                 return new VertexAiGeminiChatModel(
                         this.vertexAI,
                         this.modelName,
