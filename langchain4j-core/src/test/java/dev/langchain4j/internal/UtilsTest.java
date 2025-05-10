@@ -3,26 +3,15 @@ package dev.langchain4j.internal;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.entry;
+import static java.util.Collections.*;
+import static org.assertj.core.api.Assertions.*;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -346,5 +335,23 @@ class UtilsTest {
         Map<String, String> result = toStringValueMap(input);
 
         assertThat(result).containsEntry("key1", null);
+    }
+
+    @Test
+    void with_null_object() {
+        String result = Utils.with(null, obj -> {});
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void with_non_null_object() {
+        StringBuilder receiver = new StringBuilder("Initial");
+        AtomicBoolean called = new AtomicBoolean(false);
+        StringBuilder result = Utils.with(receiver, obj -> {
+            assertThat(obj).isSameAs(receiver);
+            called.set(true);
+        });
+        assertThat(result).isSameAs(receiver);
+        assertThat(called).isTrue();
     }
 }
