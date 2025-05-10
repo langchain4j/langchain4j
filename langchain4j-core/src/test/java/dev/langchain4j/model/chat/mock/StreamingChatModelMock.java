@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.mock;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -17,6 +18,7 @@ import static java.util.Arrays.asList;
  * An implementation of a {@link StreamingChatModel} useful for unit testing.
  * This implementation is experimental and subject to change in the future. It may utilize Mockito internally.
  */
+@Experimental
 public class StreamingChatModelMock implements StreamingChatModel {
 
     private final List<String> tokens;

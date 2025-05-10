@@ -652,7 +652,7 @@ class InternalOpenAiOfficialHelper {
             builder.maxCompletionTokens(parameters.maxCompletionTokens());
         }
 
-        if (parameters.logitBias() != null) {
+        if (!parameters.logitBias().isEmpty()) {
             builder.logitBias(ChatCompletionCreateParams.LogitBias.builder()
                     .putAllAdditionalProperties(parameters.logitBias().entrySet().stream()
                             .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonValue.from(entry.getValue()))))
@@ -675,7 +675,7 @@ class InternalOpenAiOfficialHelper {
             builder.store(parameters.store());
         }
 
-        if (parameters.metadata() != null) {
+        if (!parameters.metadata().isEmpty()) {
             builder.metadata(ChatCompletionCreateParams.Metadata.builder()
                     .putAllAdditionalProperties(parameters.metadata().entrySet().stream()
                             .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonValue.from(entry.getValue()))))

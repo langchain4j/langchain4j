@@ -1,12 +1,18 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Map;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiFunctionResponse {
     private String name;
     private Map response;
 
-    GeminiFunctionResponse(String name, Map response) {
+    @JsonCreator
+    GeminiFunctionResponse(@JsonProperty("name") String name, @JsonProperty("response") Map response) {
         this.name = name;
         this.response = response;
     }

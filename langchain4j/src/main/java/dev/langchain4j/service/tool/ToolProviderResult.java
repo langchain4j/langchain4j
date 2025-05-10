@@ -1,17 +1,17 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-
 import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import static dev.langchain4j.internal.Utils.copy;
 
 public class ToolProviderResult {
 
     private final Map<ToolSpecification, ToolExecutor> tools;
 
     public ToolProviderResult(Map<ToolSpecification, ToolExecutor> tools) {
-        this.tools = copyIfNotNull(tools);
+        this.tools = copy(tools);
     }
 
     public Map<ToolSpecification, ToolExecutor> tools() {

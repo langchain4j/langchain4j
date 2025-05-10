@@ -45,7 +45,14 @@ class ToolSpecificationHelper {
      * to a JsonSchemaElement object that describes the tool's arguments.
      */
     static JsonSchemaElement jsonNodeToJsonSchemaElement(JsonNode node) {
-        if (node.get("type").getNodeType() != JsonNodeType.ARRAY) {
+        if (node.has("anyOf")) {
+            JsonAnyOfSchema.Builder anyOf = JsonAnyOfSchema.builder();
+            JsonSchemaElement[] types = StreamSupport.stream(node.get("anyOf").spliterator(), false)
+                    .map(ToolSpecificationHelper::jsonNodeToJsonSchemaElement)
+                    .toArray(JsonSchemaElement[]::new);
+            anyOf.anyOf(types);
+            return anyOf.build();
+        } else if (node.get("type").getNodeType() != JsonNodeType.ARRAY) {
             String nodeType = node.get("type").asText();
             if (nodeType.equals("object")) {
                 JsonObjectSchema.Builder builder = JsonObjectSchema.builder();

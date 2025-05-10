@@ -180,8 +180,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), frequencyPenalty));
             presencePenalty(getOrDefault(parameters.presencePenalty(), presencePenalty));
             maxOutputTokens(getOrDefault(parameters.maxOutputTokens(), maxOutputTokens));
-            stopSequences(copy(getOrDefault(parameters.stopSequences(), stopSequences)));
-            toolSpecifications(copy(getOrDefault(parameters.toolSpecifications(), toolSpecifications)));
+            stopSequences(getOrDefault(parameters.stopSequences(), stopSequences));
+            toolSpecifications(getOrDefault(parameters.toolSpecifications(), toolSpecifications));
             toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
             responseFormat(getOrDefault(parameters.responseFormat(), responseFormat));
             return (T) this;
