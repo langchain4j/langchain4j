@@ -353,11 +353,8 @@ class UtilsTest {
 
     @Test
     void with_null_object_skip_action() {
-        String result = Utils.with(null, obj -> {
-            fail("Should not be called");
-        });
+        String result = Utils.with(null, obj -> fail("Should not be called"));
         assertThat(result).isNull();
-
     }
 
     @Test

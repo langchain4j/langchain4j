@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -415,10 +416,10 @@ public class Utils {
      *
      * @param receiver the object to be operated on, can be <code>null</code>
      * @param consumer the operation to perform on the receiver object if it is not <code>null</code>
-     * @param <T> the type of the receiver object
+     * @param <T>      the type of the receiver object
      * @return the receiver object, which may be <code>null</code>
      */
-    public static <T> @Nullable T with(@Nullable T receiver, Consumer<T> consumer) {
+    public static <T> @Nullable T with(@Nullable T receiver, Consumer<@NonNull T> consumer) {
         if (receiver != null) {
             consumer.accept(receiver);
         }
