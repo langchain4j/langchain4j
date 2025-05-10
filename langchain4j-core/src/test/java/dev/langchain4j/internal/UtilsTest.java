@@ -11,6 +11,7 @@ import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.entry;
+import static org.assertj.core.api.Fail.fail;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
@@ -138,6 +139,7 @@ class UtilsTest {
                 .isFalse();
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     void repeat() {
         assertThat(Utils.repeat("foo", 0)).isEmpty();
@@ -350,13 +352,16 @@ class UtilsTest {
     }
 
     @Test
-    void with_null_object() {
-        String result = Utils.with(null, obj -> {});
+    void with_null_object_skip_action() {
+        String result = Utils.with(null, obj -> {
+            fail("Should not be called");
+        });
         assertThat(result).isNull();
+
     }
 
     @Test
-    void with_non_null_object() {
+    void with_non_null_object_run_action() {
         StringBuilder receiver = new StringBuilder("Initial");
         AtomicBoolean called = new AtomicBoolean(false);
         StringBuilder result = Utils.with(receiver, obj -> {
