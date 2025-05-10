@@ -178,13 +178,11 @@ public class Utils {
      * @param string The string to repeat.
      * @param times  The number of times to repeat the string.
      * @return A string consisting of the given string repeated {@code times} times.
+     * @deprecated Use @{link {@link String#repeat(int)}} instead
      */
+    @Deprecated
     public static String repeat(String string, int times) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < times; i++) {
-            sb.append(string);
-        }
-        return sb.toString();
+        return String.valueOf(string).repeat(Math.max(0, times));
     }
 
     /**
@@ -272,6 +270,7 @@ public class Utils {
      */
     public static byte[] readBytes(String url) {
         try {
+            //noinspection HttpUrlsUsage
             if (url.startsWith("http://") || url.startsWith("https://")) {
                 // Handle URLs
                 HttpURLConnection connection =
@@ -415,12 +414,12 @@ public class Utils {
      * Applies a consumer action to the given receiver object and returns the receiver.
      * This method allows for functional-style operations on an object, facilitating inline modifications.
      *
-     * @param <T> the type of the receiver object
+     * @param <T>      the type of the receiver object
      * @param receiver the object to which the consumer action will be applied
      * @param consumer the consumer action to be executed on the receiver object
      * @return the original receiver object after the consumer action has been applied
      */
-    public static <T> T with(T receiver, Consumer<T> consumer) {
+    public static <T> @Nullable T with(@Nullable T receiver, Consumer<T> consumer) {
         consumer.accept(receiver);
         return receiver;
     }
