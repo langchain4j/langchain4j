@@ -1,5 +1,11 @@
 package dev.langchain4j.model.vertexai;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static dev.langchain4j.model.vertexai.VertexAiFactory.createTestVertexAI;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -16,6 +22,8 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import java.time.Duration;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -25,16 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
-import java.util.stream.Stream;
-
-import static com.github.tomakehurst.wiremock.client.WireMock.containing;
-import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static dev.langchain4j.model.vertexai.VertexAiFactory.createTestVertexAI;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
 class VertexAiGeminiChatModelErrorsTest {
 
     private static final WireMockServer MOCK =
@@ -46,7 +45,19 @@ class VertexAiGeminiChatModelErrorsTest {
         Runtime.getRuntime().addShutdownHook(new Thread(MOCK::stop));
     }
 
-    private static final Duration TIMEOUT = System.getenv("CI") != null ? Duration.ofSeconds(7) : Duration.ofMillis(250);
+    private static final Duration CI_TIMEOUT = Duration.ofSeconds(7);
+    private static final Duration LOCAL_TIMEOUT = Duration.ofMillis(250);
+    private static final Duration TIMEOUT;
+
+    static {
+        if (System.getenv("CI") != null) {
+            log.info("Running on CI with timeout {} seconds", CI_TIMEOUT.getSeconds());
+            TIMEOUT = CI_TIMEOUT;
+        } else {
+            log.info("Running locally with timeout {} milliseconds", LOCAL_TIMEOUT.toMillis());
+            TIMEOUT = LOCAL_TIMEOUT;
+        }
+    }
 
     private final String project = "proj12345";
     private final String location = "us-central1";
