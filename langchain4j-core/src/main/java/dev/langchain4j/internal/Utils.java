@@ -411,16 +411,17 @@ public class Utils {
     }
 
     /**
-     * Applies a consumer action to the given receiver object and returns the receiver.
-     * This method allows for functional-style operations on an object, facilitating inline modifications.
+     * Applies the given consumer to the receiver object if it is not <code>null</code>, and returns the receiver.
      *
-     * @param <T>      the type of the receiver object
-     * @param receiver the object to which the consumer action will be applied
-     * @param consumer the consumer action to be executed on the receiver object
-     * @return the original receiver object after the consumer action has been applied
+     * @param receiver the object to be operated on, can be <code>null</code>
+     * @param consumer the operation to perform on the receiver object if it is not <code>null</code>
+     * @param <T> the type of the receiver object
+     * @return the receiver object, which may be <code>null</code>
      */
     public static <T> @Nullable T with(@Nullable T receiver, Consumer<T> consumer) {
-        consumer.accept(receiver);
+        if (receiver != null) {
+            consumer.accept(receiver);
+        }
         return receiver;
     }
 }
