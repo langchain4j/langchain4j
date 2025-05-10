@@ -366,8 +366,8 @@ class VertexAiGeminiChatModelIT {
 
         List<ChatMessage> allMessages = new ArrayList<>();
 
-        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789? " +
-                "Output just a (single) name of the product with more stock.");
+        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789? "
+                + "Output just a (single) name of the product with more stock.");
         allMessages.add(inventoryQuestion);
 
         ChatRequest request = ChatRequest.builder()
@@ -381,7 +381,8 @@ class VertexAiGeminiChatModelIT {
         // then
         assertThat(messageResponse.aiMessage().hasToolExecutionRequests()).isTrue();
 
-        List<ToolExecutionRequest> executionRequests = messageResponse.aiMessage().toolExecutionRequests();
+        List<ToolExecutionRequest> executionRequests =
+                messageResponse.aiMessage().toolExecutionRequests();
         assertThat(executionRequests).hasSize(2); // ie. parallel function execution requests
 
         String inventoryStock =
@@ -401,9 +402,7 @@ class VertexAiGeminiChatModelIT {
         messageResponse = model.chat(allMessages);
 
         // then
-        assertThat(messageResponse.aiMessage().text())
-                .contains("ABC123")
-                .doesNotContain("XYZ789");
+        assertThat(messageResponse.aiMessage().text()).contains("ABC123").doesNotContain("XYZ789");
     }
 
     static class Calculator {
@@ -729,10 +728,8 @@ class VertexAiGeminiChatModelIT {
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
 
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
 
         // when
         ChatResponse answer = model.chat(request);
@@ -740,7 +737,8 @@ class VertexAiGeminiChatModelIT {
         // then
         assertThat(answer.aiMessage().hasToolExecutionRequests()).isEqualTo(true);
         assertThat(answer.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("add");
-        assertThat(answer.aiMessage().toolExecutionRequests().get(0).arguments()).isEqualTo("{\"a\":1.0,\"b\":2.0}");
+        assertThat(answer.aiMessage().toolExecutionRequests().get(0).arguments())
+                .isEqualTo("{\"a\":1.0,\"b\":2.0}");
     }
 
     @Test
@@ -767,10 +765,8 @@ class VertexAiGeminiChatModelIT {
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
 
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
 
         // when
         ChatResponse answer = model.chat(request);

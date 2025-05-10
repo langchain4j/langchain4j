@@ -507,7 +507,8 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         Exception exception = assertThrows(
-                RuntimeException.class, () -> model.chat("You're a dumb bastard!!!", onPartialResponse(System.out::println)));
+                RuntimeException.class,
+                () -> model.chat("You're a dumb bastard!!!", onPartialResponse(System.out::println)));
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -583,10 +584,8 @@ class VertexAiGeminiStreamingChatModelIT {
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
 
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -624,10 +623,8 @@ class VertexAiGeminiStreamingChatModelIT {
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
 
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();

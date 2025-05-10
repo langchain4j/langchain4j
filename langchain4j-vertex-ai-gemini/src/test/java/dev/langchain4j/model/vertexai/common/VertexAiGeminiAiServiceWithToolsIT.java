@@ -3,29 +3,26 @@ package dev.langchain4j.model.vertexai.common;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.List;
-
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class VertexAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(
-                VertexAiGeminiChatModel.builder()
-                        .project(System.getenv("GCP_PROJECT_ID"))
-                        .location(System.getenv("GCP_LOCATION"))
-                        .modelName("gemini-2.0-flash")
-                        .temperature(0.0f)
-                        .logRequests(true)
-                        .logResponses(true)
-                        .build()
-        );
+        return List.of(VertexAiGeminiChatModel.builder()
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName("gemini-2.0-flash")
+                .temperature(0.0f)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
     }
 
     @AfterEach
@@ -40,13 +37,11 @@ class VertexAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @Override
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel model) {
-    }
+    protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel model) {}
 
     @Disabled("Gemini cannot do it properly")
     @Override
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_execute_tool_with_list_of_strings_parameter(ChatModel model) {
-    }
+    protected void should_execute_tool_with_list_of_strings_parameter(ChatModel model) {}
 }
