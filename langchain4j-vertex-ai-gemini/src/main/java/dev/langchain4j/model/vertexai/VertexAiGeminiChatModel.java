@@ -1,15 +1,5 @@
 package dev.langchain4j.model.vertexai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.with;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_GEMINI;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.emptyList;
-
 import com.google.api.gax.httpjson.HttpJsonStatusCode;
 import com.google.api.gax.rpc.ApiException;
 import com.google.cloud.vertexai.VertexAI;
@@ -44,6 +34,10 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,9 +47,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.with;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_GEMINI;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.emptyList;
 
 /**
  * Represents a Google Vertex AI Gemini language model with a chat completion interface, such as gemini-pro.
@@ -167,24 +168,12 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         this.vertexAI = ensureNotNull(vertexAI, "vertexAi");
 
-        if (temperature != null) {
-            generationConfigBuilder.setTemperature(temperature);
-        }
-        if (maxOutputTokens != null) {
-            generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
-        }
-        if (topK != null) {
-            generationConfigBuilder.setTopK(topK);
-        }
-        if (topP != null) {
-            generationConfigBuilder.setTopP(topP);
-        }
-        if (seed != null) {
-            generationConfigBuilder.setSeed(seed);
-        }
-        if (responseMimeType != null) {
-            generationConfigBuilder.setResponseMimeType(responseMimeType);
-        }
+        with(temperature, generationConfigBuilder::setTemperature);
+        with(maxOutputTokens, generationConfigBuilder::setMaxOutputTokens);
+        with(topK, it -> generationConfigBuilder.setTopK(it));
+        with(topP, generationConfigBuilder::setTopP);
+        with(seed, generationConfigBuilder::setSeed);
+        with(responseMimeType, generationConfigBuilder::setResponseMimeType);
         if (responseSchema != null) {
             if (responseSchema.getEnumCount() > 0) {
                 generationConfigBuilder.setResponseMimeType("text/x.enum");
@@ -321,12 +310,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             tools.add(tool);
         }
 
-        if (this.googleSearch != null) {
-            tools.add(this.googleSearch);
-        }
-        if (this.vertexSearch != null) {
-            tools.add(this.vertexSearch);
-        }
+        with(this.googleSearch, tools::add);
+        with (this.vertexSearch , tools::add);
 
         GenerativeModel model = this.generativeModel.withTools(tools).withToolConfig(this.toolConfig);
 
