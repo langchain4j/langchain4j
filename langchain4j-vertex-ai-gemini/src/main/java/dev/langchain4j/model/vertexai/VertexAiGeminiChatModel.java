@@ -438,8 +438,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
     }
 
     private static VertexAI createVertexAi(final String project, final String location) {
-        final var builder = new VertexAI.Builder()
-                .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"));
+        final var builder =
+                new VertexAI.Builder().setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"));
         with(project, builder::setProjectId);
         with(location, builder::setLocation);
         return builder.build();
@@ -580,6 +580,18 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             return this;
         }
 
+        /**
+         * Constructs and returns an instance of {@code VertexAiGeminiChatModel}. This method
+         * validates the provided configuration to ensure that either the {@code vertexAI} parameter
+         * is supplied exclusively or both {@code project} and {@code location} are provided.
+         * <p>
+         * If {@code vertexAI} is specified, the model instance will utilize it directly.
+         * Otherwise, the {@code project} and {@code location} values are used to create the model.
+         *
+         * @return A new instance of {@code VertexAiGeminiChatModel} initialized with the builder's configuration.
+         * @throws IllegalArgumentException If both {@code vertexAI} and {@code project}/{@code location}
+         *                                  are provided simultaneously.
+         */
         public VertexAiGeminiChatModel build() {
             if (this.vertexAI != null) {
                 ValidationUtils.ensureTrue(
@@ -632,8 +644,10 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         }
 
         public String toString() {
-            return "VertexAiGeminiChatModel.VertexAiGeminiChatModelBuilder(project=" + this.project + ", location="
-                    + this.location + ", modelName=" + this.modelName + ", temperature=" + this.temperature
+            return "VertexAiGeminiChatModel.VertexAiGeminiChatModelBuilder(vertexAi=" + vertexAI
+                    + ", project=" + this.project
+                    + ", location=" + this.location
+                    + ", modelName=" + this.modelName + ", temperature=" + this.temperature
                     + ", maxOutputTokens=" + this.maxOutputTokens + ", topK=" + this.topK + ", topP=" + this.topP
                     + ", seed=" + this.seed + ", maxRetries=" + this.maxRetries + ", responseMimeType="
                     + this.responseMimeType + ", responseSchema=" + this.responseSchema + ", safetySettings="
