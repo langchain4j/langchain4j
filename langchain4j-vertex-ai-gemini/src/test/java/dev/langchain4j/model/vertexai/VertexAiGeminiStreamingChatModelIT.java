@@ -52,11 +52,13 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class VertexAiGeminiStreamingChatModelIT {
 
     public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-001";
@@ -333,7 +335,7 @@ class VertexAiGeminiStreamingChatModelIT {
                 .messages(allMessages)
                 .toolSpecifications(weatherToolSpec)
                 .build();
-        
+
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(request, handler);
@@ -505,7 +507,8 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         Exception exception = assertThrows(
-                RuntimeException.class, () -> model.chat("You're a dumb bastard!!!", onPartialResponse(System.out::println)));
+                RuntimeException.class,
+                () -> model.chat("You're a dumb bastard!!!", onPartialResponse(System.out::println)));
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
@@ -580,12 +583,10 @@ class VertexAiGeminiStreamingChatModelIT {
                 .build();
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
-        
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
-        
+
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
+
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(request, handler);
@@ -622,11 +623,9 @@ class VertexAiGeminiStreamingChatModelIT {
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
 
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
-        
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
+
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(request, handler);

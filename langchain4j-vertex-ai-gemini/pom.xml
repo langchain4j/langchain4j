@@ -86,6 +86,11 @@
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-core</artifactId>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 
