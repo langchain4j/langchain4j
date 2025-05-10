@@ -1,7 +1,18 @@
 package dev.langchain4j.model.vertexai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.with;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_GEMINI;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.emptyList;
+
 import com.google.api.gax.httpjson.HttpJsonStatusCode;
 import com.google.api.gax.rpc.ApiException;
+import com.google.api.gax.rpc.DeadlineExceededException;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.FunctionCall;
@@ -19,6 +30,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.ValidationUtils;
@@ -34,10 +46,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,16 +55,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.with;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_GEMINI;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.emptyList;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a Google Vertex AI Gemini language model with a chat completion interface, such as gemini-pro.
@@ -366,10 +367,15 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 }
             });
 
-            if (e instanceof ApiException apiException) {
+            if (e instanceof DeadlineExceededException deadlineExceededException) {
+                logger.warn("Timeout while calling model", e);
+                throw new TimeoutException(deadlineExceededException);
+            } else if (e instanceof ApiException apiException) {
                 final var statusCode = ((HttpJsonStatusCode) apiException.getStatusCode()).getTransportCode();
+                logger.warn("Error while calling model (status code: {})", statusCode, e);
                 throw EXCEPTION_MAPPER.mapException(new HttpException(statusCode, e));
             } else {
+                logger.warn("Error while calling model", e);
                 throw EXCEPTION_MAPPER.mapException(e);
             }
         }
