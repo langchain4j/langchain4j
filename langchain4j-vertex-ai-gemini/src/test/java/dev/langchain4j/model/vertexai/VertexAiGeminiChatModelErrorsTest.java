@@ -1,9 +1,5 @@
 package dev.langchain4j.model.vertexai;
 
-import static dev.langchain4j.model.vertexai.VertexAiFactory.createTestVertexAI;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -21,8 +17,6 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import java.time.Duration;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -32,6 +26,13 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
+import java.util.stream.Stream;
+
+import static dev.langchain4j.model.vertexai.VertexAiFactory.createTestVertexAI;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Execution(ExecutionMode.SAME_THREAD) // to enforce unique stubs
 class VertexAiGeminiChatModelErrorsTest {
@@ -118,7 +119,10 @@ class VertexAiGeminiChatModelErrorsTest {
                 .build();
         MOCK.addStubMapping(stubMapping);
 
-        log.info("⏳ Mocking timeout: {}. Please be patient", TIMEOUT);
+        log.warn(
+                "⏳ Mocking timeout: {}. I don't know how to set a smaller timeout in VertexAI. Please be patient",
+                TIMEOUT
+        );
         final var chatRequest = ChatRequest.builder()
                 .messages(
                         SystemMessage.systemMessage("you are a smart-ass assistant"),

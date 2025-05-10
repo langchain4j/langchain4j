@@ -4,9 +4,11 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class VertexAiGeminiAiServiceIT extends AbstractAiServiceIT {
 
     @Override

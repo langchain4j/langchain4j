@@ -41,11 +41,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class VertexAiGeminiChatModelIT {
 
     static final String CAT_IMAGE_URL =
@@ -314,7 +316,7 @@ class VertexAiGeminiChatModelIT {
                 .messages(allMessages)
                 .toolSpecifications(weatherToolSpec)
                 .build();
-        
+
         // when
         ChatResponse messageResponse = model.chat(request);
 
