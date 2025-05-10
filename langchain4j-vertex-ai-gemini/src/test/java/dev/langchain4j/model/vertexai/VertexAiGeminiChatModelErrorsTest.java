@@ -1,5 +1,7 @@
 package dev.langchain4j.model.vertexai;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static dev.langchain4j.model.vertexai.VertexAiFactory.createTestVertexAI;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -7,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import com.google.cloud.vertexai.VertexAI;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -23,7 +24,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.time.Duration;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -45,7 +45,7 @@ class VertexAiGeminiChatModelErrorsTest {
         Runtime.getRuntime().addShutdownHook(new Thread(MOCK::stop));
     }
 
-    private static final Duration TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration TIMEOUT = Duration.ofSeconds(1);
 
     private final String project = "proj12345";
     private final String location = "us-central1";
@@ -56,13 +56,10 @@ class VertexAiGeminiChatModelErrorsTest {
     ChatModel model = VertexAiGeminiChatModel.builder()
             .vertexAI(vertexAI)
             .modelName(modelName)
-            .useGoogleSearch(false)
-            // .timeout(TIMEOUT)
             .maxRetries(0) // do not retry
             .logRequests(true)
             .logResponses(true)
             .build();
-    private StubMapping stubMapping;
 
     public static Stream<Arguments> errors() {
         return Stream.of(
@@ -76,27 +73,21 @@ class VertexAiGeminiChatModelErrorsTest {
                 Arguments.of(503, InternalServerException.class));
     }
 
-    @AfterEach
-    void afterEach() {
-        if (stubMapping != null) {
-            MOCK.removeStub(stubMapping);
-        }
-    }
-
     @ParameterizedTest
     @MethodSource("errors")
     void should_handle_error_responses(int httpStatusCode, Class<LangChain4jException> exception) {
         // given
-        stubMapping = WireMock.post("/v1/projects/" + project + "/locations/" + location + "/publishers/google/models/"
-                        + modelName + ":generateContent?$alt=json;enum-encoding%3Dint")
+        final var userMessage = "Simulate error " + httpStatusCode + " @" + System.currentTimeMillis();
+        MOCK.addStubMapping(WireMock.post("/v1/projects/" + project + "/locations/" + location
+                        + "/publishers/google/models/" + modelName + ":generateContent?$alt=json;enum-encoding%3Dint")
+                .withRequestBody(matchingJsonPath("$..text", containing(userMessage)))
                 .willReturn(WireMock.aResponse().withStatus(httpStatusCode))
-                .build();
-        MOCK.addStubMapping(stubMapping);
+                .build());
 
         final var chatRequest = ChatRequest.builder()
                 .messages(
                         SystemMessage.systemMessage("you are a smart-ass assistant"),
-                        UserMessage.userMessage("Return error: " + httpStatusCode))
+                        UserMessage.userMessage(userMessage))
                 .build();
 
         // when-then
@@ -110,19 +101,20 @@ class VertexAiGeminiChatModelErrorsTest {
     @Test
     void should_handle_timeout() {
         // given
-        stubMapping = WireMock.post("/v1/projects/" + project + "/locations/" + location + "/publishers/google/models/"
-                        + modelName + ":generateContent?$alt=json;enum-encoding%3Dint")
+        final var userMessage = "Simulate timeout @" + System.currentTimeMillis();
+        MOCK.addStubMapping(WireMock.post("/v1/projects/" + project + "/locations/" + location
+                        + "/publishers/google/models/" + modelName + ":generateContent?$alt=json;enum-encoding%3Dint")
+                .withRequestBody(matchingJsonPath("$..text", containing(userMessage)))
                 .willReturn(WireMock.aResponse()
                         .withFixedDelay((int) TIMEOUT.plusMillis(100).toMillis())
                         .withStatus(204))
-                .build();
-        MOCK.addStubMapping(stubMapping);
+                .build());
 
         log.debug("⏳ Mocking timeout: {}.", TIMEOUT);
         final var chatRequest = ChatRequest.builder()
                 .messages(
                         SystemMessage.systemMessage("you are a smart-ass assistant"),
-                        UserMessage.userMessage("Simulate timeout"))
+                        UserMessage.userMessage(userMessage))
                 .build();
 
         // when-then
