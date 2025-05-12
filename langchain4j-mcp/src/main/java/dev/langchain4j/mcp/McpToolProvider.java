@@ -3,12 +3,15 @@ package dev.langchain4j.mcp;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiPredicate;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,11 +22,13 @@ public class McpToolProvider implements ToolProvider {
 
     private final List<McpClient> mcpClients;
     private final boolean failIfOneServerFails;
+    private final BiPredicate<McpClient, ToolSpecification> mcpToolsFilter;
     private static final Logger log = LoggerFactory.getLogger(McpToolProvider.class);
 
     private McpToolProvider(Builder builder) {
         this.mcpClients = new ArrayList<>(builder.mcpClients);
         this.failIfOneServerFails = Utils.getOrDefault(builder.failIfOneServerFails, false);
+        this.mcpToolsFilter = builder.mcpToolsFilter;
     }
 
     @Override
@@ -31,11 +36,12 @@ public class McpToolProvider implements ToolProvider {
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         for (McpClient mcpClient : mcpClients) {
             try {
-                List<ToolSpecification> toolSpecifications = mcpClient.listTools();
-                for (ToolSpecification toolSpecification : toolSpecifications) {
-                    builder.add(
-                            toolSpecification, (executionRequest, memoryId) -> mcpClient.executeTool(executionRequest));
-                }
+                mcpClient.listTools().stream().filter(tool -> mcpToolsFilter.test(mcpClient, tool))
+                        .forEach(toolSpecification -> {
+                    builder.add(toolSpecification, (executionRequest, memoryId) -> mcpClient.executeTool(executionRequest));
+                });
+            } catch (IllegalConfigurationException e) {
+                throw e;
             } catch (Exception e) {
                 if (failIfOneServerFails) {
                     throw new RuntimeException("Failed to retrieve tools from MCP server", e);
@@ -55,6 +61,7 @@ public class McpToolProvider implements ToolProvider {
 
         private List<McpClient> mcpClients;
         private Boolean failIfOneServerFails;
+        private BiPredicate<McpClient, ToolSpecification> mcpToolsFilter = (mcp, tool) -> true;
 
         /**
          * The list of MCP clients to use for retrieving tools.
@@ -68,8 +75,22 @@ public class McpToolProvider implements ToolProvider {
          * The list of MCP clients to use for retrieving tools.
          */
         public McpToolProvider.Builder mcpClients(McpClient... mcpClients) {
-            this.mcpClients = Arrays.asList(mcpClients);
+            return mcpClients(Arrays.asList(mcpClients));
+        }
+
+        /**
+         * The predicate to filter MCP provided tools.
+         */
+        public McpToolProvider.Builder filter(BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
+            this.mcpToolsFilter = this.mcpToolsFilter.and(mcpToolsFilter);
             return this;
+        }
+
+        /**
+         * Filter MCP provided tools with a specific name.
+         */
+        public McpToolProvider.Builder filterToolNames(String... toolNames) {
+            return filter(new ToolsNameFilter(toolNames));
         }
 
         /**
@@ -83,6 +104,19 @@ public class McpToolProvider implements ToolProvider {
 
         public McpToolProvider build() {
             return new McpToolProvider(this);
+        }
+    }
+
+    private static class ToolsNameFilter implements BiPredicate<McpClient, ToolSpecification> {
+        private final String[] toolNames;
+
+        private ToolsNameFilter(String... toolNames) {
+            this.toolNames = toolNames;
+        }
+
+        @Override
+        public boolean test(McpClient mcpClient, ToolSpecification tool) {
+            return Arrays.stream(toolNames).anyMatch(name -> name.equals(tool.name()));
         }
     }
 }
