@@ -25,22 +25,22 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
     }
 
     @Override
-    @Disabled("llama3.1 struggles with this test scenario")
+    @Disabled("llama 3.1 cannot do it properly")
     protected void should_execute_tool_with_pojo_with_primitives(ChatModel model) {}
 
     @Override
-    @Disabled("llama3.1 struggles with this test scenario")
+    @Disabled("llama 3.1 cannot do it properly")
     protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel model) {}
 
     @Override
-    @Disabled("llama3.1 struggles with this test scenario")
+    @Disabled("llama 3.1 cannot do it properly")
     protected void should_execute_tool_with_list_of_strings_parameter(ChatModel model) {}
 
     @Override
-    @Disabled("llama3.1 struggles with this test scenario")
+    @Disabled("llama 3.1 cannot do it properly")
     protected void should_execute_tool_with_list_of_POJOs_parameter(ChatModel model) {}
 
     @Override
-    @Disabled("llama3.1 struggles with this test scenario")
+    @Disabled("llama 3.1 cannot do it properly")
     protected void should_execute_tool_with_collection_of_integers_parameter(ChatModel model) {}
 }
