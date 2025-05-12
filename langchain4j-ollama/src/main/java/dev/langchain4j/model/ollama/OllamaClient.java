@@ -125,7 +125,7 @@ class OllamaClient {
             @Override
             public void onError(Throwable throwable) {
                 if (throwable instanceof Exception exception) {
-                    handler.onError(ExceptionMapper.DEFAULT.mapException(exception));
+                    handler.onError(ExceptionMapper.DEFAULT.mapException(exception)); // TODO
                 } else {
                     handler.onError(throwable);
                 }
@@ -169,7 +169,7 @@ class OllamaClient {
             @Override
             public void onError(Throwable throwable) {
                 if (throwable instanceof Exception exception) {
-                    handler.onError(ExceptionMapper.DEFAULT.mapException(exception));
+                    handler.onError(ExceptionMapper.DEFAULT.mapException(exception)); // TODO
                 } else {
                     handler.onError(throwable);
                 }
