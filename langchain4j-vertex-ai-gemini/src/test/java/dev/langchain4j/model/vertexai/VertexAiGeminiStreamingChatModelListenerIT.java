@@ -1,13 +1,15 @@
 package dev.langchain4j.model.vertexai;
 
+import static java.util.Collections.singletonList;
+
 import com.google.api.gax.rpc.NotFoundException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static java.util.Collections.singletonList;
-
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class VertexAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
@@ -51,7 +53,6 @@ class VertexAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatMo
     protected Class<? extends Exception> expectedExceptionClass() {
         return NotFoundException.class;
     }
-
 
     @AfterEach
     void afterEach() throws InterruptedException {

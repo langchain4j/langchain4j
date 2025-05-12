@@ -3,10 +3,11 @@ package dev.langchain4j.model.vertexai.common;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
-import org.junit.jupiter.api.AfterEach;
-
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
@@ -21,7 +22,7 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
                         .modelName("gemini-2.0-flash")
                         .build()
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override

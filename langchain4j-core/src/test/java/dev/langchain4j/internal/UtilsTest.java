@@ -11,6 +11,7 @@ import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.entry;
+import static org.assertj.core.api.Fail.fail;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -137,6 +139,7 @@ class UtilsTest {
                 .isFalse();
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     void repeat() {
         assertThat(Utils.repeat("foo", 0)).isEmpty();
@@ -346,5 +349,23 @@ class UtilsTest {
         Map<String, String> result = toStringValueMap(input);
 
         assertThat(result).containsEntry("key1", null);
+    }
+
+    @Test
+    void with_null_object_skip_action() {
+        String result = Utils.with(null, obj -> fail("Should not be called"));
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void with_non_null_object_run_action() {
+        StringBuilder receiver = new StringBuilder("Initial");
+        AtomicBoolean called = new AtomicBoolean(false);
+        StringBuilder result = Utils.with(receiver, obj -> {
+            assertThat(obj).isSameAs(receiver);
+            called.set(true);
+        });
+        assertThat(result).isSameAs(receiver);
+        assertThat(called).isTrue();
     }
 }
