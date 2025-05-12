@@ -51,26 +51,26 @@ public interface ExceptionMapper {
             return t instanceof RuntimeException re ? re : new LangChain4jException(t);
         }
 
-        protected RuntimeException mapHttpStatusCode(Throwable rootException, int httpStatusCode) {
+        protected RuntimeException mapHttpStatusCode(Throwable cause, int httpStatusCode) {
             if (httpStatusCode >= 500 && httpStatusCode < 600) {
-                return new InternalServerException(rootException);
+                return new InternalServerException(cause);
             }
             if (httpStatusCode == 401 || httpStatusCode == 403) {
-                return new AuthenticationException(rootException);
+                return new AuthenticationException(cause);
             }
             if (httpStatusCode == 404) {
-                return new ModelNotFoundException(rootException);
+                return new ModelNotFoundException(cause);
             }
             if (httpStatusCode == 408) {
-                return new TimeoutException(rootException);
+                return new TimeoutException(cause);
             }
             if (httpStatusCode == 429) {
-                return new RateLimitException(rootException);
+                return new RateLimitException(cause);
             }
             if (httpStatusCode >= 400 && httpStatusCode < 500) {
-                return new InvalidRequestException(rootException);
+                return new InvalidRequestException(cause);
             }
-            return rootException instanceof RuntimeException re ? re : new LangChain4jException(rootException);
+            return cause instanceof RuntimeException re ? re : new LangChain4jException(cause);
         }
 
         private static Throwable findRoot(Throwable e) {
