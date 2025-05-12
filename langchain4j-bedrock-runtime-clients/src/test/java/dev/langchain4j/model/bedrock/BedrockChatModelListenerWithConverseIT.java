@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
+import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.model.chat.ChatModel;
