@@ -13,13 +13,20 @@ With its integration in LangChain4j, the [Neo4j Vector](https://github.com/neo4j
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-neo4j</artifactId>
-    <version>1.0.0-beta4</version>
+    <version>${langchain.version}</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-neo4j-retriever</artifactId>
-    <version>1.0.0-beta4</version>
+    <version>${langchain.version}</version>
+</dependency>
+
+<!-- if we want to use the SpringBoot starter -->
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-community-neo4j-spring-boot-starter</artifactId>
+    <version>${langchain.version}</version>
 </dependency>
 ```
 ## APIs
@@ -308,6 +315,247 @@ Neo4jText2CypherRetriever.builder()
 ```
 
 You can also execute with some Cypher examples:
+To get embeddings using an hybrid search leveraging both the vector and the full text index:
+```java
+// ---> ADDS EMBEDDING AND FULLTEXT WITH ID <---
+embeddingStore = Neo4jEmbeddingStore.builder()
+                .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
+        .dimension(384)
+                .fullTextIndexName("movie_text")
+                .fullTextQuery("Matrix")
+                .autoCreateFullText(true)
+                .label(LABEL_TO_SANITIZE)
+                .build();
+
+List<Embedding> embeddings =
+        embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
+        embeddingStore.addAll(embeddings);
+
+final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
+
+final EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+        .queryEmbedding(queryEmbedding)
+        .maxResults(1)
+        .build();
+
+final List<EmbeddingMatch<TextSegment>> matches =
+        embeddingStore.search(embeddingSearchRequest).matches();
+
+// ---> SEARCH EMBEDDING WITH AUTOCREATED FULLTEXT <---
+final String fullTextIndexName = "movie_text";
+final String label = "Movie";
+final String fullTextSearch = "Matrix";
+embeddingStore = Neo4jEmbeddingStore.builder()
+                .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
+        .dimension(384)
+                .label(label)
+                .indexName("movie_vector_idx")
+                .fullTextIndexName(fullTextIndexName)
+                .fullTextQuery(fullTextSearch)
+                .build();
+
+final List<String> texts = List.of(
+        "The Matrix: Welcome to the Real World",
+        "The Matrix Reloaded: Free your mind",
+        "The Matrix Revolutions: Everything that has a beginning has an end",
+        "The Devil's Advocate: Evil has its winning ways",
+        "A Few Good Men: In the heart of the nation's capital, in a courthouse of the U.S. government, one man will stop at nothing to keep his honor, and one will stop at nothing to find the truth.",
+        "Top Gun: I feel the need, the need for speed.",
+        "Jerry Maguire: The rest of his life begins now.",
+        "Stand By Me: For some, it's the last real taste of innocence, and the first real taste of life. But for everyone, it's the time that memories are made of.",
+        "As Good as It Gets: A comedy from the heart that goes for the throat.");
+
+final List<TextSegment> segments = texts.stream().map(TextSegment::from).toList();
+
+List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
+embeddingStore.addAll(embeddings, segments);
+
+final Embedding queryEmbedding = embeddingModel.embed(fullTextSearch).content();
+
+        session.executeWrite(tx -> {
+final String query = "CREATE FULLTEXT INDEX %s IF NOT EXISTS FOR (e:%s) ON EACH [e.%s]"
+        .formatted(fullTextIndexName, label, DEFAULT_ID_PROP);
+            tx.run(query).consume();
+            return null;
+                    });
+
+final EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+        .queryEmbedding(queryEmbedding)
+        .maxResults(3)
+        .build();
+final List<EmbeddingMatch<TextSegment>> matches =
+        embeddingStore.search(embeddingSearchRequest).matches();
+assertThat(matches).hasSize(3);
+        matches.forEach(i -> {
+final String embeddedText = i.embedded().text();
+assertThat(embeddedText).contains(fullTextSearch);
+        });
+
+Neo4jEmbeddingStore embeddingStoreWithoutFullText = Neo4jEmbeddingStore.builder()
+        .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
+        .dimension(384)
+        .label(label)
+        .indexName("movie_vector_no_fulltext")
+        .build();
+
+        embeddingStoreWithoutFullText.addAll(embeddings, segments);
+final List<EmbeddingMatch<TextSegment>> matchesWithoutFullText =
+        embeddingStore.search(embeddingSearchRequest).matches();
+
+// ---> ERROR HANDLING WITH INVALID FULLTEXT <---
+Neo4jEmbeddingStore embeddingStore = Neo4jEmbeddingStore.builder()
+        .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
+        .dimension(384)
+        .fullTextIndexName("full_text_with_invalid_retrieval")
+        .fullTextQuery("Matrix")
+        .autoCreateFullText(true)
+        .fullTextRetrievalQuery("RETURN properties(invalid) AS metadata")
+        .label(LABEL_TO_SANITIZE)
+        .build();
+
+List<Embedding> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
+embeddingStore.addAll(embeddings);
+
+final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
+
+final EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+        .queryEmbedding(queryEmbedding)
+        .maxResults(3)
+        .build();
+embeddingStore.search(embeddingSearchRequest).matches();
+     // This search will throw a ClientException: ... Variable `invalid` not defined ...
+```
+To execute a search with a metadata filtering leveraging the `dev.langchain4j.store.embedding.filter.Filter` class:
+```java
+// ---> ADD EMBEDDING WITH ID AND RETRIEVE WITH OR WITHOUT PREFILTER <---
+final List<TextSegment> segments = IntStream.range(0, 10)
+                .boxed()
+                .map(i -> {
+                    if (i == 0) {
+                        final Map<String, Object> metas =
+                                Map.of("key1", "value1", "key2", 10, "key3", "3", "key4", "value4");
+                        final Metadata metadata = new Metadata(metas);
+                        return TextSegment.from(randomUUID(), metadata);
+                    }
+                    return TextSegment.from(randomUUID());
+                })
+                .toList();
+
+final List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
+embeddingStore.addAll(embeddings, segments);
+
+final And filter = new And(
+        new And(new IsEqualTo("key1", "value1"), new IsEqualTo("key2", "10")),
+        new Not(new Or(new IsIn("key3", asList("1", "2")), new IsNotEqualTo("key4", "value4"))));
+
+TextSegment segmentToSearch = TextSegment.from(randomUUID());
+Embedding embeddingToSearch =
+        embeddingModel.embed(segmentToSearch.text()).content();
+final EmbeddingSearchRequest requestWithFilter = EmbeddingSearchRequest.builder()
+        .maxResults(5)
+        .minScore(0.0)
+        .filter(filter)
+        .queryEmbedding(embeddingToSearch)
+        .build();
+final EmbeddingSearchResult<TextSegment> searchWithFilter = embeddingStore.search(requestWithFilter);
+final List<EmbeddingMatch<TextSegment>> matchesWithFilter = searchWithFilter.matches();
+
+final EmbeddingSearchRequest requestWithoutFilter = EmbeddingSearchRequest.builder()
+        .maxResults(5)
+        .minScore(0.0)
+        .queryEmbedding(embeddingToSearch)
+        .build();
+final EmbeddingSearchResult<TextSegment> searchWithoutFilter = embeddingStore.search(requestWithoutFilter);
+final List<EmbeddingMatch<TextSegment>> matchesWithoutFilter = searchWithoutFilter.matches();
+```
+To create a **SpringBoot starter**, the Neo4j starter provides at the time being the following `application.properties`:
+```properties
+
+# the builder.dimension(dimension) method
+langchain4j.community.neo4j.dimension=<dimension>
+# the builder.withBasicAuth(uri, username, password) method
+langchain4j.community.neo4j.auth.uri=<boltURI>
+langchain4j.community.neo4j.auth.user=<username>
+langchain4j.community.neo4j.auth.password=<password>
+# the builder.label(label) method
+langchain4j.community.neo4j.label=<label>
+# the builder.indexName(indexName) method
+langchain4j.community.neo4j.indexName=<indexName>
+# the builder.metadataPrefix(metadataPrefix) method
+langchain4j.community.neo4j.metadataPrefix=<metadataPrefix>
+# the builder.embeddingProperty(embeddingProperty) method
+langchain4j.community.neo4j.embeddingProperty=<embeddingProperty>
+# the builder.idProperty(idProperty) method
+langchain4j.community.neo4j.idProperty=<idProperty>
+# the builder.textProperty(textProperty) method
+langchain4j.community.neo4j.textProperty=<textProperty>
+# the builder.databaseName(databaseName) method
+langchain4j.community.neo4j.databaseName=<databaseName>
+# the builder.retrievalQuery(retrievalQuery) method
+langchain4j.community.neo4j.retrievalQuery=<retrievalQuery>
+# the builder.awaitIndexTimeout(awaitIndexTimeout) method
+langchain4j.community.neo4j.awaitIndexTimeout=<awaitIndexTimeout>
+```
+Configuring the Starter allows us to create a simple SpringBoot project like the following:
+```java
+@SpringBootApplication
+public class SpringBootExample {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpringBootExample.class, args);
+    }
+
+    @Bean
+    public AllMiniLmL6V2EmbeddingModel embeddingModel() {
+        return new AllMiniLmL6V2EmbeddingModel();
+    }
+    
+}
+
+@RestController
+@RequestMapping("/api/embeddings")
+public class EmbeddingController {
+
+    private final EmbeddingStore<TextSegment> store;
+    private final EmbeddingModel model;
+
+    public EmbeddingController(EmbeddingStore<TextSegment> store, EmbeddingModel model) {
+        this.store = store;
+        this.model = model;
+    }
+
+    // add embeddings
+    @PostMapping("/add")
+    public String add(@RequestBody String text) {
+        TextSegment segment = TextSegment.from(text);
+        Embedding embedding = model.embed(text).content();
+        return store.add(embedding, segment);
+    }
+
+    // search embeddings
+    @PostMapping("/search")
+    public List<String> search(@RequestBody String query) {
+        Embedding queryEmbedding = model.embed(query).content();
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(5)
+                .build();
+        return store.search(request).matches()
+                .stream()
+                .map(i -> i.embedded().text()).toList();
+    }
+}
+```
+We have defined APIs that can be called easily, as shown here:
+```shell
+# to create a new embedding 
+# and store it with a label "SpringBoot"
+curl -X POST localhost:8083/api/embeddings/add -H "Content-Type: text/plain" -d "embeddingTest"
+
+# to search the first 5 embeddings
+curl -X POST localhost:8083/api/embeddings/search -H "Content-Type: text/plain" -d "querySearchTest"
+```
+To create `Neo4jText2CypherRetriever` instance, you can execute with some Cypher examples:
 ```java
 Neo4jGraph graphStreamer = Neo4jGraph.builder().driver(driver).build();
 List<String> examples = List.of(
