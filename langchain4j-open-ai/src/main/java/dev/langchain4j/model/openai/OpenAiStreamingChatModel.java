@@ -66,6 +66,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
             commonParameters = DefaultChatRequestParameters.builder().build();
