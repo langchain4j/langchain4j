@@ -569,10 +569,10 @@
                 <executions>
                     <execution>
                         <id>flatten</id>
-                        <phase>process-resources</phase>
                         <goals>
                             <goal>flatten</goal>
                         </goals>
+                        <phase>process-resources</phase>
                     </execution>
                     <execution>
                         <id>flatten.clean</id>
