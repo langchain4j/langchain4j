@@ -1,9 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
@@ -12,24 +8,32 @@ import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.ktor.http.HttpStatusCode;
-import java.net.http.HttpTimeoutException;
-import java.time.Duration;
-import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-class OpenAiChatModelErrorsTest {
+import java.net.http.HttpTimeoutException;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
+
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+
+class OpenAiStreamingChatModelErrorsTest {
 
     private static final MockOpenai MOCK = new MockOpenai();
 
     public static final Duration TIMEOUT = Duration.ofMillis(300);
 
-    ChatModel model = OpenAiChatModel.builder()
+    StreamingChatModel model = OpenAiStreamingChatModel.builder()
             .baseUrl(MOCK.baseUrl())
             .modelName(GPT_4_O_MINI)
             .timeout(TIMEOUT)
@@ -51,7 +55,7 @@ class OpenAiChatModelErrorsTest {
 
     @ParameterizedTest
     @MethodSource("errors")
-    void should_handle_error_responses(int httpStatusCode, Class<LangChain4jException> exception) {
+    void should_handle_error_responses(int httpStatusCode, Class<LangChain4jException> exception) throws Exception {
 
         // given
         final var question = "Return error: " + httpStatusCode;
@@ -60,8 +64,16 @@ class OpenAiChatModelErrorsTest {
             res.setBody("");
         });
 
-        // when-then
-        assertThatThrownBy(() -> model.chat(question))
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+        StreamingChatResponseHandler handler = new ErrorHandler(futureError);
+
+        // when
+        model.chat(question, handler);
+
+        // then
+        Throwable error = futureError.get(30, SECONDS);
+
+        assertThat(error)
                 .isExactlyInstanceOf(exception)
                 .satisfies(ex -> assertThat(((HttpException) ex.getCause()).statusCode())
                         .as("statusCode")
@@ -69,7 +81,7 @@ class OpenAiChatModelErrorsTest {
     }
 
     @Test
-    void should_handle_timeout() {
+    void should_handle_timeout() throws Exception {
 
         // given
         final var question = "Simulate timeout";
@@ -79,9 +91,41 @@ class OpenAiChatModelErrorsTest {
             res.setBody("");
         });
 
-        // when-then
-        assertThatThrownBy(() -> model.chat(question))
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+        StreamingChatResponseHandler handler = new ErrorHandler(futureError);
+
+        // when
+        model.chat(question, handler);
+
+        // then
+        Throwable error = futureError.get(30, SECONDS);
+
+        assertThat(error)
                 .isExactlyInstanceOf(TimeoutException.class)
                 .hasRootCauseExactlyInstanceOf(HttpTimeoutException.class);
+    }
+
+    class ErrorHandler implements StreamingChatResponseHandler {
+
+        private final CompletableFuture<Throwable> futureError;
+
+        ErrorHandler(CompletableFuture<Throwable> futureError) {
+            this.futureError = futureError;
+        }
+
+        @Override
+        public void onPartialResponse(String partialResponse) {
+            futureError.completeExceptionally(new RuntimeException("onPartialResponse must not be called"));
+        }
+
+        @Override
+        public void onCompleteResponse(ChatResponse completeResponse) {
+            futureError.completeExceptionally(new RuntimeException("onCompleteResponse must not be called"));
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            futureError.complete(error);
+        }
     }
 }

@@ -137,11 +137,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                     handler.onCompleteResponse(chatResponse);
                 })
                 .onError(throwable -> {
-                    if (throwable instanceof Exception exception) {
-                        handler.onError(ExceptionMapper.DEFAULT.mapException(exception));
-                    } else {
-                        handler.onError(throwable);
-                    }
+                    handler.onError(ExceptionMapper.DEFAULT.mapException(throwable));
                 })
                 .execute();
     }

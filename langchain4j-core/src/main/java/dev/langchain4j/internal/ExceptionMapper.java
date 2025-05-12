@@ -32,13 +32,13 @@ public interface ExceptionMapper {
         }
     }
 
-    RuntimeException mapException(Exception e);
+    RuntimeException mapException(Throwable t);
 
     class DefaultExceptionMapper implements ExceptionMapper {
 
         @Override
-        public RuntimeException mapException(Exception e) {
-            Throwable rootCause = findRoot(e);
+        public RuntimeException mapException(Throwable t) {
+            Throwable rootCause = findRoot(t);
 
             if (rootCause instanceof HttpException httpException) {
                 return mapHttpStatusCode(httpException, httpException.statusCode());
@@ -48,10 +48,10 @@ public interface ExceptionMapper {
                 return new UnresolvedModelServerException(rootCause);
             }
 
-            return e instanceof RuntimeException re ? re : new LangChain4jException(e);
+            return t instanceof RuntimeException re ? re : new LangChain4jException(t);
         }
 
-        protected RuntimeException mapHttpStatusCode(Exception rootException, int httpStatusCode) {
+        protected RuntimeException mapHttpStatusCode(Throwable rootException, int httpStatusCode) {
             if (httpStatusCode >= 500 && httpStatusCode < 600) {
                 return new InternalServerException(rootException);
             }
