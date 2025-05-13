@@ -30,6 +30,7 @@ import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -70,7 +71,7 @@ public class DefaultMcpClient implements McpClient {
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
-        clientName = getOrDefault(builder.clientName, "langchain4j");
+        clientName = getOrDefault(builder.clientName, () -> "langchain4j-" + UUID.randomUUID());
         clientVersion = getOrDefault(builder.clientVersion, "1.0");
         protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
         initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
@@ -136,6 +137,11 @@ public class DefaultMcpClient implements McpClient {
         params.setCapabilities(capabilities);
 
         return params;
+    }
+
+    @Override
+    public String clientName() {
+        return clientName;
     }
 
     @Override

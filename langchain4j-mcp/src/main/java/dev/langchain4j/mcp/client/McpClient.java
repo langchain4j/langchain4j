@@ -12,6 +12,11 @@ import java.util.Map;
 public interface McpClient extends AutoCloseable {
 
     /**
+     * Returns the name of this client.
+     */
+    String clientName();
+
+    /**
      * Obtains a list of tools from the MCP server.
      */
     List<ToolSpecification> listTools();
