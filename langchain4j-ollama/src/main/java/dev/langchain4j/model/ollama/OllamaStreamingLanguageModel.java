@@ -27,6 +27,9 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
     private final ResponseFormat responseFormat;
 
     public OllamaStreamingLanguageModel(OllamaStreamingLanguageModelBuilder builder) {
+        if (builder.format != null && builder.responseFormat != null) {
+            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
+        }
         this.client = OllamaClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
@@ -47,6 +50,49 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                 .stop(builder.stop)
                 .build();
         this.responseFormat = builder.responseFormat;
+    }
+
+    public OllamaStreamingLanguageModel(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            String modelName,
+            Double temperature,
+            Integer topK,
+            Double topP,
+            Double repeatPenalty,
+            Integer seed,
+            Integer numPredict,
+            Integer numCtx,
+            List<String> stop,
+            String format,
+            ResponseFormat responseFormat,
+            Duration timeout,
+            Boolean logRequests,
+            Boolean logResponses,
+            Map<String, String> customHeaders) {
+        if (format != null && responseFormat != null) {
+            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
+        }
+        this.client = OllamaClient.builder()
+                .httpClientBuilder(httpClientBuilder)
+                .baseUrl(baseUrl)
+                .timeout(timeout)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .customHeaders(customHeaders)
+                .build();
+        this.modelName = ensureNotBlank(modelName, "modelName");
+        this.options = Options.builder()
+                .temperature(temperature)
+                .topK(topK)
+                .topP(topP)
+                .repeatPenalty(repeatPenalty)
+                .seed(seed)
+                .numPredict(numPredict)
+                .numCtx(numCtx)
+                .stop(stop)
+                .build();
+        this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
     }
 
     public static OllamaStreamingLanguageModelBuilder builder() {
@@ -83,6 +129,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
         private Integer numPredict;
         private Integer numCtx;
         private List<String> stop;
+        private String format;
         private ResponseFormat responseFormat;
         private Duration timeout;
         private Map<String, String> customHeaders;
@@ -152,6 +199,19 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
         public OllamaStreamingLanguageModelBuilder stop(List<String> stop) {
             this.stop = stop;
+            return this;
+        }
+
+        /**
+         * @deprecated Please use {@link #responseFormat(ResponseFormat)} instead.
+         * For example: {@code responseFormat(ResponseFormat.JSON)}.
+         * <br>
+         * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
+         * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
+         */
+        @Deprecated(forRemoval = true, since = "1.0.0-beta5")
+        public OllamaStreamingLanguageModelBuilder format(String format) {
+            this.format = format;
             return this;
         }
 

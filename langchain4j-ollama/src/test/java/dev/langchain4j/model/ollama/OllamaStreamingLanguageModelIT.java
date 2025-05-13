@@ -4,6 +4,7 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -13,6 +14,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -82,7 +84,7 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(OllamaImage.TINY_DOLPHIN_MODEL)
-                .responseFormat(JSON)
+                .format("json")
                 .temperature(0.0)
                 .build();
 
@@ -138,5 +140,14 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
 
         assertThat(throwable).hasCauseExactlyInstanceOf(HttpException.class);
         assertThat(((HttpException) throwable.getCause()).statusCode()).isEqualTo(404);
+    }
+
+    @Test
+    void should_throw_exception_when_format_and_response_format_are_used() {
+        assertThatThrownBy(() -> OllamaStreamingLanguageModel.builder()
+                .format("json")
+                .responseFormat(ResponseFormat.JSON)
+                .build())
+                .isInstanceOf(IllegalStateException.class);
     }
 }
