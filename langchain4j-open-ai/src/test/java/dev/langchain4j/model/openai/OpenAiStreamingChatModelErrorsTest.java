@@ -31,7 +31,7 @@ class OpenAiStreamingChatModelErrorsTest {
 
     private static final MockOpenai MOCK = new MockOpenai();
 
-    public static final Duration TIMEOUT = Duration.ofMillis(300);
+    public static final Duration TIMEOUT = Duration.ofMillis(400);
 
     StreamingChatModel model = OpenAiStreamingChatModel.builder()
             .baseUrl(MOCK.baseUrl())
