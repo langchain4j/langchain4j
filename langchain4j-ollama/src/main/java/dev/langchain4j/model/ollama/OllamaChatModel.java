@@ -6,7 +6,6 @@ import static dev.langchain4j.model.ModelProvider.OLLAMA;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.aiMessageFrom;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.chatResponseMetadataFrom;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
-import static dev.langchain4j.model.ollama.InternalOllamaHelper.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.model.ModelProvider;
@@ -36,8 +35,7 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        OllamaChatRequestParameters parameters = (OllamaChatRequestParameters) chatRequest.parameters();
-        validate(parameters);
+        validate(chatRequest.parameters());
 
         OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(chatRequest, false);
         OllamaChatResponse ollamaChatResponse =
@@ -50,8 +48,8 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
     }
 
     @Override
-    public Set<Capability> supportedCapabilities() {
-        return supportedCapabilities;
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override
@@ -65,8 +63,8 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
-        return defaultRequestParameters;
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 
     public static OllamaChatModelBuilder builder() {

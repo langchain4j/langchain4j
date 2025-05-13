@@ -19,7 +19,6 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatRequestParameters;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import java.util.HashMap;
@@ -29,6 +28,10 @@ import java.util.Map;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.DisabledIf;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -104,51 +107,61 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(
-                OLLAMA_CHAT_MODEL_WITH_TOOLS, OPEN_AI_CHAT_MODEL_WITH_TOOLS
-                // TODO add more model configs, see OpenAiChatModelIT
-                );
+        return List.of(OLLAMA_CHAT_MODEL_WITH_TOOLS, OPEN_AI_CHAT_MODEL_WITH_TOOLS);
     }
 
     @Override
     protected List<StreamingChatModel> modelsSupportingImageInputs() {
-        return List.of(
-                OLLAMA_CHAT_MODEL_WITH_VISION, OPEN_AI_CHAT_MODEL_WITH_VISION
-                // TODO add more model configs, see OpenAiChatModelIT
-                );
+        return List.of(OLLAMA_CHAT_MODEL_WITH_VISION, OPEN_AI_CHAT_MODEL_WITH_VISION);
     }
 
     @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(StreamingChatModel model) {
+    }
+
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingTools")
+    @DisabledIf("supportsToolChoiceRequired")
     protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(StreamingChatModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return;
+        if (model instanceof OpenAiStreamingChatModel) {
+            return; // OpenAI supports it
         }
         super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
     }
 
     @Override
+    @ParameterizedTest
+    @MethodSource("models")
+    @DisabledIf("supportsJsonResponseFormat")
     protected void should_fail_if_JSON_response_format_is_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            return;
+            return; // OpenAI supports it
         }
         super.should_fail_if_JSON_response_format_is_not_supported(model);
     }
 
     @Override
+    @ParameterizedTest
+    @MethodSource("models")
+    @DisabledIf("supportsJsonResponseFormatWithSchema")
     protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            return;
+            return; // OpenAI supports it
         }
         super.should_fail_if_JSON_response_format_with_schema_is_not_supported(model);
     }
 
     @Override
-    @Disabled("enable after validation is implemented in OllamaStreamingChatModel")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {
+    @ParameterizedTest
+    @MethodSource("modelsSupportingImageInputs")
+    @EnabledIf("supportsSingleImageInputAsPublicURL")
+    protected void should_accept_single_image_as_public_URL(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            return;
+            return; // OpenAI does not implement automatic image download
         }
-        super.should_fail_if_images_as_public_URLs_are_not_supported(model);
+        super.should_accept_single_image_as_public_URL(model);
     }
 
     @Override
@@ -192,12 +205,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsToolChoiceRequired() {
-        return false; // TODO check if Ollama supports this
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO implement
+        return false; // Ollama does not support tool choice
+        // also for OpenAI-compatible API: https://github.com/ollama/ollama/blob/main/docs/openai.md
     }
 
     @Override
@@ -206,13 +215,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // Ollama supports only base64-encoded images
-    }
-
-    @Override
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return false; // Ollama supports only base64-encoded images
+        return false; // vision model only supports a single image per message
     }
 
     @Override
