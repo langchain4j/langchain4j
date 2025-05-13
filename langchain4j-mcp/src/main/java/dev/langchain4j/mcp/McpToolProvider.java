@@ -31,8 +31,18 @@ public class McpToolProvider implements ToolProvider {
         this.mcpToolsFilter = builder.mcpToolsFilter;
     }
 
+    protected McpToolProvider(List<McpClient> mcpClients, boolean failIfOneServerFails, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
+        this.mcpClients = mcpClients;
+        this.failIfOneServerFails = failIfOneServerFails;
+        this.mcpToolsFilter = mcpToolsFilter;
+    }
+
     @Override
-    public ToolProviderResult provideTools(final ToolProviderRequest request) {
+    public ToolProviderResult provideTools(ToolProviderRequest request) {
+        return provideTools(request, mcpToolsFilter);
+    }
+
+    protected ToolProviderResult provideTools(ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         for (McpClient mcpClient : mcpClients) {
             try {
@@ -108,15 +118,19 @@ public class McpToolProvider implements ToolProvider {
     }
 
     private static class ToolsNameFilter implements BiPredicate<McpClient, ToolSpecification> {
-        private final String[] toolNames;
+        private final List<String> toolNames;
 
         private ToolsNameFilter(String... toolNames) {
+            this(Arrays.asList(toolNames));
+        }
+
+        private ToolsNameFilter(List<String> toolNames) {
             this.toolNames = toolNames;
         }
 
         @Override
         public boolean test(McpClient mcpClient, ToolSpecification tool) {
-            return Arrays.stream(toolNames).anyMatch(name -> name.equals(tool.name()));
+            return toolNames.stream().anyMatch(name -> name.equals(tool.name()));
         }
     }
 }
