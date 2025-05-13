@@ -46,14 +46,14 @@ public class MultipleMcpToolsIT {
         mcpNumericClient = buildMcpClient("numeric-mcp", 8081);
     }
 
-    private static McpClient buildMcpClient(String name, int port) {
+    private static McpClient buildMcpClient(String key, int port) {
         McpTransport transport = new HttpMcpTransport.Builder()
                 .sseUrl("http://localhost:" + port + "/mcp/sse")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
         return new DefaultMcpClient.Builder()
-                .clientName(name)
+                .key(key)
                 .transport(transport)
                 .toolExecutionTimeout(Duration.ofSeconds(4))
                 .build();
@@ -113,7 +113,7 @@ public class MultipleMcpToolsIT {
         ToolProviderResult toolProviderResult = McpToolProvider.builder()
                 .mcpClients(mcpBaseClient, mcpNumericClient)
                 .filterToolNames("echoInteger")
-                .filter((mcpClient, tool) -> mcpClient.clientName().equals("base-mcp"))
+                .filter((mcpClient, tool) -> mcpClient.key().equals("base-mcp"))
                 .build()
                 .provideTools(null);
 
@@ -136,7 +136,7 @@ public class MultipleMcpToolsIT {
         ToolProviderResult toolProviderResult = McpToolProvider.builder()
                 .mcpClients(mcpBaseClient, mcpNumericClient)
                 .filter((mcpClient, tool) ->
-                        !tool.name().startsWith("echoInteger") || mcpClient.clientName().equals("numeric-mcp"))
+                        !tool.name().startsWith("echoInteger") || mcpClient.key().equals("numeric-mcp"))
                 .build()
                 .provideTools(null);
         assertThat(toolProviderResult.tools()).hasSize(9);
