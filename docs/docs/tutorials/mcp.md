@@ -46,12 +46,12 @@ To create an MCP client from the transport:
 
 ```java
 McpClient mcpClient = new DefaultMcpClient.Builder()
-    .clientName("MyMCPClient")    
+    .key("MyMCPClient")
     .transport(transport)
     .build();
 ```
 
-Note that the client name is optional, but it is recommended to set it, especially 
+Note that the client key is optional, but it is recommended to set it, especially
 if there are multiple MCP clients, and it is necessary to disambiguate among them.
 
 ### MCP Tool Provider
@@ -91,14 +91,14 @@ through a `BiPredicate<McpClient, ToolSpecification>`. This could be also useful
 when multiple MCP clients expose tools with the same and then conflicting names. 
 For example, the following `ToolProvider` takes tools from two MCP clients
 but since they both have a tool named `echoInteger`, it takes only the one from 
-the MCP client named `numeric-mcp`:
+the MCP client with key `numeric-mcp`:
 
 ```java
 ToolProvider toolProvider = McpToolProvider.builder()
     .mcpClients(mcpClient1, mcpClient2)
     .filter((mcpClient, tool) ->
             !tool.name().startsWith("echoInteger") || 
-            mcpClient.clientName().equals("numeric-mcp"))
+            mcpClient.key().equals("numeric-mcp"))
     .build();
 ```
 
