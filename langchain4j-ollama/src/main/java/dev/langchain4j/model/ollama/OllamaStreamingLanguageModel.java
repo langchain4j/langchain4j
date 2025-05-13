@@ -52,6 +52,10 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
         this.responseFormat = builder.responseFormat;
     }
 
+    /**
+     * @deprecated please use {@link #OllamaStreamingLanguageModel(OllamaStreamingLanguageModelBuilder)} instead
+     */
+    @Deprecated(forRemoval = true, since = "1.0.0-beta5")
     public OllamaStreamingLanguageModel(
             HttpClientBuilder httpClientBuilder,
             String baseUrl,
