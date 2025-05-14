@@ -24,8 +24,6 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
-import dev.langchain4j.model.input.structured.StructuredPrompt;
-import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.rag.AugmentationRequest;
@@ -39,7 +37,6 @@ import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
-import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -47,7 +44,6 @@ import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -159,7 +155,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         var userMessageTemplate = getUserMessageTemplate(method, args);
-                        var variables = findTemplateVariables(userMessageTemplate, method, args);
+                        var variables = InternalReflectionVariableResolver.findTemplateVariables(template, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
@@ -374,10 +370,10 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
-        return findSystemMessageTemplate(memoryId, method)
-                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
-                        .apply(findTemplateVariables(systemMessageTemplate, method, args))
-                        .toSystemMessage());
+        return findSystemMessageTemplate(memoryId, method).map(systemMessageTemplate -> PromptTemplate.from(
+                        systemMessageTemplate)
+                .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
+                .toSystemMessage());
     }
 
     private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
@@ -389,58 +385,6 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         return context.systemMessageProvider.apply(memoryId);
-    }
-
-    private static Map<String, Object> findTemplateVariables(String template, Method method, Object[] args) {
-        Parameter[] parameters = method.getParameters();
-
-        Map<String, Object> variables = new HashMap<>();
-        for (int i = 0; i < parameters.length; i++) {
-            String variableName = getVariableName(parameters[i]);
-            Object variableValue = args[i];
-            variables.put(variableName, variableValue);
-        }
-
-        if (template.contains("{{it}}") && !variables.containsKey("it")) {
-            String itValue = getValueOfVariableIt(parameters, args);
-            variables.put("it", itValue);
-        }
-
-        return variables;
-    }
-
-    private static String getVariableName(Parameter parameter) {
-        V annotation = parameter.getAnnotation(V.class);
-        if (annotation != null) {
-            return annotation.value();
-        } else {
-            return parameter.getName();
-        }
-    }
-
-    private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
-        if (parameters.length == 1) {
-            Parameter parameter = parameters[0];
-            if (!parameter.isAnnotationPresent(MemoryId.class)
-                    && !parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
-                    && !parameter.isAnnotationPresent(UserName.class)
-                    && (!parameter.isAnnotationPresent(V.class) || isAnnotatedWithIt(parameter))) {
-                return toString(args[0]);
-            }
-        }
-
-        for (int i = 0; i < parameters.length; i++) {
-            if (isAnnotatedWithIt(parameters[i])) {
-                return toString(args[i]);
-            }
-        }
-
-        throw illegalConfiguration("Error: cannot find the value of the prompt template variable \"{{it}}\".");
-    }
-
-    private static boolean isAnnotatedWithIt(Parameter parameter) {
-        V annotation = parameter.getAnnotation(V.class);
-        return annotation != null && "it".equals(annotation.value());
     }
 
     private static UserMessage prepareUserMessage(
@@ -490,7 +434,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                return Optional.of(toString(args[i]));
+                return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
             }
         }
         return Optional.empty();
@@ -498,7 +442,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null && parameters.length == 1 && parameters[0].getAnnotations().length == 0) {
-            return Optional.of(toString(args[0]));
+            return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
     }
@@ -560,28 +504,5 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
         }
         return Optional.empty();
-    }
-
-    private static String toString(Object arg) {
-        if (arg.getClass().isArray()) {
-            return arrayToString(arg);
-        } else if (arg.getClass().isAnnotationPresent(StructuredPrompt.class)) {
-            return StructuredPromptProcessor.toPrompt(arg).text();
-        } else {
-            return arg.toString();
-        }
-    }
-
-    private static String arrayToString(Object arg) {
-        StringBuilder sb = new StringBuilder("[");
-        int length = Array.getLength(arg);
-        for (int i = 0; i < length; i++) {
-            sb.append(toString(Array.get(arg, i)));
-            if (i < length - 1) {
-                sb.append(", ");
-            }
-        }
-        sb.append("]");
-        return sb.toString();
     }
 }
