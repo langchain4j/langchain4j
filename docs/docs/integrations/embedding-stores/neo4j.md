@@ -13,13 +13,13 @@ With its integration in LangChain4j, the [Neo4j Vector](https://github.com/neo4j
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-neo4j</artifactId>
-    <version>1.0.0-beta4</version>
+    <version>${latest version here}</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-neo4j-retriever</artifactId>
-    <version>1.0.0-beta4</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 ## APIs
