@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Oracle Coherence</name>
 
     <properties>
-        <coherence.version>24.09</coherence.version>
+        <coherence.version>24.09.3</coherence.version>
         <coherence.groupId>com.oracle.coherence.ce</coherence.groupId>
     </properties>
 
