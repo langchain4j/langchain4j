@@ -17,7 +17,7 @@
         <dependency>
             <groupId>com.aliyun.openservices</groupId>
             <artifactId>tablestore</artifactId>
-            <version>5.17.4</version>
+            <version>5.17.6</version>
         </dependency>
 
         <dependency>
