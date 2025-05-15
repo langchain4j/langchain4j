@@ -142,7 +142,7 @@ public abstract class AiServices<T> {
      * This convenience method can be used to create simple AI Services.
      * For more complex cases, please use {@link #builder}.
      *
-     * @param aiService         The class of the interface to be implemented.
+     * @param aiService The class of the interface to be implemented.
      * @param chatModel The chat model to be used under the hood.
      * @return An instance of the provided interface, implementing all its defined methods.
      */
@@ -155,15 +155,13 @@ public abstract class AiServices<T> {
      * This convenience method can be used to create simple AI Services.
      * For more complex cases, please use {@link #builder}.
      *
-     * @param aiService                  The class of the interface to be implemented.
+     * @param aiService          The class of the interface to be implemented.
      * @param streamingChatModel The streaming chat model to be used under the hood.
-     *                                   The return type of all methods should be {@link TokenStream}.
+     *                           The return type of all methods should be {@link TokenStream}.
      * @return An instance of the provided interface, implementing all its defined methods.
      */
     public static <T> T create(Class<T> aiService, StreamingChatModel streamingChatModel) {
-        return builder(aiService)
-                .streamingChatModel(streamingChatModel)
-                .build();
+        return builder(aiService).streamingChatModel(streamingChatModel).build();
     }
 
     /**
@@ -350,7 +348,7 @@ public abstract class AiServices<T> {
      * Configures the strategy to be used when the LLM hallucinates a tool name (i.e., attempts to call a nonexistent tool).
      *
      * @param hallucinatedToolNameStrategy A Function from {@link ToolExecutionRequest} to {@link ToolExecutionResultMessage} defining
-     *                                  the response provided to the LLM when it hallucinates a tool name.
+     *                                     the response provided to the LLM when it hallucinates a tool name.
      * @return builder
      */
     public AiServices<T> hallucinatedToolNameStrategy(
@@ -424,7 +422,7 @@ public abstract class AiServices<T> {
                 Moderation moderation = moderationFuture.get();
                 if (moderation.flagged()) {
                     throw new ModerationException(
-                            String.format("Text \"%s\" violates content policy", moderation.flaggedText()));
+                            String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
                 }
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);

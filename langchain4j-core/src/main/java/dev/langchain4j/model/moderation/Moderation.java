@@ -1,15 +1,19 @@
 package dev.langchain4j.model.moderation;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
+
+import java.io.Serializable;
+import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents moderation status.
  */
-public class Moderation {
+public class Moderation implements Serializable {
 
     private final boolean flagged;
+
+    @Nullable
     private final String flaggedText;
 
     /**
@@ -25,7 +29,7 @@ public class Moderation {
      *
      * @param flaggedText the text that was flagged.
      */
-    public Moderation(String flaggedText) {
+    public Moderation(@Nullable String flaggedText) {
         this.flagged = true;
         this.flaggedText = flaggedText;
     }
@@ -40,9 +44,9 @@ public class Moderation {
 
     /**
      * Returns the text that was flagged.
-     * @return the text that was flagged, or null if the text was not flagged.
+     * @return the text that was flagged or <code>null</code> if the text was not flagged.
      */
-    public String flaggedText() {
+    public @Nullable String flaggedText() {
         return flaggedText;
     }
 
@@ -51,8 +55,7 @@ public class Moderation {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Moderation that = (Moderation) o;
-        return this.flagged == that.flagged
-                && Objects.equals(this.flaggedText, that.flaggedText);
+        return this.flagged == that.flagged && Objects.equals(this.flaggedText, that.flaggedText);
     }
 
     @Override
@@ -62,10 +65,7 @@ public class Moderation {
 
     @Override
     public String toString() {
-        return "Moderation {" +
-                " flagged = " + flagged +
-                ", flaggedText = " + quoted(flaggedText) +
-                " }";
+        return "Moderation {" + " flagged = " + flagged + ", flaggedText = " + quoted(flaggedText) + " }";
     }
 
     /**
