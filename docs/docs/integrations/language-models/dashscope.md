@@ -89,7 +89,7 @@ Or, you can use BOM to manage dependencies consistently:
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
         <version>${latest version here}</version>
-        <typ>pom</typ>
+        <type>pom</type>
         <scope>import</scope>
     </dependency>
 </dependencyManagement>
@@ -145,7 +145,7 @@ Same as `QwenChatModel`, except `listeners`.
 You can initialize `QwenChatModel` by using following code:
 
 ```java
-ChatLanguageModel qwenModel = QwenChatModel.builder()
+ChatModel qwenModel = QwenChatModel.builder()
                     .apiKey("You API key here")
                     .modelName("qwen-max")
                     .build();
@@ -154,7 +154,7 @@ ChatLanguageModel qwenModel = QwenChatModel.builder()
 Or more custom for other parameters:
 
 ```java
-ChatLanguageModel qwenModel = QwenChatModel.builder()
+ChatModel qwenModel = QwenChatModel.builder()
                     .apiKey("You API key here")
                     .modelName("qwen-max")
                     .enableSearch(true)
@@ -182,12 +182,12 @@ System.out.println(response.content().url());
 After introduce `langchain4j-community-dashscope-spring-boot-starter` dependency, you can simply register `QwenChatModel` bean by using below configuration:
 
 ```properties
-langchain4j.community.dashscope.api-key=<You API Key here>
-langchain4j.community.dashscope.model-name=qwen-max
+langchain4j.community.dashscope.chat-model.api-key=<You API Key here>
+langchain4j.community.dashscope.chat-model.model-name=qwen-max
 # The properties are the same as `QwenChatModel`
 # e.g.
-# langchain4j.community.dashscope.temperature=0.7
-# langchain4j.community.dashscope.max-tokens=4096
+# langchain4j.community.dashscope.chat-model.temperature=0.7
+# langchain4j.community.dashscope.chat-model.max-tokens=4096
 ```
 
 ### More Examples

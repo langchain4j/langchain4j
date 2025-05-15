@@ -5,10 +5,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -28,9 +28,9 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertResponse;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.convertResponse;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toFunctions;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiMessages;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -38,7 +38,7 @@ import static java.util.Collections.singletonList;
 /**
  * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
  */
-public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
+public class LocalAiStreamingChatModel implements StreamingChatModel {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -74,8 +74,8 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 

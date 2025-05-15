@@ -11,7 +11,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.Map;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)

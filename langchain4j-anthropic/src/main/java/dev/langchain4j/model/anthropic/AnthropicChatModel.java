@@ -31,14 +31,14 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRespon
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  * Supports caching {@link SystemMessage}s and {@link ToolSpecification}s.
  */
-public class AnthropicChatModel implements ChatLanguageModel {
+public class AnthropicChatModel implements ChatModel {
 
     private static final Logger log = LoggerFactory.getLogger(AnthropicChatModel.class);
 
@@ -107,7 +107,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
      * @param cacheSystemMessages If true, it will add cache_control block to all system messages. Default: false
      * @param cacheTools          If true, it will add cache_control block to all tools. Default: false
      * @param timeout             The timeout for API requests. Default: 60 seconds
-     * @param maxRetries          The maximum number of retries for API requests. Default: 3
+     * @param maxRetries          The maximum number of retries for API requests. Default: 2
      * @param logRequests         Whether to log the content of API requests using SLF4J. Default: false
      * @param logResponses        Whether to log the content of API responses using SLF4J. Default: false
      * @param listeners           A list of {@link ChatModelListener} instances to be notified.
@@ -151,7 +151,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
         this.cacheTools = getOrDefault(cacheTools, false);
         this.thinkingType = thinkingType;
         this.thinkingBudgetTokens = thinkingBudgetTokens;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
@@ -308,9 +308,9 @@ public class AnthropicChatModel implements ChatLanguageModel {
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.toolChoice());
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         Response<AiMessage> response = generate(chatRequest.messages(), parameters.toolSpecifications());
 

@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.0-beta4-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -15,8 +15,10 @@
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
+        <module>langchain4j-kotlin</module>
 
         <module>langchain4j-easy-rag</module>
+        <module>langchain4j-mcp</module>
 
         <!-- http clients -->
         <module>langchain4j-http-client</module>
@@ -33,6 +35,7 @@
         <module>langchain4j-mistral-ai</module>
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
+        <module>langchain4j-onnx-scoring</module>
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-open-ai-official</module>
@@ -95,8 +98,6 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
-        <module>langchain4j-onnx-scoring</module>
-        <module>langchain4j-mcp</module>
 
     </modules>
 
@@ -109,7 +110,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.3</version>
+                <version>3.1.4</version>
                 <configuration>
                     <!-- do not deploy langchain4j-aggregator's pom.xml (this file) -->
                     <skip>true</skip>

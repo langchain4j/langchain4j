@@ -9,7 +9,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlock
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -110,7 +110,7 @@ public class AnthropicMapper {
                                 ensureNotBlank(image.base64Data(), "base64Data"));
                     } else if (content instanceof PdfFileContent pdfFileContent) {
                         PdfFile pdfFile = pdfFileContent.pdfFile();
-                        return new AnthropicPdfContent(ensureNotBlank(pdfFile.base64Data(), "base64Data"));
+                        return new AnthropicPdfContent(pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"));
                     } else {
                         throw illegalArgument("Unknown content type: " + content);
                     }
@@ -201,11 +201,12 @@ public class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new AnthropicTokenUsage(
-                anthropicUsage.inputTokens,
-                anthropicUsage.outputTokens,
-                anthropicUsage.cacheCreationInputTokens,
-                anthropicUsage.cacheReadInputTokens);
+        return AnthropicTokenUsage.builder()
+                .inputTokenCount(anthropicUsage.inputTokens)
+                .outputTokenCount(anthropicUsage.outputTokens)
+                .cacheCreationInputTokens(anthropicUsage.cacheCreationInputTokens)
+                .cacheReadInputTokens(anthropicUsage.cacheReadInputTokens)
+                .build();
     }
 
     public static FinishReason toFinishReason(String anthropicStopReason) {
@@ -228,9 +229,6 @@ public class AnthropicMapper {
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
-        if (toolSpecifications == null) {
-            return null;
-        }
         return toolSpecifications.stream()
                 .map(toolSpecification -> toAnthropicTool(toolSpecification, cacheToolsPrompt))
                 .collect(toList());

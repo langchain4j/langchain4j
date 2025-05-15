@@ -1,9 +1,12 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
+import dev.langchain4j.Internal;
+
 import java.util.UUID;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 
+@Internal
 class TypeChecker {
 
     static void ensureTypesAreCompatible(Object actualValue, Object comparisonValue, String key) {

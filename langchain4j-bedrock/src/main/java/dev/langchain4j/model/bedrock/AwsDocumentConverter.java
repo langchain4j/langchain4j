@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -113,7 +113,7 @@ class AwsDocumentConverter {
 
         if (toolSpecification.parameters() != null) {
             Map<String, Map<String, Object>> propertiesMap =
-                    JsonSchemaElementHelper.toMap(toolSpecification.parameters().properties());
+                    JsonSchemaElementUtils.toMap(toolSpecification.parameters().properties());
             schemaMap.put("properties", propertiesMap);
 
             List<String> required =

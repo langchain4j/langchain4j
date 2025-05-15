@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat.listener;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequest;
 
@@ -14,7 +13,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * The attributes can be used to pass data between methods of a {@link ChatModelListener}
  * or between multiple {@link ChatModelListener}s.
  */
-@Experimental
 public class ChatModelRequestContext {
 
     private final ChatRequest chatRequest;

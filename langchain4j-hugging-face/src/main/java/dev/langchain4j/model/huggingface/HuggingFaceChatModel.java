@@ -8,10 +8,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
@@ -25,7 +25,7 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 
-public class HuggingFaceChatModel implements ChatLanguageModel {
+public class HuggingFaceChatModel implements ChatModel {
 
     private final HuggingFaceClient client;
     private final Double temperature;
@@ -101,12 +101,12 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.toolSpecifications());
-        ChatRequestValidator.validate(parameters.toolChoice());
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolSpecifications());
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         Response<AiMessage> response = generate(chatRequest.messages());
 

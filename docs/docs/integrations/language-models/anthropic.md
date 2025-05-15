@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.0-beta5</version>
 </dependency>
 ```
 
@@ -110,7 +110,7 @@ More info on caching can be found [here](https://docs.anthropic.com/en/docs/buil
 for [thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
 It can be enabled by setting the `thinkingType` and `thinkingBudgetTokens` parameters:
 ```java
-ChatLanguageModel model = AnthropicChatModel.builder()
+ChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
         .modelName(CLAUDE_3_7_SONNET_20250219)
         .thinkingType("enabled")
@@ -139,7 +139,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.0-beta5</version>
 </dependency>
 ```
 

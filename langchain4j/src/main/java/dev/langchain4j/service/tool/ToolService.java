@@ -4,6 +4,7 @@ import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFro
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -12,7 +13,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+@Internal
 public class ToolService {
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
@@ -76,11 +78,11 @@ public class ToolService {
         this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
     }
 
-    public ToolExecutionContext executionContext(Object memoryId, UserMessage userMessage) {
+    public ToolServiceContext createContext(Object memoryId, UserMessage userMessage) {
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty() ?
-                    new ToolExecutionContext(null, null) :
-                    new ToolExecutionContext(this.toolSpecifications, this.toolExecutors);
+                    new ToolServiceContext(null, null) :
+                    new ToolServiceContext(this.toolSpecifications, this.toolExecutors);
         }
 
         List<ToolSpecification> toolsSpecs = new ArrayList<>(this.toolSpecifications);
@@ -98,14 +100,14 @@ public class ToolService {
                 }
             }
         }
-        return new ToolExecutionContext(toolsSpecs, toolExecs);
+        return new ToolServiceContext(toolsSpecs, toolExecs);
     }
 
-    public ToolExecutionResult executeInferenceAndToolsLoop(
+    public ToolServiceResult executeInferenceAndToolsLoop(
             ChatResponse chatResponse,
             ChatRequestParameters parameters,
             List<ChatMessage> messages,
-            ChatLanguageModel chatModel,
+            ChatModel chatModel,
             ChatMemory chatMemory,
             Object memoryId,
             Map<String, ToolExecutor> toolExecutors) {
@@ -168,7 +170,14 @@ public class ToolService {
                     tokenUsageAccumulator, chatResponse.metadata().tokenUsage());
         }
 
-        return new ToolExecutionResult(chatResponse, toolExecutions, tokenUsageAccumulator);
+        chatResponse = ChatResponse.builder()
+                .aiMessage(chatResponse.aiMessage())
+                .metadata(chatResponse.metadata().toBuilder()
+                        .tokenUsage(tokenUsageAccumulator)
+                        .build())
+                .build();
+
+        return new ToolServiceResult(chatResponse, toolExecutions);
     }
 
     public ToolExecutionResultMessage applyToolHallucinationStrategy(ToolExecutionRequest toolExecutionRequest) {

@@ -5,6 +5,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
+/**
+ * @deprecated please use {@link BedrockStreamingChatModel} instead
+ */
+@Deprecated(forRemoval = true, since = "1.0.0-beta4")
 @Getter
 @SuperBuilder
 public class BedrockAnthropicStreamingChatModel extends AbstractBedrockStreamingChatModel {
@@ -30,6 +34,4 @@ public class BedrockAnthropicStreamingChatModel extends AbstractBedrockStreaming
             this.value = modelID;
         }
     }
-
-    // TODO deprecate and remove after https://github.com/langchain4j/langchain4j/pull/2620 is completed
 }

@@ -11,7 +11,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -276,7 +276,7 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(secondResponse.tokenUsage());
 
@@ -366,7 +366,7 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(secondResponse.tokenUsage());
 
@@ -377,7 +377,7 @@ class OpenAiStreamingChatModelIT {
     void should_execute_multiple_tools_in_parallel_then_stream_answer() throws Exception {
 
         // given
-        StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+        StreamingChatModel model = OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -469,7 +469,7 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(secondResponse.tokenUsage());
 
@@ -489,7 +489,7 @@ class OpenAiStreamingChatModelIT {
         String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. "
                 + "Before returning, tell me a joke."; // nudging it to say something additionally to json
 
-        StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+        StreamingChatModel model = OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -605,6 +605,8 @@ class OpenAiStreamingChatModelIT {
                     "GPT_4_32K_0613", // don't have access
                     "O1", // don't have access
                     "O1_2024_12_17", // don't have access
+                    "O3", // don't have access
+                    "O3_2025_04_16", // don't have access
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 

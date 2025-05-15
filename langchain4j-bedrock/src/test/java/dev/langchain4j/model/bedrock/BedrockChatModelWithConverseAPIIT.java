@@ -2,7 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
+import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,7 +16,7 @@ import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -31,11 +31,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithConverseAPIIT {
-
-    @AfterEach
-    void afterEach() {
-        sleepIfNeeded();
-    }
 
     @Test
     void should_generate_with_default_config() {
@@ -54,7 +49,7 @@ class BedrockChatModelWithConverseAPIIT {
     @Test
     void should_call_multiple_functions() {
 
-        ChatLanguageModel model =
+        ChatModel model =
                 BedrockChatModel.builder().modelId("us.amazon.nova-micro-v1:0").build();
 
         UserMessage userMessage = userMessage(
@@ -130,7 +125,7 @@ class BedrockChatModelWithConverseAPIIT {
 
         // then
         assertThat(aiMessage2.text()).contains("4", "16", "512");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isPositive();
@@ -145,7 +140,7 @@ class BedrockChatModelWithConverseAPIIT {
     void should_accept_PDF_documents() {
 
         // given
-        ChatLanguageModel model =
+        ChatModel model =
                 BedrockChatModel.builder().modelId("us.amazon.nova-lite-v1:0").build();
         UserMessage msg = UserMessage.from(
                 PdfFileContent.from(
@@ -163,10 +158,10 @@ class BedrockChatModelWithConverseAPIIT {
     void should_reason() {
 
         // given
-        ChatLanguageModel model = BedrockChatModel.builder()
+        ChatModel model = BedrockChatModel.builder()
                 .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .enableReasoning(1024L)
+                        .enableReasoning(1024)
                         .build())
                 .build();
 
@@ -183,10 +178,10 @@ class BedrockChatModelWithConverseAPIIT {
     void should_fail_if_reasoning_enabled() {
 
         // given
-        ChatLanguageModel model = BedrockChatModel.builder()
+        ChatModel model = BedrockChatModel.builder()
                 .modelId("us.amazon.nova-lite-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .enableReasoning(1024L)
+                        .enableReasoning(1024)
                         .build())
                 .build();
 
@@ -194,5 +189,10 @@ class BedrockChatModelWithConverseAPIIT {
 
         // when then
         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> model.chat(userMessage));
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

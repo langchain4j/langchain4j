@@ -1,9 +1,10 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -23,24 +24,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
-import static java.util.Collections.emptyList;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
  * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiStreamingChatModel implements StreamingChatLanguageModel {
+public class OpenAiStreamingChatModel implements StreamingChatModel {
 
     private final OpenAiClient client;
     private final OpenAiChatRequestParameters defaultRequestParameters;
@@ -65,6 +66,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel {
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
             commonParameters = DefaultChatRequestParameters.builder().build();
@@ -85,24 +87,24 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel {
                 .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
                 .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens()))
-                .stopSequences(getOrDefault(builder.stop, () -> copyIfNotNull(commonParameters.stopSequences())))
-                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
+                .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
-                .logitBias(getOrDefault(builder.logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
+                .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, openAiParameters.parallelToolCalls()))
                 .seed(getOrDefault(builder.seed, openAiParameters.seed()))
                 .user(getOrDefault(builder.user, openAiParameters.user()))
                 .store(getOrDefault(builder.store, openAiParameters.store()))
-                .metadata(getOrDefault(builder.metadata, () -> copyIfNotNull(openAiParameters.metadata())))
+                .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
-        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
-        this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
-        this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.strictTools = getOrDefault(builder.strictTools, false);
+        this.listeners = copy(builder.listeners);
     }
 
     @Override
@@ -114,7 +116,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel {
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
-        InternalOpenAiHelper.validate(parameters);
+        validate(parameters);
 
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema)
@@ -135,7 +137,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel {
                     ChatResponse chatResponse = openAiResponseBuilder.build();
                     handler.onCompleteResponse(chatResponse);
                 })
-                .onError(handler::onError)
+                .onError(throwable -> {
+                    handler.onError(ExceptionMapper.DEFAULT.mapException(throwable));
+                })
                 .execute();
     }
 

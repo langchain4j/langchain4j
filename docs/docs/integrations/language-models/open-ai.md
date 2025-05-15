@@ -32,7 +32,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -41,7 +41,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.0-beta5</version>
 </dependency>
 ```
 
@@ -73,14 +73,14 @@ OpenAiChatModel model = OpenAiChatModel.builder()
 
 ### Plain Java
 ```java
-ChatLanguageModel model = OpenAiChatModel.builder()
+ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
         .build();
 
 
 // You can also specify default chat request parameters using ChatRequestParameters or OpenAiChatRequestParameters
-ChatLanguageModel model = OpenAiChatModel.builder()
+ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                 .modelName("gpt-4o-mini")
@@ -133,17 +133,17 @@ or autowired where needed, for example:
 
 ```java
 @RestController
-class ChatLanguageModelController {
+class ChatModelController {
 
-    ChatLanguageModel chatLanguageModel;
+    ChatModel chatModel;
 
-    ChatLanguageModelController(ChatLanguageModel chatLanguageModel) {
-        this.chatLanguageModel = chatLanguageModel;
+    ChatModelController(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @GetMapping("/model")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.chat(message);
+        return chatModel.chat(message);
     }
 }
 ```
@@ -181,13 +181,13 @@ In this case AI Service will automatically generate a JSON schema from the given
 
 ### Plain Java
 ```java
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
         .build();
 
 // You can also specify default chat request parameters using ChatRequestParameters or OpenAiChatRequestParameters
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                 .modelName("gpt-4o-mini")
@@ -261,10 +261,10 @@ langchain4j.open-ai.moderation-model.timeout=...
 ```
 
 
-## Creating `OpenAiTokenizer`
+## Creating `OpenAiTokenCountEstimator`
 
 ```java
-Tokenizer tokenizer = new OpenAiTokenizer("gpt-4o-mini");
+TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator("gpt-4o-mini");
 ```
 
 

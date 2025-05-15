@@ -1,6 +1,5 @@
 package dev.langchain4j.rag;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.rag.content.Content;
 
@@ -13,7 +12,6 @@ import dev.langchain4j.rag.content.Content;
  *
  * @see DefaultRetrievalAugmentor
  */
-@Experimental
 public interface RetrievalAugmentor {
 
     /**

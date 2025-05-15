@@ -32,14 +32,14 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageReques
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -75,7 +75,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  * Supports caching {@link SystemMessage}s and {@link ToolSpecification}s.
  */
-public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
+public class AnthropicStreamingChatModel implements StreamingChatModel {
 
     private static final Logger log = LoggerFactory.getLogger(AnthropicStreamingChatModel.class);
 
@@ -299,8 +299,8 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 

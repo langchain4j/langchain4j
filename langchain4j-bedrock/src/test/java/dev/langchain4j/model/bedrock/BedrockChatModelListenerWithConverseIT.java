@@ -1,16 +1,19 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
 import static java.util.Collections.singletonList;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.ChatModelListenerIT;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.AfterEach;
+
 import java.util.List;
 
-class BedrockChatModelListenerWithConverseIT extends ChatModelListenerIT {
+class BedrockChatModelListenerWithConverseIT extends AbstractChatModelListenerIT {
 
     @Override
-    protected ChatLanguageModel createModel(ChatModelListener listener) {
+    protected ChatModel createModel(ChatModelListener listener) {
         return BedrockChatModel.builder()
                 .modelId("us.amazon.nova-lite-v1:0")
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
@@ -30,9 +33,10 @@ class BedrockChatModelListenerWithConverseIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected ChatModel createFailingModel(ChatModelListener listener) {
         return BedrockChatModel.builder()
                 .modelId("banana")
+                .maxRetries(0)
                 .listeners(singletonList(listener))
                 .build();
     }
@@ -40,5 +44,10 @@ class BedrockChatModelListenerWithConverseIT extends ChatModelListenerIT {
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
         return software.amazon.awssdk.services.bedrockruntime.model.ValidationException.class;
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

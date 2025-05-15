@@ -1,7 +1,7 @@
 package dev.langchain4j.model.openaiofficial.github;
 
-import com.openai.models.ChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +19,8 @@ public class InternalGitHubOpenAiOfficialTestHelper {
 
     private static final Logger log = LoggerFactory.getLogger(InternalGitHubOpenAiOfficialTestHelper.class);
 
-    public static final ChatModel CHAT_MODEL_NAME = ChatModel.GPT_4O_MINI;
-    public static final ChatModel CHAT_MODEL_NAME_ALTERNATE = ChatModel.GPT_4O;
+    public static final com.openai.models.ChatModel CHAT_MODEL_NAME = com.openai.models.ChatModel.GPT_4O_MINI;
+    public static final com.openai.models.ChatModel CHAT_MODEL_NAME_ALTERNATE = com.openai.models.ChatModel.GPT_4O;
 
     // Chat models
     static final OpenAiOfficialChatModel GITHUB_MODELS_CHAT_MODEL;
@@ -37,8 +37,8 @@ public class InternalGitHubOpenAiOfficialTestHelper {
         }
     }
 
-    static List<ChatLanguageModel> chatModelsNormalAndJsonStrict() {
-        List<ChatLanguageModel> models = new ArrayList<>();
+    static List<ChatModel> chatModelsNormalAndJsonStrict() {
+        List<ChatModel> models = new ArrayList<>();
         if (GITHUB_MODELS_CHAT_MODEL != null) {
             models.add(GITHUB_MODELS_CHAT_MODEL);
         }

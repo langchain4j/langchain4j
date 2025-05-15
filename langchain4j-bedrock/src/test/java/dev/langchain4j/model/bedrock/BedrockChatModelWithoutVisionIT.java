@@ -1,8 +1,9 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -11,6 +12,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
+import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AWS_NOVA_MICRO;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.COHERE_COMMAND_R_PLUS;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.MISTRAL_LARGE;
@@ -19,12 +21,12 @@ import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.MISTRAL_
 class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE);
     }
 
     @Override
-    protected List<ChatLanguageModel> modelsSupportingTools() {
+    protected List<ChatModel> modelsSupportingTools() {
         return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE);
     }
 
@@ -39,7 +41,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected ChatModel createModelWith(ChatRequestParameters parameters) {
         return BedrockChatModel.builder()
                 .defaultRequestParameters(parameters)
                 // force a working model with stopSequence parameter for @Tests
@@ -92,7 +94,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsStopSequencesParameter")
-    protected void should_respect_stopSequences_in_chat_request(ChatLanguageModel model) {
+    protected void should_respect_stopSequences_in_chat_request(ChatModel model) {
         if (!model.equals(AWS_NOVA_MICRO)) {
             super.should_respect_system_message(model);
         }
@@ -104,11 +106,16 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
     @DisabledIf("supportsToolChoiceRequired")
-    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(ChatModel model) {
         if (List.of(MISTRAL_LARGE, AWS_NOVA_MICRO).contains(model)) {
             super.should_force_LLM_to_execute_any_tool(model);
         } else {
             super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
         }
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

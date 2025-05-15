@@ -1,15 +1,13 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.Experimental;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
-@Experimental
 public class JsonEnumSchema implements JsonSchemaElement {
 
     private final String description;
@@ -17,9 +15,10 @@ public class JsonEnumSchema implements JsonSchemaElement {
 
     public JsonEnumSchema(Builder builder) {
         this.description = builder.description;
-        this.enumValues = new ArrayList<>(ensureNotEmpty(builder.enumValues, "enumValues"));
+        this.enumValues = copy(ensureNotEmpty(builder.enumValues, "enumValues"));
     }
 
+    @Override
     public String description() {
         return description;
     }

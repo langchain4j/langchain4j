@@ -1,17 +1,20 @@
 package dev.langchain4j.model.anthropic.common;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import java.util.List;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import java.util.List;
+
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicChatModelIT extends AbstractChatModelIT {
 
-    static final ChatLanguageModel ANTHROPIC_CHAT_MODEL = AnthropicChatModel.builder()
+    static final ChatModel ANTHROPIC_CHAT_MODEL = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .temperature(0.0)
@@ -20,7 +23,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(ANTHROPIC_CHAT_MODEL);
     }
 
@@ -77,5 +80,10 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean assertResponseModel() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
+        return AnthropicTokenUsage.class;
     }
 }

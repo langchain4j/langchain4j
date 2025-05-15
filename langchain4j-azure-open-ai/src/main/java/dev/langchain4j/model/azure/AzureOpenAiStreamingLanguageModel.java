@@ -1,28 +1,27 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.Choice;
 import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -54,7 +53,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
     private OpenAIClient client;
     private final String deploymentName;
-    private final Tokenizer tokenizer;
+    private final TokenCountEstimator tokenCountEstimator;
     private final Integer maxTokens;
     private final Double temperature;
     private final Double topP;
@@ -69,7 +68,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
     public AzureOpenAiStreamingLanguageModel(
             OpenAIClient client,
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -83,7 +82,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
         this(
                 deploymentName,
-                tokenizer,
+                tokenCountEstimator,
                 maxTokens,
                 temperature,
                 topP,
@@ -101,8 +100,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             String endpoint,
             String serviceVersion,
             String apiKey,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -122,7 +122,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
         this(
                 deploymentName,
-                tokenizer,
+                tokenCountEstimator,
                 maxTokens,
                 temperature,
                 topP,
@@ -139,6 +139,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 apiKey,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -149,8 +150,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             String endpoint,
             String serviceVersion,
             KeyCredential keyCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -170,7 +172,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
         this(
                 deploymentName,
-                tokenizer,
+                tokenCountEstimator,
                 maxTokens,
                 temperature,
                 topP,
@@ -187,6 +189,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 keyCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -197,8 +200,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             String endpoint,
             String serviceVersion,
             TokenCredential tokenCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -218,7 +222,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
         this(
                 deploymentName,
-                tokenizer,
+                tokenCountEstimator,
                 maxTokens,
                 temperature,
                 topP,
@@ -235,6 +239,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 tokenCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -243,7 +248,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
     private AzureOpenAiStreamingLanguageModel(
             String deploymentName,
-            Tokenizer tokenizer,
+            TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
             Double temperature,
             Double topP,
@@ -256,7 +261,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             Double frequencyPenalty) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenizer = getOrDefault(tokenizer, () -> new AzureOpenAiTokenizer("gpt-3.5-turbo"));
+        this.tokenCountEstimator = getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo"));
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -284,7 +289,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .setPresencePenalty(presencePenalty)
                 .setFrequencyPenalty(frequencyPenalty);
 
-        Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInText(prompt);
+        Integer inputTokenCount = tokenCountEstimator == null ? null : tokenCountEstimator.estimateTokenCountInText(prompt);
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
 
         try {
@@ -293,7 +298,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 handle(completions, handler);
             });
 
-            Response<AiMessage> response = responseBuilder.build(tokenizer);
+            Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
 
             handler.onComplete(
                     Response.from(response.content().text(), response.tokenUsage(), response.finishReason()));
@@ -329,8 +334,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private String apiKey;
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
+        private HttpClientProvider httpClientProvider;
         private String deploymentName;
-        private Tokenizer tokenizer;
+        private TokenCountEstimator tokenCountEstimator;
         private Integer maxTokens;
         private Double temperature;
         private Double topP;
@@ -407,6 +413,17 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         }
 
         /**
+         * Sets the {@code HttpClientProvider} to use for creating the HTTP client to communicate with the OpenAI api.
+         *
+         * @param httpClientProvider The {@code HttpClientProvider} to use
+         * @return builder
+         */
+        public Builder httpClientProvider(HttpClientProvider httpClientProvider) {
+            this.httpClientProvider = httpClientProvider;
+            return this;
+        }
+
+        /**
          * Sets the deployment name in Azure OpenAI. This is a mandatory parameter.
          *
          * @param deploymentName The Deployment name.
@@ -417,8 +434,8 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             return this;
         }
 
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
+        public Builder tokenCountEstimator(TokenCountEstimator tokenCountEstimator) {
+            this.tokenCountEstimator = tokenCountEstimator;
             return this;
         }
 
@@ -520,8 +537,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                             endpoint,
                             serviceVersion,
                             tokenCredential,
+                            httpClientProvider,
                             deploymentName,
-                            tokenizer,
+                            tokenCountEstimator,
                             maxTokens,
                             temperature,
                             topP,
@@ -543,8 +561,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                             endpoint,
                             serviceVersion,
                             keyCredential,
+                            httpClientProvider,
                             deploymentName,
-                            tokenizer,
+                            tokenCountEstimator,
                             maxTokens,
                             temperature,
                             topP,
@@ -566,8 +585,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         endpoint,
                         serviceVersion,
                         apiKey,
+                        httpClientProvider,
                         deploymentName,
-                        tokenizer,
+                        tokenCountEstimator,
                         maxTokens,
                         temperature,
                         topP,
@@ -588,7 +608,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 return new AzureOpenAiStreamingLanguageModel(
                         openAIClient,
                         deploymentName,
-                        tokenizer,
+                        tokenCountEstimator,
                         maxTokens,
                         temperature,
                         topP,
