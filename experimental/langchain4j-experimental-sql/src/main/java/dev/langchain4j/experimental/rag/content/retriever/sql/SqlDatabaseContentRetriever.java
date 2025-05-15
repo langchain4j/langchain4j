@@ -127,12 +127,12 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
-
-            ResultSet tables = metaData.getTables(null, null, "%", new String[]{"TABLE"});
+            String catalog = connection.getCatalog();
+            ResultSet tables = metaData.getTables(catalog, null, "%", new String[]{"TABLE"});
 
             while (tables.next()) {
                 String tableName = tables.getString("TABLE_NAME");
-                String createTableStatement = generateCreateTableStatement(tableName, metaData);
+                String createTableStatement = generateCreateTableStatement(catalog,tableName, metaData);
                 ddl.append(createTableStatement).append("\n");
             }
         } catch (SQLException e) {
@@ -142,13 +142,13 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         return ddl.toString();
     }
 
-    private static String generateCreateTableStatement(String tableName, DatabaseMetaData metaData) {
+    private static String generateCreateTableStatement(String catalog,String tableName, DatabaseMetaData metaData) {
         StringBuilder createTableStatement = new StringBuilder();
 
         try {
-            ResultSet columns = metaData.getColumns(null, null, tableName, null);
-            ResultSet pk = metaData.getPrimaryKeys(null, null, tableName);
-            ResultSet fks = metaData.getImportedKeys(null, null, tableName);
+            ResultSet columns = metaData.getColumns(catalog, null, tableName, null);
+            ResultSet pk = metaData.getPrimaryKeys(catalog, null, tableName);
+            ResultSet fks = metaData.getImportedKeys(catalog, null, tableName);
 
             String primaryKeyColumn = "";
             if (pk.next()) {
@@ -217,7 +217,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
             createTableStatement.append(");\n");
 
-            ResultSet tableRemarks = metaData.getTables(null, null, tableName, null);
+            ResultSet tableRemarks = metaData.getTables(catalog, null, tableName, null);
             if (tableRemarks.next()) {
                 String tableComment = tableRemarks.getString("REMARKS");
                 if (tableComment != null && !tableComment.isEmpty()) {
