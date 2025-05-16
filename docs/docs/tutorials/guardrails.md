@@ -19,7 +19,7 @@ Guardrails are mechanisms that let you validate the input and output of the LLM 
 Those are just examples. You can do many other things with guardrails.
 
 :::note
-Guardrails are only available when using [AI Services](/tutorials/ai-services). They are a higher-level construct that can not be applied to a `ChatLanguageModel` or `StreamingChatLanguageModel`.
+Guardrails are only available when using [AI Services](/tutorials/ai-services). They are a higher-level construct that can not be applied to a `ChatModel` or `StreamingChatModel`.
 :::
 
 <ThemedImage
