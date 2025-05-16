@@ -36,7 +36,7 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.0.0-beta5</version>
 </dependency>
 
 <dependency>
@@ -51,7 +51,7 @@ Try out a simple chat example code when Ollama runs in testcontainers:
 ```java
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.model.Image;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,8 +94,8 @@ public class OllamaChatExample {
     }
     ollama.commitToImage(DOCKER_IMAGE_NAME);
 
-    // Build the ChatLanguageModel
-    ChatLanguageModel model = OllamaChatModel.builder()
+    // Build the ChatModel
+    ChatModel model = OllamaChatModel.builder()
             .baseUrl(ollama.getEndpoint())
             .temperature(0.0)
             .logRequests(true)
@@ -122,7 +122,7 @@ class OllamaChatLocalModelTest {
   static String BASE_URL = "http://localhost:11434"; // local ollama base url
 
   public static void main(String[] args) {
-      ChatLanguageModel model = OllamaChatModel.builder()
+      ChatModel model = OllamaChatModel.builder()
               .baseUrl(BASE_URL)
               .modelName(MODEL_NAME)
               .build();
@@ -148,7 +148,7 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.model.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
@@ -190,7 +190,7 @@ public class OllamaStreamingChatExample {
     }
     ollama.commitToImage(DOCKER_IMAGE_NAME);
 
-    StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+    StreamingChatModel model = OllamaStreamingChatModel.builder()
             .baseUrl(ollama.getEndpoint())
             .temperature(0.0)
             .logRequests(true)
@@ -232,7 +232,7 @@ class OllamaStreamingChatLocalModelTest {
   static String BASE_URL = "http://localhost:11434"; // local ollama base url
 
   public static void main(String[] args) {
-      StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+      StreamingChatModel model = OllamaStreamingChatModel.builder()
               .baseUrl(BASE_URL)
               .modelName(MODEL_NAME)
               .temperature(0.0)
@@ -305,8 +305,6 @@ langchain4j.ollama.chat-model.timeout=PT60S
 
 ### JSON mode
 
-#### JSON mode using builder
-
 ```java
 OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
     .baseUrl("http://localhost:11434")
@@ -317,19 +315,7 @@ OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
     .build();
 ```
 
-#### JSON mode using builder *deprecated*
-
-```java
-OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
-    .baseUrl("http://localhost:11434")
-    .modelName("llama3.1")
-    .format("json")    
-    .temperature(0.8)
-    .timeout(Duration.ofSeconds(60))
-    .build();
-```
-
-### Structured outputs
+### Structured Outputs
 
 #### JSON schema definition using builder
 

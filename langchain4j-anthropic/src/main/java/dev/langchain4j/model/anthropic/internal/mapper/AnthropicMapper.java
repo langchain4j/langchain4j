@@ -2,13 +2,14 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -96,11 +97,10 @@ public class AnthropicMapper {
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
         return message.contents().stream()
                 .map(content -> {
-                    if (content instanceof TextContent) {
-                        TextContent textContent = (TextContent) content;
+                    if (content instanceof final TextContent textContent) {
                         return new AnthropicTextContent(textContent.text());
-                    } else if (content instanceof ImageContent) {
-                        Image image = ((ImageContent) content).image();
+                    } else if (content instanceof ImageContent imageContent) {
+                        Image image = imageContent.image();
                         if (image.url() != null) {
                             throw new UnsupportedFeatureException(
                                     "Anthropic does not support images as URLs, " + "only as Base64-encoded strings");
@@ -110,7 +110,7 @@ public class AnthropicMapper {
                                 ensureNotBlank(image.base64Data(), "base64Data"));
                     } else if (content instanceof PdfFileContent pdfFileContent) {
                         PdfFile pdfFile = pdfFileContent.pdfFile();
-                        return new AnthropicPdfContent(ensureNotBlank(pdfFile.base64Data(), "base64Data"));
+                        return new AnthropicPdfContent(pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"));
                     } else {
                         throw illegalArgument("Unknown content type: " + content);
                     }
@@ -127,22 +127,29 @@ public class AnthropicMapper {
 
         if (message.hasToolExecutionRequests()) {
             List<AnthropicToolUseContent> toolUseContents = message.toolExecutionRequests().stream()
-                    .map(toolExecutionRequest -> {
-                        try {
-                            return AnthropicToolUseContent.builder()
-                                    .id(toolExecutionRequest.id())
-                                    .name(toolExecutionRequest.name())
-                                    .input(OBJECT_MAPPER.readValue(toolExecutionRequest.arguments(), Map.class))
-                                    .build();
-                        } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
-                        }
-                    })
+                    .map(toolExecutionRequest -> AnthropicToolUseContent.builder()
+                            .id(toolExecutionRequest.id())
+                            .name(toolExecutionRequest.name())
+                            .input(toAnthropicInput(toolExecutionRequest))
+                            .build())
                     .collect(toList());
             contents.addAll(toolUseContents);
         }
 
         return contents;
+    }
+
+    private static Map<String, Object> toAnthropicInput(ToolExecutionRequest toolExecutionRequest) {
+        String arguments = toolExecutionRequest.arguments();
+        if (isNullOrBlank(arguments)) {
+            return Map.of();
+        }
+
+        try {
+            return OBJECT_MAPPER.readValue(arguments, Map.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
@@ -194,11 +201,12 @@ public class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new AnthropicTokenUsage(
-                anthropicUsage.inputTokens,
-                anthropicUsage.outputTokens,
-                anthropicUsage.cacheCreationInputTokens,
-                anthropicUsage.cacheReadInputTokens);
+        return AnthropicTokenUsage.builder()
+                .inputTokenCount(anthropicUsage.inputTokens)
+                .outputTokenCount(anthropicUsage.outputTokens)
+                .cacheCreationInputTokens(anthropicUsage.cacheCreationInputTokens)
+                .cacheReadInputTokens(anthropicUsage.cacheReadInputTokens)
+                .build();
     }
 
     public static FinishReason toFinishReason(String anthropicStopReason) {
@@ -221,9 +229,6 @@ public class AnthropicMapper {
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
-        if (toolSpecifications == null) {
-            return null;
-        }
         return toolSpecifications.stream()
                 .map(toolSpecification -> toAnthropicTool(toolSpecification, cacheToolsPrompt))
                 .collect(toList());

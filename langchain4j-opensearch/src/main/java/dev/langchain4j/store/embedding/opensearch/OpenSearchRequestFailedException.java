@@ -1,10 +1,8 @@
 package dev.langchain4j.store.embedding.opensearch;
 
-public class OpenSearchRequestFailedException extends RuntimeException {
+import dev.langchain4j.exception.LangChain4jException;
 
-    public OpenSearchRequestFailedException() {
-        super();
-    }
+public class OpenSearchRequestFailedException extends LangChain4jException {
 
     public OpenSearchRequestFailedException(String message) {
         super(message);

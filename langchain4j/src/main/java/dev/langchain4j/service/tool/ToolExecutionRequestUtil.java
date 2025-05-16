@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.internal.Json;
 
@@ -9,9 +10,12 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 /**
  * Utility class for {@link ToolExecutionRequest}.
  */
+@Internal
 class ToolExecutionRequestUtil {
 
     private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
@@ -48,6 +52,10 @@ class ToolExecutionRequestUtil {
      * @return map
      */
     static Map<String, Object> argumentsAsMap(String arguments) {
+        if (isNullOrBlank(arguments)) {
+            return Map.of();
+        }
+
         String normalizeArguments = normalizeJsonString(arguments);
         return Json.fromJson(removeTrailingComma(normalizeArguments), MAP_TYPE);
     }

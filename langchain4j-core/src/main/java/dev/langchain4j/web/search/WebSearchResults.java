@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
@@ -36,7 +37,7 @@ public class WebSearchResults {
      * @param results           The list of organic search results.
      */
     public WebSearchResults(WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results) {
-        this(null, searchInformation, results);
+        this(Map.of(), searchInformation, results);
     }
 
     /**
@@ -46,10 +47,12 @@ public class WebSearchResults {
      * @param searchInformation The information about the web search.
      * @param results           The list of organic search results.
      */
-    public WebSearchResults(Map<String, Object> searchMetadata, WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results) {
-        this.searchMetadata = searchMetadata;
+    public WebSearchResults(Map<String, Object> searchMetadata,
+                            WebSearchInformationResult searchInformation,
+                            List<WebSearchOrganicResult> results) {
+        this.searchMetadata = copy(searchMetadata);
         this.searchInformation = ensureNotNull(searchInformation, "searchInformation");
-        this.results = results;
+        this.results = copy(results);
     }
 
     /**
@@ -109,9 +112,6 @@ public class WebSearchResults {
      * @return The list of text segments.
      */
     public List<TextSegment> toTextSegments() {
-        if (isNullOrEmpty(results))
-            return new ArrayList<>();
-
         return results.stream()
                 .map(WebSearchOrganicResult::toTextSegment)
                 .collect(toList());
@@ -123,9 +123,6 @@ public class WebSearchResults {
      * @return The list of documents.
      */
     public List<Document> toDocuments() {
-        if (isNullOrEmpty(results))
-            return new ArrayList<>();
-
         return results.stream()
                 .map(WebSearchOrganicResult::toDocument)
                 .collect(toList());

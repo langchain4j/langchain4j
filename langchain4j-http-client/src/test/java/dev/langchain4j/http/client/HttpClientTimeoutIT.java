@@ -1,21 +1,5 @@
 package dev.langchain4j.http.client;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
-import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,19 +10,29 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import dev.langchain4j.exception.TimeoutException;
+import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 public abstract class HttpClientTimeoutIT {
 
     private static final int WIREMOCK_PORT = 8083;
 
     protected abstract List<HttpClient> clients(Duration readTimeout);
 
-    protected abstract Class<? extends Exception> expectedReadTimeoutExceptionTypeSync();
-
-    protected abstract Class<? extends Exception> expectedReadTimeoutCauseExceptionTypeSync();
-
-    protected abstract Class<? extends Exception> expectedReadTimeoutExceptionTypeAsync();
-
-    protected abstract Class<? extends Exception> expectedReadTimeoutCauseExceptionTypeAsync();
+    protected abstract Class<? extends Exception> expectedReadTimeoutRootCauseExceptionType();
 
     private WireMockServer wireMockServer;
 
@@ -66,9 +60,8 @@ public abstract class HttpClientTimeoutIT {
 
         for (HttpClient client : clients(Duration.ofMillis(readTimeoutMillis))) {
 
-            wireMockServer.stubFor(WireMock.get("/endpoint")
-                    .willReturn(WireMock.aResponse()
-                            .withFixedDelay(readTimeoutMillis * 2)));
+            wireMockServer.stubFor(
+                    WireMock.get("/endpoint").willReturn(WireMock.aResponse().withFixedDelay(readTimeoutMillis * 2)));
 
             HttpRequest request = HttpRequest.builder()
                     .method(GET)
@@ -77,8 +70,8 @@ public abstract class HttpClientTimeoutIT {
 
             // when-then
             assertThatThrownBy(() -> client.execute(request))
-                    .isExactlyInstanceOf(expectedReadTimeoutExceptionTypeSync())
-                    .hasCauseExactlyInstanceOf(expectedReadTimeoutCauseExceptionTypeSync())
+                    .isExactlyInstanceOf(TimeoutException.class)
+                    .hasRootCauseExactlyInstanceOf(expectedReadTimeoutRootCauseExceptionType())
                     .hasMessageContainingAll("time", "out");
         }
     }
@@ -91,9 +84,8 @@ public abstract class HttpClientTimeoutIT {
 
         for (HttpClient client : clients(Duration.ofMillis(readTimeoutMillis))) {
 
-            wireMockServer.stubFor(WireMock.get("/endpoint")
-                    .willReturn(WireMock.aResponse()
-                            .withFixedDelay(readTimeoutMillis * 2)));
+            wireMockServer.stubFor(
+                    WireMock.get("/endpoint").willReturn(WireMock.aResponse().withFixedDelay(readTimeoutMillis * 2)));
 
             HttpRequest request = HttpRequest.builder()
                     .method(GET)
@@ -101,8 +93,7 @@ public abstract class HttpClientTimeoutIT {
                     .build();
 
             // when
-            record StreamingResult(Throwable throwable, Set<Thread> threads) {
-            }
+            record StreamingResult(Throwable throwable, Set<Thread> threads) {}
 
             CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
 
@@ -117,7 +108,8 @@ public abstract class HttpClientTimeoutIT {
 
                 @Override
                 public void onEvent(ServerSentEvent event) {
-                    completableFuture.completeExceptionally(new IllegalStateException("onEvent() should not be called"));
+                    completableFuture.completeExceptionally(
+                            new IllegalStateException("onEvent() should not be called"));
                 }
 
                 @Override
@@ -128,7 +120,8 @@ public abstract class HttpClientTimeoutIT {
 
                 @Override
                 public void onClose() {
-                    completableFuture.completeExceptionally(new IllegalStateException("onClose() should not be called"));
+                    completableFuture.completeExceptionally(
+                            new IllegalStateException("onClose() should not be called"));
                 }
             };
             ServerSentEventListener spyListener = spy(listener);
@@ -138,8 +131,8 @@ public abstract class HttpClientTimeoutIT {
             StreamingResult streamingResult = completableFuture.get(readTimeoutMillis * 3, MILLISECONDS);
 
             assertThat(streamingResult.throwable())
-                    .isExactlyInstanceOf(expectedReadTimeoutExceptionTypeAsync())
-                    .hasCauseExactlyInstanceOf(expectedReadTimeoutCauseExceptionTypeAsync())
+                    .isExactlyInstanceOf(TimeoutException.class)
+                    .hasRootCauseExactlyInstanceOf(expectedReadTimeoutRootCauseExceptionType())
                     .hasMessageContainingAll("time", "out");
 
             assertThat(streamingResult.threads()).hasSize(1);

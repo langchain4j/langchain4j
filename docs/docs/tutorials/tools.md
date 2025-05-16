@@ -10,6 +10,13 @@ Some LLMs, in addition to generating text, can also trigger actions.
 All LLMs supporting tools can be found [here](/integrations/language-models) (see the "Tools" column).
 :::
 
+:::note
+Not all LLMs support tools equally well.
+The ability to understand, select, and correctly use tools depends heavily on the specific model and its capabilities.
+Some models may not support tools at all, while others might require careful prompt engineering 
+or additional system instructions.
+:::
+
 There is a concept known as "tools," or "function calling".
 It allows the LLM to call, when necessary, one or more available tools, usually defined by the developer.
 A tool can be anything: a web search, a call to an external API, or the execution of a specific piece of code, etc.
@@ -122,13 +129,13 @@ Please note that tools/function calling is not the same as [JSON mode](/tutorial
 # 2 levels of abstraction
 
 LangChain4j provides two levels of abstraction for using tools:
-- Low-level, using the `ChatLanguageModel` and `ToolSpecification` APIs
+- Low-level, using the `ChatModel` and `ToolSpecification` APIs
 - High-level, using [AI Services](/tutorials/ai-services) and `@Tool`-annotated Java methods
 
 ## Low Level Tool API
 
 At the low level, you can use the `chat(ChatRequest)` method
-of the `ChatLanguageModel`. A similar method is also present in the `StreamingChatLanguageModel`.
+of the `ChatModel`. A similar method is also present in the `StreamingChatModel`.
 
 You can specify one or more `ToolSpecification`s when creating the `ChatRequest`.
 
@@ -321,7 +328,7 @@ class Calculator {
 }
 
 MathGenius mathGenius = AiServices.builder(MathGenius.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .tools(new Calculator())
     .build();
 
@@ -463,7 +470,7 @@ Once we have one or multiple (`ToolSpecification`, `ToolExecutor`) pairs,
 we can specify them when creating an AI Service:
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(chatLanguageModel)
+    .chatModel(chatModel)
     .tools(Map.of(toolSpecification, toolExecutor))
     .build();
 ```
@@ -496,9 +503,26 @@ ToolProvider toolProvider = (toolProviderRequest) -> {
 };
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .toolProvider(toolProvider)
     .build();
+```
+
+It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
+
+### Tools Hallucination Strategy
+
+It may happen that an LLM hallucinates on tools invocation, or in other words that it asks to use a tool with a name that doesn't exist. In this case by default LangChain4j will throw an exception reporting the problem, but it is possible to configure a different behavior providing the AI service with a strategy to be used in this situation. 
+
+This strategy is an implementation of a `Function<ToolExecutionRequest, ToolExecutionResultMessage>` defining which `ToolExecutionResultMessage` should be produced as the result for a `ToolExecutionRequest` containing the request to invoke a tool that is not available. For instance, it could be possible to configure the AI service with a strategy that returns to the LLM a response that hopefully will push it to retry a different tool invocation, knowing that the formerly required tool doesn't exist, as in the following example:
+
+```java
+AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTool.class)
+        .chatModel(chatModel)
+        .tools(new HelloWorld())
+        .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
+                toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()))
+        .build();
 ```
 
 ## Model Context Protocol (MCP)

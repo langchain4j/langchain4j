@@ -1,6 +1,8 @@
+.PHONY: build lint format # always run
+
 build:
 	mvn --version
-	mvn -U clean test
+	mvn -U -T12C clean package
 
 # Analyze code for errors, potential issues, and coding standard violations.
 # Reports problems but does not modify the code.

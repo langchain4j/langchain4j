@@ -5,14 +5,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.0.0-beta3-SNAPSHOT</version>
+        <version>1.0.0-beta4-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-weaviate</artifactId>
     <name>LangChain4j :: Integration :: Weaviate</name>
-    <description>Uses io.weaviate.client library which has a BSD 3-Clause license:
-        https://github.com/weaviate/java-client/blob/main/LICENSE</description>
 
     <properties>
         <!-- TODO: remove enforcer.skipRules -->
