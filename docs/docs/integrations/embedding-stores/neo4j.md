@@ -13,20 +13,20 @@ With its integration in LangChain4j, the [Neo4j Vector](https://github.com/neo4j
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-neo4j</artifactId>
-    <version>${langchain.version}</version>
+    <version>${latest version here}</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-neo4j-retriever</artifactId>
-    <version>${langchain.version}</version>
+    <version>${latest version here}</version>
 </dependency>
 
 <!-- if we want to use the SpringBoot starter -->
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-neo4j-spring-boot-starter</artifactId>
-    <version>${langchain.version}</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 ## APIs

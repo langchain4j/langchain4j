@@ -148,18 +148,18 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     @Test
     void should_throw_exception_when_both_format_parameters_are_set_for_ollama_chat_model() {
         assertThatThrownBy(() -> OllamaChatModel.builder()
-                        .format("json")
-                        .responseFormat(ResponseFormat.JSON)
-                        .build())
+                .format("json")
+                .responseFormat(ResponseFormat.JSON)
+                .build())
                 .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void should_throw_exception_when_both_format_parameters_are_set_for_ollama_streaming_chat_model() {
         assertThatThrownBy(() -> OllamaStreamingChatModel.builder()
-                        .format("json")
-                        .responseFormat(ResponseFormat.JSON)
-                        .build())
+                .format("json")
+                .responseFormat(ResponseFormat.JSON)
+                .build())
                 .isInstanceOf(IllegalStateException.class);
     }
 
