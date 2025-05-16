@@ -1,7 +1,7 @@
 package dev.langchain4j.guardrail.config;
 
-import java.util.ServiceLoader;
 import dev.langchain4j.spi.guardrail.config.OutputGuardrailsConfigBuilderFactory;
+import java.util.ServiceLoader;
 
 /**
  * Configuration specifically for output guardrails.
