@@ -685,6 +685,20 @@ More RAG examples can be found [here](https://github.com/langchain4j/langchain4j
 
 
 ## Auto-Moderation
+
+AI Services can automatically perform content moderation. When inappropriate content is detected, a `ModerationException` is thrown, which contains the original `Moderation` object.
+This object includes information about the flagged content, such as the specific text that was flagged.
+
+Auto-moderation can be configured when building the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .moderationModel(moderationModel)  // Configures moderation  model
+    .build();
+```
+
+
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
 
 
