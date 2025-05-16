@@ -60,7 +60,7 @@
         <awaitility.version>4.2.2</awaitility.version>
         <aws.java.sdk.version>2.31.6</aws.java.sdk.version>
         <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
-        <azure-sdk.version>1.2.31</azure-sdk.version>
+        <azure-sdk.version>1.2.34</azure-sdk.version>
         <elastic.version>8.15.3</elastic.version>
         <github-api.version>1.318</github-api.version>
         <httpclient5.version>5.2.1</httpclient5.version>
