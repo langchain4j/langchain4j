@@ -12,15 +12,6 @@
     <artifactId>langchain4j-elasticsearch</artifactId>
     <name>LangChain4j :: Integration :: Elasticsearch</name>
 
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
     <properties>
         <!-- For tests only -->
         <!-- You can run the tests using
@@ -40,6 +31,7 @@
     </properties>
 
     <dependencies>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
@@ -49,6 +41,7 @@
         <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>
+            <version>${elastic.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>jakarta.json</groupId>
@@ -71,6 +64,9 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
+
+
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>

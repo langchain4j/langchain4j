@@ -10,6 +10,13 @@ Some LLMs, in addition to generating text, can also trigger actions.
 All LLMs supporting tools can be found [here](/integrations/language-models) (see the "Tools" column).
 :::
 
+:::note
+Not all LLMs support tools equally well.
+The ability to understand, select, and correctly use tools depends heavily on the specific model and its capabilities.
+Some models may not support tools at all, while others might require careful prompt engineering 
+or additional system instructions.
+:::
+
 There is a concept known as "tools," or "function calling".
 It allows the LLM to call, when necessary, one or more available tools, usually defined by the developer.
 A tool can be anything: a web search, a call to an external API, or the execution of a specific piece of code, etc.

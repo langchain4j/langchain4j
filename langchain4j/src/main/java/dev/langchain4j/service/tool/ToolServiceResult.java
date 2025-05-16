@@ -5,6 +5,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 @Internal
 public class ToolServiceResult {
 
@@ -13,8 +15,8 @@ public class ToolServiceResult {
 
     public ToolServiceResult(ChatResponse chatResponse,
                              List<ToolExecution> toolExecutions) {
-        this.chatResponse = chatResponse;
-        this.toolExecutions = toolExecutions;
+        this.chatResponse = ensureNotNull(chatResponse, "chatResponse");
+        this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
     }
 
     public ChatResponse chatResponse() {

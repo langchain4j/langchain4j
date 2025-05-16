@@ -81,7 +81,7 @@ class TablestoreChatMemoryStoreIT {
 
         // when
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         List<Content> userMsgContents = new ArrayList<>();
         userMsgContents.add(new ImageContent("someCatImageUrl"));
         chatMessages.add(new UserMessage("What do you see in this image?", userMsgContents));
@@ -96,7 +96,7 @@ class TablestoreChatMemoryStoreIT {
     void should_delete_messages_from_tablestore() {
         // given
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         chatMemoryStore.updateMessages(USER_ID, chatMessages);
         List<ChatMessage> messages = chatMemoryStore.getMessages(USER_ID);
         assertThat(messages).hasSize(1);
@@ -141,7 +141,7 @@ class TablestoreChatMemoryStoreIT {
     @Test
     void updateMessages_memoryId_null() {
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         assertThatThrownBy(() -> chatMemoryStore.updateMessages(null, chatMessages))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("memoryId cannot be null or empty");
@@ -150,7 +150,7 @@ class TablestoreChatMemoryStoreIT {
     @Test
     void updateMessages_memoryId_empty() {
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         assertThatThrownBy(() -> chatMemoryStore.updateMessages("   ", chatMessages))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("memoryId cannot be null or empty");

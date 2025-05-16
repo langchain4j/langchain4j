@@ -1,13 +1,13 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollama;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Collections.singletonList;
+
+import dev.langchain4j.exception.ModelNotFoundException;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 
 public class OllamaStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
@@ -43,7 +43,7 @@ public class OllamaStreamingChatModelListenerIT extends AbstractStreamingChatMod
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return HttpException.class;
+        return ModelNotFoundException.class;
     }
 
     @Override
@@ -53,11 +53,6 @@ public class OllamaStreamingChatModelListenerIT extends AbstractStreamingChatMod
 
     @Override
     protected boolean assertResponseId() {
-        return false;
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
         return false;
     }
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
@@ -14,7 +15,7 @@ public class JsonEnumSchema implements JsonSchemaElement {
 
     public JsonEnumSchema(Builder builder) {
         this.description = builder.description;
-        this.enumValues = new ArrayList<>(ensureNotEmpty(builder.enumValues, "enumValues"));
+        this.enumValues = copy(ensureNotEmpty(builder.enumValues, "enumValues"));
     }
 
     @Override

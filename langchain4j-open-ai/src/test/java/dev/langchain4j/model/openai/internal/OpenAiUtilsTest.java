@@ -40,7 +40,7 @@ class OpenAiUtilsTest {
 
         // then
         assertThat(aiMessage.text()).contains(messageContent);
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
     }
 
     @Test

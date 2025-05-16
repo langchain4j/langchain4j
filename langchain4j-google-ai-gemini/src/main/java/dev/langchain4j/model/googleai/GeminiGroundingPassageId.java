@@ -1,10 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiGroundingPassageId {
     private String passageId;
     private String partIndex;
 
-    GeminiGroundingPassageId(String passageId, String partIndex) {
+    @JsonCreator
+    GeminiGroundingPassageId(@JsonProperty("passageId") String passageId, @JsonProperty("partIndex") String partIndex) {
         this.passageId = passageId;
         this.partIndex = partIndex;
     }
