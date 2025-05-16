@@ -99,7 +99,7 @@ public interface Assistant {
     String doSomethingElse(String question);
 }
 
-var assistant = AiServices.create(Assistant.class, chatLanguageModel);
+var assistant = AiServices.create(Assistant.class, chatModel);
 ```
 
 In this example, only the `chat` method has guardrails.
@@ -122,7 +122,7 @@ public interface Assistant {
     String doSomethingElse(String question);
 }
 
-var assistant = AiServices.create(Assistant.class, chatLanguageModel);
+var assistant = AiServices.create(Assistant.class, chatModel);
 ```
 
 In this example, both the `chat` and `doSomethingElse` methods have the guardrails.
@@ -143,7 +143,7 @@ public interface Assistant {
 }
 
 var assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(chatLanguageModel)
+    .chatModel(chatModel)
     .inputGuardrailClasses(FirstInputGuardrail.class, SecondInputGuardrail.class)
     .build();
 ```
@@ -157,7 +157,7 @@ public interface Assistant {
 }
 
 var assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(chatLanguageModel)
+    .chatModel(chatModel)
     .inputGuardrails(new FirstInputGuardrail(), new SecondInputGuardrail())
     .build();
 ```
@@ -282,7 +282,7 @@ public interface Assistant {
     String doSomethingElse(String question);
 }
 
-var assistant = AiServices.create(Assistant.class, chatLanguageModel);
+var assistant = AiServices.create(Assistant.class, chatModel);
 ```
 
 In this example, only the `chat` method has guardrails.
@@ -304,7 +304,7 @@ public interface Assistant {
     String doSomethingElse(String question);
 }
 
-var assistant = AiServices.create(Assistant.class, chatLanguageModel);
+var assistant = AiServices.create(Assistant.class, chatModel);
 ```
 
 In this example, both the `chat` and `doSomethingElse` methods have the guardrails.
@@ -324,7 +324,7 @@ public interface Assistant {
 }
 
 var assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(chatLanguageModel)
+    .chatModel(chatModel)
     .outputGuardrailClasses(FirstOutputGuardrail.class, SecondOutputGuardrail.class)
     .build();
 ```
@@ -338,7 +338,7 @@ public interface Assistant {
 }
 
 var assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(chatLanguageModel)
+    .chatModel(chatModel)
     .outputGuardrails(new FirstOutputGuardrail(), new SecondOutputGuardrail())
     .build();
 ```
@@ -373,7 +373,7 @@ public interface MethodLevelAssistant {
     String chat(String question);
 }
 
-var assistant = AiServices.create(MethodLevelAssistant.class, chatLanguageModel);
+var assistant = AiServices.create(MethodLevelAssistant.class, chatModel);
 ```
 
 ##### Annotation on the AI Service class
@@ -387,7 +387,7 @@ public interface ClassLevelAssistant {
     String chat(String question);
 }
 
-var assistant = AiServices.create(ClassLevelAssistant.class, chatLanguageModel);
+var assistant = AiServices.create(ClassLevelAssistant.class, chatModel);
 ```
 
 ##### `AiServices` builder
@@ -402,7 +402,7 @@ var outputGuardrailsConfig = OutputGuardrailsConfig.builder()
         .build();
 
 var assistant = AiServices.builder(Assistant.class)
-        .chatLanguageModel(chatLanguageModel)
+        .chatModel(chatModel)
         .outputGuardrailsConfig(outputGuardrailsConfig)
         .outputGuardrailClasss(FirstOutputGuardrail.class, SecondOutputGuardrail.class)
         .build();
@@ -516,7 +516,7 @@ var outputGuardrailsConfig = OutputGuardrailsConfig.builder()
         .build();
 
 var assistant = AiServices.builder(Assistant.class)
-        .chatLanguageModel(chatLanguageModel)
+        .chatModel(chatModel)
         .inputGuardrails(new AnotherInputGuardrail())
         .outputGuardrailsConfig(outputGuardrailsConfig)
         .build();
