@@ -48,10 +48,10 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
         @OutputGuardrails(RepromptingOne.class)
         String one(@MemoryId String mem, @UserMessage String message);
 
-        @OutputGuardrails(RepromptingTwo.class)
+        @OutputGuardrails(value = RepromptingTwo.class, config = @OutputGuardrailsConfig(maxRetries = 3))
         String two(@MemoryId String mem, @UserMessage String message);
 
-        @OutputGuardrails(RepromptingFailed.class)
+        @OutputGuardrails(value = RepromptingFailed.class, config = @OutputGuardrailsConfig(maxRetries = 3))
         String fail(@MemoryId String mem, @UserMessage String message);
 
         static MyAiService create() {
