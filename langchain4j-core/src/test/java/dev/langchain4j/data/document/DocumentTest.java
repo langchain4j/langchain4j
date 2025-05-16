@@ -58,6 +58,14 @@ class DocumentTest implements WithAssertions {
     }
 
     @Test
+    void index_metadata() {
+        final var textSegmentWithIndex = Document.from("foo bar", Metadata.from("index", "1")).toTextSegment();
+
+        assertThat(textSegmentWithIndex.metadata().toMap()).hasSize(1);
+        assertThat(textSegmentWithIndex.metadata().getString("index")).isEqualTo("1");
+    }
+
+    @Test
     void from() {
         assertThat(Document.from("foo bar")).isEqualTo(Document.from("foo bar", new Metadata()));
 
