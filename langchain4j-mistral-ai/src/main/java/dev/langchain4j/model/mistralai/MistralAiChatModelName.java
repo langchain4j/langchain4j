@@ -22,7 +22,6 @@ package dev.langchain4j.model.mistralai;
  * @see <a href="https://docs.mistral.ai/guides/model-selection/">Mistral Model Selection</a>
  */
 public enum MistralAiChatModelName {
-
     OPEN_MISTRAL_7B("open-mistral-7b"), // aka mistral-tiny-2312
 
     OPEN_MIXTRAL_8x7B("open-mixtral-8x7b"), // aka mistral-small-2312
@@ -34,7 +33,11 @@ public enum MistralAiChatModelName {
 
     MISTRAL_LARGE_LATEST("mistral-large-latest"), // aka mistral-large-2402
 
-    MISTRAL_MODERATION_LATEST("mistral-moderation-latest");
+    MISTRAL_MODERATION_LATEST("mistral-moderation-latest"),
+
+    OPEN_MISTRAL_NEMO("open-mistral-nemo"), // aka open-mistral-nemo-2407
+
+    CODESTRAL_LATEST("codestral-latest"); // aka codestral-latest
 
     private final String value;
 
