@@ -1,8 +1,9 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.LanguageModel;
@@ -76,9 +77,9 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
     @Test
     void should_throw_exception_when_format_and_response_format_are_used() {
         assertThatThrownBy(() -> OllamaLanguageModel.builder()
-                        .format("json")
-                        .responseFormat(ResponseFormat.JSON)
-                        .build())
+                .format("json")
+                .responseFormat(ResponseFormat.JSON)
+                .build())
                 .isInstanceOf(IllegalStateException.class);
     }
 }

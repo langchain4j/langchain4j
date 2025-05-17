@@ -1,5 +1,15 @@
 package dev.langchain4j.service.common;
 
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -10,23 +20,12 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * This test makes sure that all {@link StreamingChatModel} implementations behave consistently
@@ -49,9 +48,8 @@ public abstract class AbstractStreamingAiServiceIT {
         // given
         model = spy(model);
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatModel(model)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).streamingChatModel(model).build();
 
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
@@ -59,7 +57,8 @@ public abstract class AbstractStreamingAiServiceIT {
 
         String userMessage = "What is the capital of Germany?";
 
-        assistant.chat(userMessage)
+        assistant
+                .chat(userMessage)
                 .onPartialResponse(answerBuilder::append)
                 .onCompleteResponse(chatResponse -> {
                     futureAnswer.complete(answerBuilder.toString());
@@ -85,10 +84,12 @@ public abstract class AbstractStreamingAiServiceIT {
             assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
         }
 
-        verify(model).chat(
-                eq(ChatRequest.builder().messages(UserMessage.from(userMessage)).build()),
-                any(StreamingChatResponseHandler.class)
-        );
+        verify(model)
+                .chat(
+                        eq(ChatRequest.builder()
+                                .messages(UserMessage.from(userMessage))
+                                .build()),
+                        any(StreamingChatResponseHandler.class));
     }
 
     @ParameterizedTest
@@ -114,9 +115,9 @@ public abstract class AbstractStreamingAiServiceIT {
         // when
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
 
-        assistant.chat("What is the date today?")
-                .onPartialResponse(ignored -> {
-                })
+        assistant
+                .chat("What is the date today?")
+                .onPartialResponse(ignored -> {})
                 .onError(futureChatResponse::completeExceptionally)
                 .onCompleteResponse(futureChatResponse::complete)
                 .start();

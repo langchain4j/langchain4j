@@ -13,7 +13,7 @@ https://github.com/searxng/searxng
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-web-search-engine-searxng</artifactId>
-    <version>0.36.0</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
