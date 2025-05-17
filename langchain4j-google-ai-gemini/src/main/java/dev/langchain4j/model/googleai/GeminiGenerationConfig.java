@@ -3,7 +3,6 @@ package dev.langchain4j.model.googleai;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -15,6 +14,7 @@ class GeminiGenerationConfig {
     private Integer maxOutputTokens = 8192;
     private Double temperature = 1.0;
     private Integer topK = 64;
+    private Integer seed;
     private Double topP = 0.95;
 
     @JsonCreator
@@ -26,6 +26,7 @@ class GeminiGenerationConfig {
             @JsonProperty("maxOutputTokens") Integer maxOutputTokens,
             @JsonProperty("temperature") Double temperature,
             @JsonProperty("topK") Integer topK,
+            @JsonProperty("seed") Integer seed,
             @JsonProperty("topP") Double topP) {
         this.stopSequences = stopSequences;
         this.responseMimeType = responseMimeType;
@@ -34,6 +35,7 @@ class GeminiGenerationConfig {
         this.maxOutputTokens = maxOutputTokens;
         this.temperature = temperature;
         this.topK = topK;
+        this.seed = seed;
         this.topP = topP;
     }
 
@@ -69,6 +71,10 @@ class GeminiGenerationConfig {
         return this.topK;
     }
 
+    public Integer getSeed() {
+        return this.seed;
+    }
+
     public Double getTopP() {
         return this.topP;
     }
@@ -101,6 +107,10 @@ class GeminiGenerationConfig {
         this.topK = topK;
     }
 
+    public void setSeed(Integer seed) {
+        this.seed = seed;
+    }
+
     public void setTopP(Double topP) {
         this.topP = topP;
     }
@@ -116,20 +126,24 @@ class GeminiGenerationConfig {
             return false;
         final Object this$responseMimeType = this.getResponseMimeType();
         final Object other$responseMimeType = other.getResponseMimeType();
-        if (this$responseMimeType == null ? other$responseMimeType != null : !this$responseMimeType.equals(other$responseMimeType))
-            return false;
+        if (this$responseMimeType == null
+                ? other$responseMimeType != null
+                : !this$responseMimeType.equals(other$responseMimeType)) return false;
         final Object this$responseSchema = this.getResponseSchema();
         final Object other$responseSchema = other.getResponseSchema();
-        if (this$responseSchema == null ? other$responseSchema != null : !this$responseSchema.equals(other$responseSchema))
-            return false;
+        if (this$responseSchema == null
+                ? other$responseSchema != null
+                : !this$responseSchema.equals(other$responseSchema)) return false;
         final Object this$candidateCount = this.getCandidateCount();
         final Object other$candidateCount = other.getCandidateCount();
-        if (this$candidateCount == null ? other$candidateCount != null : !this$candidateCount.equals(other$candidateCount))
-            return false;
+        if (this$candidateCount == null
+                ? other$candidateCount != null
+                : !this$candidateCount.equals(other$candidateCount)) return false;
         final Object this$maxOutputTokens = this.getMaxOutputTokens();
         final Object other$maxOutputTokens = other.getMaxOutputTokens();
-        if (this$maxOutputTokens == null ? other$maxOutputTokens != null : !this$maxOutputTokens.equals(other$maxOutputTokens))
-            return false;
+        if (this$maxOutputTokens == null
+                ? other$maxOutputTokens != null
+                : !this$maxOutputTokens.equals(other$maxOutputTokens)) return false;
         final Object this$temperature = this.getTemperature();
         final Object other$temperature = other.getTemperature();
         if (this$temperature == null ? other$temperature != null : !this$temperature.equals(other$temperature))
@@ -137,6 +151,9 @@ class GeminiGenerationConfig {
         final Object this$topK = this.getTopK();
         final Object other$topK = other.getTopK();
         if (this$topK == null ? other$topK != null : !this$topK.equals(other$topK)) return false;
+        final Object this$seed = this.getSeed();
+        final Object other$seed = other.getSeed();
+        if (this$seed == null ? other$seed != null : !this$seed.equals(other$seed)) return false;
         final Object this$topP = this.getTopP();
         final Object other$topP = other.getTopP();
         if (this$topP == null ? other$topP != null : !this$topP.equals(other$topP)) return false;
@@ -164,13 +181,19 @@ class GeminiGenerationConfig {
         result = result * PRIME + ($temperature == null ? 43 : $temperature.hashCode());
         final Object $topK = this.getTopK();
         result = result * PRIME + ($topK == null ? 43 : $topK.hashCode());
+        final Object $seed = this.getSeed();
+        result = result * PRIME + ($seed == null ? 43 : $seed.hashCode());
         final Object $topP = this.getTopP();
         result = result * PRIME + ($topP == null ? 43 : $topP.hashCode());
         return result;
     }
 
     public String toString() {
-        return "GeminiGenerationConfig(stopSequences=" + this.getStopSequences() + ", responseMimeType=" + this.getResponseMimeType() + ", responseSchema=" + this.getResponseSchema() + ", candidateCount=" + this.getCandidateCount() + ", maxOutputTokens=" + this.getMaxOutputTokens() + ", temperature=" + this.getTemperature() + ", topK=" + this.getTopK() + ", topP=" + this.getTopP() + ")";
+        return "GeminiGenerationConfig(stopSequences=" + this.getStopSequences() + ", responseMimeType="
+                + this.getResponseMimeType() + ", responseSchema=" + this.getResponseSchema() + ", candidateCount="
+                + this.getCandidateCount() + ", maxOutputTokens=" + this.getMaxOutputTokens() + ", temperature="
+                + this.getTemperature() + ", topK=" + this.getTopK() + ", seed=" + this.getSeed() + ", topP="
+                + this.getTopP() + ")";
     }
 
     public static class GeminiGenerationConfigBuilder {
@@ -181,10 +204,10 @@ class GeminiGenerationConfig {
         private Integer maxOutputTokens;
         private Double temperature;
         private Integer topK;
+        private Integer seed;
         private Double topP;
 
-        GeminiGenerationConfigBuilder() {
-        }
+        GeminiGenerationConfigBuilder() {}
 
         public GeminiGenerationConfigBuilder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
@@ -221,17 +244,35 @@ class GeminiGenerationConfig {
             return this;
         }
 
+        public GeminiGenerationConfigBuilder seed(Integer seed) {
+            this.seed = seed;
+            return this;
+        }
+
         public GeminiGenerationConfigBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
         public GeminiGenerationConfig build() {
-            return new GeminiGenerationConfig(this.stopSequences, this.responseMimeType, this.responseSchema, this.candidateCount, this.maxOutputTokens, this.temperature, this.topK, this.topP);
+            return new GeminiGenerationConfig(
+                    this.stopSequences,
+                    this.responseMimeType,
+                    this.responseSchema,
+                    this.candidateCount,
+                    this.maxOutputTokens,
+                    this.temperature,
+                    this.topK,
+                    this.seed,
+                    this.topP);
         }
 
         public String toString() {
-            return "GeminiGenerationConfig.GeminiGenerationConfigBuilder(stopSequences=" + this.stopSequences + ", responseMimeType=" + this.responseMimeType + ", responseSchema=" + this.responseSchema + ", candidateCount=" + this.candidateCount + ", maxOutputTokens=" + this.maxOutputTokens + ", temperature=" + this.temperature + ", topK=" + this.topK + ", topP=" + this.topP + ")";
+            return "GeminiGenerationConfig.GeminiGenerationConfigBuilder(stopSequences=" + this.stopSequences
+                    + ", responseMimeType=" + this.responseMimeType + ", responseSchema=" + this.responseSchema
+                    + ", candidateCount=" + this.candidateCount + ", maxOutputTokens=" + this.maxOutputTokens
+                    + ", temperature=" + this.temperature + ", topK=" + this.topK + ", seed=" + this.seed + ", topP="
+                    + this.topP + ")";
         }
     }
 }
