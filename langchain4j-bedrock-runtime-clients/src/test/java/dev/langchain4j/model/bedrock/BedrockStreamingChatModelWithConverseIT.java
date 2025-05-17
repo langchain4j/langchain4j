@@ -20,7 +20,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -34,13 +33,8 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
     @Override
     protected List<StreamingChatModel> models() {
         return List.of(
-                //                TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_MICRO,
                 TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_LITE,
                 TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_PRO);
-        //                TestedModelsWithConverseAPI.STREAMING_AI_JAMBA_1_5_MINI,
-        //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU,
-        //                TestedModelsWithConverseAPI.STREAMING_COHERE_COMMAND_R_PLUS,
-        //                TestedModelsWithConverseAPI.STREAMING_MISTRAL_LARGE);
     }
 
     @Override
