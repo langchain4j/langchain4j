@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_0301;
@@ -157,16 +158,19 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
                     tokenCount += 7;
                     tokenCount += estimateTokenCountInText(toolExecutionRequest.name());
 
-                    Map<?, ?> arguments;
+                    if (isNullOrBlank(toolExecutionRequest.arguments())) {
+                        continue;
+                    }
+
                     try {
-                        arguments = OBJECT_MAPPER.readValue(toolExecutionRequest.arguments(), Map.class);
+                        Map<?, ?> arguments = OBJECT_MAPPER.readValue(toolExecutionRequest.arguments(), Map.class);
+                        for (Map.Entry<?, ?> argument : arguments.entrySet()) {
+                            tokenCount += 2;
+                            tokenCount += estimateTokenCountInText(String.valueOf(argument.getKey()));
+                            tokenCount += estimateTokenCountInText(String.valueOf(argument.getValue()));
+                        }
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
-                    }
-                    for (Map.Entry<?, ?> argument : arguments.entrySet()) {
-                        tokenCount += 2;
-                        tokenCount += estimateTokenCountInText(argument.getKey().toString());
-                        tokenCount += estimateTokenCountInText(argument.getValue().toString());
                     }
                 }
             }

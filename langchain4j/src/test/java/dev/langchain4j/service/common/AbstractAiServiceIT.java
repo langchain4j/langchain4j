@@ -58,9 +58,7 @@ public abstract class AbstractAiServiceIT {
         // then
         assertThat(result.content()).containsIgnoringCase("Berlin");
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(result.tokenUsage());
-        }
+        assertTokenUsage(result.tokenUsage(), model);
 
         if (assertFinishReason()) {
             assertThat(result.finishReason()).isEqualTo(STOP);
@@ -150,9 +148,7 @@ public abstract class AbstractAiServiceIT {
 //                .build());
 //        verifyNoMoreInteractions(model);
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(result.tokenUsage());
-        }
+        assertTokenUsage(result.tokenUsage(), model);
 
         if (assertToolInteractions()) {
             verify(weatherTools).getWeather("Munich");
@@ -176,15 +172,15 @@ public abstract class AbstractAiServiceIT {
         return true;
     }
 
-    private void assertTokenUsage(TokenUsage tokenUsage) {
-        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType());
+    private void assertTokenUsage(TokenUsage tokenUsage, ChatModel chatModel) {
+        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(chatModel));
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 
-    protected Class<? extends TokenUsage> tokenUsageType() {
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         return TokenUsage.class;
     }
 

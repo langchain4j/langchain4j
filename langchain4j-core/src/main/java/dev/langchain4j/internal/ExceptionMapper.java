@@ -32,13 +32,13 @@ public interface ExceptionMapper {
         }
     }
 
-    RuntimeException mapException(Exception e);
+    RuntimeException mapException(Throwable t);
 
     class DefaultExceptionMapper implements ExceptionMapper {
 
         @Override
-        public RuntimeException mapException(Exception e) {
-            Throwable rootCause = findRoot(e);
+        public RuntimeException mapException(Throwable t) {
+            Throwable rootCause = findRoot(t);
 
             if (rootCause instanceof HttpException httpException) {
                 return mapHttpStatusCode(httpException, httpException.statusCode());
@@ -48,29 +48,29 @@ public interface ExceptionMapper {
                 return new UnresolvedModelServerException(rootCause);
             }
 
-            return e instanceof RuntimeException re ? re : new LangChain4jException(e);
+            return t instanceof RuntimeException re ? re : new LangChain4jException(t);
         }
 
-        protected RuntimeException mapHttpStatusCode(Exception rootException, int httpStatusCode) {
+        protected RuntimeException mapHttpStatusCode(Throwable cause, int httpStatusCode) {
             if (httpStatusCode >= 500 && httpStatusCode < 600) {
-                return new InternalServerException(rootException);
+                return new InternalServerException(cause);
             }
             if (httpStatusCode == 401 || httpStatusCode == 403) {
-                return new AuthenticationException(rootException);
+                return new AuthenticationException(cause);
             }
             if (httpStatusCode == 404) {
-                return new ModelNotFoundException(rootException);
+                return new ModelNotFoundException(cause);
             }
             if (httpStatusCode == 408) {
-                return new TimeoutException(rootException);
+                return new TimeoutException(cause);
             }
             if (httpStatusCode == 429) {
-                return new RateLimitException(rootException);
+                return new RateLimitException(cause);
             }
             if (httpStatusCode >= 400 && httpStatusCode < 500) {
-                return new InvalidRequestException(rootException);
+                return new InvalidRequestException(cause);
             }
-            return rootException instanceof RuntimeException re ? re : new LangChain4jException(rootException);
+            return cause instanceof RuntimeException re ? re : new LangChain4jException(cause);
         }
 
         private static Throwable findRoot(Throwable e) {

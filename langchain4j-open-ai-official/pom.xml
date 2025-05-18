@@ -12,15 +12,6 @@
     <artifactId>langchain4j-open-ai-official</artifactId>
     <name>LangChain4j :: Integration :: OpenAI Official</name>
 
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -42,6 +33,7 @@
         <dependency>
             <groupId>com.openai</groupId>
             <artifactId>openai-java</artifactId>
+            <version>${openai-java.version}</version>
         </dependency>
 
         <dependency>

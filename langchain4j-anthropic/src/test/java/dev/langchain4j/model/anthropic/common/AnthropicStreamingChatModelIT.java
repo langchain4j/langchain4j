@@ -84,7 +84,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected Class<? extends TokenUsage> tokenUsageType() {
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
         return AnthropicTokenUsage.class;
     }
 }
