@@ -3,7 +3,6 @@ package dev.langchain4j.model.bedrock;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import java.util.HashMap;
 import java.util.Map;
-import lombok.Getter;
 
 /**
  * @deprecated please use {@link BedrockChatModel} instead
@@ -48,7 +47,6 @@ public class BedrockAI21LabsChatModel extends AbstractBedrockChatModel<BedrockAI
     /**
      * Bedrock AI21 Labs model ids
      */
-    @Getter
     public enum Types {
         J2MidV2("ai21.j2-mid-v1"),
         J2UltraV1("ai21.j2-ultra-v1");

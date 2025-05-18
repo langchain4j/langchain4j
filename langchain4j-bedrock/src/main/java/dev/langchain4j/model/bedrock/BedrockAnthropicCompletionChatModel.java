@@ -3,7 +3,6 @@ package dev.langchain4j.model.bedrock;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import java.util.HashMap;
 import java.util.Map;
-import lombok.Getter;
 
 /**
  * @deprecated please use {@link BedrockChatModel} instead
@@ -48,7 +47,6 @@ public class BedrockAnthropicCompletionChatModel
     /**
      * Bedrock Anthropic model ids
      */
-    @Getter
     public enum Types {
         AnthropicClaudeInstantV1("anthropic.claude-instant-v1"),
         AnthropicClaudeV1("anthropic.claude-v1"),

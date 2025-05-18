@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.Getter;
 
 /**
  * Bedrock Amazon Titan embedding model with support for both versions:
@@ -78,7 +77,6 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
         return BedrockTitanEmbeddingResponse.class;
     }
 
-    @Getter
     public enum Types {
         TitanEmbedTextV1("amazon.titan-embed-text-v1"),
         TitanEmbedTextV2("amazon.titan-embed-text-v2:0");
@@ -87,6 +85,10 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
 
         Types(String modelID) {
             this.value = modelID;
+        }
+
+        public String getValue() {
+            return value;
         }
     }
 
