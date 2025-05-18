@@ -22,7 +22,7 @@ import org.xml.sax.ContentHandler;
  * Parses files into {@link Document}s using Apache Tika library, automatically detecting the file format.
  * This parser supports various file formats, including PDF, DOC, PPT, XLS.
  * For detailed information on supported formats,
- * please refer to the <a href="https://tika.apache.org/2.9.1/formats.html">Apache Tika documentation</a>.
+ * please refer to the <a href="https://tika.apache.org/3.1.0/formats.html">Apache Tika documentation</a>.
  */
 public class ApacheTikaDocumentParser implements DocumentParser {
 
