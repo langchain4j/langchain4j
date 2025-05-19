@@ -22,8 +22,9 @@ class MistralAiStreamingFimModelIT {
 
     @Test
     void should_stream_code_completion_and_return_token_usage_and_finish_reason_length() {
+
         // Given
-        String codePrompt = "public static void main(String[]";
+        String codePrompt = "public static void main(";
 
         // When
         TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
@@ -32,7 +33,7 @@ class MistralAiStreamingFimModelIT {
         Response<String> response = handler.get();
 
         // Then
-        System.out.println(String.format("%s%s", codePrompt, response.content())); // print code completion
+        assertThat(response.content()).contains("String[]");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -45,6 +46,7 @@ class MistralAiStreamingFimModelIT {
 
     @Test
     void should_stream_generate_code_completion_with_suffix() {
+
         // Given
         MistralAiStreamingFimModel codestral = MistralAiStreamingFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
@@ -68,20 +70,20 @@ class MistralAiStreamingFimModelIT {
         Response<String> response = handler.get();
 
         // Then
-        System.out.println(String.format("%s%s%s", codePrompt, response.content(), suffix)); // print code completion
-
+        assertThat(response.content()).isNotBlank();
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.content()).doesNotContainIgnoringCase(suffix);
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
-    void should_stream_generate_code_completion_with_stops() {
+    void should_stream_generate_code_completion_with_stop_tokens() {
+
         // Given
         MistralAiStreamingFimModel codestral = MistralAiStreamingFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
-                .stops(List.of("{")) // must stop at the first occurrence of "{"
+                .stop(List.of("{")) // must stop at the first occurrence of "{"
                 .logRequests(true)
                 .build();
 
@@ -96,14 +98,14 @@ class MistralAiStreamingFimModelIT {
         Response<String> response = handler.get();
 
         // Then
-        System.out.println(String.format("%s%s", codePrompt, response.content())); // print code completion
-
+        assertThat(response.content()).isNotBlank();
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
     void should_stream_generate_code_completion_with_suffix_and_max_min_tokens() {
+
         // Given
         MistralAiStreamingFimModel codestral = MistralAiStreamingFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
@@ -131,8 +133,7 @@ class MistralAiStreamingFimModelIT {
         Response<String> response = handler.get();
 
         // Then
-        System.out.println(String.format("%s%s%s", codePrompt, response.content(), suffix)); // print code completion
-
+        assertThat(response.content()).isNotBlank();
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.content()).doesNotContainIgnoringCase(suffix);
         assertThat(response.finishReason()).isEqualTo(STOP);

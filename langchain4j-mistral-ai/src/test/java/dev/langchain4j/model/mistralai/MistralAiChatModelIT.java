@@ -362,7 +362,7 @@ class MistralAiChatModelIT {
         AiMessage aiMessage2 = response2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(aiMessage2.toolExecutionRequests()).isNullOrEmpty();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -428,7 +428,7 @@ class MistralAiChatModelIT {
         AiMessage aiMessage2 = response2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
         assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
-        assertThat(aiMessage2.toolExecutionRequests()).isNullOrEmpty();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -558,7 +558,7 @@ class MistralAiChatModelIT {
 
         assertThat(List.of("March 11, 2024", "2024-03-11"))
                 .anySatisfy(date -> assertThat(aiMessage2.text()).containsIgnoringWhitespaces(date));
-        assertThat(aiMessage2.toolExecutionRequests()).isNullOrEmpty();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -571,12 +571,12 @@ class MistralAiChatModelIT {
 
     @Test
     void should_code_generation_using_model_openCodestralMamba_and_return_finishReason() {
+
         // given
         UserMessage userMessage = userMessage("Write a java code for fibonacci");
 
         // when
         ChatResponse response = openCodestralMamba.chat(userMessage);
-        System.out.println(response.aiMessage().text());
 
         // then
         assertThat(response.aiMessage().text()).isNotBlank();
@@ -592,6 +592,7 @@ class MistralAiChatModelIT {
 
     @Test
     void should_execute_multiple_tools_using_model_openMistralNemo_then_answer() {
+
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
@@ -653,7 +654,7 @@ class MistralAiChatModelIT {
                 .anySatisfy(date -> assertThat(aiMessage2.text()).containsIgnoringWhitespaces(date));
 
         assertThat(aiMessage2.text()).contains("11", "2024");
-        assertThat(aiMessage2.toolExecutionRequests()).isNullOrEmpty();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);

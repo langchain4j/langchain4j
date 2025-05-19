@@ -1,25 +1,28 @@
 package dev.langchain4j.model.mistralai;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
+import dev.langchain4j.Experimental;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiStreamingFimModelBuilderFactory;
+
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 /**
- *  Represents a Mistral AI FIM Completion Model with a language completion interface, users can define the starting point of the text/code using a prompt, and the ending point of the text/code using an optional suffix and an optional stop.
- *  <p>
- *  The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
- *  <p>
- *  You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createFIMCompletion">here</a>.
+ * Represents a Mistral AI FIM Completion Model with a language completion interface, users can define the starting point of the text/code using a prompt, and the ending point of the text/code using an optional suffix and an optional stop.
+ * <p>
+ * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * <p>
+ * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createFIMCompletion">here</a>.
  */
+@Experimental
 public class MistralAiStreamingFimModel implements StreamingLanguageModel {
 
     private final MistralAiClient client;
@@ -29,54 +32,41 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
     private final Integer minTokens;
     private final Double topP;
     private final Integer randomSeed;
-    private final List<String> stops;
+    private final List<String> stop;
 
     /**
      * Constructs a MistralAiStreamingFimModel with the specified parameters.
      *
-     * @param baseUrl       the base URL of the Mistral AI API. It uses the default value if not specified.
-     * @param apiKey        the API key for authentication
-     * @param modelName     the name of the Mistral AI model to use
-     * @param temperature   the temperature parameter for generating responses
-     * @param maxTokens     the maximum number of tokens to generate in a response
-     * @param minTokens     the minimum number of tokens to generate in a response
-     * @param topP          the top-p parameter for generating responses
-     * @param randomSeed    the random seed for generating responses
-     * @param stops         a list of tokens at which the model should stop generating tokens
-     * @param logRequests   a flag indicating whether to log API requests
-     * @param logResponses  a flag indicating whether to log API responses
-     * @param timeout       the timeout duration for API requests
-     *                      <p>
-     *                      The default value is 60 seconds.
+     * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified.
+     * @param apiKey       the API key for authentication
+     * @param modelName    the name of the Mistral AI model to use
+     * @param temperature  the temperature parameter for generating responses
+     * @param maxTokens    the maximum number of tokens to generate in a response
+     * @param minTokens    the minimum number of tokens to generate in a response
+     * @param topP         the top-p parameter for generating responses
+     * @param randomSeed   the random seed for generating responses
+     * @param stop         a list of tokens at which the model should stop generating tokens
+     * @param logRequests  a flag indicating whether to log API requests
+     * @param logResponses a flag indicating whether to log API responses
+     * @param timeout      the timeout duration for API requests
+     *                     <p>
+     *                     The default value is 60 seconds.
      */
-    public MistralAiStreamingFimModel(
-            String baseUrl,
-            String apiKey,
-            String modelName,
-            Double temperature,
-            Integer maxTokens,
-            Integer minTokens,
-            Double topP,
-            Integer randomSeed,
-            List<String> stops,
-            Boolean logRequests,
-            Boolean logResponses,
-            Duration timeout) {
-
+    public MistralAiStreamingFimModel(Builder builder) {
         this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-                .apiKey(apiKey)
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
+                .apiKey(builder.apiKey)
+                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralAiFimModelName.CODESTRAL_LATEST.toString());
-        this.temperature = temperature;
-        this.maxTokens = maxTokens;
-        this.minTokens = getOrDefault(minTokens, 0);
-        this.topP = topP;
-        this.randomSeed = randomSeed;
-        this.stops = copyIfNotNull(stops);
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.temperature = builder.temperature;
+        this.maxTokens = builder.maxTokens;
+        this.minTokens = getOrDefault(builder.minTokens, 0);
+        this.topP = builder.topP;
+        this.randomSeed = builder.randomSeed;
+        this.stop = copy(builder.stop);
     }
 
     /**
@@ -113,22 +103,22 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
                 .minTokens(this.minTokens)
                 .topP(this.topP)
                 .randomSeed(this.randomSeed)
-                .stop(this.stops)
+                .stop(this.stop)
                 .stream(true)
                 .build();
 
         client.streamingFimCompletion(request, handler);
     }
 
-    public static MistralAiStreamingFimModelBuilder builder() {
+    public static Builder builder() {
         for (MistralAiStreamingFimModelBuilderFactory factory :
                 loadFactories(MistralAiStreamingFimModelBuilderFactory.class)) {
             return factory.get();
         }
-        return new MistralAiStreamingFimModelBuilder();
+        return new Builder();
     }
 
-    public static class MistralAiStreamingFimModelBuilder {
+    public static class Builder {
 
         private String baseUrl;
         private String apiKey;
@@ -138,110 +128,81 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
         private Integer minTokens;
         private Double topP;
         private Integer randomSeed;
-        private List<String> stops;
+        private List<String> stop;
         private Boolean logRequests;
         private Boolean logResponses;
         private Duration timeout;
 
-        public MistralAiStreamingFimModelBuilder() {}
+        public Builder() {
+        }
 
-        public MistralAiStreamingFimModelBuilder baseUrl(String baseUrl) {
+        public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder apiKey(String apiKey) {
+        public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder modelName(String modelName) {
+        public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder modelName(MistralAiFimModelName modelName) {
+        public Builder modelName(MistralAiFimModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder temperature(Double temperature) {
+        public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder maxTokens(Integer maxTokens) {
+        public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder minTokens(Integer minTokens) {
+        public Builder minTokens(Integer minTokens) {
             this.minTokens = minTokens;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder topP(Double topP) {
+        public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder randomSeed(Integer randomSeed) {
+        public Builder randomSeed(Integer randomSeed) {
             this.randomSeed = randomSeed;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder stops(List<String> stops) {
-            this.stops = stops;
+        public Builder stop(List<String> stop) {
+            this.stop = stop;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder logRequests(Boolean logRequests) {
+        public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder logResponses(Boolean logResponses) {
+        public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
-        public MistralAiStreamingFimModelBuilder timeout(Duration timeout) {
+        public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
         public MistralAiStreamingFimModel build() {
-            return new MistralAiStreamingFimModel(
-                    this.baseUrl,
-                    this.apiKey,
-                    this.modelName,
-                    this.temperature,
-                    this.maxTokens,
-                    this.minTokens,
-                    this.topP,
-                    this.randomSeed,
-                    this.stops,
-                    this.logRequests,
-                    this.logResponses,
-                    this.timeout);
-        }
-
-        @Override
-        public String toString() {
-            return "MistralAiStreamingFimModelBuilder(" + "baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey == null
-                    ? ""
-                    : "*****"
-                            + ", modelName=" + this.modelName
-                            + ", temperature=" + this.temperature
-                            + ", topP=" + this.topP
-                            + ", maxTokens=" + this.maxTokens
-                            + ", minTokens=" + this.minTokens
-                            + ", randomSeed=" + this.randomSeed
-                            + ", stops=" + this.stops
-                            + ", timeout=" + this.timeout
-                            + ", logRequests=" + this.logRequests
-                            + ", logResponses=" + this.logResponses
-                            + ")";
+            return new MistralAiStreamingFimModel(this);
         }
     }
 }

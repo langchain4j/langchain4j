@@ -21,12 +21,15 @@ class MistralAiFimModelIT {
 
     @Test
     void should_generate_code_completion_and_return_token_usage_and_finish_reason_stop() {
+
         // Given
-        String codePrompt = "public static void main(String[]";
+        String codePrompt = "public static void main(";
+
         // When
         Response<String> response = codestral.generate(codePrompt);
+
         // Then
-        System.out.println(String.format("%s%s", codePrompt, response.content())); // print code completion
+        assertThat(response.content()).contains("String[] args");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -39,6 +42,7 @@ class MistralAiFimModelIT {
 
     @Test
     void should_generate_code_completion_with_suffix() {
+
         // Given
         MistralAiFimModel codestral = MistralAiFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
@@ -56,21 +60,24 @@ class MistralAiFimModelIT {
 
         // When
         Response<String> response = codestral.generate(codePrompt, suffix);
-        // Then
-        System.out.println(String.format("%s%s%s", codePrompt, response.content(), suffix)); // print code completion
 
+        // Then
+        assertThat(response.content()).isNotBlank();
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.content()).doesNotContainIgnoringCase(suffix);
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
-    void should_generate_code_completion_with_stops() {
-        // Given
+    void should_generate_code_completion_with_stop_tokens() {
+
+        // given
+        List<String> stop = List.of("{"); // must stop at the first occurrence of "{"
+
         MistralAiFimModel codestral = MistralAiFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
-                .stops(List.of("{")) // must stop at the first occurrence of "{"
+                .stop(stop)
                 .logRequests(true)
                 .build();
 
@@ -78,17 +85,18 @@ class MistralAiFimModelIT {
                             public static void main
                           """;
 
-        // When
+        // when
         Response<String> response = codestral.generate(codePrompt);
-        // Then
-        System.out.println(String.format("%s%s", codePrompt, response.content())); // print code completion
 
+        // then
+        assertThat(response.content()).isNotBlank();
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
     void should_generate_code_completion_with_suffix_and_max_min_tokens() {
+
         // Given
         MistralAiFimModel codestral = MistralAiFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
@@ -111,9 +119,9 @@ class MistralAiFimModelIT {
 
         // When
         Response<String> response = codestral.generate(codePrompt, suffix);
-        // Then
-        System.out.println(String.format("%s%s%s", codePrompt, response.content(), suffix)); // print code completion
 
+        // Then
+        assertThat(response.content()).isNotBlank();
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.content()).doesNotContainIgnoringCase(suffix);
         assertThat(response.finishReason()).isEqualTo(STOP);

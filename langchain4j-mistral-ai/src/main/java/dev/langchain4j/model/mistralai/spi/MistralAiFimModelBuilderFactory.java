@@ -4,6 +4,6 @@ import dev.langchain4j.model.mistralai.MistralAiFimModel;
 import java.util.function.Supplier;
 
 /**
- * A factory for building {@link MistralAiFimModel.MistralAiFimModelBuilder} instances.
+ * A factory for building {@link MistralAiFimModel.Builder} instances.
  */
-public interface MistralAiFimModelBuilderFactory extends Supplier<MistralAiFimModel.MistralAiFimModelBuilder> {}
+public interface MistralAiFimModelBuilderFactory extends Supplier<MistralAiFimModel.Builder> {}

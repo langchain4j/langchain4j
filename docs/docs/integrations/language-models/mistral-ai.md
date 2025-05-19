@@ -445,7 +445,7 @@ public class HelloWorld {
         MistralAiFimModel codestral = MistralAiFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
-                .stops(List.of("}")) // must stop at the first occurrence of "}"
+                .stop(List.of("}")) // must stop at the first occurrence of "}"
                 .build();
         
         // I want to generate a code completion for a simple hello world program using MistralAI of LangChain4j framework.

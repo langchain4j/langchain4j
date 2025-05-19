@@ -371,7 +371,7 @@ class MistralAiStreamingChatModelIT {
         AiMessage aiMessage2 = response2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(aiMessage2.toolExecutionRequests()).isNullOrEmpty();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -442,7 +442,7 @@ class MistralAiStreamingChatModelIT {
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
         assertThat(List.of("March 11, 2024", "2024-03-11"))
                 .anySatisfy(date -> assertThat(aiMessage2.text()).containsIgnoringWhitespaces(date));
-        assertThat(aiMessage2.toolExecutionRequests()).isNullOrEmpty();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -517,7 +517,7 @@ class MistralAiStreamingChatModelIT {
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
         assertThat(aiMessage2.text()).contains("11", "2024");
-        assertThat(aiMessage2.toolExecutionRequests()).isNullOrEmpty();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -696,7 +696,7 @@ class MistralAiStreamingChatModelIT {
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
         assertThat(List.of("March 11, 2024", "2024-03-11"))
                 .anySatisfy(date -> assertThat(aiMessage2.text()).containsIgnoringWhitespaces(date));
-        assertThat(aiMessage2.toolExecutionRequests()).isNullOrEmpty();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
