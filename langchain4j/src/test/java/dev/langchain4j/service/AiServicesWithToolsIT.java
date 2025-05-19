@@ -159,7 +159,7 @@ class AiServicesWithToolsIT {
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(4);
 
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
+        assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
@@ -228,7 +228,7 @@ class AiServicesWithToolsIT {
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(6);
 
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
+        assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
@@ -316,7 +316,7 @@ class AiServicesWithToolsIT {
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(5);
 
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
+        assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);

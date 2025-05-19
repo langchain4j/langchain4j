@@ -254,7 +254,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         void process(Person person) {
         }
 
-        static final String REFERENCE = generateUUIDFrom(ToolWithRecursion.Person.class.getName());
+        static final String REFERENCE = generateUUIDFrom(Person.class.getName());
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
                 .addStringProperty("name")
