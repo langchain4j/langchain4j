@@ -61,10 +61,10 @@ public interface ExceptionMapper {
         public RuntimeException mapException(Throwable t) {
             final var statusCode = httpStatusCodeExtractor.apply(t);
             if (statusCode != null) {
-                return mapHttpStatusCode(e, statusCode);
+                return mapHttpStatusCode(t, statusCode);
             }
 
-            Throwable rootCause = findRoot(e);
+            Throwable rootCause = findRoot(t);
             if (rootCause instanceof UnresolvedAddressException) {
                 return new UnresolvedModelServerException(rootCause);
             } else if (rootCause instanceof SocketTimeoutException) {
