@@ -25,7 +25,7 @@ As an example, let's import the OpenAI dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.0.0-rc1</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -36,14 +36,14 @@ the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-rc1</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
 - For Gradle in `build.gradle`:
 ```groovy
-implementation 'dev.langchain4j:langchain4j-open-ai:1.0.0-rc1'
-implementation 'dev.langchain4j:langchain4j:1.0.0-rc1'
+implementation 'dev.langchain4j:langchain4j-open-ai:1.0.0'
+implementation 'dev.langchain4j:langchain4j:1.0.0'
 ```
 
 <details>
@@ -55,20 +55,30 @@ implementation 'dev.langchain4j:langchain4j:1.0.0-rc1'
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>1.0.0-beta4</version>
+            <version>1.0.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
     </dependencies>
 </dependencyManagement>
 ```
+
+:::note
+Please note that `langchain4j-bom` always contains the latest versions of all LangChain4j modules.
+:::
+
+:::note
+Please note that while the `langchain4j-bom` version is `1.0.0`,
+many of the modules still have version `1.0.0-beta{n}`,
+so there might be some breaking changes for these modules in the furture.
+:::
 </details>
 
 <details>
 <summary>SNAPSHOT dependencies (newest features)</summary>
 
 If you'd like to test the newest features before their official release,
-you can use the most recent SNAPSHOT dependency:
+you can use the most recent `SNAPSHOT` dependency:
 ```xml
 <repositories>
     <repository>
@@ -84,7 +94,7 @@ you can use the most recent SNAPSHOT dependency:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j</artifactId>
-        <version>1.0.0-beta5-SNAPSHOT</version>
+        <version>1.1.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
