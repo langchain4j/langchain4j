@@ -19,7 +19,7 @@ class MistralAiEmbeddingModelIT {
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(MISTRAL_EMBED)
             .logRequests(true)
-            .logResponses(true)
+            .logResponses(false) // embeddings are huge in logs
             .build();
 
     @Test
