@@ -17,6 +17,7 @@
     </properties>
 
     <dependencies>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
@@ -28,6 +29,14 @@
             <artifactId>cos_api</artifactId>
             <version>5.6.240</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>

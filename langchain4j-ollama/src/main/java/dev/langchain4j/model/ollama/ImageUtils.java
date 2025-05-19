@@ -1,7 +1,9 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Utils;
 
 import java.io.IOException;
@@ -13,6 +15,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Internal
 class ImageUtils {
 
     private static final List<String> SUPPORTED_URL_SCHEMES = Arrays.asList("http", "https", "file");
@@ -32,7 +35,8 @@ class ImageUtils {
             if (SUPPORTED_URL_SCHEMES.contains(image.url().getScheme())) {
                 return image.url().getScheme().startsWith("http") ? httpScheme(image) : fileScheme(image);
             } else {
-                throw new RuntimeException("ollama integration only supports http/https and file urls. unsupported url scheme: " + image.url().getScheme());
+                throw new UnsupportedFeatureException("Ollama integration only supports http/https and file urls. " +
+                        "Unsupported url scheme: " + image.url().getScheme());
             }
         }
     }
@@ -52,7 +56,7 @@ class ImageUtils {
         try {
             return Files.readAllBytes(path);
         } catch (IOException e) {
-            throw new RuntimeException("cant read file", e);
+            throw new RuntimeException("Can't read file with path '%s'".formatted(path), e);
         }
     }
 }

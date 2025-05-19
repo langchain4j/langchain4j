@@ -1,18 +1,17 @@
 package dev.langchain4j.http.client.log;
 
-import dev.langchain4j.Internal;
-import dev.langchain4j.http.client.HttpRequest;
-import org.slf4j.Logger;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.HttpRequest;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.slf4j.Logger;
 
 @Internal
 class HttpRequestLogger {
@@ -22,14 +21,18 @@ class HttpRequestLogger {
 
     static void log(Logger log, HttpRequest httpRequest) {
         try {
-            log.debug("""
+            log.info(
+                    """
                             HTTP request:
                             - method: {}
                             - url: {}
                             - headers: {}
                             - body: {}
                             """,
-                    httpRequest.method(), httpRequest.url(), format(httpRequest.headers()), httpRequest.body());
+                    httpRequest.method(),
+                    httpRequest.url(),
+                    format(httpRequest.headers()),
+                    httpRequest.body());
         } catch (Exception e) {
             log.warn("Exception occurred while logging HTTP request: {}", e.getMessage());
         }
@@ -43,9 +46,8 @@ class HttpRequestLogger {
 
     static String format(String headerKey, List<String> headerValues) {
         if (COMMON_SECRET_HEADERS.contains(headerKey.toLowerCase())) {
-            headerValues = headerValues.stream()
-                    .map(HttpRequestLogger::maskSecretKey)
-                    .collect(toList());
+            headerValues =
+                    headerValues.stream().map(HttpRequestLogger::maskSecretKey).collect(toList());
         }
 
         if (headerValues.size() == 1) {

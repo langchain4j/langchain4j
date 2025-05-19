@@ -12,7 +12,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
-import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
+import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AWS_NOVA_MICRO;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.COHERE_COMMAND_R_PLUS;
 import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.MISTRAL_LARGE;

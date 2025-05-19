@@ -19,7 +19,7 @@ class AnthropicAiServiceIT extends AbstractAiServiceIT {
     }
 
     @Override
-    protected Class<? extends TokenUsage> tokenUsageType() {
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         return AnthropicTokenUsage.class;
     }
 }

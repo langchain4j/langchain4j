@@ -27,6 +27,7 @@ import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -154,6 +155,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             String endpoint,
             String serviceVersion,
             String apiKey,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             Integer maxTokens,
             Double temperature,
@@ -202,6 +204,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 apiKey,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -212,6 +215,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             String endpoint,
             String serviceVersion,
             KeyCredential keyCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             Integer maxTokens,
             Double temperature,
@@ -260,6 +264,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 keyCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -270,6 +275,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             String endpoint,
             String serviceVersion,
             TokenCredential tokenCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             Integer maxTokens,
             Double temperature,
@@ -318,6 +324,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 tokenCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -377,9 +384,9 @@ public class AzureOpenAiChatModel implements ChatModel {
         ChatRequestValidationUtils.validateParameters(parameters);
         if (parameters.toolChoice() == REQUIRED) {
             if (parameters.toolSpecifications().size() != 1) {
-                throw new UnsupportedFeatureException(
-                        String.format("%s.%s is currently supported only when there is a single tool",
-                                ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                throw new UnsupportedFeatureException(String.format(
+                        "%s.%s is currently supported only when there is a single tool",
+                        ToolChoice.class.getSimpleName(), REQUIRED.name()));
             }
         }
 
@@ -394,12 +401,8 @@ public class AzureOpenAiChatModel implements ChatModel {
             toolThatMustBeExecuted = parameters.toolSpecifications().get(0);
         }
 
-        Response<AiMessage> response = generate(
-                request.messages(),
-                parameters.toolSpecifications(),
-                toolThatMustBeExecuted,
-                responseFormat
-        );
+        Response<AiMessage> response =
+                generate(request.messages(), parameters.toolSpecifications(), toolThatMustBeExecuted, responseFormat);
 
         return ChatResponse.builder()
                 .aiMessage(response.content())
@@ -446,8 +449,7 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -517,6 +519,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private String apiKey;
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
+        private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private Integer maxTokens;
         private Double temperature;
@@ -596,6 +599,17 @@ public class AzureOpenAiChatModel implements ChatModel {
          */
         public Builder tokenCredential(TokenCredential tokenCredential) {
             this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        /**
+         * Sets the {@code HttpClientProvider} to use for creating the HTTP client to communicate with the OpenAI api.
+         *
+         * @param httpClientProvider The {@code HttpClientProvider} to use
+         * @return builder
+         */
+        public Builder httpClientProvider(HttpClientProvider httpClientProvider) {
+            this.httpClientProvider = httpClientProvider;
             return this;
         }
 
@@ -745,6 +759,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                             endpoint,
                             serviceVersion,
                             tokenCredential,
+                            httpClientProvider,
                             deploymentName,
                             maxTokens,
                             temperature,
@@ -773,6 +788,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                             endpoint,
                             serviceVersion,
                             keyCredential,
+                            httpClientProvider,
                             deploymentName,
                             maxTokens,
                             temperature,
@@ -801,6 +817,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         endpoint,
                         serviceVersion,
                         apiKey,
+                        httpClientProvider,
                         deploymentName,
                         maxTokens,
                         temperature,

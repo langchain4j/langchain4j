@@ -13,8 +13,10 @@ public class ServerSentEventListenerUtils {
         try {
             runnable.run();
         } catch (Exception e) {
-            log.warn("An exception occurred during the invocation of the SSE listener. " +
-                    "This exception has been ignored.", e);
+            log.warn(
+                    "An exception occurred during the invocation of the SSE listener. "
+                            + "This exception has been ignored.",
+                    e);
         }
     }
 }

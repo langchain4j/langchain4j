@@ -10,7 +10,10 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -494,7 +497,7 @@ class GoogleAiGeminiStreamingChatModelIT {
     }
 
     @Test
-    void should_allow_array_as_response_schema() {
+    void should_allow_array_as_response_schema() throws JsonProcessingException {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -522,20 +525,35 @@ class GoogleAiGeminiStreamingChatModelIT {
         System.out.println("response = " + response);
 
         // then
-        Integer[] diceRolls = new Gson().fromJson(response.aiMessage().text(), Integer[].class);
+        Integer[] diceRolls = new ObjectMapper().readValue(response.aiMessage().text(), Integer[].class);
         assertThat(diceRolls.length).isEqualTo(3);
     }
 
-    private class Color {
+    private static class Color {
         private String name;
         private int red;
         private int green;
         private int blue;
         private boolean muted;
+
+        @JsonCreator
+        public Color(
+                @JsonProperty("name") String name,
+                @JsonProperty("red") int red,
+                @JsonProperty("green") int green,
+                @JsonProperty("blue") int blue,
+                @JsonProperty("muted") boolean muted
+        ) {
+            this.name = name;
+            this.red = red;
+            this.green = green;
+            this.blue = blue;
+            this.muted = muted;
+        }
     }
 
     @Test
-    void should_deserialize_to_POJO() {
+    void should_deserialize_to_POJO() throws JsonProcessingException {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -559,7 +577,7 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         System.out.println("response = " + response);
 
-        Color color = new Gson().fromJson(response.aiMessage().text(), Color.class);
+        Color color = new ObjectMapper().readValue(response.aiMessage().text(), Color.class);
 
         // then
         assertThat(color.name).isEqualToIgnoringCase("Cobalt blue");
