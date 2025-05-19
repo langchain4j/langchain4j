@@ -50,7 +50,7 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-ai-inference</artifactId>
-            <version>1.0.0-beta.4</version>
+            <version>1.0.0-beta.5</version>
         </dependency>
 
         <dependency>
