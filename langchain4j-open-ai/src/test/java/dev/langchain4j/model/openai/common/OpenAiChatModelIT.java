@@ -36,7 +36,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
-                .logRequests(true)
+                .logRequests(false) // images are huge in logs
                 .logResponses(true);
     }
 
