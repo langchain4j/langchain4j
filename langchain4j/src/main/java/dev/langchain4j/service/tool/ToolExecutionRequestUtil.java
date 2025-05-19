@@ -56,7 +56,7 @@ class ToolExecutionRequestUtil {
 
         try {
             return Json.fromJson(arguments, MAP_TYPE);
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             String normalizedArguments = removeTrailingComma(normalizeJsonString(arguments));
             return Json.fromJson(normalizedArguments, MAP_TYPE);
         }
