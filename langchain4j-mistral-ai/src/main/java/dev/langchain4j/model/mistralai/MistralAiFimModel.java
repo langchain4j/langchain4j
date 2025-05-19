@@ -40,25 +40,6 @@ public class MistralAiFimModel implements LanguageModel {
     private final List<String> stop;
     private final Integer maxRetries;
 
-    /**
-     * Constructs a MistralAiFimModel with the specified parameters.
-     *
-     * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified.
-     * @param apiKey       the API key for authentication
-     * @param modelName    the name of the Mistral AI model to use
-     * @param temperature  the temperature parameter for generating responses
-     * @param maxTokens    the maximum number of tokens to generate in a response
-     * @param minTokens    the minimum number of tokens to generate in a response
-     * @param topP         the top-p parameter for generating responses
-     * @param randomSeed   the random seed for generating responses
-     * @param stop         a list of tokens at which the model should stop generating tokens
-     * @param timeout      the timeout duration for API requests
-     *                     <p>
-     *                     The default value is 60 seconds.
-     * @param logRequests  a flag indicating whether to log API requests
-     * @param logResponses a flag indicating whether to log API responses
-     * @param maxRetries   the maximum number of retries for API requests. It uses the default value 3 if not specified.
-     */
     public MistralAiFimModel(Builder builder) {
         this.client = MistralAiClient.builder()
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
@@ -149,71 +130,127 @@ public class MistralAiFimModel implements LanguageModel {
         public Builder() {
         }
 
+        /**
+         * @param baseUrl the base URL of the Mistral AI API. It uses the default value if not specified.
+         * @return builder
+         */
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * @param apiKey the API key for authentication
+         * @return builder
+         */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * @param modelName the name of the Mistral AI model to use
+         * @return builder
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * @param modelName the name of the Mistral AI model to use
+         * @return builder
+         */
         public Builder modelName(MistralAiFimModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
+        /**
+         * @param temperature the temperature parameter for generating responses
+         * @return builder
+         */
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * @param maxTokens the maximum number of tokens to generate in a response
+         * @return builder
+         */
         public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
+        /**
+         * @param minTokens the minimum number of tokens to generate in a response
+         * @return builder
+         */
         public Builder minTokens(Integer minTokens) {
             this.minTokens = minTokens;
             return this;
         }
 
+        /**
+         * @param topP the top-p parameter for generating responses
+         * @return builder
+         */
         public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * @param randomSeed the random seed for generating responses
+         * @return builder
+         */
         public Builder randomSeed(Integer randomSeed) {
             this.randomSeed = randomSeed;
             return this;
         }
 
+        /**
+         * @param stop a list of tokens at which the model should stop generating tokens
+         * @return builder
+         */
         public Builder stop(List<String> stop) {
             this.stop = stop;
             return this;
         }
 
+        /**
+         * @param timeout the timeout duration for API requests. The default value is 60 seconds.
+         * @return builder
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * @param logRequests a flag indicating whether to log API requests
+         * @return builder
+         */
         public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * @param logResponses a flag indicating whether to log API responses
+         * @return builder
+         */
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
+        /**
+         * @param maxRetries the maximum number of retries for API requests. It uses the default value 2 if not specified.
+         * @return builder
+         */
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
