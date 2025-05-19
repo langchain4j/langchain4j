@@ -106,7 +106,7 @@ Note that calling the `filter` method multiple time on the same `McpToolProvider
 builder will result in a conjunction (AND) of all those filters.
 
 In order to allow applications to connect or disconnect from MCP servers at 
-runtime, it is also possible to dynamically add and remove tools and filters 
+runtime, it is also possible to dynamically add and remove clients and filters 
 to an existing `McpToolProvider` instance.
 
 To bind a tool provider to an AI service, simply use the `toolProvider` method
