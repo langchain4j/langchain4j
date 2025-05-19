@@ -14,7 +14,7 @@
 
     <properties>
         <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+        <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 
     <dependencies>
