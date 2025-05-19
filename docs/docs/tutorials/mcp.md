@@ -59,7 +59,7 @@ if there are multiple MCP clients, and it is necessary to disambiguate among the
 Finally, you create an MCP tool provider from the client:
 
 ```java
-ToolProvider toolProvider = McpToolProvider.builder()
+McpToolProvider toolProvider = McpToolProvider.builder()
     .mcpClients(mcpClient)
     .build();
 ```
@@ -78,7 +78,7 @@ reduce the possibility of hallucinations. The `McpToolProvider` allows to filter
 these tools by name as it follows:
 
 ```java
-ToolProvider toolProvider = McpToolProvider.builder()
+McpToolProvider toolProvider = McpToolProvider.builder()
     .mcpClients(mcpClient)
     .filterToolNames("get_issue", "get_issue_comments", "list_issues")
     .build();
@@ -94,7 +94,7 @@ but since they both have a tool named `echoInteger`, it takes only the one from
 the MCP client with key `numeric-mcp`:
 
 ```java
-ToolProvider toolProvider = McpToolProvider.builder()
+McpToolProvider toolProvider = McpToolProvider.builder()
     .mcpClients(mcpClient1, mcpClient2)
     .filter((mcpClient, tool) ->
             !tool.name().startsWith("echoInteger") || 
@@ -102,7 +102,12 @@ ToolProvider toolProvider = McpToolProvider.builder()
     .build();
 ```
 
-Note that it is possible to configure multiple filters for the same `McpToolProvider`.
+Note that calling the `filter` method multiple time on the same `McpToolProvider`
+builder will result in a conjunction (AND) of all those filters.
+
+In order to allow applications to connect or disconnect from MCP servers at 
+runtime, it is also possible to dynamically add and remove clients and filters 
+to an existing `McpToolProvider` instance.
 
 To bind a tool provider to an AI service, simply use the `toolProvider` method
 of an AI service builder:
