@@ -65,9 +65,9 @@ public interface ExceptionMapper {
             }
 
             Throwable rootCause = findRoot(e);
-            if (!(e instanceof UnresolvedModelServerException) && rootCause instanceof UnresolvedAddressException) {
+            if (rootCause instanceof UnresolvedAddressException) {
                 return new UnresolvedModelServerException(rootCause);
-            } else if (!(e instanceof TimeoutException) && rootCause instanceof SocketTimeoutException) {
+            } else if (rootCause instanceof SocketTimeoutException) {
                 return new TimeoutException(rootCause);
             }
 
