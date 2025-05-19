@@ -1,10 +1,8 @@
 package dev.langchain4j.service.tool;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.model.output.structured.Description;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -59,7 +57,7 @@ class ToolExecutionRequestUtil {
         try {
             return Json.fromJson(arguments, MAP_TYPE);
         } catch (Exception e) {
-            String normalizedArguments = normalizeJsonString(removeTrailingComma(arguments));
+            String normalizedArguments = removeTrailingComma(normalizeJsonString(arguments));
             return Json.fromJson(normalizedArguments, MAP_TYPE);
         }
     }
