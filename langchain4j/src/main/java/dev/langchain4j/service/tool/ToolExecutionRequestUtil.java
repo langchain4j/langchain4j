@@ -1,8 +1,10 @@
 package dev.langchain4j.service.tool;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.output.structured.Description;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -19,9 +21,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 class ToolExecutionRequestUtil {
 
     private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
-
     private static final Pattern LEADING_TRAILING_QUOTE_PATTERN = Pattern.compile("^\"|\"$");
-
     private static final Pattern ESCAPED_QUOTE_PATTERN = Pattern.compile("\\\\\"");
 
     private ToolExecutionRequestUtil() {
@@ -56,8 +56,12 @@ class ToolExecutionRequestUtil {
             return Map.of();
         }
 
-        String normalizeArguments = normalizeJsonString(arguments);
-        return Json.fromJson(removeTrailingComma(normalizeArguments), MAP_TYPE);
+        try {
+            return Json.fromJson(arguments, MAP_TYPE);
+        } catch (Exception e) {
+            String normalizedArguments = normalizeJsonString(removeTrailingComma(arguments));
+            return Json.fromJson(normalizedArguments, MAP_TYPE);
+        }
     }
 
     /**
