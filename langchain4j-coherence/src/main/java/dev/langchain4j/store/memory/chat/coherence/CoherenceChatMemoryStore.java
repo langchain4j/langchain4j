@@ -13,6 +13,7 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import java.util.ArrayList;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 /**
@@ -80,7 +81,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
     public static CoherenceChatMemoryStore create() {
         return builder().build();
     }
-    
+
     /**
      * Create a {@link CoherenceChatMemoryStore} that uses the
      * specified Coherence {@link NamedMap} name.
@@ -92,7 +93,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
     public static CoherenceChatMemoryStore create(String name) {
         return builder().name(name).build();
     }
-    
+
     /**
      * Create a {@link CoherenceChatMemoryStore} that uses the
      * specified Coherence {@link NamedMap} name.
@@ -104,7 +105,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
     public static CoherenceChatMemoryStore create(NamedMap<Object, String> map) {
         return new CoherenceChatMemoryStore(map);
     }
-    
+
     /**
      * Return a {@link Builder} to use to build a {@link CoherenceChatMemoryStore}.
      *
@@ -113,7 +114,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
     public static Builder builder() {
         return new Builder();
     }
-    
+
     /**
      * A builder to create {@link CoherenceChatMemoryStore} instances.
      */
@@ -122,23 +123,23 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
          * The name of the {@link NamedMap} to contain the {@link DocumentChunk document chunks}.
          */
         private String name = DEFAULT_MAP_NAME;
-    
+
         /**
          * The name of the {@link Session} to use to obtain the {@link NamedMap}.
          */
         private String sessionName;
-    
+
         /**
          * The {@link Session} to use to obtain the {@link NamedMap}.
          */
         private Session session;
-    
+
         /**
          * Create a {@link Builder}.
          */
         protected Builder() {
         }
-    
+
         /**
          * Set the name of the {@link NamedMap} that will hold the
          * {@link DocumentChunk document chunks}.
@@ -149,10 +150,10 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
          * @return this builder for fluent method calls
          */
         public Builder name(String name) {
-            this.name = name == null || name.isEmpty() ? DEFAULT_MAP_NAME : name;
+            this.name = isNullOrEmpty(name) ? DEFAULT_MAP_NAME : name;
             return this;
         }
-    
+
         /**
          * Set the name of the {@link Session} to use to obtain the
          * document chunk {@link NamedMap}.
@@ -166,7 +167,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
             this.session = null;
             return this;
         }
-    
+
         /**
          * Set the {@link Session} to use to obtain the
          * document chunk {@link NamedMap}.
@@ -180,7 +181,7 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
             this.sessionName = null;
             return this;
         }
-    
+
         /**
          * Build a {@link CoherenceChatMemoryStore} from the state in this builder.
          *
