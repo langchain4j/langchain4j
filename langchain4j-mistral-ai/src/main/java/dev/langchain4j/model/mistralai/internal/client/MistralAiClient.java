@@ -1,5 +1,7 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
@@ -44,7 +46,7 @@ public abstract class MistralAiClient {
         public abstract T build();
 
         public B baseUrl(String baseUrl) {
-            if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            if (isNullOrBlank(baseUrl)) {
                 throw new IllegalArgumentException("baseUrl cannot be null or empty");
             }
             this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
@@ -52,7 +54,7 @@ public abstract class MistralAiClient {
         }
 
         public B apiKey(String apiKey) {
-            if (apiKey == null || apiKey.trim().isEmpty()) {
+            if (isNullOrBlank(apiKey)) {
                 throw new IllegalArgumentException("MistralAI API Key must be defined. It can be generated here: https://console.mistral.ai/user/api-keys");
             }
             this.apiKey = apiKey;

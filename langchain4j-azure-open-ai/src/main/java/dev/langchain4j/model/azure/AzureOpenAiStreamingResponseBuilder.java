@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -41,7 +42,7 @@ class AzureOpenAiStreamingResponseBuilder {
         }
 
         List<ChatChoice> choices = completions.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
 
@@ -99,7 +100,7 @@ class AzureOpenAiStreamingResponseBuilder {
         }
 
         List<Choice> choices = completions.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
 
@@ -156,7 +157,7 @@ class AzureOpenAiStreamingResponseBuilder {
                     finishReasonFrom(finishReason)
             );
         }
-        
+
         if (!content.isEmpty()) {
             return Response.from(
                     AiMessage.from(content),
@@ -164,7 +165,7 @@ class AzureOpenAiStreamingResponseBuilder {
                     finishReasonFrom(finishReason)
             );
         }
-        
+
         return null;
     }
 
