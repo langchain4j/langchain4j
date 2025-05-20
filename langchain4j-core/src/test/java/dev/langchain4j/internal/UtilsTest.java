@@ -1,9 +1,11 @@
 package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,8 +18,10 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -131,14 +135,6 @@ class UtilsTest {
         assertThat(Utils.isNullOrEmpty((Iterable<?>) emptyList())).isTrue();
         assertThat(Utils.isNullOrEmpty((Iterable<?>) Collections.singletonList("abc")))
                 .isFalse();
-    }
-
-    @Test
-    @SuppressWarnings("deprecation")
-    void is_collection_empty() {
-        assertThat(Utils.isCollectionEmpty(null)).isTrue();
-        assertThat(Utils.isCollectionEmpty(emptyList())).isTrue();
-        assertThat(Utils.isCollectionEmpty(Collections.singletonList("abc"))).isFalse();
     }
 
     @Test
@@ -258,11 +254,35 @@ class UtilsTest {
     }
 
     @Test
+    void copy_if_not_null_set() {
+        assertThat(Utils.copyIfNotNull((Set<?>) null)).isNull();
+        assertThat(Utils.copyIfNotNull(emptySet())).isEmpty();
+        assertThat(Utils.copyIfNotNull(Set.of("one"))).containsExactly("one");
+        assertThat(Utils.copyIfNotNull(Set.of("one", "two"))).containsExactlyInAnyOrder("one", "two");
+    }
+
+    @Test
+    void copy_set() {
+        assertThat(Utils.copy((Set<?>) null)).isEmpty();
+        assertThat(Utils.copy(emptySet())).isEmpty();
+        assertThat(Utils.copy(Set.of("one"))).containsExactly("one");
+        assertThat(Utils.copy(Set.of("one", "two"))).containsExactlyInAnyOrder("one", "two");
+    }
+
+    @Test
     void copy_if_not_null_list() {
         assertThat(Utils.copyIfNotNull((List<?>) null)).isNull();
         assertThat(Utils.copyIfNotNull(emptyList())).isEmpty();
         assertThat(Utils.copyIfNotNull(singletonList("one"))).containsExactly("one");
         assertThat(Utils.copyIfNotNull(asList("one", "two"))).containsExactly("one", "two");
+    }
+
+    @Test
+    void copy_list() {
+        assertThat(Utils.copy((List<?>) null)).isEmpty();
+        assertThat(Utils.copy(emptyList())).isEmpty();
+        assertThat(Utils.copy(singletonList("one"))).containsExactly("one");
+        assertThat(Utils.copy(asList("one", "two"))).containsExactly("one", "two");
     }
 
     @Test
@@ -273,11 +293,58 @@ class UtilsTest {
     }
 
     @Test
+    void copy_map() {
+        assertThat(Utils.copy((Map<?, ?>) null)).isEmpty();
+        assertThat(Utils.copy(emptyMap())).isEmpty();
+        assertThat(Utils.copy(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
+    }
+
+    @Test
     void ensure_trailing_forward_slash() {
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com")).isEqualTo("https://example.com/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/")).isEqualTo("https://example.com/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a")).isEqualTo("https://example.com/a/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/")).isEqualTo("https://example.com/a/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/b")).isEqualTo("https://example.com/a/b/");
+    }
+
+    @Test
+    void shouldThrowNullPointerExceptionForNullInput() {
+        assertThat(toStringValueMap(null)).isNull();
+    }
+
+    @Test
+    void shouldReturnEmptyMapForEmptyInput() {
+        Map<String, Object> input = new HashMap<>();
+        Map<String, String> result = toStringValueMap(input);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldConvertValuesToString() {
+        Map<String, Object> input = new HashMap<>();
+        input.put("int", 42);
+        input.put("double", 3.14);
+        input.put("boolean", true);
+        input.put("string", "hello");
+
+        Map<String, String> result = toStringValueMap(input);
+
+        assertThat(result)
+                .containsEntry("int", "42")
+                .containsEntry("double", "3.14")
+                .containsEntry("boolean", "true")
+                .containsEntry("string", "hello");
+    }
+
+    @Test
+    void shouldHandleNullValuesCorrectly() {
+        Map<String, Object> input = new HashMap<>();
+        input.put("key1", null);
+
+        Map<String, String> result = toStringValueMap(input);
+
+        assertThat(result).containsEntry("key1", null);
     }
 }

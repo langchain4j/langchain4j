@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -7,7 +8,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -20,13 +20,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Handles response from a language model for AI Service that is streamed token-by-token.
  * Handles both regular (text) responses and responses with the request to execute one or multiple tools.
  */
+@Internal
 class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler {
 
     private final Logger log = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
@@ -67,8 +68,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.temporaryMemory = new ArrayList<>(temporaryMemory);
         this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
 
-        this.toolSpecifications = copyIfNotNull(toolSpecifications);
-        this.toolExecutors = copyIfNotNull(toolExecutors);
+        this.toolSpecifications = copy(toolSpecifications);
+        this.toolExecutors = copy(toolExecutors);
     }
 
     @Override
@@ -125,15 +126,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (completeResponseHandler != null) {
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
-                        .metadata(ChatResponseMetadata.builder()
-                                // TODO copy model-specific metadata
-                                .id(completeResponse.metadata().id())
-                                .modelName(completeResponse.metadata().modelName())
-                                .tokenUsage(TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage()))
-                                .finishReason(completeResponse.metadata().finishReason())
+                        .metadata(completeResponse.metadata().toBuilder()
+                                .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
                                 .build())
                         .build();
-                // TODO should completeResponseHandler accept all ChatResponses that happened?
                 completeResponseHandler.accept(finalChatResponse);
             }
         }
@@ -141,7 +137,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private void addToMemory(ChatMessage chatMessage) {
         if (context.hasChatMemory()) {
-            context.chatMemory(memoryId).add(chatMessage);
+            context.chatMemoryService.getOrCreateChatMemory(memoryId).add(chatMessage);
         } else {
             temporaryMemory.add(chatMessage);
         }
@@ -149,7 +145,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private List<ChatMessage> messagesToSend(Object memoryId) {
         return context.hasChatMemory()
-                ? context.chatMemory(memoryId).messages()
+                ? context.chatMemoryService.getOrCreateChatMemory(memoryId).messages()
                 : temporaryMemory;
     }
 

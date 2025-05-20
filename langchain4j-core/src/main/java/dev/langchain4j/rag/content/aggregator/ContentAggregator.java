@@ -1,6 +1,5 @@
 package dev.langchain4j.rag.content.aggregator;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -23,7 +22,6 @@ import java.util.Map;
  * @see DefaultContentAggregator
  * @see ReRankingContentAggregator
  */
-@Experimental
 public interface ContentAggregator {
 
     /**

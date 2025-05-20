@@ -35,7 +35,6 @@ For HTTP, you need two URLs, one for starting the SSE channel and one for submit
 ```java
 McpTransport transport = new HttpMcpTransport.Builder()
     .sseUrl("http://localhost:3001/sse")
-    .postUrl("http://localhost:3001/message")
     .logRequests(true) // if you want to see the traffic in the log
     .logResponses(true)
     .build();
@@ -47,17 +46,21 @@ To create an MCP client from the transport:
 
 ```java
 McpClient mcpClient = new DefaultMcpClient.Builder()
+    .key("MyMCPClient")
     .transport(transport)
     .build();
 ```
+
+Note that the client key is optional, but it is recommended to set it, especially
+if there are multiple MCP clients, and it is necessary to disambiguate among them.
 
 ### MCP Tool Provider
 
 Finally, you create an MCP tool provider from the client:
 
 ```java
-ToolProvider toolProvider = McpToolProvider.builder()
-    .mcpClients(List.of(mcpClient))
+McpToolProvider toolProvider = McpToolProvider.builder()
+    .mcpClients(mcpClient)
     .build();
 ```
 
@@ -69,12 +72,49 @@ which means that the tool provider will ignore the error from one server and
 continue with the other servers. If you set it to `true`, a failure from any 
 server will cause the tool provider to throw an exception.
 
+Moreover, a MCP servers may often provide tens of tools, while a given AI service
+may only need a few of them, both to prevent the usage of an unwanted tool and to 
+reduce the possibility of hallucinations. The `McpToolProvider` allows to filter 
+these tools by name as it follows:
+
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+    .mcpClients(mcpClient)
+    .filterToolNames("get_issue", "get_issue_comments", "list_issues")
+    .build();
+```
+
+In this way the AI service configured with this `ToolProvider` could only use
+those mentioned 3 tools, allowing it to read existing issues, but preventing it
+from creating new ones. More in general, a `ToolProvider` allows to filter tools
+through a `BiPredicate<McpClient, ToolSpecification>`. This could be also useful
+when multiple MCP clients expose tools with the same and then conflicting names. 
+For example, the following `ToolProvider` takes tools from two MCP clients
+but since they both have a tool named `echoInteger`, it takes only the one from 
+the MCP client with key `numeric-mcp`:
+
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+    .mcpClients(mcpClient1, mcpClient2)
+    .filter((mcpClient, tool) ->
+            !tool.name().startsWith("echoInteger") || 
+            mcpClient.key().equals("numeric-mcp"))
+    .build();
+```
+
+Note that calling the `filter` method multiple time on the same `McpToolProvider`
+builder will result in a conjunction (AND) of all those filters.
+
+In order to allow applications to connect or disconnect from MCP servers at 
+runtime, it is also possible to dynamically add and remove clients and filters 
+to an existing `McpToolProvider` instance.
+
 To bind a tool provider to an AI service, simply use the `toolProvider` method
 of an AI service builder:
 
 ```java
 Bot bot = AiServices.builder(Bot.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .toolProvider(toolProvider)
     .build();
 ```
@@ -97,6 +137,34 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
     .logMessageHandler(new MyLogMessageHandler())
     .build();
 ```
+
+## Resources
+
+To obtain a list of [MCP resources](https://modelcontextprotocol.io/docs/concepts/resources) 
+on the server, use `client.listResources()`, or `client.listResourceTemplates()` in case of resource templates.
+This will return a list of `McpResource` objects (or `McpResourceTemplate` respectively). These
+contain the metadata of the resource, most importantly the URI.
+
+To obtain the actual contents of the resource, use `client.readResource(uri)`, supplying the URI of the resource.
+This returns a `McpReadResourceResult`, which contains a  list of `McpResourceContents` objects (there may be more resource contents on a single URI, for 
+example if the URI represents a directory). Each `McpResourceContents` object represents either a 
+binary blob (`McpBlobResourceContents`) or text (`McpTextResourceContents`).
+
+## Prompts
+
+To obtain a list of [MCP prompts](https://modelcontextprotocol.io/docs/concepts/prompts)
+from the server, use `client.listPrompts()`. This method returns a List of `McpPrompt`s. A `McpPrompt`
+contains information about the name and arguments of the prompt.
+
+To render the actual contents of a prompt, use `client.getPrompt(name, arguments)`. A rendered prompt can contain one to many
+messages and these are represented as `McpPromptMessage` objects. Each `McpPromptMessage` contains the role of the message (`user`, `assistant`,...)
+and the actual content of the message. The supported message content types at the moment
+are: `McpTextContent`, `McpImageContent`, and `McpEmbeddedResource`. 
+
+You can use `McpPromptMessage.toChatMessage()` to convert it into a generic `dev.langchain4j.data.message.ChatMessage`
+from the LangChain4j core API. This is not possible in all cases though. For example, it will throw an
+exception if the prompt message's `role` is `assistant` and it contains content other than text. Converting
+messages with binary blob content to a `ChatMessage` is unsupported regardless of the role.
 
 ## Using the GitHub MCP server through Docker
 
@@ -144,7 +212,7 @@ Here's the implementation:
 ```java
 public static void main(String[] args) throws Exception {
 
-    ChatLanguageModel model = OpenAiChatModel.builder()
+    ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
         .logRequests(true)
@@ -165,7 +233,7 @@ public static void main(String[] args) throws Exception {
         .build();
 
     Bot bot = AiServices.builder(Bot.class)
-        .chatLanguageModel(model)
+        .chatModel(model)
         .toolProvider(toolProvider)
         .build();
 
@@ -177,6 +245,13 @@ public static void main(String[] args) throws Exception {
     }
 }
 ```
+
+:::note
+Not all LLMs support tools equally well.
+The ability to understand, select, and correctly use tools depends heavily on the specific model and its capabilities.
+Some models may not support tools at all, while others might require careful prompt engineering
+or additional system instructions.
+:::
 
 > **Note**: This example uses Docker and therefore executes a Docker command available in `/usr/local/bin/docker` (change the path according to your operating system). If you want to use Podman instead of Docker, change the command accordingly.
 

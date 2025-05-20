@@ -48,6 +48,7 @@ jobs:
           mvn -B -U verify \
               --fail-at-end \
               -Dmaven.test.failure.ignore=true \
+              -Dtinylog.writer.level=info \
               ${{ matrix.mvn_opts }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -65,7 +66,6 @@ jobs:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           GCP_PROJECT_NUM: ${{ secrets.GCP_PROJECT_NUM }}
           GCP_VERTEXAI_ENDPOINT: ${{ secrets.GCP_VERTEXAI_ENDPOINT }}
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
@@ -82,7 +82,7 @@ jobs:
           VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
-          CI_DELAY_SECONDS_AZURE_AI_SEARCH: 3
+          CI_DELAY_SECONDS_AZURE_AI_SEARCH: 4
           CI_DELAY_SECONDS_AZURE_OPENAI: 1
           CI_DELAY_SECONDS_BEDROCK: 2
           CI_DELAY_SECONDS_GITHUB_MODELS: 7

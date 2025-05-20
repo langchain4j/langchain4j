@@ -2,7 +2,7 @@ package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
-import dev.langchain4j.mcp.client.protocol.PingResponse;
+import dev.langchain4j.mcp.client.protocol.McpPingResponse;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -21,14 +21,17 @@ public class McpOperationHandler {
     private static final Logger log = LoggerFactory.getLogger(McpOperationHandler.class);
     private final McpTransport transport;
     private final Consumer<McpLogMessage> logMessageConsumer;
+    private final Runnable onToolListUpdate;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
             McpTransport transport,
-            Consumer<McpLogMessage> logMessageConsumer) {
+            Consumer<McpLogMessage> logMessageConsumer,
+            Runnable onToolListUpdate) {
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
+        this.onToolListUpdate = onToolListUpdate;
     }
 
     public void handle(JsonNode message) {
@@ -41,23 +44,28 @@ public class McpOperationHandler {
                 if (message.has("method")) {
                     String method = message.get("method").asText();
                     if (method.equals("ping")) {
-                        transport.executeOperationWithoutResponse(new PingResponse(messageId));
+                        transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
                         return;
                     }
                 }
                 log.warn("Received response for unknown message id: {}", messageId);
             }
-        } else if (message.has("method") && message.get("method").asText().equals("notifications/message")) {
-            // this is a log message
-            if (message.has("params")) {
-                if (logMessageConsumer != null) {
-                    logMessageConsumer.accept(McpLogMessage.fromJson(message.get("params")));
+        } else if (message.has("method")) {
+            String method = message.get("method").asText();
+            if (method.equals("notifications/message")) {
+                // this is a log message
+                if (message.has("params")) {
+                    if (logMessageConsumer != null) {
+                        logMessageConsumer.accept(McpLogMessage.fromJson(message.get("params")));
+                    }
+                } else {
+                    log.warn("Received log message without params: {}", message);
                 }
+            } else if (method.equals("notifications/tools/list_changed")) {
+                onToolListUpdate.run();
             } else {
-                log.warn("Received log message without params: {}", message);
+                log.warn("Received unknown message: {}", message);
             }
-        } else {
-            log.warn("Received unknown message: {}", message);
         }
     }
 

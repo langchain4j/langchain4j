@@ -1,5 +1,5 @@
 ---
-sidebar_position: 13
+sidebar_position: 14
 ---
 
 # Ollama
@@ -13,7 +13,7 @@ https://ollama.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.0.0-beta5</version>
 </dependency>
 ```
 

@@ -9,14 +9,13 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -35,17 +34,13 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonSchemaElementFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
@@ -53,17 +48,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AzureOpenAiChatModelIT {
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({
-            "gpt-4o,        gpt-4o"
+            "gpt-4o"
     })
-    void should_generate_answer_and_return_token_usage_and_finish_reason_stop(String deploymentName, String gptVersion) {
+    void should_generate_answer_and_return_token_usage_and_finish_reason_stop(String deploymentName) {
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -81,18 +75,17 @@ class AzureOpenAiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({
-            "gpt-4o,        gpt-4o"
+            "gpt-4o"
     })
-    void should_generate_answer_and_return_token_usage_and_finish_reason_length(String deploymentName, String gptVersion) {
+    void should_generate_answer_and_return_token_usage_and_finish_reason_length(String deploymentName) {
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI" +
                         "_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .maxTokens(3)
                 .logRequestsAndResponses(true)
                 .build();
@@ -111,17 +104,16 @@ class AzureOpenAiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({
-            "gpt-4o,        gpt-4o"
+            "gpt-4o"
     })
-    void should_execute_tool_forcefully_then_answer(String deploymentName, String gptVersion) {
+    void should_execute_tool_forcefully_then_answer(String deploymentName) {
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -133,7 +125,11 @@ class AzureOpenAiChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
                 .description("Get the current weather")
-                .parameters(getToolParameters())
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location", "The city and state, e.g. San Francisco, CA")
+                        .addEnumProperty("unit", List.of("celsius", "fahrenheit"))
+                        .required("location", "unit")
+                        .build())
                 .build();
 
         ChatRequest request = ChatRequest.builder()
@@ -180,16 +176,15 @@ class AzureOpenAiChatModelIT {
         assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({
-            "gpt-4o,        gpt-4o"
+            "gpt-4o"
     })
-    void should_call_function_with_no_argument(String deploymentName, String gptVersion) {
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+    void should_call_function_with_no_argument(String deploymentName) {
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -219,17 +214,16 @@ class AzureOpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({
-            "gpt-4o,        gpt-4o"
+            "gpt-4o"
     })
-    void should_call_three_functions_in_parallel(String deploymentName, String gptVersion) {
+    void should_call_three_functions_in_parallel(String deploymentName) {
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -239,18 +233,27 @@ class AzureOpenAiChatModelIT {
                 ToolSpecification.builder()
                         .name("sum")
                         .description("returns a sum of two numbers")
-                        .addParameter("first", INTEGER)
-                        .addParameter("second", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("first")
+                                .addIntegerProperty("second")
+                                .required("first", "second")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("square")
                         .description("returns the square of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("cube")
                         .description("returns the cube of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build()
         );
 
@@ -290,7 +293,7 @@ class AzureOpenAiChatModelIT {
 
         // then
         assertThat(aiMessage2.text()).contains("4", "16", "512");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -301,16 +304,15 @@ class AzureOpenAiChatModelIT {
         assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({
-            "gpt-4o,        gpt-4o"
+            "gpt-4o"
     })
-    void should_use_json_format(String deploymentName, String gptVersion) {
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+    void should_use_json_format(String deploymentName) {
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .responseFormat(ResponseFormat.JSON)
                 .logRequestsAndResponses(true)
                 .build();
@@ -327,17 +329,16 @@ class AzureOpenAiChatModelIT {
     /**
      * @deprecated Should be removed when `AzureOpenAiChatModel.responseFormat(ChatCompletionsResponseFormat chatCompletionsResponseFormat)` is removed.
      */
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({
-            "gpt-4o,        gpt-4o"
+            "gpt-4o"
     })
     @Deprecated(forRemoval = true)
-    void should_support_deprecated_json_format(String deploymentName, String gptVersion) {
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+    void should_support_deprecated_json_format(String deploymentName) {
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .responseFormat(new ChatCompletionsJsonResponseFormat())
                 .logRequestsAndResponses(true)
                 .build();
@@ -365,7 +366,7 @@ class AzureOpenAiChatModelIT {
         // given
         String modelNameString = modelName.toString();
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(modelNameString)
@@ -380,27 +381,6 @@ class AzureOpenAiChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).isNotBlank();
-    }
-
-    private static ToolParameters getToolParameters() {
-        Map<String, Map<String, Object>> properties = new HashMap<>();
-
-        Map<String, Object> location = new HashMap<>();
-        location.put("type", "string");
-        location.put("description", "The city and state, e.g. San Francisco, CA");
-        properties.put("location", location);
-
-        Map<String, Object> unit = new HashMap<>();
-        unit.put("type", "string");
-        unit.put("enum", Arrays.asList("celsius", "fahrenheit"));
-        properties.put("unit", unit);
-
-        List<String> required = Arrays.asList("location", "unit");
-
-        return ToolParameters.builder()
-                .properties(properties)
-                .required(required)
-                .build();
     }
 
     // This is the method we offer to OpenAI to be used as a function_call.
@@ -489,7 +469,7 @@ class AzureOpenAiChatModelIT {
                 .responseFormat(responseFormat)
                 .build();
 
-        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+        ChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName("gpt-4o-mini")

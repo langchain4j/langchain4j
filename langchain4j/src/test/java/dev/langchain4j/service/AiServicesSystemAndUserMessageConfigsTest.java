@@ -1,6 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -22,7 +22,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 class AiServicesSystemAndUserMessageConfigsTest {
 
     @Spy
-    ChatLanguageModel model = ChatModelMock.thatAlwaysResponds("Berlin");
+    ChatModel model = ChatModelMock.thatAlwaysResponds("Berlin");
 
     @AfterEach
     void afterEach() {
@@ -43,6 +43,11 @@ class AiServicesSystemAndUserMessageConfigsTest {
         }
         try {
             verify(model, atLeastOnce()).listeners();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).provider();
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }
@@ -145,7 +150,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -163,7 +168,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -181,7 +186,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -200,7 +205,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -218,7 +223,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -237,7 +242,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -255,7 +260,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -273,7 +278,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -291,7 +296,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -309,7 +314,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -327,7 +332,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
@@ -346,7 +351,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
@@ -365,7 +370,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 
@@ -385,7 +390,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
@@ -404,7 +409,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 
@@ -424,7 +429,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
@@ -443,7 +448,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 
@@ -462,7 +467,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
@@ -481,7 +486,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
@@ -500,7 +505,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 
@@ -519,7 +524,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "This message should be ignored")
                 .build();
 
@@ -539,7 +544,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         // when-then
@@ -554,7 +559,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 

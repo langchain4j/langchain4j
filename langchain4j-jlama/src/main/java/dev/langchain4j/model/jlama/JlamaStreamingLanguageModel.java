@@ -10,7 +10,6 @@ import dev.langchain4j.model.jlama.spi.JlamaStreamingLanguageModelBuilderFactory
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Builder;
 
 import java.nio.file.Path;
 import java.util.Optional;
@@ -25,7 +24,6 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
     private final Integer maxTokens;
     private final UUID id = UUID.randomUUID();
 
-    @Builder
     public JlamaStreamingLanguageModel(Path modelCachePath,
                                        String modelName,
                                        String authToken,
@@ -36,7 +34,7 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
                                        Float temperature,
                                        Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
+        JlamaModel jlamaModel = RetryUtils.withRetryMappingExceptions(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 2);
 
         JlamaModel.Loader loader = jlamaModel.loader();
         if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
@@ -77,9 +75,72 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     public static class JlamaStreamingLanguageModelBuilder {
+        private Path modelCachePath;
+        private String modelName;
+        private String authToken;
+        private Integer threadCount;
+        private Boolean quantizeModelAtRuntime;
+        private Path workingDirectory;
+        private DType workingQuantizedType;
+        private Float temperature;
+        private Integer maxTokens;
+
         public JlamaStreamingLanguageModelBuilder() {
             // This is public, so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public JlamaStreamingLanguageModelBuilder modelCachePath(Path modelCachePath) {
+            this.modelCachePath = modelCachePath;
+            return this;
+        }
+
+        public JlamaStreamingLanguageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public JlamaStreamingLanguageModelBuilder authToken(String authToken) {
+            this.authToken = authToken;
+            return this;
+        }
+
+        public JlamaStreamingLanguageModelBuilder threadCount(Integer threadCount) {
+            this.threadCount = threadCount;
+            return this;
+        }
+
+        public JlamaStreamingLanguageModelBuilder quantizeModelAtRuntime(Boolean quantizeModelAtRuntime) {
+            this.quantizeModelAtRuntime = quantizeModelAtRuntime;
+            return this;
+        }
+
+        public JlamaStreamingLanguageModelBuilder workingDirectory(Path workingDirectory) {
+            this.workingDirectory = workingDirectory;
+            return this;
+        }
+
+        public JlamaStreamingLanguageModelBuilder workingQuantizedType(DType workingQuantizedType) {
+            this.workingQuantizedType = workingQuantizedType;
+            return this;
+        }
+
+        public JlamaStreamingLanguageModelBuilder temperature(Float temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public JlamaStreamingLanguageModelBuilder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public JlamaStreamingLanguageModel build() {
+            return new JlamaStreamingLanguageModel(this.modelCachePath, this.modelName, this.authToken, this.threadCount, this.quantizeModelAtRuntime, this.workingDirectory, this.workingQuantizedType, this.temperature, this.maxTokens);
+        }
+
+        public String toString() {
+            return "JlamaStreamingLanguageModel.JlamaStreamingLanguageModelBuilder(modelCachePath=" + this.modelCachePath + ", modelName=" + this.modelName + ", authToken=" + this.authToken + ", threadCount=" + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", workingDirectory=" + this.workingDirectory + ", workingQuantizedType=" + this.workingQuantizedType + ", temperature=" + this.temperature + ", maxTokens=" + this.maxTokens + ")";
         }
     }
 }

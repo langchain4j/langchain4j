@@ -32,7 +32,7 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector();
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
         assertThat(injected).isEqualTo(userMessage);
@@ -49,10 +49,10 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector();
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo("""
+        assertThat(injected.singleText()).isEqualTo("""
                 Tell me about bananas.
                 
                 Answer using the following information:
@@ -70,10 +70,10 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector();
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         
@@ -100,10 +100,10 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector(metadataKeysToInclude);
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         
@@ -127,10 +127,10 @@ class DefaultContentInjectorTest {
         ContentInjector injector = new DefaultContentInjector();
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         
@@ -167,10 +167,10 @@ class DefaultContentInjectorTest {
         ContentInjector injector = contentInjectorProvider.apply(metadataKeysToInclude);
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         
@@ -215,10 +215,10 @@ class DefaultContentInjectorTest {
         ContentInjector injector = contentInjectorProvider.apply(promptTemplate);
 
         // when
-        UserMessage injected = injector.inject(contents, userMessage);
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
+        assertThat(injected.singleText()).isEqualTo(
                 """
                         Tell me about bananas.
                         Bananas are awesome!

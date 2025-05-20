@@ -11,7 +11,6 @@ import com.azure.json.JsonOptions;
 import com.azure.json.JsonReader;
 import com.azure.json.implementation.DefaultJsonReader;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -36,7 +35,7 @@ class InternalAzureOpenAiHelperTest {
         boolean logRequestsAndResponses = true;
 
         OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
-                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null, null);
+                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, null, logRequestsAndResponses, null, null);
 
         assertThat(client).isNotNull();
     }
@@ -51,7 +50,7 @@ class InternalAzureOpenAiHelperTest {
         boolean logRequestsAndResponses = true;
 
         OpenAIAsyncClient client = InternalAzureOpenAiHelper.setupAsyncClient(
-                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null, null);
+                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, null, logRequestsAndResponses, null, null);
 
         assertThat(client).isNotNull();
     }
@@ -92,7 +91,6 @@ class InternalAzureOpenAiHelperTest {
         toolSpecifications.add(ToolSpecification.builder()
                 .name("test-tool")
                 .description("test-description")
-                .parameters(ToolParameters.builder().build())
                 .build());
 
         List<ChatCompletionsToolDefinition> tools = InternalAzureOpenAiHelper.toToolDefinitions(toolSpecifications);

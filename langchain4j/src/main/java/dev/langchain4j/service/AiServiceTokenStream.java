@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -15,11 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyList;
 
+@Internal
 public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messages;
@@ -42,19 +44,19 @@ public class AiServiceTokenStream implements TokenStream {
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
 
-    public AiServiceTokenStream(List<ChatMessage> messages,
-                                List<ToolSpecification> toolSpecifications,
-                                Map<String, ToolExecutor> toolExecutors,
-                                List<Content> retrievedContents,
-                                AiServiceContext context,
-                                Object memoryId) {
-        this.messages = ensureNotEmpty(messages, "messages");
-        this.toolSpecifications = copyIfNotNull(toolSpecifications);
-        this.toolExecutors = copyIfNotNull(toolExecutors);
-        this.retrievedContents = retrievedContents;
-        this.context = ensureNotNull(context, "context");
-        this.memoryId = ensureNotNull(memoryId, "memoryId");
-        ensureNotNull(context.streamingChatModel, "streamingChatModel");
+    /**
+     * Creates a new instance of {@link AiServiceTokenStream} with the given parameters.
+     *
+     * @param parameters the parameters for creating the token stream
+     */
+    public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
+        this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
+        this.toolSpecifications = copy(parameters.toolSpecifications());
+        this.toolExecutors = copy(parameters.toolExecutors());
+        this.retrievedContents = copy(parameters.gretrievedContents());
+        this.context = ensureNotNull(parameters.context(), "context");
+        ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
+        this.memoryId = ensureNotNull(parameters.memoryId(), "memoryId");
     }
 
     @Override
@@ -118,8 +120,7 @@ public class AiServiceTokenStream implements TokenStream {
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
                 toolSpecifications,
-                toolExecutors
-        );
+                toolExecutors);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);
@@ -142,8 +143,8 @@ public class AiServiceTokenStream implements TokenStream {
             throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");
         }
         if (onErrorInvoked + ignoreErrorsInvoked != 1) {
-            throw new IllegalConfigurationException("One of [onError, ignoreErrors] " +
-                    "must be invoked on TokenStream exactly 1 time");
+            throw new IllegalConfigurationException(
+                    "One of [onError, ignoreErrors] " + "must be invoked on TokenStream exactly 1 time");
         }
     }
 

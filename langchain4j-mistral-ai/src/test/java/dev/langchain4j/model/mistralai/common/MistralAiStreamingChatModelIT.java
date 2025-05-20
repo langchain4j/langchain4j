@@ -1,28 +1,25 @@
 package dev.langchain4j.model.mistralai.common;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
+
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
-
 import java.util.List;
-
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
 
 class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final StreamingChatLanguageModel MISTRAL_STREAMING_CHAT_MODEL = MistralAiStreamingChatModel.builder()
+    static final StreamingChatModel MISTRAL_STREAMING_CHAT_MODEL = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(OPEN_MIXTRAL_8X22B)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
-        return List.of(
-                MISTRAL_STREAMING_CHAT_MODEL
-        );
+    protected List<StreamingChatModel> models() {
+        return List.of(MISTRAL_STREAMING_CHAT_MODEL);
     }
 
     @Override
@@ -51,16 +48,6 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO implement
-    }
-
-    @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // TODO implement
     }
@@ -77,6 +64,11 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean assertResponseModel() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // TODO implement
     }
 }

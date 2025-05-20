@@ -5,10 +5,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -21,7 +21,6 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
@@ -29,9 +28,9 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertResponse;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.convertResponse;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toFunctions;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiMessages;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -39,7 +38,7 @@ import static java.util.Collections.singletonList;
 /**
  * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
  */
-public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
+public class LocalAiStreamingChatModel implements StreamingChatModel {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -47,7 +46,6 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
     private final Double topP;
     private final Integer maxTokens;
 
-    @Builder
     public LocalAiStreamingChatModel(String baseUrl,
                                      String modelName,
                                      Double temperature,
@@ -76,8 +74,8 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 
@@ -191,9 +189,66 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     public static class LocalAiStreamingChatModelBuilder {
+        private String baseUrl;
+        private String modelName;
+        private Double temperature;
+        private Double topP;
+        private Integer maxTokens;
+        private Duration timeout;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
         public LocalAiStreamingChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public LocalAiStreamingChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public LocalAiStreamingChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public LocalAiStreamingChatModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public LocalAiStreamingChatModelBuilder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public LocalAiStreamingChatModelBuilder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public LocalAiStreamingChatModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public LocalAiStreamingChatModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public LocalAiStreamingChatModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public LocalAiStreamingChatModel build() {
+            return new LocalAiStreamingChatModel(this.baseUrl, this.modelName, this.temperature, this.topP, this.maxTokens, this.timeout, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "LocalAiStreamingChatModel.LocalAiStreamingChatModelBuilder(baseUrl=" + this.baseUrl + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", topP=" + this.topP + ", maxTokens=" + this.maxTokens + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

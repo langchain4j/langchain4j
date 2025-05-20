@@ -12,16 +12,18 @@ import com.google.protobuf.ListValue;
 import com.google.protobuf.NullValue;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import org.junit.jupiter.api.Test;
 
 class FunctionCallHelperTest {
+
     @Test
     void should_unwrap_proto_values() {
         // check basic values
@@ -78,14 +80,11 @@ class FunctionCallHelperTest {
         ToolSpecification toolSpec = ToolSpecification.builder()
                 .description("Give the weather forecast for a location")
                 .name("getWeatherForecast")
-                .addParameter(
-                        "location",
-                        JsonSchemaProperty.STRING,
-                        JsonSchemaProperty.description("the location to get the weather forecast for"))
-                .addOptionalParameter(
-                        "days",
-                        JsonSchemaProperty.INTEGER,
-                        JsonSchemaProperty.description("the number of days in the forecast"))
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location", "the location to get the weather forecast for")
+                        .addIntegerProperty("days", "the number of days in the forecast")
+                        .required("location")
+                        .build())
                 .build();
 
         // when
