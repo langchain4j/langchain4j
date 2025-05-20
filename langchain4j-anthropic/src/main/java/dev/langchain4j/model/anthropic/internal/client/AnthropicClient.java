@@ -1,5 +1,7 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -45,7 +47,7 @@ public abstract class AnthropicClient {
         }
 
         public B apiKey(String apiKey) {
-            if (apiKey == null || apiKey.trim().isEmpty()) {
+            if (isNullOrBlank(apiKey)) {
                 throw new IllegalArgumentException("Anthropic API key must be defined. " +
                         "It can be generated here: https://console.anthropic.com/settings/keys");
             }

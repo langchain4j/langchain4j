@@ -155,7 +155,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         }
 
         List<ChatCompletionChoice> choices = partialResponse.choices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
 

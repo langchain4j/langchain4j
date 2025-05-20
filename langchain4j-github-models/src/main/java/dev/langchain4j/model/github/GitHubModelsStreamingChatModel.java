@@ -332,7 +332,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatModel {
                                StreamingResponseHandler<AiMessage> handler) {
 
         List<StreamingChatChoiceUpdate> choices = chatCompletions.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
         StreamingChatResponseMessageUpdate message = choices.get(0).getDelta();

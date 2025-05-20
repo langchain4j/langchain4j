@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.finishReasonFrom;
 import static java.util.stream.Collectors.toList;
 
@@ -46,7 +47,7 @@ class GitHubModelsStreamingResponseBuilder {
         }
 
         List<StreamingChatChoiceUpdate> choices = streamingChatCompletionsUpdate.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
 

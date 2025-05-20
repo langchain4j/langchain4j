@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.couchbase;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.manager.search.SearchIndex;
@@ -231,7 +233,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (ids == null || embeddings == null || ids.isEmpty() || embeddings.isEmpty()) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             return;
         }
 
@@ -256,7 +258,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) {
+        if (isNullOrEmpty(ids)) {
             throw new IllegalArgumentException("ids cannot be null or empty");
         }
         ids.forEach(collection::remove);
