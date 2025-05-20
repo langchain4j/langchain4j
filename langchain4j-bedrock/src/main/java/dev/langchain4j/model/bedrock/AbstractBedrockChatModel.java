@@ -209,7 +209,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<ContentBlock> convertContents(List<Content> contents) {
-        if (contents == null || contents.isEmpty()) {
+        if (isNullOrEmpty(contents)) {
             return emptyList();
         }
 

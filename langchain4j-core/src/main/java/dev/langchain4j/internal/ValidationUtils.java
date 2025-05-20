@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 /**
  * Utility class for validating method arguments.
@@ -65,7 +67,7 @@ public class ValidationUtils {
      *           @throws IllegalArgumentException if the collection is null or empty.
      */
     public static <T extends Collection<?>> T ensureNotEmpty(T collection, String name) {
-        if (collection == null || collection.isEmpty()) {
+        if (isNullOrEmpty(collection)) {
             throw illegalArgument("%s cannot be null or empty", name);
         }
 
@@ -99,7 +101,7 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the collection is null or empty.
      */
     public static <K, V> Map<K, V> ensureNotEmpty(Map<K, V> map, String name) {
-        if (map == null || map.isEmpty()) {
+        if (isNullOrEmpty(map)) {
             throw illegalArgument("%s cannot be null or empty", name);
         }
 
@@ -114,7 +116,7 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the string is null or blank.
      */
     public static String ensureNotBlank(String string, String name) {
-        if (string == null || string.trim().isEmpty()) {
+        if (isNullOrBlank(string)) {
             throw illegalArgument("%s cannot be null or blank", name);
         }
 

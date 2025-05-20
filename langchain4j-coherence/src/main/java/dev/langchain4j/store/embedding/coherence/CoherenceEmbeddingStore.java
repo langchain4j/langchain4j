@@ -106,7 +106,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) {
+        if (isNullOrEmpty(ids)) {
             throw new IllegalArgumentException("ids cannot be null or empty");
         }
 
@@ -339,7 +339,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @return this builder for fluent method calls
          */
         public Builder name(String name) {
-            this.name = name == null || name.isEmpty() ? DEFAULT_MAP_NAME : name;
+            this.name = isNullOrEmpty(name) ? DEFAULT_MAP_NAME : name;
             return this;
         }
 
