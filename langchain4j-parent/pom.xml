@@ -48,7 +48,7 @@
         <kotlin.compiler.jvmTarget>${java.version}</kotlin.compiler.jvmTarget>
         <kotlin.compiler.languageVersion>1.9</kotlin.compiler.languageVersion>
         <kotlin.compiler.apiVersion>1.9</kotlin.compiler.apiVersion>
-        <kotlin-compiler.version>2.1.20</kotlin-compiler.version>
+        <kotlin-compiler.version>2.1.21</kotlin-compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
