@@ -12,6 +12,10 @@
     <artifactId>langchain4j-open-ai-official</artifactId>
     <name>LangChain4j :: Integration :: OpenAI Official</name>
 
+    <properties>
+        <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>

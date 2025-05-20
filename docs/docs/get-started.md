@@ -69,10 +69,9 @@ Please note that `langchain4j-bom` always contains the latest versions of all La
 
 :::note
 Please note that while the `langchain4j-bom` version is `1.0.0`,
-many of the modules are versioned `1.0.0-beta{n}`,
-so there might be some breaking changes in the furture.
+many of the modules still have version `1.0.0-beta{n}`,
+so there might be some breaking changes for these modules in the furture.
 :::
-
 </details>
 
 <details>

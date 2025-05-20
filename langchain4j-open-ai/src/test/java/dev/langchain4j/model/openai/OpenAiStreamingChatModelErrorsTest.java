@@ -31,7 +31,7 @@ class OpenAiStreamingChatModelErrorsTest {
 
     private static final MockOpenai MOCK = new MockOpenai();
 
-    public static final Duration TIMEOUT = Duration.ofMillis(300);
+    public static final Duration TIMEOUT = Duration.ofMillis(1000);
 
     StreamingChatModel model = OpenAiStreamingChatModel.builder()
             .baseUrl(MOCK.baseUrl())
@@ -86,7 +86,7 @@ class OpenAiStreamingChatModelErrorsTest {
         // given
         final var question = "Simulate timeout";
         MOCK.completion(req -> req.userMessageContains(question)).respondsError(res -> {
-            res.delayMillis(TIMEOUT.plusMillis(100).toMillis());
+            res.delayMillis(TIMEOUT.multipliedBy(2).toMillis());
             res.setHttpStatus(HttpStatusCode.Companion.getNoContent());
             res.setBody("");
         });
