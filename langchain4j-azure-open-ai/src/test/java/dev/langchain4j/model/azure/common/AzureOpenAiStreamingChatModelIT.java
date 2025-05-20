@@ -18,7 +18,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-4o-mini")
-            .logRequestsAndResponses(true)
+            .logRequestsAndResponses(false) // images are huge in logs
             .timeout(ofSeconds(120))
             .build();
 
@@ -26,7 +26,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-4o-mini")
-            .logRequestsAndResponses(true)
+            .logRequestsAndResponses(false) // images are huge in logs
             .strictJsonSchema(true)
             .build();
 

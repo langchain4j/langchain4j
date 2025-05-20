@@ -150,4 +150,55 @@ public class MultipleMcpToolsIT {
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isEqualTo("3");
     }
+
+    @Test
+    public void dynamicToolsUpdate() {
+        McpToolProvider toolProvider = McpToolProvider.builder()
+                .mcpClients(mcpBaseClient)
+                .filterToolNames("echoInteger")
+                .build();
+
+        ToolProviderResult toolProviderResult = toolProvider.provideTools(null);
+        Set<ToolSpecification> tools = toolProviderResult.tools().keySet();
+        assertThat(tools).hasSize(1);
+        assertThat(tools).extracting(ToolSpecification::name).containsExactlyInAnyOrder("echoInteger");
+
+        ToolExecutor executor = toolProviderResult.toolExecutorByName("echoInteger");
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("echoInteger")
+                .arguments("{\"input\": 2}")
+                .build();
+        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+        // use tool from mcpBaseClient
+        assertThat(toolExecutionResultString).isEqualTo("2");
+
+        // adding the mcpNumericClient causes the tool to be duplicated
+        toolProvider.addMcpClient(mcpNumericClient);
+        assertThatThrownBy(() -> toolProvider.provideTools(null))
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("echoInteger");
+
+        // filter out the base-mcp version of echoInteger
+        toolProvider.addFilter((mcpClient, tool) -> mcpClient.key().equals("numeric-mcp"));
+        toolProviderResult = toolProvider.provideTools(null);
+        assertThat(toolProviderResult.tools()).hasSize(1);
+        toolExecutionResultString = toolProviderResult.toolExecutorByName("echoInteger").execute(toolExecutionRequest, null);
+        // use tool from mcpNumericClient
+        assertThat(toolExecutionResultString).isEqualTo("3");
+
+        // resetting the filter causes the duplication again
+        toolProvider.resetFilters();
+        assertThatThrownBy(() -> toolProvider.provideTools(null))
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("echoInteger");
+
+        // remove the mcpBaseClient to avoid duplication
+        toolProvider.removeMcpClient(mcpBaseClient);
+        toolProviderResult = toolProvider.provideTools(null);
+        // all filters are removed, so we have all tools from mcpNumericClient
+        assertThat(toolProviderResult.tools()).hasSize(4);
+        toolExecutionResultString = toolProviderResult.toolExecutorByName("echoInteger").execute(toolExecutionRequest, null);
+        // use tool from mcpNumericClient
+        assertThat(toolExecutionResultString).isEqualTo("3");
+    }
 }
