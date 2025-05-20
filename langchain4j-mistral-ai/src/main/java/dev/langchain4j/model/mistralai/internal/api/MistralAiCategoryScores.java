@@ -14,87 +14,81 @@ import java.util.StringJoiner;
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-@JsonDeserialize(builder = MistralCategories.MistralCategoriesBuilder.class)
-public class MistralCategories {
+@JsonDeserialize(builder = MistralAiCategoryScores.MistralCategoryScoresBuilder.class)
+public class MistralAiCategoryScores {
 
-    private final Boolean sexual;
-    private final Boolean hateAndDiscrimination;
-    private final Boolean violenceAndThreats;
-    private final Boolean dangerousAndCriminalContent;
-    private final Boolean selfHarm;
-    private final Boolean health;
-    private final Boolean law;
-    private final Boolean pii;
+    private Double sexual;
+    private Double hateAndDiscrimination;
+    private Double violenceAndThreats;
+    private Double dangerousAndCriminalContent;
+    private Double selfHarm;
+    private Double health;
+    private Double law;
+    private Double pii;
 
-    private MistralCategories(MistralCategoriesBuilder builder) {
-        this.selfHarm = builder.selfharm;
+    private MistralAiCategoryScores(MistralCategoryScoresBuilder builder) {
         this.sexual = builder.sexual;
         this.hateAndDiscrimination = builder.hateAndDiscrimination;
         this.violenceAndThreats = builder.violenceAndThreats;
         this.dangerousAndCriminalContent = builder.dangerousAndCriminalContent;
+        this.selfHarm = builder.selfHarm;
         this.health = builder.health;
         this.law = builder.law;
         this.pii = builder.pii;
     }
 
-    public Boolean getSexual() {
+    public Double getSexual() {
         return sexual;
     }
 
-    public Boolean getHateAndDiscrimination() {
+    public Double getHateAndDiscrimination() {
         return hateAndDiscrimination;
     }
 
-    public Boolean getViolenceAndThreats() {
+    public Double getViolenceAndThreats() {
         return violenceAndThreats;
     }
 
-    public Boolean getDangerousAndCriminalContent() {
+    public Double getDangerousAndCriminalContent() {
         return dangerousAndCriminalContent;
     }
 
-    public Boolean getSelfHarm() {
+    public Double getSelfHarm() {
         return selfHarm;
     }
 
-    public Boolean getHealth() {
+    public Double getHealth() {
         return health;
     }
 
-    public Boolean getLaw() {
+    public Double getLaw() {
         return law;
     }
 
-    public Boolean getPii() {
+    public Double getPii() {
         return pii;
     }
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 67 * hash + Objects.hashCode(this.sexual);
-        hash = 67 * hash + Objects.hashCode(this.hateAndDiscrimination);
-        hash = 67 * hash + Objects.hashCode(this.violenceAndThreats);
-        hash = 67 * hash + Objects.hashCode(this.dangerousAndCriminalContent);
-        hash = 67 * hash + Objects.hashCode(this.selfHarm);
-        hash = 67 * hash + Objects.hashCode(this.health);
-        hash = 67 * hash + Objects.hashCode(this.law);
-        hash = 67 * hash + Objects.hashCode(this.pii);
+        int hash = 7;
+        hash = 37 * hash + Objects.hashCode(this.sexual);
+        hash = 37 * hash + Objects.hashCode(this.hateAndDiscrimination);
+        hash = 37 * hash + Objects.hashCode(this.violenceAndThreats);
+        hash = 37 * hash + Objects.hashCode(this.dangerousAndCriminalContent);
+        hash = 37 * hash + Objects.hashCode(this.selfHarm);
+        hash = 37 * hash + Objects.hashCode(this.health);
+        hash = 37 * hash + Objects.hashCode(this.law);
+        hash = 37 * hash + Objects.hashCode(this.pii);
         return hash;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final MistralCategories other = (MistralCategories) obj;
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
+        final MistralAiCategoryScores other = (MistralAiCategoryScores) obj;
         return Objects.equals(this.sexual, other.sexual)
                 && Objects.equals(this.hateAndDiscrimination, other.hateAndDiscrimination)
                 && Objects.equals(this.violenceAndThreats, other.violenceAndThreats)
@@ -107,7 +101,7 @@ public class MistralCategories {
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", "MistralCategories [", "]")
+        return new StringJoiner(", ", "MistralAiCategoryScores [", "]")
                 .add("sexual=" + this.getSexual())
                 .add("hateAndDiscrimination=" + this.getHateAndDiscrimination())
                 .add("violenceAndThreats=" + this.getViolenceAndThreats())
@@ -119,72 +113,68 @@ public class MistralCategories {
                 .toString();
     }
 
-    public static MistralCategoriesBuilder builder() {
-        return new MistralCategoriesBuilder();
+    public static MistralCategoryScoresBuilder builder() {
+        return new MistralCategoryScoresBuilder();
     }
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public static class MistralCategoriesBuilder {
+    public static class MistralCategoryScoresBuilder {
 
-        private Boolean sexual;
-        private Boolean hateAndDiscrimination;
-        private Boolean violenceAndThreats;
-        private Boolean dangerousAndCriminalContent;
-        private Boolean selfharm;
-        private Boolean health;
-        private Boolean law;
-        private Boolean pii;
+        private Double sexual;
+        private Double hateAndDiscrimination;
+        private Double violenceAndThreats;
+        private Double dangerousAndCriminalContent;
+        private Double selfHarm;
+        private Double health;
+        private Double law;
+        private Double pii;
 
-        private MistralCategoriesBuilder() {}
+        private MistralCategoryScoresBuilder() {}
 
-        public MistralCategoriesBuilder sexual(Boolean sexual) {
+        public MistralCategoryScoresBuilder sexual(Double sexual) {
             this.sexual = sexual;
             return this;
         }
 
-        public Boolean getHateAndDiscrimination() {
-            return hateAndDiscrimination;
-        }
-
-        public MistralCategoriesBuilder hateAndDiscrimination(Boolean hateAndDiscrimination) {
+        public MistralCategoryScoresBuilder hateAndDiscrimination(Double hateAndDiscrimination) {
             this.hateAndDiscrimination = hateAndDiscrimination;
             return this;
         }
 
-        public MistralCategoriesBuilder violenceAndThreats(Boolean violenceAndThreats) {
+        public MistralCategoryScoresBuilder violenceAndThreats(Double violenceAndThreats) {
             this.violenceAndThreats = violenceAndThreats;
             return this;
         }
 
-        public MistralCategoriesBuilder dangerousAndCriminalContent(Boolean dangerousAndCriminalContent) {
+        public MistralCategoryScoresBuilder dangerousAndCriminalContent(Double dangerousAndCriminalContent) {
             this.dangerousAndCriminalContent = dangerousAndCriminalContent;
             return this;
         }
 
-        public MistralCategoriesBuilder selfharm(Boolean selfHarm) {
-            this.selfharm = selfHarm;
+        public MistralCategoryScoresBuilder selfharm(Double selfHarm) {
+            this.selfHarm = selfHarm;
             return this;
         }
 
-        public MistralCategoriesBuilder health(Boolean health) {
+        public MistralCategoryScoresBuilder health(Double health) {
             this.health = health;
             return this;
         }
 
-        public MistralCategoriesBuilder law(Boolean law) {
+        public MistralCategoryScoresBuilder law(Double law) {
             this.law = law;
             return this;
         }
 
-        public MistralCategoriesBuilder pii(Boolean pii) {
+        public MistralCategoryScoresBuilder pii(Double pii) {
             this.pii = pii;
             return this;
         }
 
-        public MistralCategories build() {
-            return new MistralCategories(this);
+        public MistralAiCategoryScores build() {
+            return new MistralAiCategoryScores(this);
         }
     }
 }
