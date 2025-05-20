@@ -38,5 +38,6 @@
         <maven.install.skip>true</maven.install.skip>
         <maven.javadoc.skip>true</maven.javadoc.skip>
         <maven.source.skip>true</maven.source.skip>
+        <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 </project>
