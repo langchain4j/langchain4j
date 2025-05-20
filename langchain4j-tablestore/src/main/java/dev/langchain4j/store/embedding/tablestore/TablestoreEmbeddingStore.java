@@ -67,6 +67,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
@@ -222,7 +223,7 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) {
+        if (isNullOrEmpty(ids)) {
             throw Exceptions.illegalArgument("ids cannot be null or empty");
         }
         log.debug("remove all:{}", ids);
