@@ -1,6 +1,7 @@
 package dev.langchain4j.service.common;
 
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.checkMemoryWithImmediateTool;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
@@ -11,7 +12,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -21,8 +26,10 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import dev.langchain4j.service.tool.ToolExecution;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -173,5 +180,57 @@ public abstract class AbstractStreamingAiServiceIT {
 
     protected boolean assertFinishReason() {
         return true;
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_keep_memory_consistent_when_streaming_using_immediate_tool(StreamingChatModel model) {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        var assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(model)
+                .tools(new AbstractAiServiceWithToolsIT.ImmediateToolWithPrimitiveParameters())
+                .chatMemory(chatMemory)
+                .build();
+
+        List<ToolExecution> toolExecutions = new ArrayList<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        // when
+        assistant.chat("How much is 37 plus 87?")
+                .onPartialResponse(ignored -> {})
+                .onToolExecuted(toolExecutions::add)
+                .onCompleteResponse(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
+
+        ChatResponse chatResponse = future.join();
+        assertThat(chatResponse.aiMessage()).isNull();
+        assertThat(toolExecutions).hasSize(1);
+        assertThat(toolExecutions.get(0).result()).isEqualTo("124");
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(3);
+        checkMemoryWithImmediateTool(messages, "How much is 37 plus 87?", "124");
+
+        List<ToolExecution> toolExecutions2 = new ArrayList<>();
+        CompletableFuture<ChatResponse> future2 = new CompletableFuture<>();
+
+        // Check that the memory is not corrupted and conversation can continue
+        assistant.chat("Now add 47 to the previous result")
+                .onPartialResponse(ignored -> {})
+                .onToolExecuted(toolExecutions2::add)
+                .onCompleteResponse(future2::complete)
+                .onError(future2::completeExceptionally)
+                .start();
+
+        ChatResponse chatResponse2 = future2.join();
+        assertThat(chatResponse2.aiMessage()).isNull();
+        assertThat(toolExecutions2).hasSize(1);
+        assertThat(toolExecutions2.get(0).result()).isEqualTo("171");
+
+        messages = chatMemory.messages();
+        assertThat(messages).hasSize(6);
+        checkMemoryWithImmediateTool(messages.subList(3, 6), "Now add 47 to the previous result", "171");
     }
 }

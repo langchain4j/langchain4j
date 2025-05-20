@@ -271,6 +271,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
+                        boolean isResultType = typeHasRawClass(returnType, Result.class);
+
                         ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
                                 chatResponse,
                                 parameters,
@@ -278,9 +280,18 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.chatModel,
                                 chatMemory,
                                 memoryId,
-                                toolServiceContext.toolExecutors());
+                                toolServiceContext.toolExecutors(),
+                                isResultType);
 
                         chatResponse = toolServiceResult.chatResponse();
+
+                        if (chatResponse == null) {
+                            return Result.builder()
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .finishReason(FinishReason.STOP)
+                                    .toolExecutions(toolServiceResult.toolExecutions())
+                                    .build();
+                        }
 
                         FinishReason finishReason = chatResponse.metadata().finishReason();
                         var response = invokeOutputGuardrails(
@@ -292,7 +303,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
 
-                        if (typeHasRawClass(returnType, Result.class)) {
+                        if (isResultType) {
                             return Result.builder()
                                     .content(parsedResponse)
                                     .tokenUsage(chatResponse.tokenUsage())

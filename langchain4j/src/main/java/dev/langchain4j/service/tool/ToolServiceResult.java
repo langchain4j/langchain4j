@@ -19,6 +19,11 @@ public class ToolServiceResult {
         this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
     }
 
+    public ToolServiceResult(List<ToolExecution> toolExecutions) {
+        this.chatResponse = null;
+        this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
+    }
+
     public ChatResponse chatResponse() {
         return chatResponse;
     }
