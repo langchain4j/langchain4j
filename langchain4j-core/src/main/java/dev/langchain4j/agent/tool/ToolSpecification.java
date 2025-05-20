@@ -16,6 +16,7 @@ public class ToolSpecification {
     private final String name;
     private final String description;
     private final JsonObjectSchema parameters;
+    private final ReturnBehavior returnBehavior;
 
     /**
      * Creates a {@link ToolSpecification} from a {@link Builder}.
@@ -26,6 +27,7 @@ public class ToolSpecification {
         this.name = builder.name;
         this.description = builder.description;
         this.parameters = builder.parameters;
+        this.returnBehavior = builder.returnBehavior;
     }
 
     /**
@@ -51,6 +53,13 @@ public class ToolSpecification {
      */
     public JsonObjectSchema parameters() {
         return parameters;
+    }
+
+    /**
+     * Returns the return behavior of the tool.
+     */
+    public ReturnBehavior returnBehavior() {
+        return returnBehavior;
     }
 
     @Override
@@ -101,6 +110,7 @@ public class ToolSpecification {
         private String name;
         private String description;
         private JsonObjectSchema parameters;
+        private ReturnBehavior returnBehavior;
 
         /**
          * Creates a {@link Builder}.
@@ -127,6 +137,17 @@ public class ToolSpecification {
          */
         public Builder description(String description) {
             this.description = description;
+            return this;
+        }
+
+        /**
+         * Sets the {@code returnBehavior}.
+         *
+         * @param returnBehavior the {@code returnBehavior}
+         * @return {@code this}
+         */
+        public Builder returnBehavior(ReturnBehavior returnBehavior) {
+            this.returnBehavior = returnBehavior;
             return this;
         }
 
