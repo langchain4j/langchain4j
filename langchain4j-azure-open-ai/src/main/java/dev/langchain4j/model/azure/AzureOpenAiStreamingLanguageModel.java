@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -310,7 +311,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
     private static void handle(Completions completions, StreamingResponseHandler<String> handler) {
 
         List<Choice> choices = completions.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
         String content = choices.get(0).getText();

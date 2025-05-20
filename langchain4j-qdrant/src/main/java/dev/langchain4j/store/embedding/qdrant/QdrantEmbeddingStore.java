@@ -178,7 +178,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   @Override
   public void removeAll(Collection<String> ids) {
-      if (ids == null || ids.isEmpty()) {
+      if (isNullOrEmpty(ids)) {
           throw new IllegalArgumentException("ids cannot be null or empty");
       }
       try {

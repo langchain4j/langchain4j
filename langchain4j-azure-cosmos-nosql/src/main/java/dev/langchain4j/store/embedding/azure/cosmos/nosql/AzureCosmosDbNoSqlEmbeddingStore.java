@@ -92,7 +92,7 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
                     "cosmosVectorEmbeddingPolicy cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
         }
 
-        if (cosmosVectorIndexes == null || cosmosVectorIndexes.isEmpty()) {
+        if (isNullOrEmpty(cosmosVectorIndexes)) {
             throw new IllegalArgumentException(
                     "cosmosVectorIndexes cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
         }

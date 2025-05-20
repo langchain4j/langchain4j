@@ -111,12 +111,12 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             Integer m,
             Integer efConstruction,
             Integer efSearch) {
-        if (mongoClient == null && (connectionString == null || connectionString.isEmpty())) {
+        if (mongoClient == null && isNullOrEmpty(connectionString)) {
             throw new IllegalArgumentException("You need to pass either the mongoClient or " +
                     "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
         }
 
-        if (databaseName == null || databaseName.isEmpty() || collectionName == null || collectionName.isEmpty()) {
+        if (isNullOrEmpty(databaseName) || isNullOrEmpty(collectionName)) {
             throw new IllegalArgumentException("databaseName and collectionName needs to be provided.");
         }
         createIndex = getOrDefault(createIndex, false);

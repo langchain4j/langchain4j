@@ -77,7 +77,7 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         List<ChatCompletionChoice> choices = partialResponse.choices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
 
@@ -146,7 +146,7 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         List<CompletionChoice> choices = partialResponse.choices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
 

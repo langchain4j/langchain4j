@@ -1,5 +1,7 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
 
@@ -33,7 +35,7 @@ public abstract class OvhAiClient {
         }
 
         public B apiKey(String apiKey) {
-            if (apiKey == null || apiKey.trim().isEmpty()) {
+            if (isNullOrBlank(apiKey)) {
                 throw new IllegalArgumentException(
                     "OVHcloud API key must be defined. " +
                     "It can be generated here: https://endpoints.ai.cloud.ovh.net/"
