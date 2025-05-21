@@ -53,9 +53,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -66,29 +63,26 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
  * @deprecated please use {@link BedrockChatModel} instead
  */
 @Deprecated(forRemoval = true, since = "1.0.0-beta2")
-@Getter
-@SuperBuilder
 public class BedrockAnthropicMessageChatModel
         extends AbstractBedrockChatModel<BedrockAnthropicMessageChatModelResponse> {
 
     private static final Logger log = LoggerFactory.getLogger(BedrockAnthropicMessageChatModel.class);
 
     private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
-
-    @Builder.Default
-    private final int topK = 250;
-
-    @Builder.Default
-    private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
-
-    @Builder.Default
-    private final String model = Types.AnthropicClaude3SonnetV1.getValue();
-
-    @Builder.Default
-    private final ObjectMapper objectMapper = new ObjectMapper()
+    private static final int DEFAULT_TOP_K = 250;
+    private static final String DEFAULT_MODEL = Types.AnthropicClaude3SonnetV1.getValue();
+    private static final ObjectMapper DEFAULT_OBJECT_MAPPER = new ObjectMapper()
             .enable(INDENT_OUTPUT)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
+    private final int topK;
+
+    private final String anthropicVersion;
+
+    private final String model;
+
+    private final ObjectMapper objectMapper;
 
     @Override
     protected String getModelId() {
@@ -471,7 +465,6 @@ public class BedrockAnthropicMessageChatModel
      * Bedrock Anthropic model ids.
      * See <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html">this</a> for more details.
      */
-    @Getter
     public enum Types {
         AnthropicClaudeInstantV1("anthropic.claude-instant-v1"),
         AnthropicClaudeV2("anthropic.claude-v2"),
@@ -484,6 +477,122 @@ public class BedrockAnthropicMessageChatModel
 
         Types(String modelID) {
             this.value = modelID;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
+    @Override
+    public int getTopK() {
+        return topK;
+    }
+
+    @Override
+    public String getAnthropicVersion() {
+        return anthropicVersion;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
+    }
+
+    protected BedrockAnthropicMessageChatModel(BedrockAnthropicMessageChatModelBuilder<?, ?> builder) {
+        super(builder);
+        if (builder.isTopKSet) {
+            this.topK = builder.topK;
+        } else {
+            this.topK = DEFAULT_TOP_K;
+        }
+
+        if (builder.isAnthropicVersionSet) {
+            this.anthropicVersion = builder.anthropicVersion;
+        } else {
+            this.anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
+        }
+
+        if (builder.isModelSet) {
+            this.model = builder.model;
+        } else {
+            this.model = DEFAULT_MODEL;
+        }
+
+        if (builder.isObjectMapperSet) {
+            this.objectMapper = builder.objectMapper;
+        } else {
+            this.objectMapper = DEFAULT_OBJECT_MAPPER;
+        }
+    }
+
+    public static BedrockAnthropicMessageChatModelBuilder<?, ?> builder() {
+        return new BedrockAnthropicMessageChatModelBuilderImpl();
+    }
+
+    public abstract static class BedrockAnthropicMessageChatModelBuilder<
+                    C extends BedrockAnthropicMessageChatModel, B extends BedrockAnthropicMessageChatModelBuilder<C, B>>
+            extends AbstractBedrockChatModel.AbstractBedrockChatModelBuilder<
+                    BedrockAnthropicMessageChatModelResponse, C, B> {
+        private boolean isTopKSet;
+        private int topK;
+        private boolean isAnthropicVersionSet;
+        private String anthropicVersion;
+        private boolean isModelSet;
+        private String model;
+        private boolean isObjectMapperSet;
+        private ObjectMapper objectMapper;
+
+        @Override
+        public B topK(int topK) {
+            this.topK = topK;
+            this.isTopKSet = true;
+            return self();
+        }
+
+        @Override
+        public B anthropicVersion(String anthropicVersion) {
+            this.anthropicVersion = anthropicVersion;
+            this.isAnthropicVersionSet = true;
+            return self();
+        }
+
+        public B model(String model) {
+            this.model = model;
+            this.isModelSet = true;
+            return self();
+        }
+
+        public B objectMapper(ObjectMapper objectMapper) {
+            this.objectMapper = objectMapper;
+            this.isObjectMapperSet = true;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        @Override
+        public String toString() {
+            return "BedrockAnthropicMessageChatModel.BedrockAnthropicMessageChatModelBuilder(super=" + super.toString()
+                    + ", topK$value=" + this.topK + ", anthropicVersion$value=" + this.anthropicVersion
+                    + ", model$value=" + this.model + ", objectMapper$value=" + this.objectMapper + ")";
+        }
+    }
+
+    private static final class BedrockAnthropicMessageChatModelBuilderImpl
+            extends BedrockAnthropicMessageChatModelBuilder<
+                    BedrockAnthropicMessageChatModel, BedrockAnthropicMessageChatModelBuilderImpl> {
+        protected BedrockAnthropicMessageChatModelBuilderImpl self() {
+            return this;
+        }
+
+        public BedrockAnthropicMessageChatModel build() {
+            return new BedrockAnthropicMessageChatModel(this);
         }
     }
 }

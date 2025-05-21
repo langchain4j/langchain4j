@@ -23,9 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamRequest;
@@ -34,16 +33,20 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithRespo
 /**
  * Bedrock Streaming chat model
  */
-@Slf4j
-@Getter
-@SuperBuilder
 public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBedrockChatModel
         implements StreamingChatModel {
+
+    private static final Logger log = LoggerFactory.getLogger(AbstractBedrockStreamingChatModel.class);
 
     private volatile BedrockRuntimeAsyncClient asyncClient;
 
     static class StreamingResponse {
         public String completion;
+    }
+
+    protected AbstractBedrockStreamingChatModel(AbstractBedrockStreamingChatModelBuilder<?, ?> b) {
+        super(b);
+        this.asyncClient = b.asyncClient;
     }
 
     @Override
@@ -173,5 +176,26 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
     @Override
     public ModelProvider provider() {
         return AMAZON_BEDROCK;
+    }
+
+    public abstract static class AbstractBedrockStreamingChatModelBuilder<
+                    C extends AbstractBedrockStreamingChatModel,
+                    B extends AbstractBedrockStreamingChatModelBuilder<C, B>>
+            extends AbstractSharedBedrockChatModel.AbstractSharedBedrockChatModelBuilder<C, B> {
+        private BedrockRuntimeAsyncClient asyncClient;
+
+        public B asyncClient(BedrockRuntimeAsyncClient asyncClient) {
+            this.asyncClient = asyncClient;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        public String toString() {
+            return "AbstractBedrockStreamingChatModel.AbstractBedrockStreamingChatModelBuilder(super="
+                    + super.toString() + ", asyncClient=" + this.asyncClient + ")";
+        }
     }
 }
