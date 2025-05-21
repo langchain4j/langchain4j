@@ -77,12 +77,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     DefaultAnthropicClient(Builder builder) {
-        if (isNullOrBlank(builder.apiKey)) {
-            throw new IllegalArgumentException("Anthropic API key must be defined. " +
-                    "It can be generated here: https://console.anthropic.com/settings/keys");
-        }
-
-        this.apiKey = builder.apiKey;
+        this.apiKey = ensureNotBlank(builder.apiKey, "%s", "Anthropic API key must be defined. " +
+                "It can be generated here: https://console.anthropic.com/settings/keys");
         this.version = ensureNotBlank(builder.version, "version");
         this.beta = builder.beta;
         this.logResponses = builder.logResponses;
