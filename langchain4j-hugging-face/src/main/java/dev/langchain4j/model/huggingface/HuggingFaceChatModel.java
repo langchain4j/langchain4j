@@ -1,6 +1,6 @@
 package dev.langchain4j.model.huggingface;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.joining;
 
@@ -215,10 +215,7 @@ public class HuggingFaceChatModel implements ChatModel {
         }
 
         public HuggingFaceChatModel build() {
-            if (isNullOrBlank(accessToken)) {
-                throw new IllegalArgumentException(
-                        "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
-            }
+            ensureNotBlank(accessToken, "%s", "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
             return new HuggingFaceChatModel(this);
         }
     }

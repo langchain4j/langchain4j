@@ -1,6 +1,6 @@
 package dev.langchain4j.mcp.client.transport.stdio;
 
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -158,9 +158,7 @@ public class StdioMcpTransport implements McpTransport {
         }
 
         public StdioMcpTransport build() {
-            if (isNullOrEmpty(command)) {
-                throw new IllegalArgumentException("Missing command");
-            }
+            ensureNotEmpty(command, "command");
             if (environment == null) {
                 environment = Map.of();
             }
