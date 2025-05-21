@@ -52,6 +52,27 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
+    void ensure_not_empty_string() {
+        {
+            String str = " abc  ";
+            assertThat(ValidationUtils.ensureNotEmpty(str, "test")).isSameAs(str);
+        }
+
+        {
+            String str = "";
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(str, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty((String)null, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+    }
+
+    @Test
     void ensure_not_empty_collection() {
         {
             List<Object> list = new ArrayList<>();
@@ -85,6 +106,13 @@ class ValidationUtilsTest implements WithAssertions {
             assertThatExceptionOfType(IllegalArgumentException.class)
                     .isThrownBy(() -> ValidationUtils.ensureNotEmpty(array, "test"))
                     .withMessageContaining("test cannot be null or empty");
+        }
+
+        {
+            Object[] array = {};
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(array, "%s", "Parameterized type has no type arguments."))
+                    .withMessageContaining("Parameterized type has no type arguments.");
         }
 
         {

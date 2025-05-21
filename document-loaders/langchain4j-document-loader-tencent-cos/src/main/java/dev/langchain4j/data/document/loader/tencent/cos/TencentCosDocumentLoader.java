@@ -141,11 +141,8 @@ public class TencentCosDocumentLoader {
         }
 
         private COSCredentialsProvider createCredentialsProvider() {
-            if (tencentCredentials != null) {
-                return tencentCredentials.toCredentialsProvider();
-            }
-
-            throw new IllegalArgumentException("Tencent credentials are required.");
+            ensureNotNull(tencentCredentials, "%s", "Tencent credentials are required.");
+            return tencentCredentials.toCredentialsProvider();
         }
 
         private COSClient createCosClient(COSCredentialsProvider cosCredentialsProvider) {
