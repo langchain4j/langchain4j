@@ -15,6 +15,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * A {@link ChatMemoryStore} backed by an Oracle Coherence named map.
@@ -69,10 +70,9 @@ public class CoherenceChatMemoryStore implements ChatMemoryStore {
     }
 
     private void validateId(Object memoryId) {
-        if (memoryId == null) {
-            throw new IllegalArgumentException("memoryId cannot be null");
-        }
+        ensureNotNull(memoryId, "memoryId");
     }
+
     /**
      * Create a default {@link CoherenceChatMemoryStore}.
      *

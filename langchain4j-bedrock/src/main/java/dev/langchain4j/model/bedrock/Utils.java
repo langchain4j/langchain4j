@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Objects.isNull;
 
 import dev.langchain4j.Internal;
@@ -8,6 +9,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
+
 import software.amazon.awssdk.services.bedrockruntime.model.ImageFormat;
 
 /**
@@ -74,9 +76,7 @@ class Utils {
      * @throws IllegalArgumentException if the image is null
      */
     public static String extractAndValidateFormat(Image image) {
-        if (image == null) {
-            throw new IllegalArgumentException("Image cannot be null");
-        }
+        ensureNotNull(image, "image");
 
         // First try to extract from mime type
         if (image.mimeType() != null && !image.mimeType().isBlank()) {

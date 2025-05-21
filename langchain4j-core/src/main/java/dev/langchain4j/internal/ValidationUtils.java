@@ -83,10 +83,22 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the array is null or empty.
      */
     public static <T> T[] ensureNotEmpty(T[] array, String name) {
-        if (array == null || array.length == 0) {
-            throw illegalArgument("%s cannot be null or empty", name);
-        }
+        return ensureNotEmpty(array, "%s cannot be null or empty", name);
+    }
 
+    /**
+     * Ensures that the given array is not null and not empty.
+     * @param array The array to check.
+     * @param format The format of the exception message.
+     * @param args The arguments for the exception message.
+     * @return The array if it is not null and not empty.
+     * @param <T> The component type of the array.
+     * @throws IllegalArgumentException if the array is null or empty.
+     */
+    public static <T> T[] ensureNotEmpty(T[] array, String format, Object... args) {
+        if (array == null || array.length == 0) {
+            throw illegalArgument(format, args);
+        }
         return array;
     }
 
@@ -109,6 +121,32 @@ public class ValidationUtils {
     }
 
     /**
+     * Ensures that the given string is not null and not empty.
+     * @param string The string to check.
+     * @param name The name of the string to be used in the exception message.
+     * @return The string if it is not null and not empty.
+     * @throws IllegalArgumentException if the string is null or empty.
+     */
+    public static String ensureNotEmpty(String string, String name) {
+        return ensureNotEmpty(string, "%s cannot be null or empty", name);
+    }
+
+    /**
+     * Ensures that the given string is not null and not empty.
+     * @param string The string to check.
+     * @param format The format of the exception message.
+     * @param args The arguments for the exception message.
+     * @return The string if it is not null and not empty.
+     * @throws IllegalArgumentException if the string is null or empty.
+     */
+    public static String ensureNotEmpty(String string, String format, Object... args) {
+        if (isNullOrEmpty(string)) {
+            throw illegalArgument(format, args);
+        }
+        return string;
+    }
+
+    /**
      * Ensures that the given string is not null and not blank.
      * @param string The string to check.
      * @param name The name of the string to be used in the exception message.
@@ -116,10 +154,21 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the string is null or blank.
      */
     public static String ensureNotBlank(String string, String name) {
-        if (isNullOrBlank(string)) {
-            throw illegalArgument("%s cannot be null or blank", name);
-        }
+        return ensureNotBlank(string, "%s cannot be null or blank", name);
+    }
 
+    /**
+     * Ensures that the given string is not null and not blank.
+     * @param string The string to check.
+     * @param format The format of the exception message.
+     * @param args The arguments for the exception message.
+     * @return The string if it is not null and not blank.
+     * @throws IllegalArgumentException if the string is null or blank.
+     */
+    public static String ensureNotBlank(String string, String format, Object... args) {
+        if (isNullOrBlank(string)) {
+            throw illegalArgument(format, args);
+        }
         return string;
     }
 
@@ -196,6 +245,7 @@ public class ValidationUtils {
         }
         return i;
     }
+
     /**
      * Ensures that the given Long value is in {@code [min, max]}.
      * @param i The value to check.

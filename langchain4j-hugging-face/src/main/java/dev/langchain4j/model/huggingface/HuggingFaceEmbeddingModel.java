@@ -12,7 +12,7 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
@@ -30,11 +30,7 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
      */
     public HuggingFaceEmbeddingModel(
             String baseUrl, String accessToken, String modelId, Boolean waitForModel, Duration timeout) {
-
-        if (isNullOrBlank(accessToken)) {
-            throw new IllegalArgumentException(
-                    "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
-        }
+        ensureNotBlank(accessToken, "%s", "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
         this.waitForModel = waitForModel == null || waitForModel;
         this.baseUrl = baseUrl;
         this.modelId = modelId;
