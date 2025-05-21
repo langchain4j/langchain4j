@@ -1,6 +1,6 @@
 package dev.langchain4j.model.workersai.client;
 
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import okhttp3.ResponseBody;
 import org.slf4j.Logger;
@@ -37,17 +37,11 @@ public abstract class AbstractWorkersAIModel {
      * @param apiToken  api apiToken from .
      */
     public AbstractWorkersAIModel(String accountId, String modelName, String apiToken) {
-        if (isNullOrEmpty(accountId)) {
-            throw new IllegalArgumentException("Account identifier should not be null or empty");
-        }
+        ensureNotEmpty(accountId, "%s", "Account identifier should not be null or empty");
         this.accountId = accountId;
-        if (isNullOrEmpty(modelName)) {
-            throw new IllegalArgumentException("Model name should not be null or empty");
-        }
+        ensureNotEmpty(modelName, "%s", "Model name should not be null or empty");
         this.modelName = modelName;
-        if (isNullOrEmpty(apiToken)) {
-            throw new IllegalArgumentException("Token should not be null or empty");
-        }
+        ensureNotEmpty(apiToken, "%s", "Token should not be null or empty");
         this.workerAiClient = WorkersAiClient.createService(apiToken);
     }
 

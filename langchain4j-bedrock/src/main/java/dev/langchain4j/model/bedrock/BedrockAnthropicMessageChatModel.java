@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Arrays.asList;
@@ -223,9 +224,7 @@ public class BedrockAnthropicMessageChatModel
     }
 
     static void validateModelIdWithToolsSupport(String modelId) {
-        if (Objects.isNull(modelId)) {
-            throw new IllegalArgumentException("Model ID is required");
-        }
+        ensureNotNull(modelId, "modelId");
 
         List<String> anthropicModelIdSplit = asList(modelId.split("-"));
 
