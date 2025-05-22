@@ -1,17 +1,18 @@
 package dev.langchain4j.http.client.log;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.HttpRequest;
+import org.slf4j.Logger;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.slf4j.Logger;
+
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 @Internal
 class HttpRequestLogger {
@@ -24,11 +25,13 @@ class HttpRequestLogger {
             log.info(
                     """
                             HTTP request:
+                            - version: {}
                             - method: {}
                             - url: {}
                             - headers: {}
                             - body: {}
                             """,
+                    httpRequest.version() == null ? "" : httpRequest.version(),
                     httpRequest.method(),
                     httpRequest.url(),
                     format(httpRequest.headers()),
