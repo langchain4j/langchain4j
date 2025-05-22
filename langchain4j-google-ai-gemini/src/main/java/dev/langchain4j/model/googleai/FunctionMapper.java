@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 
 class FunctionMapper {
@@ -22,8 +23,7 @@ class FunctionMapper {
         if (allowCodeExecution) {
             tool.codeExecution(new GeminiCodeExecution());
         }
-
-        if (specifications == null || specifications.isEmpty()) {
+        if (isNullOrEmpty(specifications)) {
             if (allowCodeExecution) {
                 // if there's no tool specification, but there's Python code execution
                 return tool.build();

@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.util.List;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public class DefaultOvhAiClient extends OvhAiClient {
@@ -39,11 +38,7 @@ public class DefaultOvhAiClient extends OvhAiClient {
     }
 
     DefaultOvhAiClient(Builder builder) {
-        if (isNullOrBlank(builder.apiKey)) {
-            throw new IllegalArgumentException(
-                "OVHcloud API key must be defined. It can be generated here: https://endpoints.ai.cloud.ovh.net/"
-            );
-        }
+        ensureNotBlank(builder.apiKey, "%s", "OVHcloud API key must be defined. It can be generated here: https://endpoints.ai.cloud.ovh.net/");
 
         this.apiKey = builder.apiKey;
         this.logResponses = builder.logResponses;

@@ -1,5 +1,8 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
 
@@ -25,28 +28,19 @@ public abstract class OvhAiClient {
         public abstract T build();
 
         public B baseUrl(String baseUrl) {
-            if ((baseUrl == null) || baseUrl.trim().isEmpty()) {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
+            ensureNotBlank(baseUrl, "baseUrl");
             this.baseUrl = baseUrl;
             return (B) this;
         }
 
         public B apiKey(String apiKey) {
-            if (apiKey == null || apiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException(
-                    "OVHcloud API key must be defined. " +
-                    "It can be generated here: https://endpoints.ai.cloud.ovh.net/"
-                );
-            }
+            ensureNotBlank(apiKey, "%s", "OVHcloud API key must be defined. It can be generated here: https://endpoints.ai.cloud.ovh.net/");
             this.apiKey = apiKey;
             return (B) this;
         }
 
         public B timeout(Duration timeout) {
-            if (timeout == null) {
-                throw new IllegalArgumentException("timeout cannot be null");
-            }
+            ensureNotNull(timeout, "timeout");
             this.timeout = timeout;
             return (B) this;
         }

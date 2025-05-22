@@ -2,6 +2,8 @@ package dev.langchain4j.store.embedding.qdrant;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static io.qdrant.client.PointIdFactory.id;
 import static io.qdrant.client.ValueFactory.value;
 import static io.qdrant.client.VectorsFactory.vectors;
@@ -178,9 +180,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   @Override
   public void removeAll(Collection<String> ids) {
-      if (ids == null || ids.isEmpty()) {
-          throw new IllegalArgumentException("ids cannot be null or empty");
-      }
+      ensureNotEmpty(ids, "ids");
       try {
 
           Points.PointsIdsList pointsIdsList = Points.PointsIdsList.newBuilder()
@@ -202,11 +202,8 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   @Override
   public void removeAll(dev.langchain4j.store.embedding.filter.Filter filter) {
-      if (filter == null) {
-          throw new IllegalArgumentException("filter cannot be null");
-      }
+      ensureNotNull(filter, "filter");
       try {
-
           Filter qdrantFilter = QdrantFilterConverter.convertExpression(filter);
           PointsSelector pointsSelector = PointsSelector.newBuilder().setFilter(qdrantFilter).build();
 

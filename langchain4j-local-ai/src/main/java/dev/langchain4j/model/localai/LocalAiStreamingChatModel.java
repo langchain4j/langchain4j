@@ -25,6 +25,7 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
@@ -171,7 +172,7 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
     private static void handle(ChatCompletionResponse partialResponse,
                                StreamingResponseHandler<AiMessage> handler) {
         List<ChatCompletionChoice> choices = partialResponse.choices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
         Delta delta = choices.get(0).delta();
