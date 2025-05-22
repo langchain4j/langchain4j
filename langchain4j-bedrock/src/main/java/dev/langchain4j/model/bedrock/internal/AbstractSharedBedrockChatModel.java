@@ -25,6 +25,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
@@ -269,6 +270,7 @@ public abstract class AbstractSharedBedrockChatModel {
      * @return model id
      */
     protected abstract String getModelId();
+
     public String getHumanPrompt() {
         return humanPrompt;
     }
