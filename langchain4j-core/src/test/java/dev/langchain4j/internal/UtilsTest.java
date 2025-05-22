@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -252,6 +254,22 @@ class UtilsTest {
     }
 
     @Test
+    void copy_if_not_null_set() {
+        assertThat(Utils.copyIfNotNull((Set<?>) null)).isNull();
+        assertThat(Utils.copyIfNotNull(emptySet())).isEmpty();
+        assertThat(Utils.copyIfNotNull(Set.of("one"))).containsExactly("one");
+        assertThat(Utils.copyIfNotNull(Set.of("one", "two"))).containsExactlyInAnyOrder("one", "two");
+    }
+
+    @Test
+    void copy_set() {
+        assertThat(Utils.copy((Set<?>) null)).isEmpty();
+        assertThat(Utils.copy(emptySet())).isEmpty();
+        assertThat(Utils.copy(Set.of("one"))).containsExactly("one");
+        assertThat(Utils.copy(Set.of("one", "two"))).containsExactlyInAnyOrder("one", "two");
+    }
+
+    @Test
     void copy_if_not_null_list() {
         assertThat(Utils.copyIfNotNull((List<?>) null)).isNull();
         assertThat(Utils.copyIfNotNull(emptyList())).isEmpty();
@@ -260,10 +278,25 @@ class UtilsTest {
     }
 
     @Test
+    void copy_list() {
+        assertThat(Utils.copy((List<?>) null)).isEmpty();
+        assertThat(Utils.copy(emptyList())).isEmpty();
+        assertThat(Utils.copy(singletonList("one"))).containsExactly("one");
+        assertThat(Utils.copy(asList("one", "two"))).containsExactly("one", "two");
+    }
+
+    @Test
     void copy_if_not_null_map() {
         assertThat(Utils.copyIfNotNull((Map<?, ?>) null)).isNull();
         assertThat(Utils.copyIfNotNull(emptyMap())).isEmpty();
         assertThat(Utils.copyIfNotNull(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_map() {
+        assertThat(Utils.copy((Map<?, ?>) null)).isEmpty();
+        assertThat(Utils.copy(emptyMap())).isEmpty();
+        assertThat(Utils.copy(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
     }
 
     @Test

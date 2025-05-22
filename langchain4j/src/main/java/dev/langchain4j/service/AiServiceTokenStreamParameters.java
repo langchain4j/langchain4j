@@ -9,10 +9,6 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.
  */
@@ -27,13 +23,12 @@ public class AiServiceTokenStreamParameters {
     private final Object memoryId;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
-        this.messages = ensureNotEmpty(builder.messages, "messages");
-        this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
-        this.toolExecutors = copyIfNotNull(builder.toolExecutors);
+        this.messages = builder.messages;
+        this.toolSpecifications = builder.toolSpecifications;
+        this.toolExecutors = builder.toolExecutors;
         this.retrievedContents = builder.retrievedContents;
-        this.context = ensureNotNull(builder.context, "context");
-        this.memoryId = ensureNotNull(builder.memoryId, "memoryId");
-        ensureNotNull(context.streamingChatModel, "streamingChatModel");
+        this.context = builder.context;
+        this.memoryId = builder.memoryId;
     }
 
     /**
@@ -91,6 +86,7 @@ public class AiServiceTokenStreamParameters {
      * Builder for {@link AiServiceTokenStreamParameters}.
      */
     public static class Builder {
+
         private List<ChatMessage> messages;
         private List<ToolSpecification> toolSpecifications;
         private Map<String, ToolExecutor> toolExecutors;

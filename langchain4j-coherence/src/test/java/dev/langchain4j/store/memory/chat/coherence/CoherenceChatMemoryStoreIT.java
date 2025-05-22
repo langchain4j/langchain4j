@@ -74,7 +74,7 @@ class CoherenceChatMemoryStoreIT {
 
         // when
         List<ChatMessage> chatMessages = new ArrayList<>();
-        String sysMessage = "You are a large language model working with Langchain4j";
+        String sysMessage = "You are a large language model working with LangChain4j";
         chatMessages.add(new SystemMessage(sysMessage));
         List<Content> userMsgContents = new ArrayList<>();
         userMsgContents.add(new ImageContent("someCatImageUrl"));
@@ -99,7 +99,7 @@ class CoherenceChatMemoryStoreIT {
     void should_delete_messages_from_coherence() {
         // given
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         memoryStore.updateMessages(userId, chatMessages);
         List<ChatMessage> messages = memoryStore.getMessages(userId);
         assertThat(messages).hasSize(1);
@@ -137,7 +137,7 @@ class CoherenceChatMemoryStoreIT {
     @Test
     void updateMessages_memoryId_null() {
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         assertThatThrownBy(() -> memoryStore.updateMessages(null, chatMessages))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("memoryId cannot be null");

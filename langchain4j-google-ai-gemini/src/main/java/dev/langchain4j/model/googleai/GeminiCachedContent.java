@@ -1,7 +1,12 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiCachedContent {
     private List<GeminiContent> contents;
     private List<GeminiTool> tools;
@@ -16,7 +21,20 @@ class GeminiCachedContent {
     private GeminiContent systemInstruction;
     private GeminiToolConfig toolConfig;
 
-    GeminiCachedContent(List<GeminiContent> contents, List<GeminiTool> tools, String createTime, String updateTime, GeminiUsageMetadata usageMetadata, String expireTime, String ttl, String name, String displayName, String model, GeminiContent systemInstruction, GeminiToolConfig toolConfig) {
+    @JsonCreator
+    GeminiCachedContent(
+            @JsonProperty("contents") List<GeminiContent> contents,
+            @JsonProperty("tools") List<GeminiTool> tools,
+            @JsonProperty("createTime") String createTime,
+            @JsonProperty("updateTime") String updateTime,
+            @JsonProperty("usageMetadata") GeminiUsageMetadata usageMetadata,
+            @JsonProperty("expireTime") String expireTime,
+            @JsonProperty("ttl") String ttl,
+            @JsonProperty("name") String name,
+            @JsonProperty("displayName") String displayName,
+            @JsonProperty("model") String model,
+            @JsonProperty("systemInstruction") GeminiContent systemInstruction,
+            @JsonProperty("toolConfig") GeminiToolConfig toolConfig) {
         this.contents = contents;
         this.tools = tools;
         this.createTime = createTime;

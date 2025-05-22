@@ -1,10 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiExecutableCode {
     private GeminiLanguage programmingLanguage = GeminiLanguage.PYTHON;
     private String code;
 
-    GeminiExecutableCode(GeminiLanguage programmingLanguage, String code) {
+    @JsonCreator
+    GeminiExecutableCode(@JsonProperty("programmingLanguage") GeminiLanguage programmingLanguage, @JsonProperty("code") String code) {
         this.programmingLanguage = programmingLanguage;
         this.code = code;
     }

@@ -1,12 +1,18 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class GeminiFunctionCallingConfig {
     private GeminiMode mode;
     private List<String> allowedFunctionNames;
 
-    public GeminiFunctionCallingConfig(GeminiMode mode, List<String> allowedFunctionNames) {
+    @JsonCreator
+    public GeminiFunctionCallingConfig(@JsonProperty("mode") GeminiMode mode, @JsonProperty("allowedFunctionNames") List<String> allowedFunctionNames) {
         this.mode = mode;
         this.allowedFunctionNames = allowedFunctionNames;
     }

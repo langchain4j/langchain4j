@@ -35,7 +35,7 @@ jobs:
         java_version:
           - 17
           - 21
-          - 23
+          - 24
         include:
           - java_version: 17
             mvn_opts: ''
@@ -43,7 +43,7 @@ jobs:
           - java_version: 21
             mvn_opts: ''
             experimental: false
-          - java_version: 23
+          - java_version: 24
             mvn_opts: ''
             experimental: true
     env:
@@ -134,3 +134,16 @@ jobs:
         # Check we only rely on permissive licenses in the main parts of the library:
       - name: License Compliance
         run: mvn -P compliance org.honton.chas:license-maven-plugin:compliance
+
+  spotless:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Spotless Check
+        run: mvn -Pspotless validate

@@ -30,6 +30,7 @@ import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -47,6 +48,7 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicLong idGenerator = new AtomicLong(0);
     private final McpTransport transport;
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final String key;
     private final String clientName;
     private final String clientVersion;
     private final String protocolVersion;
@@ -70,6 +72,7 @@ public class DefaultMcpClient implements McpClient {
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
+        key = getOrDefault(builder.key, () -> UUID.randomUUID().toString());
         clientName = getOrDefault(builder.clientName, "langchain4j");
         clientVersion = getOrDefault(builder.clientVersion, "1.0");
         protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
@@ -136,6 +139,11 @@ public class DefaultMcpClient implements McpClient {
         params.setCapabilities(capabilities);
 
         return params;
+    }
+
+    @Override
+    public String key() {
+        return key;
     }
 
     @Override
@@ -366,6 +374,7 @@ public class DefaultMcpClient implements McpClient {
 
         private String toolExecutionTimeoutErrorMessage;
         private McpTransport transport;
+        private String key;
         private String clientName;
         private String clientVersion;
         private String protocolVersion;
@@ -379,6 +388,15 @@ public class DefaultMcpClient implements McpClient {
 
         public Builder transport(McpTransport transport) {
             this.transport = transport;
+            return this;
+        }
+
+        /**
+         * Sets a unique identifier for the client. If none is provided, a
+         * UUID will be automatically generated.
+         */
+        public Builder key(String key) {
+            this.key = key;
             return this;
         }
 
