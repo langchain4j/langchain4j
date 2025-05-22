@@ -305,7 +305,7 @@ class DefaultGuardrailServiceTests {
         @InputGuardrails({IG1.class, IG2.class})
         @OutputGuardrails(
                 value = {OG1.class, OG2.class},
-                config = @OutputGuardrailsConfig(maxRetries = 10))
+                maxRetries = 10)
         String chat(String message);
 
         String chat2(String message);
@@ -319,7 +319,7 @@ class DefaultGuardrailServiceTests {
         @InputGuardrails({IG1.class, IG2.class})
         @OutputGuardrails(
                 value = {OG1.class, OG2.class},
-                config = @OutputGuardrailsConfig(maxRetries = 10))
+                maxRetries = 10)
         String chat(String message);
 
         String chat2(String message);

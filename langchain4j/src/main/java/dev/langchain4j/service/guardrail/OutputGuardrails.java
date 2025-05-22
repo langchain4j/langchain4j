@@ -47,7 +47,11 @@ public @interface OutputGuardrails {
     Class<? extends OutputGuardrail>[] value();
 
     /**
-     * Configuration to apply to the output guardrails
+     * The maximum number of retries to perform when an output guardrail forces a retry or reprompt.
+     * <p>
+     *     Set to {@code 0} to disable retries
+     * </p>
+     * @see dev.langchain4j.guardrail.config.OutputGuardrailsConfig#maxRetries()
      */
-    OutputGuardrailsConfig config() default @OutputGuardrailsConfig;
+    int maxRetries() default dev.langchain4j.guardrail.config.OutputGuardrailsConfig.MAX_RETRIES_DEFAULT;
 }

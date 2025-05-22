@@ -357,18 +357,13 @@ Output guardrails have the following additional configuration that can be suppli
 |:--------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `maxRetries`  | - The maximum number of retries for an output guardrail when performing a retry or reprompt.<br/> - Defaults to `2`.<br/> - Set to `0` to disable retries. |
 
-Similar to the `OutputGuardrail` classes, there are several ways to declare output guardrail configuration, listed here in order of precedence:
-1. [`@OutputGuardrailsConfig` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrailsConfig.java) placed on an individual [AI Service](/tutorials/ai-services) method.
-2. [`@OutputGuardrailsConfig` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrailsConfig.java) placed on an [AI Service](/tutorials/ai-services) class.
-3. [`OutputGuardrailsConfig`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/config/OutputGuardrailsConfig.java) instance set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder.
-
 ##### Annotation on individual AI Service methods
 
 ```java
 public interface MethodLevelAssistant {
     @OutputGuardrails(
             value = { FirstOutputGuardrail.class, SecondOutputGuardrail.class },
-            config = @OutputGuardrailsConfig(maxRetries = 10)
+            maxRetries = 10
     )
     String chat(String question);
 }
@@ -381,7 +376,7 @@ var assistant = AiServices.create(MethodLevelAssistant.class, chatModel);
 ```java
 @OutputGuardrails(
         value = { FirstOutputGuardrail.class, SecondOutputGuardrail.class },
-        config = @OutputGuardrailsConfig(maxRetries = 10)
+        maxRetries = 10
 )
 public interface ClassLevelAssistant {
     String chat(String question);
@@ -502,7 +497,7 @@ public class MyObjectJsonOutputGuardrail extends JsonExtractorOutputGuardrail<My
 }
 
 @InputGuardrails({ FirstInputGuardrail.class, SecondInputGuardrail.class })
-@OutputGuardrails(value = SomeOutputGuardrail.class, config = @OutputGuardrailsConfig(maxRetries = 5))
+@OutputGuardrails(value = SomeOutputGuardrail.class, maxRetries = 5)
 public interface Assistant {
     String chat(String message);
     

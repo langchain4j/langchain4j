@@ -38,9 +38,4 @@ public @interface InputGuardrails {
      * </p>
      */
     Class<? extends InputGuardrail>[] value();
-
-    /**
-     * Configuration to apply to the input guardrails
-     */
-    InputGuardrailsConfig config() default @InputGuardrailsConfig;
 }

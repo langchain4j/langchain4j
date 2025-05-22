@@ -62,10 +62,10 @@ class OutputGuardrailRepromptingRetryTests extends BaseGuardrailTests {
         @OutputGuardrails(OkGuardrail.class)
         String ok(@MemoryId String mem, @UserMessage String message);
 
-        @OutputGuardrails(value = RetryGuardrail.class, config = @OutputGuardrailsConfig(maxRetries = 5))
+        @OutputGuardrails(value = RetryGuardrail.class, maxRetries = 5)
         String retry(@MemoryId String mem, @UserMessage String message);
 
-        @OutputGuardrails(value = RetryGuardrail.class, config = @OutputGuardrailsConfig(maxRetries = 0))
+        @OutputGuardrails(value = RetryGuardrail.class, maxRetries = 0)
         String noRetry(@MemoryId String mem, @UserMessage String message);
 
         @OutputGuardrails(RepromptingGuardrail.class)

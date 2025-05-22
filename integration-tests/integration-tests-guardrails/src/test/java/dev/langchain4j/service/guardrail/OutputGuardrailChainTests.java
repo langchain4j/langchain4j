@@ -76,7 +76,7 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
 
         @OutputGuardrails(
                 value = {FirstGuardrail.class, FailingGuardrail.class, SecondGuardrail.class},
-                config = @OutputGuardrailsConfig(maxRetries = 3))
+                maxRetries = 3)
         String failingFirstTwo(@MemoryId String mem, @UserMessage String message);
 
         @OutputGuardrails({FirstRewritingGuardrail.class, SecondRewritingGuardrail.class})

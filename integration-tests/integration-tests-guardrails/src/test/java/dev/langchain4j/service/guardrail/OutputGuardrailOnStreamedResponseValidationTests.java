@@ -76,11 +76,11 @@ class OutputGuardrailOnStreamedResponseValidationTests extends BaseGuardrailTest
         TokenStream ko(@MemoryId String mem);
 
         @UserMessage("Say Hi!")
-        @OutputGuardrails(value = RetryingGuardrail.class, config = @OutputGuardrailsConfig(maxRetries = 3))
+        @OutputGuardrails(value = RetryingGuardrail.class, maxRetries = 3)
         TokenStream retry(@MemoryId String mem);
 
         @UserMessage("Say Hi!")
-        @OutputGuardrails(value = RetryingButFailGuardrail.class, config = @OutputGuardrailsConfig(maxRetries = 3))
+        @OutputGuardrails(value = RetryingButFailGuardrail.class, maxRetries = 3)
         TokenStream retryButFail(@MemoryId String mem);
 
         @UserMessage("Say Hi!")

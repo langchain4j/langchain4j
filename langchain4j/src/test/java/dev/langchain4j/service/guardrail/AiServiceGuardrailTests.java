@@ -205,7 +205,7 @@ class AiServiceGuardrailTests {
         @InputGuardrails({InputGuardrailSuccess.class, InputGuardrailFail.class})
         @OutputGuardrails(
                 value = {OutputGuardrailSuccess.class, OutputGuardrailFail.class},
-                config = @OutputGuardrailsConfig(maxRetries = 10))
+                maxRetries = 10)
         @Override
         String chat(String message);
 
@@ -220,7 +220,7 @@ class AiServiceGuardrailTests {
         @InputGuardrails({InputGuardrailSuccess.class, InputGuardrailFail.class})
         @OutputGuardrails(
                 value = {OutputGuardrailSuccess.class, OutputGuardrailFail.class},
-                config = @OutputGuardrailsConfig(maxRetries = 10))
+                maxRetries = 10)
         @Override
         String chat(String message);
 

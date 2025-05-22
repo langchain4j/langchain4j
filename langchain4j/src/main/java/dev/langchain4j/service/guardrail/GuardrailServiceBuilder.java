@@ -232,24 +232,20 @@ final class GuardrailServiceBuilder implements Builder {
                 .toList();
     }
 
-    private static dev.langchain4j.guardrail.config.InputGuardrailsConfig computeConfig(InputGuardrailsConfig config) {
+    private static dev.langchain4j.guardrail.config.InputGuardrailsConfig computeConfig(InputGuardrails annotation) {
         return dev.langchain4j.guardrail.config.InputGuardrailsConfig.builder().build();
     }
 
-    private static dev.langchain4j.guardrail.config.OutputGuardrailsConfig computeConfig(
-            OutputGuardrailsConfig config) {
+    private static dev.langchain4j.guardrail.config.OutputGuardrailsConfig computeConfig(OutputGuardrails annotation) {
 
         return dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder()
-                .maxRetries(config.maxRetries())
+                .maxRetries(annotation.maxRetries())
                 .build();
     }
 
     private InputGuardrailExecutor computeInputGuardrails(InputGuardrails annotation) {
         return InputGuardrailExecutor.builder()
-                .config(
-                        hasInputGuardrailConfigSetOnBuilder()
-                                ? this.inputGuardrailsConfig
-                                : computeConfig(annotation.config()))
+                .config(hasInputGuardrailConfigSetOnBuilder() ? this.inputGuardrailsConfig : computeConfig(annotation))
                 .guardrails(
                         hasInputGuardrailsSetOnBuilder()
                                 ? getNonAnnotationBasedClassLevelGuardrails(
@@ -263,7 +259,7 @@ final class GuardrailServiceBuilder implements Builder {
                 .config(
                         hasOutputGuardrailConfigSetOnBuilder()
                                 ? this.outputGuardrailsConfig
-                                : computeConfig(annotation.config()))
+                                : computeConfig(annotation))
                 .guardrails(
                         hasOutputGuardrailsSetOnBuilder()
                                 ? getNonAnnotationBasedClassLevelGuardrails(
