@@ -1,8 +1,8 @@
 package dev.langchain4j.classloading;
 
+import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 import java.util.ServiceLoader;
 import java.util.ServiceLoader.Provider;
-import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 
 /**
  * Utility class for returning metadata about a class and its methods. Intended to allow downstream frameworks (like Quarkus

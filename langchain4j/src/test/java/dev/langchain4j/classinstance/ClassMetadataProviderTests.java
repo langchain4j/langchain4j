@@ -2,13 +2,13 @@ package dev.langchain4j.classinstance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.Experimental;
+import dev.langchain4j.classloading.ClassMetadataProvider;
+import dev.langchain4j.classloading.ReflectionBasedClassMetadataProviderFactory;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import dev.langchain4j.Experimental;
-import dev.langchain4j.classloading.ClassMetadataProvider;
-import dev.langchain4j.classloading.ReflectionBasedClassMetadataProviderFactory;
 import org.junit.jupiter.api.Test;
 
 class ClassMetadataProviderTests {

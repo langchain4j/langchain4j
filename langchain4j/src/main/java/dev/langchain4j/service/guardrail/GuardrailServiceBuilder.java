@@ -2,12 +2,6 @@ package dev.langchain4j.service.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import dev.langchain4j.classinstance.ClassInstanceLoader;
 import dev.langchain4j.classloading.ClassMetadataProvider;
 import dev.langchain4j.guardrail.Guardrail;
@@ -19,6 +13,12 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailExecutor;
 import dev.langchain4j.service.guardrail.GuardrailService.Builder;
 import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**

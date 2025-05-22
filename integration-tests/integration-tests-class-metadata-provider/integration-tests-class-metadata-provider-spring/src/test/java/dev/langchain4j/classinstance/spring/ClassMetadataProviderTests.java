@@ -2,15 +2,15 @@ package dev.langchain4j.classinstance.spring;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.annotation.Target;
-import java.lang.reflect.Method;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import com.example.Application;
 import com.example.classes.Class1;
 import com.example.classes.SpringClassMetadataProviderFactory;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.classloading.ClassMetadataProvider;
+import java.lang.annotation.Target;
+import java.lang.reflect.Method;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
