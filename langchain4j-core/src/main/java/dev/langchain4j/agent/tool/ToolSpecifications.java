@@ -91,6 +91,7 @@ public class ToolSpecifications {
 
         return ToolSpecification.builder()
                 .name(name)
+                .returnBehavior(annotation.returnBehavior())
                 .description(description)
                 .parameters(parameters)
                 .build();
