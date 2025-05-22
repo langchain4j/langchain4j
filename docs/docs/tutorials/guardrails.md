@@ -82,59 +82,14 @@ Input guardrails can have the following outcomes. There are helper methods on th
 ### Declaring Input Guardrails
 
 There are several ways to declare input guardrails, listed here in order of precedence:
-1. [`@InputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) method.
-2. [`@InputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class.
-3. [`InputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/InputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder.
+1. [`InputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/InputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder.
+2. [`@InputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) method.
+3. [`@InputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class.
 Regardless of how they are declared, input guardrails are always executed in the order they appear in the list.
-
-#### Annotation on individual AI Service methods
-
-[`@InputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) methods have the highest precendence, meaning if it is declared in any other ways, the one declared on the method will be the one used.
-
-```java
-public interface Assistant {
-    @InputGuardrails({ FirstInputGuardrail.class, SecondInputGuardrail.class })
-    String chat(String question);
-    
-    String doSomethingElse(String question);
-}
-
-var assistant = AiServices.create(Assistant.class, chatModel);
-```
-
-In this example, only the `chat` method has guardrails.
-- On the `chat` method, `FirstInputGuardrail` is invoked first.
-- Only if it is successful will the LLM be called.
-- `SecondInputGuardrail` will only be invoked if `FirstInputGuardrail` does not result in a **_fatal_** result.
-- Either `FirstInputGuardrail` or `SecondInputGuardrail` could re-write the user message.
-- If `FirstInputGuardrail` re-writes the user message, then `SecondInputGuardrail` will receive the new user message as input.
-
-The `doSomethingElse` method does not have any guardrails.
-
-#### Annotation on the AI Service class
-
-[`@InputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class has the next highest precendence.
-
-```java
-@InputGuardrails({ FirstInputGuardrail.class, SecondInputGuardrail.class })
-public interface Assistant {
-    String chat(String question);
-    String doSomethingElse(String question);
-}
-
-var assistant = AiServices.create(Assistant.class, chatModel);
-```
-
-In this example, both the `chat` and `doSomethingElse` methods have the guardrails.
-- Just like in the previous example, `FirstInputGuardrail` is invoked first.
-- Only if it is successful will the LLM be called.
-- `SecondInputGuardrail` will only be invoked if `FirstInputGuardrail` does not result in a **_fatal_** result.
-- Either `FirstInputGuardrail` or `SecondInputGuardrail` could re-write the user message.
-- If `FirstInputGuardrail` re-writes the user message, then `SecondInputGuardrail` will receive the new user message as input.
 
 #### `AiServices` builder
 
-[`InputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/InputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder have the lowest precedence.
+[`InputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/InputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder have the highest precedence, meaning if it is declared in any other ways, the one declared directly on the builder will be the one used.
 
 ```java
 public interface Assistant {
@@ -167,6 +122,51 @@ In the first scenario, classes that implement `InputGuardrail` are passed. New i
 :::info
 The way classes are converted to instances can be customized. For example, frameworks that use dependency injection (like [Quarkus](https://quarkus.io) or [Spring](https://spring.io)) can use [extension points](#extension-points) to provide instances based on how they manage class instances rather than creating new instances via reflection each time.
 :::
+
+#### Annotation on individual AI Service methods
+
+[`@InputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) methods have the next highest precedence.
+
+```java
+public interface Assistant {
+    @InputGuardrails({ FirstInputGuardrail.class, SecondInputGuardrail.class })
+    String chat(String question);
+    
+    String doSomethingElse(String question);
+}
+
+var assistant = AiServices.create(Assistant.class, chatModel);
+```
+
+In this example, only the `chat` method has guardrails.
+- On the `chat` method, `FirstInputGuardrail` is invoked first.
+- Only if it is successful will the LLM be called.
+- `SecondInputGuardrail` will only be invoked if `FirstInputGuardrail` does not result in a **_fatal_** result.
+- Either `FirstInputGuardrail` or `SecondInputGuardrail` could re-write the user message.
+- If `FirstInputGuardrail` re-writes the user message, then `SecondInputGuardrail` will receive the new user message as input.
+
+The `doSomethingElse` method does not have any guardrails.
+
+#### Annotation on the AI Service class
+
+[`@InputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class has the lowest precedence.
+
+```java
+@InputGuardrails({ FirstInputGuardrail.class, SecondInputGuardrail.class })
+public interface Assistant {
+    String chat(String question);
+    String doSomethingElse(String question);
+}
+
+var assistant = AiServices.create(Assistant.class, chatModel);
+```
+
+In this example, both the `chat` and `doSomethingElse` methods have the guardrails.
+- Just like in the previous example, `FirstInputGuardrail` is invoked first.
+- Only if it is successful will the LLM be called.
+- `SecondInputGuardrail` will only be invoked if `FirstInputGuardrail` does not result in a **_fatal_** result.
+- Either `FirstInputGuardrail` or `SecondInputGuardrail` could re-write the user message.
+- If `FirstInputGuardrail` re-writes the user message, then `SecondInputGuardrail` will receive the new user message as input.
 
 ### Unit Testing Input Guardrails
 
@@ -264,58 +264,15 @@ Output guardrails can have the following outcomes. There are helper methods on t
 ### Declaring Output Guardrails
 
 There are several ways to declare output guardrails, listed here in order of precedence:
-1. [`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) method.
-2. [`@OutputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class.
-3. [`OutputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/OutputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder.
+1. [`OutputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/OutputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder.
+2. [`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) method.
+3. [`@OutputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class.
 
 Regardless of how they are declared, output guardrails are always executed in the order they appear in the list.
 
-#### Annotation on individual AI Service methods
-
-[`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) methods have the highest precendence, meaning if it is declared in any other ways, the one declared on the method will be the one used.
-
-```java
-public interface Assistant {
-    @OutputGuardrails({ FirstOutputGuardrail.class, SecondOutputGuardrail.class })
-    String chat(String question);
-    
-    String doSomethingElse(String question);
-}
-
-var assistant = AiServices.create(Assistant.class, chatModel);
-```
-
-In this example, only the `chat` method has guardrails.
-- On the `chat` method, `FirstOutputGuardrail` is invoked first.
-- Only if it is successful will the result be returned to the caller. `SecondOutputGuardrail` will only be invoked if `FirstOutputGuardrail` does not result in a **_fatal_**, **_fatal with retry_**, or **_fatal with reprompt_** result.
-- `SecondOutputGuardrail` will receive the output of `FirstOutputGuardrail`.
-- If `SecondOutputGuardrail` succeeds after a retry or reprompt, then both `FirstOutputGuardrail` and `SecondOutputGuardrail` are re-executed.
-
-The `doSomethingElse` method does not have any guardrails.
-
-#### Annotation on the AI Service class
-
-[`@OutputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class has the next highest precendence.
-
-```java
-@OutputGuardrails({ FirstOutputGuardrail.class, SecondOutputGuardrail.class })
-public interface Assistant {
-    String chat(String question);
-    String doSomethingElse(String question);
-}
-
-var assistant = AiServices.create(Assistant.class, chatModel);
-```
-
-In this example, both the `chat` and `doSomethingElse` methods have the guardrails.
-- Just like in the previous example, `FirstOutputGuardrail` is invoked first.
-- Only if it is successful will the result be returned to the caller. `SecondOutputGuardrail` will only be invoked if `FirstOutputGuardrail` does not result in a **_fatal_**, **_fatal with retry_**, or **_fatal with reprompt_** result. 
-- `SecondOutputGuardrail` will receive the output of `FirstOutputGuardrail`.
-- If `SecondOutputGuardrail` succeeds after a retry or reprompt, then both `FirstOutputGuardrail` and `SecondOutputGuardrail` are re-executed.
-
 #### `AiServices` builder
 
-[`OutputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/OutputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder have the lowest precedence.
+[`OutputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/OutputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder have the highest precedence, meaning if it is declared in any other ways, the one declared on the builder will be the one used.
 
 ```java
 public interface Assistant {
@@ -348,6 +305,49 @@ In the first scenario, classes that implement `OutputGuardrail` are passed. New 
 :::info
 The way classes are converted to instances can be customized. For example, frameworks that use dependency injection (like [Quarkus](https://quarkus.io) or [Spring](https://spring.io)) can use [extension points](#extension-points) to provide instances based on how they manage class instances rather than creating new instances via reflection each time.
 :::
+
+#### Annotation on individual AI Service methods
+
+[`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on ndividual [AI Service](/tutorials/ai-services) methods have the next highest precendence.
+
+```java
+public interface Assistant {
+    @OutputGuardrails({ FirstOutputGuardrail.class, SecondOutputGuardrail.class })
+    String chat(String question);
+    
+    String doSomethingElse(String question);
+}
+
+var assistant = AiServices.create(Assistant.class, chatModel);
+```
+
+In this example, only the `chat` method has guardrails.
+- On the `chat` method, `FirstOutputGuardrail` is invoked first.
+- Only if it is successful will the result be returned to the caller. `SecondOutputGuardrail` will only be invoked if `FirstOutputGuardrail` does not result in a **_fatal_**, **_fatal with retry_**, or **_fatal with reprompt_** result.
+- `SecondOutputGuardrail` will receive the output of `FirstOutputGuardrail`.
+- If `SecondOutputGuardrail` succeeds after a retry or reprompt, then both `FirstOutputGuardrail` and `SecondOutputGuardrail` are re-executed.
+
+The `doSomethingElse` method does not have any guardrails.
+
+#### Annotation on the AI Service class
+
+[`@OutputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class has the lowest precedence.
+
+```java
+@OutputGuardrails({ FirstOutputGuardrail.class, SecondOutputGuardrail.class })
+public interface Assistant {
+    String chat(String question);
+    String doSomethingElse(String question);
+}
+
+var assistant = AiServices.create(Assistant.class, chatModel);
+```
+
+In this example, both the `chat` and `doSomethingElse` methods have the guardrails.
+- Just like in the previous example, `FirstOutputGuardrail` is invoked first.
+- Only if it is successful will the result be returned to the caller. `SecondOutputGuardrail` will only be invoked if `FirstOutputGuardrail` does not result in a **_fatal_**, **_fatal with retry_**, or **_fatal with reprompt_** result. 
+- `SecondOutputGuardrail` will receive the output of `FirstOutputGuardrail`.
+- If `SecondOutputGuardrail` succeeds after a retry or reprompt, then both `FirstOutputGuardrail` and `SecondOutputGuardrail` are re-executed.
 
 #### Configuration
 
@@ -522,11 +522,11 @@ var assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-In this example the `chat` method has 2 input guardrails, `FirstInputGuardrail` and `SecondInputGuardrail`. It has a single output guardrail, `SomeOutputGuardrail`, with a `maxRetries` value == `5`.
+In this example, all the methods on the `Assistant` have a single input guardrail, `AnotherInputGuardrail`, because it is set on the `AiServices` builder. Additionally, all the output guardrails have a `maxRetries` value == `10`, because the config is also set on the `AiServices` builder.
 
-The `chatAndReturnJson` method has a single input guardrail, `PromptInjectionGuardrail`. It also has a single output guardrail, `MyObjectJsonOutputGuardrail` with a `maxRetries` value == `3` (the default).
+The `chat` method has a single output guardrail, `SomeOutputGuardrail`, with a `maxRetries` value == `10`.
 
-The `inputGuardrailClasses` and `outputGuardrailsConfig` set on the `AiServices` builder are overridden by the annotations on the class.
+The `chatAndReturnJson` method a single output guardrail, `MyObjectJsonOutputGuardrail` with a `maxRetries` value == `10`.
 
 ## Extension points
 

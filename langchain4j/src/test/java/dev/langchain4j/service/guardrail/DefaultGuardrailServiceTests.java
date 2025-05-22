@@ -2,13 +2,13 @@ package dev.langchain4j.service.guardrail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.stream.Stream;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -30,6 +30,39 @@ class DefaultGuardrailServiceTests {
         assertThat(guardrailService.getInputGuardrails("chat2")).isEmpty();
         assertThat(guardrailService.getOutputConfig("chat2")).isEmpty();
         assertThat(guardrailService.getOutputGuardrails("chat2")).isEmpty();
+    }
+
+    @Test
+    void classLevelGuardrailsNoBuilders() {
+        var gs = GuardrailService.builder(ClassLevelAssistant.class).build();
+        assertThat(gs).isInstanceOf(DefaultGuardrailService.class);
+        var guardrailService = (DefaultGuardrailService) gs;
+
+        assertThat(guardrailService.getInputGuardrailMethodCount()).isEqualTo(2);
+        assertThat(guardrailService.getOutputGuardrailMethodCount()).isEqualTo(2);
+        assertThat(guardrailService.getInputConfig("chat")).isNotEmpty();
+
+        assertThat(guardrailService.getInputGuardrails("chat")).singleElement().isExactlyInstanceOf(IG1.class);
+
+        assertThat(guardrailService.getOutputConfig("chat"))
+                .get()
+                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .isEqualTo(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.MAX_RETRIES_DEFAULT);
+
+        assertThat(guardrailService.getOutputGuardrails("chat")).singleElement().isExactlyInstanceOf(OG1.class);
+
+        assertThat(guardrailService.getInputConfig("chat2")).isNotEmpty();
+
+        assertThat(guardrailService.getInputGuardrails("chat2")).singleElement().isExactlyInstanceOf(IG1.class);
+
+        assertThat(guardrailService.getOutputConfig("chat2"))
+                .get()
+                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .isEqualTo(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.MAX_RETRIES_DEFAULT);
+
+        assertThat(guardrailService.getOutputGuardrails("chat2"))
+                .singleElement()
+                .isExactlyInstanceOf(OG1.class);
     }
 
     @ParameterizedTest
@@ -97,9 +130,9 @@ class DefaultGuardrailServiceTests {
                 .isExactlyInstanceOf(OG2.class);
     }
 
-    @ParameterizedTest
-    @MethodSource("classAndMethodLevelGuardrailBuilders")
-    void classAndMethodLevelGuardrails(String testDescription, GuardrailService gs) {
+    @Test
+    void classAndMethodLevelGuardrailsNoBuilders() {
+        var gs = GuardrailService.builder(ClassAndMethodLevelAssistant.class).build();
         assertThat(gs).isInstanceOf(DefaultGuardrailService.class);
         var guardrailService = (DefaultGuardrailService) gs;
 
@@ -138,6 +171,53 @@ class DefaultGuardrailServiceTests {
                 .isExactlyInstanceOf(OG1.class);
     }
 
+    @ParameterizedTest
+    @MethodSource("classAndMethodLevelGuardrailBuilders")
+    void classAndMethodLevelGuardrails(String testDescription, GuardrailService gs) {
+        assertThat(gs).isInstanceOf(DefaultGuardrailService.class);
+        var guardrailService = (DefaultGuardrailService) gs;
+
+        assertThat(guardrailService.getInputGuardrailMethodCount()).isEqualTo(2);
+        assertThat(guardrailService.getOutputGuardrailMethodCount()).isEqualTo(2);
+        assertThat(guardrailService.getInputConfig("chat")).isNotEmpty();
+
+        assertThat(guardrailService.getInputGuardrails("chat"))
+                .hasSize(2)
+                .satisfiesExactly(
+                        guardrail -> assertThat(guardrail).isInstanceOf(IG1.class),
+                        guardrail -> assertThat(guardrail).isInstanceOf(IG2.class));
+
+        assertThat(guardrailService.getOutputConfig("chat"))
+                .get()
+                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .isEqualTo(10);
+
+        assertThat(guardrailService.getOutputGuardrails("chat"))
+                .hasSize(2)
+                .satisfiesExactly(
+                        guardrail -> assertThat(guardrail).isInstanceOf(OG1.class),
+                        guardrail -> assertThat(guardrail).isInstanceOf(OG2.class));
+
+        assertThat(guardrailService.getInputConfig("chat2")).isNotEmpty();
+
+        assertThat(guardrailService.getInputGuardrails("chat2"))
+                .hasSize(2)
+                .satisfiesExactly(
+                        guardrail -> assertThat(guardrail).isInstanceOf(IG1.class),
+                        guardrail -> assertThat(guardrail).isInstanceOf(IG2.class));
+
+        assertThat(guardrailService.getOutputConfig("chat2"))
+                .get()
+                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .isEqualTo(10);
+
+        assertThat(guardrailService.getOutputGuardrails("chat2"))
+                .hasSize(2)
+                .satisfiesExactly(
+                        guardrail -> assertThat(guardrail).isInstanceOf(OG1.class),
+                        guardrail -> assertThat(guardrail).isInstanceOf(OG2.class));
+    }
+
     static Stream<Arguments> classLevelGuardrailBuilders() {
         return Stream.of(
                 Arguments.of(
@@ -161,19 +241,24 @@ class DefaultGuardrailServiceTests {
         return Stream.of(
                 Arguments.of(
                         "assistant with annotations",
-                        GuardrailService.builder(ClassAndMethodLevelAssistant.class)
+                        GuardrailService.builder(MethodLevelAssistant1.class)
+                                .inputGuardrailClasses(IG1.class, IG2.class)
+                                .outputGuardrailClasses(OG1.class, OG2.class)
+                                .outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder().maxRetries(10).build())
                                 .build()),
                 Arguments.of(
                         "assistant with guardrail classes defined",
-                        GuardrailService.builder(MethodLevelAssistant1.class)
-                                .inputGuardrailClasses(IG1.class)
-                                .outputGuardrailClasses(OG1.class)
+                        GuardrailService.builder(NoGuardrailAssistant.class)
+                                .inputGuardrailClasses(IG1.class, IG2.class)
+                                .outputGuardrailClasses(OG1.class, OG2.class)
+                                .outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder().maxRetries(10).build())
                                 .build()),
                 Arguments.of(
                         "assistant with guardrail instances defined",
-                        GuardrailService.builder(MethodLevelAssistant1.class)
-                                .inputGuardrails(new IG1())
-                                .outputGuardrails(new OG1())
+                        GuardrailService.builder(NoGuardrailAssistant.class)
+                                .inputGuardrails(new IG1(), new IG2())
+                                .outputGuardrails(new OG1(), new OG2())
+                                .outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder().maxRetries(10).build())
                                 .build()));
     }
 
