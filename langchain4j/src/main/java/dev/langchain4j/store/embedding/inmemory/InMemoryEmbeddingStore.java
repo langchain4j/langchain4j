@@ -46,7 +46,7 @@ import static java.util.stream.Collectors.toList;
  * It can also be recreated from JSON or a file using the {@link #fromJson(String)} and {@link #fromFile(Path)} methods.
  *
  * @param <Embedded> The class of the object that has been embedded.
- *                   Typically, it is {@link dev.langchain4j.data.segment.TextSegment}.
+ *                   Typically, it is {@link TextSegment}.
  */
 public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
 

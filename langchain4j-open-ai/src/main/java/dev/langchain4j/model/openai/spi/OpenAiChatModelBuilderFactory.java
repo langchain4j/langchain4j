@@ -6,7 +6,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import java.util.function.Supplier;
 
 /**
- * A factory for building {@link dev.langchain4j.model.openai.OpenAiChatModel.OpenAiChatModelBuilder} instances.
+ * A factory for building {@link OpenAiChatModel.OpenAiChatModelBuilder} instances.
  */
 @Internal
 public interface OpenAiChatModelBuilderFactory extends Supplier<OpenAiChatModel.OpenAiChatModelBuilder> {
