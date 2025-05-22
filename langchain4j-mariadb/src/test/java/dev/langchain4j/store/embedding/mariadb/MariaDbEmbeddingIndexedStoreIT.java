@@ -10,13 +10,13 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.MariaDBContainer;
 
-class MariaDbEmbeddingIndexedStoreTest extends EmbeddingStoreWithFilteringIT {
+class MariaDbEmbeddingIndexedStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     private EmbeddingStore<TextSegment> embeddingStore;
 
-    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
+    static MariaDBContainer<?> mariadbContainer = MariaDbTestUtils.defaultContainer;
 
     @BeforeAll
     static void beforeAll() {

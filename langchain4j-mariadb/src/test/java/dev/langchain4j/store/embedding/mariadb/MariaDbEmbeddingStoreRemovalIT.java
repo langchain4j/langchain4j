@@ -10,8 +10,8 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.MariaDBContainer;
 
-class MariaDbEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
-    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
+class MariaDbEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
+    static MariaDBContainer<?> mariadbContainer = MariaDbTestUtils.defaultContainer;
 
     final EmbeddingStore<TextSegment> embeddingStore = MariaDbEmbeddingStore.builder()
             .url(mariadbContainer.getJdbcUrl())

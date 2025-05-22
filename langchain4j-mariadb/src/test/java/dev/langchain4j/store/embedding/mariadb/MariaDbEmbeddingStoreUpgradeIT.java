@@ -18,8 +18,8 @@ import org.testcontainers.containers.MariaDBContainer;
 /**
  * Test upgrade from 029 to latest version
  */
-class MariaDbEmbeddingStoreUpgradeTest {
-    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
+class MariaDbEmbeddingStoreUpgradeIT {
+    static MariaDBContainer<?> mariadbContainer = MariaDbTestUtils.defaultContainer;
 
     EmbeddingStore<TextSegment> embeddingStore029;
 

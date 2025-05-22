@@ -11,8 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.mariadb.jdbc.MariaDbPoolDataSource;
 import org.testcontainers.containers.MariaDBContainer;
 
-abstract class MariaDbEmbeddingStoreConfigTest extends EmbeddingStoreWithFilteringIT {
-    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
+abstract class MariaDbEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringIT {
+    static MariaDBContainer<?> mariadbContainer = MariaDbTestUtils.defaultContainer;
 
     static EmbeddingStore<TextSegment> embeddingStore;
 

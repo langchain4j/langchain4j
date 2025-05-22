@@ -10,9 +10,9 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.MariaDBContainer;
 
-class MariaDbEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
+class MariaDbEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
+    static MariaDBContainer<?> mariadbContainer = MariaDbTestUtils.defaultContainer;
     final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
     EmbeddingStore<TextSegment> embeddingStore;
 

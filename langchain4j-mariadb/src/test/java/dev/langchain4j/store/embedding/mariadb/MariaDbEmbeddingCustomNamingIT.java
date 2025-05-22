@@ -21,9 +21,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.testcontainers.containers.MariaDBContainer;
 
-class MariaDbEmbeddingCustomNamingTest {
+class MariaDbEmbeddingCustomNamingIT {
 
-    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
+    static MariaDBContainer<?> mariadbContainer = MariaDbTestUtils.defaultContainer;
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
