@@ -1,5 +1,8 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.Exceptions.findCause;
+import static dev.langchain4j.internal.Exceptions.findRoot;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
@@ -10,9 +13,10 @@ import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.exception.UnresolvedModelServerException;
-
+import java.net.SocketTimeoutException;
 import java.nio.channels.UnresolvedAddressException;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 @Internal
 @FunctionalInterface
@@ -36,16 +40,35 @@ public interface ExceptionMapper {
 
     class DefaultExceptionMapper implements ExceptionMapper {
 
+        private final Function<Throwable, Integer> httpStatusCodeExtractor;
+
+        public DefaultExceptionMapper(Function<Throwable, Integer> httpStatusCodeExtractor) {
+            this.httpStatusCodeExtractor = httpStatusCodeExtractor;
+        }
+
+        public DefaultExceptionMapper() {
+            this((e) -> {
+                HttpException httpException = findCause(e, HttpException.class);
+                if (httpException != null) {
+                    return httpException.statusCode();
+                } else {
+                    return null;
+                }
+            });
+        }
+
         @Override
         public RuntimeException mapException(Throwable t) {
-            Throwable rootCause = findRoot(t);
-
-            if (rootCause instanceof HttpException httpException) {
-                return mapHttpStatusCode(httpException, httpException.statusCode());
+            final var statusCode = httpStatusCodeExtractor.apply(t);
+            if (statusCode != null) {
+                return mapHttpStatusCode(t, statusCode);
             }
 
+            Throwable rootCause = findRoot(t);
             if (rootCause instanceof UnresolvedAddressException) {
                 return new UnresolvedModelServerException(rootCause);
+            } else if (rootCause instanceof SocketTimeoutException) {
+                return new TimeoutException(rootCause);
             }
 
             return t instanceof RuntimeException re ? re : new LangChain4jException(t);
@@ -71,11 +94,6 @@ public interface ExceptionMapper {
                 return new InvalidRequestException(cause);
             }
             return cause instanceof RuntimeException re ? re : new LangChain4jException(cause);
-        }
-
-        private static Throwable findRoot(Throwable e) {
-            Throwable cause = e.getCause();
-            return cause == null || cause == e ? e : findRoot(cause);
         }
     }
 }
