@@ -13,10 +13,17 @@
     <name>LangChain4j :: Integration :: Azure CosmosDB NoSQL</name>
     <description>LangChain4j integration with Azure CosmosDB NoSQL API for vector storage and retrieval</description>
 
-    <properties>
-        <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
-    </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>4.1.118.Final</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 
@@ -37,12 +44,10 @@
             </exclusions>
         </dependency>
 
-        <!-- Adding dependency on json-smart with minimum version -->
         <dependency>
             <groupId>net.minidev</groupId>
             <artifactId>json-smart</artifactId>
-            <version>[2.5.2,)</version>
-
+            <version>2.5.2</version>
         </dependency>
 
         <dependency>
