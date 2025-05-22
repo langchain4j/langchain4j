@@ -2,14 +2,14 @@ package dev.langchain4j.service.guardrail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import com.example.SingletonClassInstanceFactory;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.UserMessage;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -43,7 +43,7 @@ class InputGuardrailOnClassAndMethodTest extends BaseGuardrailTests {
 
     public interface MyAiServiceWithoutClassAnnotations extends MyAiService {
         static MyAiService create() {
-            return createAiService(MyAiServiceWithoutClassAnnotations.class, List.of(KOGuardrail.class), List.of());
+            return createAiService(MyAiServiceWithoutClassAnnotations.class, List.of(OKGuardrail.class), List.of());
         }
     }
 
