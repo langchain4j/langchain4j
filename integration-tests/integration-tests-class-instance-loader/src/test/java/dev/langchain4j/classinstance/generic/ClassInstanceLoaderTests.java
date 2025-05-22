@@ -1,11 +1,11 @@
-package dev.langchain4j.classloading.generic;
+package dev.langchain4j.classinstance.generic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import com.example.classloading.Classes;
 import com.example.classloading.GenericClassInstanceFactory;
-import dev.langchain4j.classloading.ClassInstanceLoader;
+import dev.langchain4j.classinstance.ClassInstanceLoader;
 import dev.langchain4j.spi.classloading.ClassInstanceFactory;
 import java.util.ServiceLoader;
 import org.junit.jupiter.api.Test;

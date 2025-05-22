@@ -1,4 +1,4 @@
-package dev.langchain4j.classloading.quarkus;
+package dev.langchain4j.classinstance.quarkus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -7,7 +7,7 @@ import com.example.CDIClassInstanceFactory;
 import com.example.Class1;
 import com.example.Class2;
 import com.example.Class3;
-import dev.langchain4j.classloading.ClassInstanceLoader;
+import dev.langchain4j.classinstance.ClassInstanceLoader;
 import dev.langchain4j.spi.classloading.ClassInstanceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.enterprise.inject.UnsatisfiedResolutionException;

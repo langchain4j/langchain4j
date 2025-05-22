@@ -1,4 +1,4 @@
-package dev.langchain4j.classloading.spring;
+package dev.langchain4j.classinstance.spring;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -8,7 +8,7 @@ import com.example.classes.ApplicationContextClassInstanceFactory;
 import com.example.classes.Class1;
 import com.example.classes.Class2;
 import com.example.classes.Class3;
-import dev.langchain4j.classloading.ClassInstanceLoader;
+import dev.langchain4j.classinstance.ClassInstanceLoader;
 import dev.langchain4j.spi.classloading.ClassInstanceFactory;
 import java.util.ServiceLoader;
 import org.junit.jupiter.api.Test;

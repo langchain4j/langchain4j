@@ -1,4 +1,4 @@
-package dev.langchain4j.classloading;
+package dev.langchain4j.classinstance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -1,4 +1,4 @@
-package dev.langchain4j.classloading;
+package dev.langchain4j.classinstance;
 
 import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 import java.util.ServiceLoader;

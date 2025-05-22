@@ -166,7 +166,7 @@
                             <rules>
                                 <rule>
                                     <excludes>
-                                        <exclude>dev.langchain4j.classloading</exclude>
+                                        <exclude>dev.langchain4j.classinstance</exclude>
                                         <exclude>dev.langchain4j.data.document</exclude>
                                         <exclude>dev.langchain4j.data.text</exclude>
                                         <exclude>dev.langchain4j.exception</exclude>

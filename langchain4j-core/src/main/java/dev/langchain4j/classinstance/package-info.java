@@ -1,4 +1,4 @@
 @NullMarked
-package dev.langchain4j.classloading;
+package dev.langchain4j.classinstance;
 
 import org.jspecify.annotations.NullMarked;

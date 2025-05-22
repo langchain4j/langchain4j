@@ -2,8 +2,8 @@ package dev.langchain4j.service.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.classloading.ClassInstanceLoader;
-import dev.langchain4j.classloading.ClassMetadataProvider;
+import dev.langchain4j.classinstance.ClassInstanceLoader;
+import dev.langchain4j.classinstance.ClassMetadataProvider;
 import dev.langchain4j.guardrail.Guardrail;
 import dev.langchain4j.guardrail.GuardrailRequest;
 import dev.langchain4j.guardrail.GuardrailResult;

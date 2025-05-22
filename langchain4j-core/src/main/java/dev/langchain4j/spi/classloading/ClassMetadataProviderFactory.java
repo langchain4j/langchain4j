@@ -6,7 +6,7 @@ import java.util.Optional;
 /**
  * A factory interface for providing access to class metadata. Intended to be implemented by downstream frameworks.
  * <p>
- *     {@code dev.langchain4j.classloading.ReflectionBasedClassMetadataProviderFactory}
+ *     {@code dev.langchain4j.classinstance.ReflectionBasedClassMetadataProviderFactory}
  *     provides an implementation that uses reflection, which is probably fine in most cases, but this provides hooks for
  *     other frameworks (like Quarkus) which don't use reflection to provide class metadata.
  * </p>

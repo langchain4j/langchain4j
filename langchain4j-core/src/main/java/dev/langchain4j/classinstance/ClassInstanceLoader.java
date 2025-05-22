@@ -1,4 +1,4 @@
-package dev.langchain4j.classloading;
+package dev.langchain4j.classinstance;
 
 import dev.langchain4j.spi.classloading.ClassInstanceFactory;
 import java.lang.reflect.InvocationTargetException;
