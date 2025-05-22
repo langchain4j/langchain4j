@@ -1,10 +1,10 @@
 package dev.langchain4j.http.client.log;
 
-import static dev.langchain4j.http.client.log.HttpRequestLogger.format;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import org.slf4j.Logger;
+
+import static dev.langchain4j.http.client.log.HttpRequestLogger.format;
 
 @Internal
 class HttpResponseLogger {
@@ -14,10 +14,12 @@ class HttpResponseLogger {
             log.info(
                     """
                             HTTP response:
+                            - version: {}
                             - status code: {}
                             - headers: {}
                             - body: {}
                             """,
+                    response.version(),
                     response.statusCode(),
                     format(response.headers()),
                     response.body());

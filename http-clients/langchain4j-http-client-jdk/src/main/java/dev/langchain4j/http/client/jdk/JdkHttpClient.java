@@ -98,6 +98,10 @@ public class JdkHttpClient implements HttpClient {
         java.net.http.HttpRequest.Builder builder = java.net.http.HttpRequest.newBuilder()
                 .uri(URI.create(request.url()));
 
+        if (request.version() != null) {
+            builder.version(request.version());
+        }
+
         request.headers().forEach((name, values) -> {
             if (values != null) {
                 values.forEach(value -> builder.header(name, value));
@@ -124,6 +128,7 @@ public class JdkHttpClient implements HttpClient {
                 .statusCode(response.statusCode())
                 .headers(response.headers().map())
                 .body(body)
+                .version(response.version())
                 .build();
     }
 
