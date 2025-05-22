@@ -2,13 +2,13 @@ package dev.langchain4j.service.guardrail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.stream.Stream;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -244,21 +244,30 @@ class DefaultGuardrailServiceTests {
                         GuardrailService.builder(MethodLevelAssistant1.class)
                                 .inputGuardrailClasses(IG1.class, IG2.class)
                                 .outputGuardrailClasses(OG1.class, OG2.class)
-                                .outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder().maxRetries(10).build())
+                                .outputGuardrailsConfig(
+                                        dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder()
+                                                .maxRetries(10)
+                                                .build())
                                 .build()),
                 Arguments.of(
                         "assistant with guardrail classes defined",
                         GuardrailService.builder(NoGuardrailAssistant.class)
                                 .inputGuardrailClasses(IG1.class, IG2.class)
                                 .outputGuardrailClasses(OG1.class, OG2.class)
-                                .outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder().maxRetries(10).build())
+                                .outputGuardrailsConfig(
+                                        dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder()
+                                                .maxRetries(10)
+                                                .build())
                                 .build()),
                 Arguments.of(
                         "assistant with guardrail instances defined",
                         GuardrailService.builder(NoGuardrailAssistant.class)
                                 .inputGuardrails(new IG1(), new IG2())
                                 .outputGuardrails(new OG1(), new OG2())
-                                .outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder().maxRetries(10).build())
+                                .outputGuardrailsConfig(
+                                        dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder()
+                                                .maxRetries(10)
+                                                .build())
                                 .build()));
     }
 
