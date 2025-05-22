@@ -42,7 +42,6 @@
             <version>${jspecify.version}</version>
         </dependency>
 
-
         <!-- test dependencies -->
 
         <dependency>
@@ -91,6 +90,30 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- We want to use some of the things inside the langchain4j-test module -->
+            <!-- But we can't depend on the module directly because it would introduce a circular dependency -->
+            <!-- The langchain4j-test module depends on this module -->
+            <!-- So instead we will just add the source of that module to the test source of this module -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <phase>generate-test-sources</phase>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/../langchain4j-test/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -143,9 +166,12 @@
                             <rules>
                                 <rule>
                                     <excludes>
+                                        <exclude>dev.langchain4j.classinstance</exclude>
                                         <exclude>dev.langchain4j.data.document</exclude>
                                         <exclude>dev.langchain4j.data.text</exclude>
                                         <exclude>dev.langchain4j.exception</exclude>
+                                        <exclude>dev.langchain4j.guardrail</exclude>
+                                        <exclude>dev.langchain4j.guardrail.config</exclude>
                                         <exclude>dev.langchain4j.internal</exclude>
                                         <exclude>dev.langchain4j.model.chat</exclude>
                                         <exclude>dev.langchain4j.model.chat.listener</exclude>
