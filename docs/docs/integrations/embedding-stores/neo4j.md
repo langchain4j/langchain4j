@@ -187,6 +187,72 @@ final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
 final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
 ```
 
+To get embeddings using a hybrid search leveraging both the vector and the full text index:
+```java
+// ---> ADDS EMBEDDING AND FULLTEXT WITH ID <---
+embeddingStore = Neo4jEmbeddingStore.builder()
+        .withBasicAuth("<Bolt URL>", "<username>", "<password>")
+        .dimension(384)
+        .fullTextIndexName("movie_text")
+        .fullTextQuery("Matrix")
+        .autoCreateFullText(true)
+        .label(LABEL_TO_SANITIZE)
+        .build();
+
+List<Embedding> embeddings =
+        embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
+        embeddingStore.addAll(embeddings);
+
+final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
+
+final EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+        .queryEmbedding(queryEmbedding)
+        .maxResults(1)
+        .build();
+
+final List<EmbeddingMatch<TextSegment>> matches =
+        embeddingStore.search(embeddingSearchRequest).matches();
+
+// ---> SEARCH EMBEDDING WITH AUTOCREATED FULLTEXT <---
+final String fullTextIndexName = "movie_text";
+final String label = "Movie";
+final String fullTextSearch = "Matrix";
+embeddingStore = Neo4jEmbeddingStore.builder()
+        .withBasicAuth("<Bolt URL>", "<username>", "<password>")
+        .dimension(384)
+        .label(label)
+        .indexName("movie_vector_idx")
+        .fullTextIndexName(fullTextIndexName)
+        .fullTextQuery(fullTextSearch)
+        .build();
+```
+
+If the FULLTEXT index is invalid, a descriptive exception will be thrown.: 
+```java
+// ---> ERROR HANDLING WITH INVALID FULLTEXT <---
+Neo4jEmbeddingStore embeddingStore = Neo4jEmbeddingStore.builder()
+        .withBasicAuth("<Bolt URL>", "<username>", "<password>")
+        .dimension(384)
+        .fullTextIndexName("full_text_with_invalid_retrieval")
+        .fullTextQuery("Matrix")
+        .autoCreateFullText(true)
+        .fullTextRetrievalQuery("RETURN properties(invalid) AS metadata")
+        .label(LABEL_TO_SANITIZE)
+        .build();
+
+List<Embedding> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
+embeddingStore.addAll(embeddings);
+
+final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
+
+final EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+        .queryEmbedding(queryEmbedding)
+        .maxResults(3)
+        .build();
+embeddingStore.search(embeddingSearchRequest).matches();
+// This search will throw a ClientException: ... Variable `invalid` not defined ...
+```
+
 Here is how to create a `Neo4jText2CypherRetriever` instance:
 
 ```java
@@ -314,117 +380,7 @@ Neo4jText2CypherRetriever.builder()
   .build();
 ```
 
-You can also execute with some Cypher examples:
-To get embeddings using an hybrid search leveraging both the vector and the full text index:
-```java
-// ---> ADDS EMBEDDING AND FULLTEXT WITH ID <---
-embeddingStore = Neo4jEmbeddingStore.builder()
-                .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
-        .dimension(384)
-                .fullTextIndexName("movie_text")
-                .fullTextQuery("Matrix")
-                .autoCreateFullText(true)
-                .label(LABEL_TO_SANITIZE)
-                .build();
 
-List<Embedding> embeddings =
-        embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
-        embeddingStore.addAll(embeddings);
-
-final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
-
-final EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
-        .queryEmbedding(queryEmbedding)
-        .maxResults(1)
-        .build();
-
-final List<EmbeddingMatch<TextSegment>> matches =
-        embeddingStore.search(embeddingSearchRequest).matches();
-
-// ---> SEARCH EMBEDDING WITH AUTOCREATED FULLTEXT <---
-final String fullTextIndexName = "movie_text";
-final String label = "Movie";
-final String fullTextSearch = "Matrix";
-embeddingStore = Neo4jEmbeddingStore.builder()
-                .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
-        .dimension(384)
-                .label(label)
-                .indexName("movie_vector_idx")
-                .fullTextIndexName(fullTextIndexName)
-                .fullTextQuery(fullTextSearch)
-                .build();
-
-final List<String> texts = List.of(
-        "The Matrix: Welcome to the Real World",
-        "The Matrix Reloaded: Free your mind",
-        "The Matrix Revolutions: Everything that has a beginning has an end",
-        "The Devil's Advocate: Evil has its winning ways",
-        "A Few Good Men: In the heart of the nation's capital, in a courthouse of the U.S. government, one man will stop at nothing to keep his honor, and one will stop at nothing to find the truth.",
-        "Top Gun: I feel the need, the need for speed.",
-        "Jerry Maguire: The rest of his life begins now.",
-        "Stand By Me: For some, it's the last real taste of innocence, and the first real taste of life. But for everyone, it's the time that memories are made of.",
-        "As Good as It Gets: A comedy from the heart that goes for the throat.");
-
-final List<TextSegment> segments = texts.stream().map(TextSegment::from).toList();
-
-List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
-embeddingStore.addAll(embeddings, segments);
-
-final Embedding queryEmbedding = embeddingModel.embed(fullTextSearch).content();
-
-        session.executeWrite(tx -> {
-final String query = "CREATE FULLTEXT INDEX %s IF NOT EXISTS FOR (e:%s) ON EACH [e.%s]"
-        .formatted(fullTextIndexName, label, DEFAULT_ID_PROP);
-            tx.run(query).consume();
-            return null;
-                    });
-
-final EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
-        .queryEmbedding(queryEmbedding)
-        .maxResults(3)
-        .build();
-final List<EmbeddingMatch<TextSegment>> matches =
-        embeddingStore.search(embeddingSearchRequest).matches();
-assertThat(matches).hasSize(3);
-        matches.forEach(i -> {
-final String embeddedText = i.embedded().text();
-assertThat(embeddedText).contains(fullTextSearch);
-        });
-
-Neo4jEmbeddingStore embeddingStoreWithoutFullText = Neo4jEmbeddingStore.builder()
-        .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
-        .dimension(384)
-        .label(label)
-        .indexName("movie_vector_no_fulltext")
-        .build();
-
-        embeddingStoreWithoutFullText.addAll(embeddings, segments);
-final List<EmbeddingMatch<TextSegment>> matchesWithoutFullText =
-        embeddingStore.search(embeddingSearchRequest).matches();
-
-// ---> ERROR HANDLING WITH INVALID FULLTEXT <---
-Neo4jEmbeddingStore embeddingStore = Neo4jEmbeddingStore.builder()
-        .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
-        .dimension(384)
-        .fullTextIndexName("full_text_with_invalid_retrieval")
-        .fullTextQuery("Matrix")
-        .autoCreateFullText(true)
-        .fullTextRetrievalQuery("RETURN properties(invalid) AS metadata")
-        .label(LABEL_TO_SANITIZE)
-        .build();
-
-List<Embedding> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("test"))).content();
-embeddingStore.addAll(embeddings);
-
-final Embedding queryEmbedding = embeddingModel.embed("Matrix").content();
-
-final EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
-        .queryEmbedding(queryEmbedding)
-        .maxResults(3)
-        .build();
-embeddingStore.search(embeddingSearchRequest).matches();
-     // This search will throw a ClientException: ... Variable `invalid` not defined ...
-```
 To execute a search with a metadata filtering leveraging the `dev.langchain4j.store.embedding.filter.Filter` class:
 ```java
 // ---> ADD EMBEDDING WITH ID AND RETRIEVE WITH OR WITHOUT PREFILTER <---
