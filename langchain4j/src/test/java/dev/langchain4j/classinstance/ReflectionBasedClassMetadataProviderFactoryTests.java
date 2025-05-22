@@ -2,14 +2,15 @@ package dev.langchain4j.classinstance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.service.TokenStream;
-import dev.langchain4j.service.guardrail.InputGuardrails;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import dev.langchain4j.Experimental;
+import dev.langchain4j.classloading.ReflectionBasedClassMetadataProviderFactory;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.guardrail.InputGuardrails;
 import org.junit.jupiter.api.Test;
 
 class ReflectionBasedClassMetadataProviderFactoryTests {

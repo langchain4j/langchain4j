@@ -1,11 +1,11 @@
-package dev.langchain4j.classinstance;
+package dev.langchain4j.classloading;
 
-import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Optional;
 import java.util.stream.Stream;
+import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 
 /**
  * Implementation of the {@link ClassMetadataProviderFactory} interface using Java Reflection.

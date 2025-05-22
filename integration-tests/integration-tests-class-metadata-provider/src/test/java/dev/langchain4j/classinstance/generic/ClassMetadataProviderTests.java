@@ -2,14 +2,14 @@ package dev.langchain4j.classinstance.generic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.classloading.Class1;
-import com.example.classloading.GenericClassMetadataProviderFactory;
-import dev.langchain4j.Experimental;
-import dev.langchain4j.classinstance.ClassMetadataProvider;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import com.example.classloading.Class1;
+import com.example.classloading.GenericClassMetadataProviderFactory;
+import dev.langchain4j.Experimental;
+import dev.langchain4j.classloading.ClassMetadataProvider;
 import org.junit.jupiter.api.Test;
 
 class ClassMetadataProviderTests {
