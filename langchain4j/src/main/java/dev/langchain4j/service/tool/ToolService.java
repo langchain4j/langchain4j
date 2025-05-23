@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 @Internal
@@ -61,17 +62,36 @@ public class ToolService {
             }
 
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                if (method.isAnnotationPresent(Tool.class)) {
-                    ToolSpecification toolSpecification = toolSpecificationFrom(method);
-                    if (toolExecutors.containsKey(toolSpecification.name())) {
-                        throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + toolSpecification.name());
-                    }
-                    toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
-                    toolSpecifications.add(toolSpecificationFrom(method));
-                }
+                getToolMethod(method).ifPresent( toolMethod -> processToolMethod(objectWithTool, toolMethod) );
             }
         }
+    }
+
+    private void processToolMethod(Object objectWithTool, Method method) {
+        ToolSpecification toolSpecification = toolSpecificationFrom(method);
+        if (toolExecutors.containsKey(toolSpecification.name())) {
+            throw new IllegalConfigurationException(
+                    "Duplicated definition for tool: " + toolSpecification.name());
+        }
+        toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
+        toolSpecifications.add(toolSpecificationFrom(method));
+    }
+
+    private Optional<Method> getToolMethod(Method method) {
+        if (method.isAnnotationPresent(Tool.class)) {
+            return Optional.of(method);
+        }
+        for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
+            try {
+                Method interfaceMethod = iface.getDeclaredMethod(method.getName(), method.getParameterTypes());
+                if (interfaceMethod.isAnnotationPresent(Tool.class)) {
+                    return Optional.of(interfaceMethod);
+                }
+            } catch (NoSuchMethodException e) {
+                // Ignore and continue searching in the next interface
+            }
+        }
+        return Optional.empty();
     }
 
     public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
