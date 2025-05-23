@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.bedrock.BedrockRuntimeClientFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -147,10 +149,10 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
      * @return bedrock client
      */
     private BedrockRuntimeClient initClient() {
-        return BedrockRuntimeClient.builder()
-                .region(region)
-                .credentialsProvider(credentialsProvider)
-                .build();
+        BedrockRuntimeClientFactory factory = ServiceLoader.load(BedrockRuntimeClientFactory.class)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No BedrockRuntimeClientFactory implementation found"));
+        return factory.createClient(region, credentialsProvider, null, false, false);
     }
 
     public Region getRegion() {
