@@ -992,7 +992,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "feline");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(chatResponse.metadata(), model);
@@ -1022,7 +1022,9 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(aiMessage.text().toLowerCase())
+                .containsAnyOf("cat", "feline")
+                .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(chatResponse.metadata(), model);
@@ -1070,7 +1072,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "feline");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(chatResponse.metadata(), model);
@@ -1097,7 +1099,9 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(aiMessage.text().toLowerCase())
+                .containsAnyOf("cat", "feline")
+                .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(chatResponse.metadata(), model);

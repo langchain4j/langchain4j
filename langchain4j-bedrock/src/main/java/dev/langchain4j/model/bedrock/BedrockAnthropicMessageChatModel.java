@@ -1,5 +1,18 @@
 package dev.langchain4j.model.bedrock;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.joining;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -19,27 +32,18 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
-
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,47 +53,36 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.joining;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 /**
  * @deprecated please use {@link BedrockChatModel} instead
  */
 @Deprecated(forRemoval = true, since = "1.0.0-beta2")
-@Getter
-@SuperBuilder
 public class BedrockAnthropicMessageChatModel
         extends AbstractBedrockChatModel<BedrockAnthropicMessageChatModelResponse> {
 
     private static final Logger log = LoggerFactory.getLogger(BedrockAnthropicMessageChatModel.class);
 
     private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
-
-    @Builder.Default
-    private final int topK = 250;
-
-    @Builder.Default
-    private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
-
-    @Builder.Default
-    private final String model = Types.AnthropicClaude3SonnetV1.getValue();
-
-    @Builder.Default
-    private final ObjectMapper objectMapper = new ObjectMapper()
+    private static final int DEFAULT_TOP_K = 250;
+    private static final String DEFAULT_MODEL = Types.AnthropicClaude3SonnetV1.getValue();
+    private static final ObjectMapper DEFAULT_OBJECT_MAPPER = new ObjectMapper()
             .enable(INDENT_OUTPUT)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
+    private final int topK;
+
+    private final String anthropicVersion;
+
+    private final String model;
+
+    private final ObjectMapper objectMapper;
 
     @Override
     protected String getModelId() {
@@ -121,9 +114,9 @@ public class BedrockAnthropicMessageChatModel
         } else {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                    throw new UnsupportedFeatureException(String.format(
+                            "%s.%s is currently supported only when there is a single tool",
+                            ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
                 response = generate(chatRequest.messages(), toolSpecifications.get(0));
             } else {
@@ -183,11 +176,9 @@ public class BedrockAnthropicMessageChatModel
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatRequest listenerRequest =
-                createListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -205,8 +196,7 @@ public class BedrockAnthropicMessageChatModel
             Response<AiMessage> responseMessage =
                     Response.from(aiMessageFrom(result), result.getTokenUsage(), result.getFinishReason());
 
-            ChatResponse listenerResponse =
-                    createListenerResponse(result.getId(), result.getModel(), responseMessage);
+            ChatResponse listenerResponse = createListenerResponse(result.getId(), result.getModel(), responseMessage);
             ChatModelResponseContext responseContext =
                     new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
 
@@ -414,8 +404,8 @@ public class BedrockAnthropicMessageChatModel
         } else if (message instanceof UserMessage) {
             return ((UserMessage) message)
                     .contents().stream()
-                    .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
-                    .collect(Collectors.toList());
+                            .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
+                            .collect(Collectors.toList());
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             return Collections.singletonList(BedrockAnthropicContent.builder()
@@ -475,7 +465,6 @@ public class BedrockAnthropicMessageChatModel
      * Bedrock Anthropic model ids.
      * See <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html">this</a> for more details.
      */
-    @Getter
     public enum Types {
         AnthropicClaudeInstantV1("anthropic.claude-instant-v1"),
         AnthropicClaudeV2("anthropic.claude-v2"),
@@ -488,6 +477,122 @@ public class BedrockAnthropicMessageChatModel
 
         Types(String modelID) {
             this.value = modelID;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
+    @Override
+    public int getTopK() {
+        return topK;
+    }
+
+    @Override
+    public String getAnthropicVersion() {
+        return anthropicVersion;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
+    }
+
+    protected BedrockAnthropicMessageChatModel(BedrockAnthropicMessageChatModelBuilder<?, ?> builder) {
+        super(builder);
+        if (builder.isTopKSet) {
+            this.topK = builder.topK;
+        } else {
+            this.topK = DEFAULT_TOP_K;
+        }
+
+        if (builder.isAnthropicVersionSet) {
+            this.anthropicVersion = builder.anthropicVersion;
+        } else {
+            this.anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
+        }
+
+        if (builder.isModelSet) {
+            this.model = builder.model;
+        } else {
+            this.model = DEFAULT_MODEL;
+        }
+
+        if (builder.isObjectMapperSet) {
+            this.objectMapper = builder.objectMapper;
+        } else {
+            this.objectMapper = DEFAULT_OBJECT_MAPPER;
+        }
+    }
+
+    public static BedrockAnthropicMessageChatModelBuilder<?, ?> builder() {
+        return new BedrockAnthropicMessageChatModelBuilderImpl();
+    }
+
+    public abstract static class BedrockAnthropicMessageChatModelBuilder<
+                    C extends BedrockAnthropicMessageChatModel, B extends BedrockAnthropicMessageChatModelBuilder<C, B>>
+            extends AbstractBedrockChatModel.AbstractBedrockChatModelBuilder<
+                    BedrockAnthropicMessageChatModelResponse, C, B> {
+        private boolean isTopKSet;
+        private int topK;
+        private boolean isAnthropicVersionSet;
+        private String anthropicVersion;
+        private boolean isModelSet;
+        private String model;
+        private boolean isObjectMapperSet;
+        private ObjectMapper objectMapper;
+
+        @Override
+        public B topK(int topK) {
+            this.topK = topK;
+            this.isTopKSet = true;
+            return self();
+        }
+
+        @Override
+        public B anthropicVersion(String anthropicVersion) {
+            this.anthropicVersion = anthropicVersion;
+            this.isAnthropicVersionSet = true;
+            return self();
+        }
+
+        public B model(String model) {
+            this.model = model;
+            this.isModelSet = true;
+            return self();
+        }
+
+        public B objectMapper(ObjectMapper objectMapper) {
+            this.objectMapper = objectMapper;
+            this.isObjectMapperSet = true;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        @Override
+        public String toString() {
+            return "BedrockAnthropicMessageChatModel.BedrockAnthropicMessageChatModelBuilder(super=" + super.toString()
+                    + ", topK$value=" + this.topK + ", anthropicVersion$value=" + this.anthropicVersion
+                    + ", model$value=" + this.model + ", objectMapper$value=" + this.objectMapper + ")";
+        }
+    }
+
+    private static final class BedrockAnthropicMessageChatModelBuilderImpl
+            extends BedrockAnthropicMessageChatModelBuilder<
+                    BedrockAnthropicMessageChatModel, BedrockAnthropicMessageChatModelBuilderImpl> {
+        protected BedrockAnthropicMessageChatModelBuilderImpl self() {
+            return this;
+        }
+
+        public BedrockAnthropicMessageChatModel build() {
+            return new BedrockAnthropicMessageChatModel(this);
         }
     }
 }

@@ -1,19 +1,13 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
-import dev.langchain4j.model.bedrock.internal.BedrockChatModelResponse;
 import java.util.HashMap;
 import java.util.Map;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
 
 /**
  * @deprecated please use {@link BedrockChatModel} instead
  */
 @Deprecated(forRemoval = true, since = "1.0.0-beta2")
-@Getter
-@SuperBuilder
 public class BedrockLlamaChatModel extends AbstractBedrockChatModel<BedrockLlamaChatModelResponse> {
 
     private final String model;
@@ -43,9 +37,7 @@ public class BedrockLlamaChatModel extends AbstractBedrockChatModel<BedrockLlama
     /**
      * Bedrock Llama model ids
      */
-    @Getter
     public enum Types {
-
         META_LLAMA3_2_1B_INSTRUCT_V1_0("meta.llama3-2-1b-instruct-v1:0"),
         META_LLAMA3_2_3B_INSTRUCT_V1_0("meta.llama3-2-3b-instruct-v1:0"),
         META_LLAMA3_2_11B_INSTRUCT_V1_0("meta.llama3-2-11b-instruct-v1:0"),
@@ -63,5 +55,53 @@ public class BedrockLlamaChatModel extends AbstractBedrockChatModel<BedrockLlama
             this.value = modelID;
         }
 
+        public String getValue() {
+            return value;
+        }
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    protected BedrockLlamaChatModel(BedrockLlamaChatModelBuilder<?, ?> b) {
+        super(b);
+        this.model = b.model;
+    }
+
+    public static BedrockLlamaChatModelBuilder<?, ?> builder() {
+        return new BedrockLlamaChatModelBuilderImpl();
+    }
+
+    public abstract static class BedrockLlamaChatModelBuilder<
+                    C extends BedrockLlamaChatModel, B extends BedrockLlamaChatModelBuilder<C, B>>
+            extends AbstractBedrockChatModel.AbstractBedrockChatModelBuilder<BedrockLlamaChatModelResponse, C, B> {
+        private String model;
+
+        public B model(String model) {
+            this.model = model;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        @Override
+        public String toString() {
+            return "BedrockLlamaChatModel.BedrockLlamaChatModelBuilder(super=" + super.toString() + ", model="
+                    + this.model + ")";
+        }
+    }
+
+    private static final class BedrockLlamaChatModelBuilderImpl
+            extends BedrockLlamaChatModelBuilder<BedrockLlamaChatModel, BedrockLlamaChatModelBuilderImpl> {
+        protected BedrockLlamaChatModelBuilderImpl self() {
+            return this;
+        }
+
+        public BedrockLlamaChatModel build() {
+            return new BedrockLlamaChatModel(this);
+        }
     }
 }
