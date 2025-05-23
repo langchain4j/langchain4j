@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.azure.search;
 
+import static dev.langchain4j.internal.RetryUtils.retryPolicyBuilder;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_FIELD_ID;
@@ -61,7 +62,12 @@ class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private void deleteIndex() {
         try {
-            withRetry(embeddingStore::deleteIndex, 5);
+            retryPolicyBuilder()
+                    .maxRetries(5)
+                    .delayMillis(1000)
+                    .backoffExp(1.5)
+                    .build()
+                    .withRetry(embeddingStore::deleteIndex);
         } catch (RuntimeException e) {
             log.error("Failed to delete the index. You should look at deleting it manually.", e);
         }
