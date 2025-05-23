@@ -1,0 +1,329 @@
+/home/mario/software/jdk-23.0.1/bin/java -javaagent:/home/mario/software/idea-IU-242.20224.419/lib/idea_rt.jar=43543 -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8 -classpath /home/mario/workspace/langchain4j/langchain4j-agentic/target/test-classes:/home/mario/workspace/langchain4j/langchain4j-agentic/target/classes:/home/mario/workspace/langchain4j/langchain4j/target/classes:/home/mario/workspace/langchain4j/langchain4j-core/target/classes:/home/mario/.m2/repository/org/jspecify/jspecify/1.0.0/jspecify-1.0.0.jar:/home/mario/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.19.0/jackson-annotations-2.19.0.jar:/home/mario/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.19.0/jackson-core-2.19.0.jar:/home/mario/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.19.0/jackson-databind-2.19.0.jar:/home/mario/.m2/repository/org/apache/opennlp/opennlp-tools/2.5.4/opennlp-tools-2.5.4.jar:/home/mario/.m2/repository/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar:/home/mario/workspace/langchain4j/langchain4j-ollama/target/classes:/home/mario/workspace/langchain4j/langchain4j-http-client/target/classes:/home/mario/workspace/langchain4j/http-clients/langchain4j-http-client-jdk/target/classes:/home/mario/workspace/langchain4j/langchain4j-ollama/target/test-classes:/home/mario/.m2/repository/org/testcontainers/ollama/1.20.4/ollama-1.20.4.jar:/home/mario/.m2/repository/org/testcontainers/testcontainers/1.20.4/testcontainers-1.20.4.jar:/home/mario/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/home/mario/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/home/mario/.m2/repository/org/apache/commons/commons-compress/1.24.0/commons-compress-1.24.0.jar:/home/mario/.m2/repository/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8.jar:/home/mario/.m2/repository/com/github/docker-java/docker-java-api/3.4.0/docker-java-api-3.4.0.jar:/home/mario/.m2/repository/com/github/docker-java/docker-java-transport-zerodep/3.4.0/docker-java-transport-zerodep-3.4.0.jar:/home/mario/.m2/repository/com/github/docker-java/docker-java-transport/3.4.0/docker-java-transport-3.4.0.jar:/home/mario/.m2/repository/net/java/dev/jna/jna/5.13.0/jna-5.13.0.jar:/home/mario/.m2/repository/org/assertj/assertj-core/3.27.3/assertj-core-3.27.3.jar:/home/mario/.m2/repository/net/bytebuddy/byte-buddy/1.15.11/byte-buddy-1.15.11.jar:/home/mario/.m2/repository/org/awaitility/awaitility/4.2.2/awaitility-4.2.2.jar:/home/mario/.m2/repository/org/hamcrest/hamcrest/2.1/hamcrest-2.1.jar:/home/mario/.m2/repository/org/mockito/mockito-core/5.14.2/mockito-core-5.14.2.jar:/home/mario/.m2/repository/net/bytebuddy/byte-buddy-agent/1.15.4/byte-buddy-agent-1.15.4.jar:/home/mario/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/home/mario/.m2/repository/org/mockito/mockito-junit-jupiter/5.14.2/mockito-junit-jupiter-5.14.2.jar:/home/mario/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.11.3/junit-jupiter-api-5.11.3.jar:/home/mario/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/home/mario/.m2/repository/org/junit/platform/junit-platform-commons/1.11.3/junit-platform-commons-1.11.3.jar:/home/mario/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/home/mario/.m2/repository/org/wiremock/wiremock-standalone/3.12.1/wiremock-standalone-3.12.1.jar:/home/mario/.m2/repository/org/tinylog/tinylog-impl/2.6.2/tinylog-impl-2.6.2.jar:/home/mario/.m2/repository/org/tinylog/tinylog-api/2.6.2/tinylog-api-2.6.2.jar:/home/mario/.m2/repository/org/tinylog/slf4j-tinylog/2.6.2/slf4j-tinylog-2.6.2.jar:/home/mario/.m2/repository/com/willowtreeapps/assertk/assertk/0.28.1/assertk-0.28.1.jar:/home/mario/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.9.25/kotlin-stdlib-1.9.25.jar:/home/mario/.m2/repository/com/willowtreeapps/opentest4k/opentest4k/1.3.0/opentest4k-1.3.0.jar:/home/mario/.m2/repository/com/willowtreeapps/assertk/assertk-coroutines-jvm/0.28.1/assertk-coroutines-jvm-0.28.1.jar:/home/mario/.m2/repository/com/willowtreeapps/assertk/assertk-jvm/0.28.1/assertk-jvm-0.28.1.jar:/home/mario/.m2/repository/com/willowtreeapps/opentest4k/opentest4k-jvm/1.3.0/opentest4k-jvm-1.3.0.jar:/home/mario/.m2/repository/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/1.8.1/kotlinx-coroutines-core-jvm-1.8.1.jar:/home/mario/.m2/repository/org/awaitility/awaitility-kotlin/4.2.2/awaitility-kotlin-4.2.2.jar:/home/mario/.m2/repository/org/jetbrains/kotlinx/kotlinx-coroutines-test-jvm/1.8.1/kotlinx-coroutines-test-jvm-1.8.1.jar:/home/mario/.m2/repository/org/jetbrains/annotations/23.0.0/annotations-23.0.0.jar:/home/mario/.m2/repository/io/kotest/kotest-assertions-core-jvm/5.9.1/kotest-assertions-core-jvm-5.9.1.jar:/home/mario/.m2/repository/io/kotest/kotest-assertions-shared-jvm/5.9.1/kotest-assertions-shared-jvm-5.9.1.jar:/home/mario/.m2/repository/io/github/java-diff-utils/java-diff-utils/4.12/java-diff-utils-4.12.jar:/home/mario/.m2/repository/org/jetbrains/kotlinx/kotlinx-coroutines-jdk8/1.8.0/kotlinx-coroutines-jdk8-1.8.0.jar:/home/mario/.m2/repository/org/jetbrains/kotlin/kotlin-reflect/1.9.25/kotlin-reflect-1.9.25.jar:/home/mario/.m2/repository/io/kotest/kotest-common-jvm/5.9.1/kotest-common-jvm-5.9.1.jar:/home/mario/.m2/repository/io/kotest/kotest-assertions-api-jvm/5.9.1/kotest-assertions-api-jvm-5.9.1.jar dev.langchain4j.agentic.HoroscopeMain
+2025-06-16 17:57:37 [main] dev.langchain4j.http.client.log.HttpRequestLogger.log()
+INFO: HTTP request:
+- method: POST
+- url: http://localhost:11434/api/chat
+- headers: [Content-Type: application/json]
+- body: {
+  "model" : "qwen3:8b",
+  "messages" : [ {
+    "role" : "system",
+    "content" : "You are a planner expert that is provided with a set of agents.\nYou know nothing about any domain, don't take any assumptions about the user request,\nthe only thing that you can do is relying on the provided agents.\n\nYour role is to analyze the user request and decide which of the provided agent to call\nnext to address it. You return an agent invocation containing the name of the agent and the arguments\nto pass to it. Generate the agent invocation also considering the past messages.\nIf the user request have been already completely fulfilled or the last response already contains an\nappropriate answer, simply return an agent invocation with agentName \"done\" and a single argument named\n\"response\" containing the answer to be returned to the user with a recap of all the performed actions.\n\nFor each agent it will be provided both the name and description together with the list of the arguments\nit takes in input using the format {name: description, [argument1, argument2]}.\n"
+  }, {
+    "role" : "user",
+    "content" : "Decide which agent to invoke next, doing things in small steps and\nnever taking any shortcuts or relying on your own knowledge.\nIgnore the fact the user's request is already clear or explicit.\nDon't try to answer the user request or any intermediary doubt on your own, always rely on all the provided agents.\nYou know nothing except the provided agents and their descriptions. You MUST query ALL necessary agents.\n\nThe comma separated list of available agents is: '{askUser: An agent that asks the user for information, [request]}, {horoscope: an astrologist that generates horoscopes based on the user's name and zodiac sign., [name, sign]}'.\nThe user request is: 'My name is Mario. What is my horoscope?'.\nThe last received response is: ''.\n\nYou must answer strictly in the following JSON format: {\n\"agentName\": (type: string),\n\"arguments\": (type: java.util.Map)\n}"
+  } ],
+  "options" : {
+    "temperature" : 0.0,
+    "stop" : [ ]
+  },
+  "stream" : false,
+  "tools" : [ ]
+}
+
+2025-06-16 17:58:01 [main] dev.langchain4j.http.client.log.HttpResponseLogger.log()
+INFO: HTTP response:
+- status code: 200
+- headers: [content-length: 797], [content-type: application/json; charset=utf-8], [date: Mon, 16 Jun 2025 15:58:01 GMT]
+- body: {"model":"qwen3:8b","created_at":"2025-06-16T15:58:01.081923551Z","message":{"role":"assistant","content":"\u003cthink\u003e\nOkay, let's see. The user is Mario and he's asking for his horoscope. The available agents are askUser and horoscope. The horoscope agent requires name and sign. The user provided his name, but not his zodiac sign. So the next step is to ask the user for his zodiac sign. That's why I should call the askUser agent with the request for the sign.\n\u003c/think\u003e\n\n{\n  \"agentName\": \"askUser\",\n  \"arguments\": {\n    \"request\": \"What is your zodiac sign?\"\n  }\n}"},"done_reason":"stop","done":true,"total_duration":23938385856,"load_duration":14687247,"prompt_eval_count":403,"prompt_eval_duration":12534646550,"eval_count":118,"eval_duration":11383926766}
+
+*** Agent Invocation: AgentInvocation{agentName='askUser', arguments={request=What is your zodiac sign?}}
+2025-06-16 17:58:01 [main] dev.langchain4j.http.client.log.HttpRequestLogger.log()
+INFO: HTTP request:
+- method: POST
+- url: http://localhost:11434/api/chat
+- headers: [Content-Type: application/json]
+- body: {
+  "model" : "qwen2.5:7b",
+  "messages" : [ {
+    "role" : "system",
+    "content" : "You are an operator asking the user for information and returning the answer as it is.\n"
+  }, {
+    "role" : "user",
+    "content" : "Use the tool to ask What is your zodiac sign? to the user and return the answer as it is.\n"
+  } ],
+  "options" : {
+    "temperature" : 0.0,
+    "stop" : [ ]
+  },
+  "stream" : false,
+  "tools" : [ {
+    "type" : "function",
+    "function" : {
+      "name" : "askUser",
+      "description" : "Ask information to the user",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "arg0" : {
+            "type" : "string",
+            "description" : "request"
+          }
+        },
+        "required" : [ "arg0" ]
+      }
+    }
+  } ]
+}
+
+2025-06-16 17:58:10 [main] dev.langchain4j.http.client.log.HttpResponseLogger.log()
+INFO: HTTP response:
+- status code: 200
+- headers: [content-length: 395], [content-type: application/json; charset=utf-8], [date: Mon, 16 Jun 2025 15:58:10 GMT]
+- body: {"model":"qwen2.5:7b","created_at":"2025-06-16T15:58:10.775945966Z","message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"askUser","arguments":{"arg0":"What is your zodiac sign?"}}}]},"done_reason":"stop","done":true,"total_duration":9653863958,"load_duration":13831538,"prompt_eval_count":179,"prompt_eval_duration":7374979914,"eval_count":27,"eval_duration":2262028960}
+
+What is your zodiac sign?
+> pisces
+2025-06-16 17:58:14 [main] dev.langchain4j.http.client.log.HttpRequestLogger.log()
+INFO: HTTP request:
+- method: POST
+- url: http://localhost:11434/api/chat
+- headers: [Content-Type: application/json]
+- body: {
+  "model" : "qwen2.5:7b",
+  "messages" : [ {
+    "role" : "system",
+    "content" : "You are an operator asking the user for information and returning the answer as it is.\n"
+  }, {
+    "role" : "user",
+    "content" : "Use the tool to ask What is your zodiac sign? to the user and return the answer as it is.\n"
+  }, {
+    "role" : "assistant",
+    "tool_calls" : [ {
+      "function" : {
+        "name" : "askUser",
+        "arguments" : {
+          "arg0" : "What is your zodiac sign?"
+        }
+      }
+    } ]
+  }, {
+    "role" : "tool",
+    "content" : "pisces"
+  } ],
+  "options" : {
+    "temperature" : 0.0,
+    "stop" : [ ]
+  },
+  "stream" : false,
+  "tools" : [ {
+    "type" : "function",
+    "function" : {
+      "name" : "askUser",
+      "description" : "Ask information to the user",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "arg0" : {
+            "type" : "string",
+            "description" : "request"
+          }
+        },
+        "required" : [ "arg0" ]
+      }
+    }
+  } ]
+}
+
+2025-06-16 17:58:17 [main] dev.langchain4j.http.client.log.HttpResponseLogger.log()
+INFO: HTTP response:
+- status code: 200
+- headers: [content-length: 332], [content-type: application/json; charset=utf-8], [date: Mon, 16 Jun 2025 15:58:17 GMT]
+- body: {"model":"qwen2.5:7b","created_at":"2025-06-16T15:58:17.228062043Z","message":{"role":"assistant","content":"The user's zodiac sign is pisces."},"done_reason":"stop","done":true,"total_duration":2692631672,"load_duration":16567258,"prompt_eval_count":225,"prompt_eval_duration":1627540052,"eval_count":11,"eval_duration":1028430802}
+
+2025-06-16 17:58:17 [main] dev.langchain4j.http.client.log.HttpRequestLogger.log()
+INFO: HTTP request:
+- method: POST
+- url: http://localhost:11434/api/chat
+- headers: [Content-Type: application/json]
+- body: {
+  "model" : "qwen3:8b",
+  "messages" : [ {
+    "role" : "user",
+    "content" : "Decide which agent to invoke next, doing things in small steps and\nnever taking any shortcuts or relying on your own knowledge.\nIgnore the fact the user's request is already clear or explicit.\nDon't try to answer the user request or any intermediary doubt on your own, always rely on all the provided agents.\nYou know nothing except the provided agents and their descriptions. You MUST query ALL necessary agents.\n\nThe comma separated list of available agents is: '{askUser: An agent that asks the user for information, [request]}, {horoscope: an astrologist that generates horoscopes based on the user's name and zodiac sign., [name, sign]}'.\nThe user request is: 'My name is Mario. What is my horoscope?'.\nThe last received response is: ''.\n\nYou must answer strictly in the following JSON format: {\n\"agentName\": (type: string),\n\"arguments\": (type: java.util.Map)\n}"
+  }, {
+    "role" : "assistant",
+    "content" : "<think>\nOkay, let's see. The user is Mario and he's asking for his horoscope. The available agents are askUser and horoscope. The horoscope agent requires name and sign. The user provided his name, but not his zodiac sign. So the next step is to ask the user for his zodiac sign. That's why I should call the askUser agent with the request for the sign.\n</think>\n\n{\n  \"agentName\": \"askUser\",\n  \"arguments\": {\n    \"request\": \"What is your zodiac sign?\"\n  }\n}",
+    "tool_calls" : [ ]
+  }, {
+    "role" : "user",
+    "content" : "Use the tool to ask What is your zodiac sign? to the user and return the answer as it is.\n"
+  }, {
+    "role" : "assistant",
+    "tool_calls" : [ {
+      "function" : {
+        "name" : "askUser",
+        "arguments" : {
+          "arg0" : "What is your zodiac sign?"
+        }
+      }
+    } ]
+  }, {
+    "role" : "tool",
+    "content" : "pisces"
+  }, {
+    "role" : "assistant",
+    "content" : "The user's zodiac sign is pisces.",
+    "tool_calls" : [ ]
+  }, {
+    "role" : "system",
+    "content" : "You are a planner expert that is provided with a set of agents.\nYou know nothing about any domain, don't take any assumptions about the user request,\nthe only thing that you can do is relying on the provided agents.\n\nYour role is to analyze the user request and decide which of the provided agent to call\nnext to address it. You return an agent invocation containing the name of the agent and the arguments\nto pass to it. Generate the agent invocation also considering the past messages.\nIf the user request have been already completely fulfilled or the last response already contains an\nappropriate answer, simply return an agent invocation with agentName \"done\" and a single argument named\n\"response\" containing the answer to be returned to the user with a recap of all the performed actions.\n\nFor each agent it will be provided both the name and description together with the list of the arguments\nit takes in input using the format {name: description, [argument1, argument2]}.\n"
+  }, {
+    "role" : "user",
+    "content" : "Decide which agent to invoke next, doing things in small steps and\nnever taking any shortcuts or relying on your own knowledge.\nIgnore the fact the user's request is already clear or explicit.\nDon't try to answer the user request or any intermediary doubt on your own, always rely on all the provided agents.\nYou know nothing except the provided agents and their descriptions. You MUST query ALL necessary agents.\n\nThe comma separated list of available agents is: '{askUser: An agent that asks the user for information, [request]}, {horoscope: an astrologist that generates horoscopes based on the user's name and zodiac sign., [name, sign]}'.\nThe user request is: 'My name is Mario. What is my horoscope?'.\nThe last received response is: 'The user's zodiac sign is pisces.'.\n\nYou must answer strictly in the following JSON format: {\n\"agentName\": (type: string),\n\"arguments\": (type: java.util.Map)\n}"
+  } ],
+  "options" : {
+    "temperature" : 0.0,
+    "stop" : [ ]
+  },
+  "stream" : false,
+  "tools" : [ ]
+}
+
+2025-06-16 17:58:49 [main] dev.langchain4j.http.client.log.HttpResponseLogger.log()
+INFO: HTTP response:
+- status code: 200
+- headers: [content-length: 979], [content-type: application/json; charset=utf-8], [date: Mon, 16 Jun 2025 15:58:49 GMT]
+- body: {"model":"qwen3:8b","created_at":"2025-06-16T15:58:49.362897528Z","message":{"role":"assistant","content":"\u003cthink\u003e\nOkay, let's see. The user asked for their horoscope, and their name is Mario. Earlier, I used the askUser agent to find out their zodiac sign, which came back as Pisces. Now, the next step is to get the horoscope using the horoscope agent. The horoscope agent requires the name and the sign. Since we already have both (Mario and Pisces), I should call the horoscope agent with those parameters. No need to ask more questions because the necessary info is already gathered. Just pass the arguments to the horoscope agent.\n\u003c/think\u003e\n\n{\n  \"agentName\": \"horoscope\",\n  \"arguments\": {\n    \"name\": \"Mario\",\n    \"sign\": \"pisces\"\n  }\n}"},"done_reason":"stop","done":true,"total_duration":32129746200,"load_duration":24265918,"prompt_eval_count":731,"prompt_eval_duration":16340182201,"eval_count":155,"eval_duration":15710933225}
+
+*** Agent Invocation: AgentInvocation{agentName='horoscope', arguments={name=Mario, sign=pisces}}
+2025-06-16 17:58:49 [main] dev.langchain4j.http.client.log.HttpRequestLogger.log()
+INFO: HTTP request:
+- method: POST
+- url: http://localhost:11434/api/chat
+- headers: [Content-Type: application/json]
+- body: {
+  "model" : "qwen2.5:7b",
+  "messages" : [ {
+    "role" : "system",
+    "content" : "You are an astrologist that generates horoscopes based on the user's name and zodiac sign.\n"
+  }, {
+    "role" : "user",
+    "content" : "Generate the horoscope for Mario who is a pisces.\n"
+  } ],
+  "options" : {
+    "temperature" : 0.0,
+    "stop" : [ ]
+  },
+  "stream" : false,
+  "tools" : [ ]
+}
+
+2025-06-16 17:59:16 [main] dev.langchain4j.http.client.log.HttpResponseLogger.log()
+INFO: HTTP response:
+- status code: 200
+- headers: [content-length: 1732], [content-type: application/json; charset=utf-8], [date: Mon, 16 Jun 2025 15:59:16 GMT]
+- body: {"model":"qwen2.5:7b","created_at":"2025-06-16T15:59:16.667433378Z","message":{"role":"assistant","content":"Certainly! Here’s your Pisces horoscope for today, Mario:\n\n---\n\n**Mario, the Pisces of February 19 - March 20:**\n\nAs a Pisces, you are known for your deep emotional sensitivity and artistic soul. Today, let's dive into what the stars have in store for you.\n\n**Love:** In matters of the heart, there might be some unexpected twists and turns. Trust your instincts but also keep an open mind to new possibilities. Your intuition is sharp today, so listen closely to any whispers from the universe about your relationships.\n\n**Career:** The creative energies are flowing strong today, making this a great day for brainstorming sessions or working on projects that require a bit of imagination and flexibility. However, be mindful not to overextend yourself. Balance is key in all endeavors.\n\n**Health:** Emotions can sometimes affect your physical well-being. Take some time to relax and unwind. A gentle yoga session or a soothing walk by the water could do wonders for both body and mind.\n\n**Money:** Financially, you might find that opportunities come knocking unexpectedly. Stay alert and open to new possibilities, but also be cautious not to rush into decisions without fully considering all aspects.\n\nRemember, Mario, as a Pisces, your intuition is your greatest ally. Trust in the flow of life and let it guide you through today's challenges with grace and poise.\n\n---\n\nWishing you a wonderful day ahead!"},"done_reason":"stop","done":true,"total_duration":27299973171,"load_duration":15420436,"prompt_eval_count":47,"prompt_eval_duration":1897444488,"eval_count":291,"eval_duration":25383862689}
+
+2025-06-16 17:59:16 [main] dev.langchain4j.http.client.log.HttpRequestLogger.log()
+INFO: HTTP request:
+- method: POST
+- url: http://localhost:11434/api/chat
+- headers: [Content-Type: application/json]
+- body: {
+  "model" : "qwen3:8b",
+  "messages" : [ {
+    "role" : "user",
+    "content" : "Use the tool to ask What is your zodiac sign? to the user and return the answer as it is.\n"
+  }, {
+    "role" : "assistant",
+    "tool_calls" : [ {
+      "function" : {
+        "name" : "askUser",
+        "arguments" : {
+          "arg0" : "What is your zodiac sign?"
+        }
+      }
+    } ]
+  }, {
+    "role" : "tool",
+    "content" : "pisces"
+  }, {
+    "role" : "assistant",
+    "content" : "The user's zodiac sign is pisces.",
+    "tool_calls" : [ ]
+  }, {
+    "role" : "user",
+    "content" : "Decide which agent to invoke next, doing things in small steps and\nnever taking any shortcuts or relying on your own knowledge.\nIgnore the fact the user's request is already clear or explicit.\nDon't try to answer the user request or any intermediary doubt on your own, always rely on all the provided agents.\nYou know nothing except the provided agents and their descriptions. You MUST query ALL necessary agents.\n\nThe comma separated list of available agents is: '{askUser: An agent that asks the user for information, [request]}, {horoscope: an astrologist that generates horoscopes based on the user's name and zodiac sign., [name, sign]}'.\nThe user request is: 'My name is Mario. What is my horoscope?'.\nThe last received response is: 'The user's zodiac sign is pisces.'.\n\nYou must answer strictly in the following JSON format: {\n\"agentName\": (type: string),\n\"arguments\": (type: java.util.Map)\n}"
+  }, {
+    "role" : "assistant",
+    "content" : "<think>\nOkay, let's see. The user asked for their horoscope, and their name is Mario. Earlier, I used the askUser agent to find out their zodiac sign, which came back as Pisces. Now, the next step is to get the horoscope using the horoscope agent. The horoscope agent requires the name and the sign. Since we already have both (Mario and Pisces), I should call the horoscope agent with those parameters. No need to ask more questions because the necessary info is already gathered. Just pass the arguments to the horoscope agent.\n</think>\n\n{\n  \"agentName\": \"horoscope\",\n  \"arguments\": {\n    \"name\": \"Mario\",\n    \"sign\": \"pisces\"\n  }\n}",
+    "tool_calls" : [ ]
+  }, {
+    "role" : "user",
+    "content" : "Generate the horoscope for Mario who is a pisces.\n"
+  }, {
+    "role" : "assistant",
+    "content" : "Certainly! Here’s your Pisces horoscope for today, Mario:\n\n---\n\n**Mario, the Pisces of February 19 - March 20:**\n\nAs a Pisces, you are known for your deep emotional sensitivity and artistic soul. Today, let's dive into what the stars have in store for you.\n\n**Love:** In matters of the heart, there might be some unexpected twists and turns. Trust your instincts but also keep an open mind to new possibilities. Your intuition is sharp today, so listen closely to any whispers from the universe about your relationships.\n\n**Career:** The creative energies are flowing strong today, making this a great day for brainstorming sessions or working on projects that require a bit of imagination and flexibility. However, be mindful not to overextend yourself. Balance is key in all endeavors.\n\n**Health:** Emotions can sometimes affect your physical well-being. Take some time to relax and unwind. A gentle yoga session or a soothing walk by the water could do wonders for both body and mind.\n\n**Money:** Financially, you might find that opportunities come knocking unexpectedly. Stay alert and open to new possibilities, but also be cautious not to rush into decisions without fully considering all aspects.\n\nRemember, Mario, as a Pisces, your intuition is your greatest ally. Trust in the flow of life and let it guide you through today's challenges with grace and poise.\n\n---\n\nWishing you a wonderful day ahead!",
+    "tool_calls" : [ ]
+  }, {
+    "role" : "system",
+    "content" : "You are a planner expert that is provided with a set of agents.\nYou know nothing about any domain, don't take any assumptions about the user request,\nthe only thing that you can do is relying on the provided agents.\n\nYour role is to analyze the user request and decide which of the provided agent to call\nnext to address it. You return an agent invocation containing the name of the agent and the arguments\nto pass to it. Generate the agent invocation also considering the past messages.\nIf the user request have been already completely fulfilled or the last response already contains an\nappropriate answer, simply return an agent invocation with agentName \"done\" and a single argument named\n\"response\" containing the answer to be returned to the user with a recap of all the performed actions.\n\nFor each agent it will be provided both the name and description together with the list of the arguments\nit takes in input using the format {name: description, [argument1, argument2]}.\n"
+  }, {
+    "role" : "user",
+    "content" : "Decide which agent to invoke next, doing things in small steps and\nnever taking any shortcuts or relying on your own knowledge.\nIgnore the fact the user's request is already clear or explicit.\nDon't try to answer the user request or any intermediary doubt on your own, always rely on all the provided agents.\nYou know nothing except the provided agents and their descriptions. You MUST query ALL necessary agents.\n\nThe comma separated list of available agents is: '{askUser: An agent that asks the user for information, [request]}, {horoscope: an astrologist that generates horoscopes based on the user's name and zodiac sign., [name, sign]}'.\nThe user request is: 'My name is Mario. What is my horoscope?'.\nThe last received response is: 'Certainly! Here’s your Pisces horoscope for today, Mario:\n\n---\n\n**Mario, the Pisces of February 19 - March 20:**\n\nAs a Pisces, you are known for your deep emotional sensitivity and artistic soul. Today, let's dive into what the stars have in store for you.\n\n**Love:** In matters of the heart, there might be some unexpected twists and turns. Trust your instincts but also keep an open mind to new possibilities. Your intuition is sharp today, so listen closely to any whispers from the universe about your relationships.\n\n**Career:** The creative energies are flowing strong today, making this a great day for brainstorming sessions or working on projects that require a bit of imagination and flexibility. However, be mindful not to overextend yourself. Balance is key in all endeavors.\n\n**Health:** Emotions can sometimes affect your physical well-being. Take some time to relax and unwind. A gentle yoga session or a soothing walk by the water could do wonders for both body and mind.\n\n**Money:** Financially, you might find that opportunities come knocking unexpectedly. Stay alert and open to new possibilities, but also be cautious not to rush into decisions without fully considering all aspects.\n\nRemember, Mario, as a Pisces, your intuition is your greatest ally. Trust in the flow of life and let it guide you through today's challenges with grace and poise.\n\n---\n\nWishing you a wonderful day ahead!'.\n\nYou must answer strictly in the following JSON format: {\n\"agentName\": (type: string),\n\"arguments\": (type: java.util.Map)\n}"
+  } ],
+  "options" : {
+    "temperature" : 0.0,
+    "stop" : [ ]
+  },
+  "stream" : false,
+  "tools" : [ ]
+}
+
+2025-06-16 18:00:38 [main] dev.langchain4j.http.client.log.HttpResponseLogger.log()
+INFO: HTTP response:
+- status code: 200
+- headers: [content-length: 1082], [content-type: application/json; charset=utf-8], [date: Mon, 16 Jun 2025 16:00:38 GMT]
+- body: {"model":"qwen3:8b","created_at":"2025-06-16T16:00:38.662506929Z","message":{"role":"assistant","content":"\u003cthink\u003e\nOkay, let's see. The user asked, \"My name is Mario. What is my horoscope?\" The assistant first called the askUser agent to get Mario's zodiac sign, which came back as Pisces. Then, the horoscope agent was used with name Mario and sign Pisces to generate the horoscope. The last response was the generated horoscope. Now, the user is asking again, but the request seems to be already fulfilled. The last response provided the horoscope, so the user's question is answered. The next step should be to mark the task as done. So, the agent to invoke is \"done\" with the response containing the horoscope answer.\n\u003c/think\u003e\n\n{\"agentName\": \"done\", \"arguments\": {\"response\": \"The horoscope for Mario (Pisces) has been generated and provided.\"}}"},"done_reason":"stop","done":true,"total_duration":81989391378,"load_duration":13145249,"prompt_eval_count":1336,"prompt_eval_duration":63046749727,"eval_count":175,"eval_duration":18865743365}
+
+*** Agent Invocation: AgentInvocation{agentName='done', arguments={response=The horoscope for Mario (Pisces) has been generated and provided.}}
+2025-06-16 18:00:38 [main] dev.langchain4j.http.client.log.HttpRequestLogger.log()
+INFO: HTTP request:
+- method: POST
+- url: http://localhost:11434/api/chat
+- headers: [Content-Type: application/json]
+- body: {
+  "model" : "qwen3:8b",
+  "messages" : [ {
+    "role" : "user",
+    "content" : "You are a response evaluator that is provided with two responses to a user request.\nYour role is to score the two responses based on their relevance for the user request.\n\nFor each of the two responses, response1 and response2, you will return a score, respectively score 1 and score 2,\nbetween 0.0 and 1.0, where 0.0 means the response is completely irrelevant to the user request,\nand 1.0 means the response is perfectly relevant to the user request.\n\nReturn only the score and nothing else, without any additional text or explanation.\n\nThe user request is: 'My name is Mario. What is my horoscope?'.\nThe first response is: 'Certainly! Here’s your Pisces horoscope for today, Mario:\n\n---\n\n**Mario, the Pisces of February 19 - March 20:**\n\nAs a Pisces, you are known for your deep emotional sensitivity and artistic soul. Today, let's dive into what the stars have in store for you.\n\n**Love:** In matters of the heart, there might be some unexpected twists and turns. Trust your instincts but also keep an open mind to new possibilities. Your intuition is sharp today, so listen closely to any whispers from the universe about your relationships.\n\n**Career:** The creative energies are flowing strong today, making this a great day for brainstorming sessions or working on projects that require a bit of imagination and flexibility. However, be mindful not to overextend yourself. Balance is key in all endeavors.\n\n**Health:** Emotions can sometimes affect your physical well-being. Take some time to relax and unwind. A gentle yoga session or a soothing walk by the water could do wonders for both body and mind.\n\n**Money:** Financially, you might find that opportunities come knocking unexpectedly. Stay alert and open to new possibilities, but also be cautious not to rush into decisions without fully considering all aspects.\n\nRemember, Mario, as a Pisces, your intuition is your greatest ally. Trust in the flow of life and let it guide you through today's challenges with grace and poise.\n\n---\n\nWishing you a wonderful day ahead!'.\nThe second response is: 'The horoscope for Mario (Pisces) has been generated and provided.'.\n\nYou must answer strictly in the following JSON format: {\n\"score1\": (type: double),\n\"score2\": (type: double)\n}"
+  } ],
+  "options" : {
+    "temperature" : 0.0,
+    "stop" : [ ]
+  },
+  "stream" : false,
+  "tools" : [ ]
+}
+
+2025-06-16 18:03:20 [main] dev.langchain4j.http.client.log.HttpResponseLogger.log()
+INFO: HTTP response:
+- status code: 200
+- headers: [content-type: application/json; charset=utf-8], [date: Mon, 16 Jun 2025 16:03:20 GMT], [transfer-encoding: chunked]
+- body: {"model":"qwen3:8b","created_at":"2025-06-16T16:03:20.188200493Z","message":{"role":"assistant","content":"\u003cthink\u003e\nOkay, let's tackle this. The user is Mario, asking for his horoscope. The first response is a detailed Pisces horoscope, which directly addresses the user's request by providing specific information about his sign. It's personalized with his name and covers love, career, health, and money, which are standard horoscope sections. So that's very relevant.\n\nThe second response is just a statement saying the horoscope has been generated and provided. It mentions Mario and Pisces, but doesn't give any actual content. While it does mention the horoscope, it's very brief and doesn't provide the details the user would expect. So it's somewhat relevant but not as much as the first response. \n\nI need to rate them between 0 and 1. The first one is 1.0 because it's fully detailed and personalized. The second one is maybe 0.5 because it's a confirmation but lacks the actual horoscope content. Wait, but the user asked for the horoscope, so the second response doesn't actually provide it. So maybe the second is less relevant. But does mentioning that it's generated count as relevant? Maybe 0.3? Hmm. But the user might expect the horoscope content. So the first is 1.0, the second is 0.3. Or maybe the second is 0.5 because it's acknowledging the request but not fulfilling it. I think the first is 1.0, the second is 0.5. Wait, the second response says \"has been generated and provided\" but doesn't include the content. So it's not providing the horoscope, just stating it's done. So the relevance is lower. Maybe 0.3. But I need to decide. Let me check again. The user asked for the horoscope. The first response gives it. The second just says it's provided but doesn't include it. So the second is less relevant. So score1 is 1.0, score2 is 0.3. But maybe the second is 0.5 because it's at least acknowledging the request. Alternatively, maybe the second is 0.0 because it's not providing any info. Wait, the user might expect the horoscope content. So the second response is not providing it, so it's not relevant. So score2 is 0.0? But the response does mention the horoscope for Mario, so maybe it's somewhat relevant. But since it's not giving the actual content, maybe it's 0.3. I think the first is 1.0, the second is 0.3.\n\u003c/think\u003e\n\n{\"score1\": 1.0, \"score2\": 0.3}"},"done_reason":"stop","done":true,"total_duration":161520262310,"load_duration":13532222,"prompt_eval_count":495,"prompt_eval_duration":26516420549,"eval_count":564,"eval_duration":134989676528}
+
+*** ResponseScore{score1=1.0, score2=0.3}
+Certainly! Here’s your Pisces horoscope for today, Mario:
+
+---
+
+**Mario, the Pisces of February 19 - March 20:**
+
+As a Pisces, you are known for your deep emotional sensitivity and artistic soul. Today, let's dive into what the stars have in store for you.
+
+**Love:** In matters of the heart, there might be some unexpected twists and turns. Trust your instincts but also keep an open mind to new possibilities. Your intuition is sharp today, so listen closely to any whispers from the universe about your relationships.
+
+**Career:** The creative energies are flowing strong today, making this a great day for brainstorming sessions or working on projects that require a bit of imagination and flexibility. However, be mindful not to overextend yourself. Balance is key in all endeavors.
+
+**Health:** Emotions can sometimes affect your physical well-being. Take some time to relax and unwind. A gentle yoga session or a soothing walk by the water could do wonders for both body and mind.
+
+**Money:** Financially, you might find that opportunities come knocking unexpectedly. Stay alert and open to new possibilities, but also be cautious not to rush into decisions without fully considering all aspects.
+
+Remember, Mario, as a Pisces, your intuition is your greatest ally. Trust in the flow of life and let it guide you through today's challenges with grace and poise.
+
+---
+
+Wishing you a wonderful day ahead!
+
+Process finished with exit code 0

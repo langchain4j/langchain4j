@@ -99,6 +99,7 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>langchain4j-agentic</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>

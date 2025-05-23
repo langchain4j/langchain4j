@@ -1,0 +1,4 @@
+- Memory ID
+- Cognisphere store SPI
+- declarative API
+- Supervisor customization points
