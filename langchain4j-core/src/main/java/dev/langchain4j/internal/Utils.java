@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.Tool;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;

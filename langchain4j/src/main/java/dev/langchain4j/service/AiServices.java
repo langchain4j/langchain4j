@@ -174,6 +174,10 @@ public abstract class AiServices<T> {
      */
     public static <T> AiServices<T> builder(Class<T> aiService) {
         AiServiceContext context = new AiServiceContext(aiService);
+        return builder(context);
+    }
+
+    public static <T> AiServices<T> builder(AiServiceContext context) {
         for (AiServicesFactory factory : loadFactories(AiServicesFactory.class)) {
             return factory.create(context);
         }
