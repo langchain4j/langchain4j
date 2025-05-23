@@ -10,7 +10,7 @@ public class AbstractOllamaLanguageModelInfrastructure {
 
     private static final String MODEL_NAME = TINY_DOLPHIN_MODEL;
 
-    static LC4jOllamaContainer ollama;
+    public static LC4jOllamaContainer ollama;
 
     static {
         if (isNullOrEmpty(OLLAMA_BASE_URL)) {
