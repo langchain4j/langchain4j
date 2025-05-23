@@ -1,7 +1,10 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.Utils.toStringValueMap;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -14,6 +17,12 @@ import static org.assertj.core.api.Assertions.entry;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -346,5 +355,44 @@ class UtilsTest {
         Map<String, String> result = toStringValueMap(input);
 
         assertThat(result).containsEntry("key1", null);
+    }
+
+    @Retention(RUNTIME)
+    @Target({METHOD})
+    public @interface MyAnnotation { }
+
+    @Retention(RUNTIME)
+    @Target({METHOD})
+    public @interface AnotherAnnotation { }
+
+    public interface MyInterface {
+        @MyAnnotation
+        void myMethod();
+    }
+
+    @Test
+    void shouldRetrieveAnnotationOnActualMethod() throws NoSuchMethodException {
+        Method myMethod = MyInterface.class.getDeclaredMethod("myMethod");
+        assertThat(getAnnotatedMethod(myMethod, MyAnnotation.class)).contains(myMethod);
+        assertThat(getAnnotatedMethod(myMethod, AnotherAnnotation.class)).isEmpty();
+    }
+
+    @Test
+    void shouldRetrieveAnnotationOnProxyMethod() throws NoSuchMethodException {
+        Object proxyInstance = Proxy.newProxyInstance(
+                MyInterface.class.getClassLoader(),
+                new Class<?>[] {MyInterface.class},
+                new InvocationHandler() {
+                    @Override
+                    public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
+                        return null;
+                    }
+                });
+
+        Method proxyMethod = proxyInstance.getClass().getDeclaredMethod("myMethod");
+        Method myMethod = MyInterface.class.getDeclaredMethod("myMethod");
+
+        assertThat(getAnnotatedMethod(proxyMethod, MyAnnotation.class)).contains(myMethod);
+        assertThat(getAnnotatedMethod(proxyMethod, AnotherAnnotation.class)).isEmpty();
     }
 }
