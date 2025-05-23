@@ -23,9 +23,18 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:0.5.4");
+    private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:1.0.0")
+            .withExposedPorts(8000)
+            // disable the built-in Docker HEALTHCHECK
+            .withCreateContainerCmdModifier(
+                    cmd -> cmd.withHealthcheck(new com.github.dockerjava.api.model.HealthCheck()))
+            // V2 API check endpoint
+            .waitingFor(new org.testcontainers.containers.wait.strategy.HttpWaitStrategy()
+                    .forPath("/api/v2/version")
+                    .forStatusCode(200)
+                    .withStartupTimeout(java.time.Duration.ofSeconds(60)));
 
-    EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
+    private final EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
             .baseUrl(chroma.getEndpoint())
             .collectionName(randomUUID())
             .build();
