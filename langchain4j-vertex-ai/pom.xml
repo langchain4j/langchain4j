@@ -17,7 +17,7 @@
             <dependency>
                 <groupId>com.google.cloud</groupId>
                 <artifactId>google-cloud-discoveryengine-bom</artifactId>
-                <version>0.45.0</version>
+                <version>0.59.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -33,21 +33,13 @@
         </dependency>
 
         <!-- Google Vertex AI library -->
-
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-aiplatform</artifactId>
-            <version>3.50.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
+            <version>3.64.0</version>
         </dependency>
 
         <!-- Ranking API -->
-
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-discoveryengine</artifactId>
