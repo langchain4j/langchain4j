@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
+import dev.langchain4j.service.UserMessage;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -785,5 +786,73 @@ public abstract class AbstractAiServiceWithToolsIT {
             assertThat(toolSpecifications).hasSize(1);
             assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithUUIDParameter.EXPECTED_SPECIFICATION);
         }
+    }
+
+    interface RouterAgent {
+
+        @UserMessage("""
+            Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
+            then forward the request as it is to the corresponding expert provided as a tool.
+            Finally return the answer that you received from the expert without any modification.
+
+            The user request is: '{{it}}'.
+            """)
+        String askToExpert(String request);
+    }
+
+    interface MedicalExpert {
+
+        @UserMessage("""
+            You are a medical expert.
+            Analyze the following user request under a medical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A medical expert")
+        String medicalRequest(String request);
+    }
+
+    interface LegalExpert {
+
+        @UserMessage("""
+            You are a legal expert.
+            Analyze the following user request under a legal point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A legal expert")
+        String legalRequest(String request);
+    }
+
+    interface TechnicalExpert {
+
+        @UserMessage("""
+            You are a technical expert.
+            Analyze the following user request under a technical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A technical expert")
+        String technicalRequest(String request);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void tools_as_agents_tests(ChatModel model) {
+        MedicalExpert medicalExpert = spy(AiServices.builder(MedicalExpert.class)
+                .chatModel(model)
+                .build());
+        LegalExpert legalExpert = spy(AiServices.builder(LegalExpert.class)
+                .chatModel(model)
+                .build());
+        TechnicalExpert technicalExpert = spy(AiServices.builder(TechnicalExpert.class)
+                .chatModel(model)
+                .build());
+
+        RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
+                .chatModel(model)
+                .tools(medicalExpert, legalExpert, technicalExpert)
+                .build();
+
+        System.out.println(routerAgent.askToExpert("I broke my leg what should I do"));
+
+        verify(medicalExpert).medicalRequest("I broke my leg what should I do");
     }
 }
