@@ -1,0 +1,2 @@
+- Cognisphere store SPI
+- exclude local agent memory from summarization
