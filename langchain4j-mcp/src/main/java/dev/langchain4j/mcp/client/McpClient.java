@@ -2,6 +2,8 @@ package dev.langchain4j.mcp.client;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.mcp.client.transport.PresetParameter;
+
 import java.util.List;
 import java.util.Map;
 
@@ -59,4 +61,6 @@ public interface McpClient extends AutoCloseable {
      * the health of this MCP client is considered degraded.
      */
     void checkHealth();
+
+    void presetParameters(List<PresetParameter> presetParameters);
 }

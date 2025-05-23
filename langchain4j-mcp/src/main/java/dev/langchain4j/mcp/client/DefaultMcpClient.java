@@ -28,6 +28,7 @@ import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,6 +40,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+
+import dev.langchain4j.mcp.client.transport.PresetParameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +73,8 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
     private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
     private final Duration reconnectInterval;
+
+    private Map<String, String> presetParameterMap = new HashMap<>();
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -188,7 +194,8 @@ public class DefaultMcpClient implements McpClient {
     public String executeTool(ToolExecutionRequest executionRequest) {
         ObjectNode arguments = null;
         try {
-           executionRequest = this.tryFormat(executionRequest);
+            executionRequest = this.tryPresetParameter(executionRequest);
+            executionRequest = this.tryFormat(executionRequest);
             arguments = OBJECT_MAPPER.readValue(executionRequest.arguments(), ObjectNode.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -210,6 +217,16 @@ public class DefaultMcpClient implements McpClient {
             pendingOperations.remove(operationId);
         }
         return ToolExecutionHelper.extractResult(result);
+    }
+
+    private ToolExecutionRequest tryPresetParameter(ToolExecutionRequest executionRequest) {
+        String name = executionRequest.name();
+        if (presetParameterMap.containsKey(name)) {
+            String presetParameter = presetParameterMap.get(name);
+            ToolExecutionRequest.Builder builder = ToolExecutionRequest.builder().id(executionRequest.id()).name(name).arguments(presetParameter);
+            return builder.build();
+        }
+        return executionRequest;
     }
 
     @Override
@@ -277,6 +294,17 @@ public class DefaultMcpClient implements McpClient {
         } finally {
             pendingOperations.remove(operationId);
         }
+    }
+
+    @Override
+    public void presetParameters(final List<PresetParameter> presetParameters) {
+
+        // to map
+        this.presetParameterMap = presetParameters.stream()
+                .collect(Collectors.toMap(
+                        PresetParameter::getName,
+                        PresetParameter::getParameters
+                ));
     }
 
     @Override
