@@ -11,10 +11,10 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiCategories;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationResponse;
-import dev.langchain4j.model.mistralai.internal.api.MistralCategories;
-import dev.langchain4j.model.mistralai.internal.api.MistralModerationResult;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationResult;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -119,7 +119,7 @@ public class MistralAiModerationModel implements ModerationModel {
         MistralAiModerationResponse response = withRetryMappingExceptions(() -> client.moderation(request), maxRetries);
 
         int i = 0;
-        for (MistralModerationResult moderationResult : response.results()) {
+        for (MistralAiModerationResult moderationResult : response.results()) {
 
             if (isAnyCategoryFlagged(moderationResult.getCategories())) {
                 return Response.from(Moderation.flagged(inputs.get(i)));
@@ -130,7 +130,7 @@ public class MistralAiModerationModel implements ModerationModel {
         return Response.from(Moderation.notFlagged());
     }
 
-    private boolean isAnyCategoryFlagged(MistralCategories categories) {
+    private boolean isAnyCategoryFlagged(MistralAiCategories categories) {
         return (categories.getSexual() != null && categories.getSexual())
                 || (categories.getHateAndDiscrimination() != null && categories.getHateAndDiscrimination())
                 || (categories.getViolenceAndThreats() != null && categories.getViolenceAndThreats())

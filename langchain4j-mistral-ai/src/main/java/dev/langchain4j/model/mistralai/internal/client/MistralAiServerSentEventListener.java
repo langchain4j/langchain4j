@@ -18,16 +18,20 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
+import java.util.function.BiFunction;
 
-class MistralAiServerSentEventListener implements ServerSentEventListener {
+class MistralAiServerSentEventListener<T> implements ServerSentEventListener {
     final StringBuffer contentBuilder;
-    private final StreamingResponseHandler<AiMessage> handler;
+    private final StreamingResponseHandler<T> handler;
+    private final BiFunction<String, List<ToolExecutionRequest>, T> toResponse;
     List<ToolExecutionRequest> toolExecutionRequests;
     TokenUsage tokenUsage;
     FinishReason finishReason;
 
-    public MistralAiServerSentEventListener(StreamingResponseHandler<AiMessage> handler) {
+    public MistralAiServerSentEventListener(StreamingResponseHandler<T> handler,
+                                            BiFunction<String, List<ToolExecutionRequest>, T> toResponse) {
         this.handler = handler;
+        this.toResponse = toResponse;
         contentBuilder = new StringBuffer();
     }
 
@@ -35,14 +39,8 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
     public void onEvent(ServerSentEvent event) {
         String data = event.data();
         if ("[DONE]".equals(data)) {
-            AiMessage aiMessage;
-            if (!isNullOrEmpty(toolExecutionRequests)) {
-                aiMessage = AiMessage.from(toolExecutionRequests);
-            } else {
-                aiMessage = AiMessage.from(contentBuilder.toString());
-            }
-
-            Response<AiMessage> response = Response.from(aiMessage, tokenUsage, finishReason);
+            T responseContent = toResponse.apply(contentBuilder.toString(), toolExecutionRequests);
+            Response<T> response = Response.from(responseContent, tokenUsage, finishReason);
             handler.onComplete(response);
         } else {
             try {
