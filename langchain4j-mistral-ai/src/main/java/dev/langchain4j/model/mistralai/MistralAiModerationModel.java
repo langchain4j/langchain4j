@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiCategories;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationResponse;
@@ -27,7 +28,20 @@ public class MistralAiModerationModel implements ModerationModel {
     private final String modelName;
     private final Integer maxRetries;
 
+    /**
+     * Constructs a MistralAiModerationModel with the specified parameters.
+     *
+     * @param httpClientBuilder the HTTP client builder to use for creating the HTTP client
+     * @param baseUrl the base URL of the Mistral AI API. It uses the default value if not specified
+     * @param apiKey the API key for authentication
+     * @param timeout the timeout duration for API requests
+     * @param maxRetries the maximum number of retries for API requests
+     * @param modelName the name of the Mistral AI model to use
+     * @param logRequests a flag indicating whether to log API requests
+     * @param logResponses a flag indicating whether to log API responses
+     */
     public MistralAiModerationModel(
+            HttpClientBuilder httpClientBuilder,
             String baseUrl,
             String apiKey,
             Duration timeout,
@@ -37,6 +51,7 @@ public class MistralAiModerationModel implements ModerationModel {
             Boolean logResponses) {
 
         this.client = MistralAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
@@ -46,6 +61,30 @@ public class MistralAiModerationModel implements ModerationModel {
 
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 2);
+    }
+
+    /**
+     * Constructs a MistralAiModerationModel with the specified parameters.
+     * @deprecated Please use {@link #MistralAiModerationModel(HttpClientBuilder, String, String, Duration, Integer, String, Boolean, Boolean)} instead.
+     *
+     * @param baseUrl the base URL of the Mistral AI API. It uses the default value if not specified
+     * @param apiKey the API key for authentication
+     * @param timeout the timeout duration for API requests
+     * @param maxRetries the maximum number of retries for API requests
+     * @param modelName the name of the Mistral AI model to use
+     * @param logRequests a flag indicating whether to log API requests
+     * @param logResponses a flag indicating whether to log API responses
+     */
+    @Deprecated(forRemoval = true)
+    public MistralAiModerationModel(
+            String baseUrl,
+            String apiKey,
+            Duration timeout,
+            Integer maxRetries,
+            String modelName,
+            Boolean logRequests,
+            Boolean logResponses) {
+        this(null, baseUrl, apiKey, timeout, maxRetries, modelName, logRequests, logResponses);
     }
 
     @Override
@@ -110,6 +149,7 @@ public class MistralAiModerationModel implements ModerationModel {
         private Boolean logResponses;
         private String modelName;
         private Integer maxRetries;
+        private HttpClientBuilder httpClientBuilder;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -146,9 +186,25 @@ public class MistralAiModerationModel implements ModerationModel {
             return this;
         }
 
+        /**
+         * @param httpClientBuilder the HTTP client builder to use for creating the HTTP client
+         * @return {@code this}.
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
         public MistralAiModerationModel build() {
             return new MistralAiModerationModel(
-                    baseUrl, apiKey, timeout, maxRetries, modelName, logRequests, logResponses);
+                    this.httpClientBuilder,
+                    this.baseUrl,
+                    this.apiKey,
+                    this.timeout,
+                    this.maxRetries,
+                    this.modelName,
+                    this.logRequests,
+                    this.logResponses);
         }
     }
 }

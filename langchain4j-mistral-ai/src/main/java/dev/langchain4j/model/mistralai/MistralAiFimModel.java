@@ -1,17 +1,5 @@
 package dev.langchain4j.model.mistralai;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
-import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
-import dev.langchain4j.model.mistralai.spi.MistralAiFimModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
-
-import java.time.Duration;
-import java.util.List;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -19,6 +7,18 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.finishReasonFrom;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.language.LanguageModel;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
+import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
+import dev.langchain4j.model.mistralai.spi.MistralAiFimModelBuilderFactory;
+import dev.langchain4j.model.output.Response;
+import java.time.Duration;
+import java.util.List;
 
 /**
  * Represents a Mistral AI FIM Completion Model with a language completion interface, users can define the starting point of the text/code using a prompt, and the ending point of the text/code using an optional suffix and an optional stop.
@@ -42,6 +42,7 @@ public class MistralAiFimModel implements LanguageModel {
 
     public MistralAiFimModel(Builder builder) {
         this.client = MistralAiClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(builder.apiKey)
                 .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
@@ -113,6 +114,7 @@ public class MistralAiFimModel implements LanguageModel {
 
     public static class Builder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String modelName;
@@ -127,7 +129,15 @@ public class MistralAiFimModel implements LanguageModel {
         private Boolean logResponses;
         private Integer maxRetries;
 
-        public Builder() {
+        public Builder() {}
+
+        /**
+         * @param httpClientBuilder the HTTP client builder to use for creating the HTTP client
+         * @return {@code this}.
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         /**

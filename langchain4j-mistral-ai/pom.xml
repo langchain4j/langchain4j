@@ -29,23 +29,15 @@
         </dependency>
 
         <dependency>
-            <groupId>com.squareup.retrofit2</groupId>
-            <artifactId>retrofit</artifactId>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-http-client</artifactId>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>okhttp</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>okhttp-sse</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.squareup.retrofit2</groupId>
-            <artifactId>converter-jackson</artifactId>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-http-client-jdk</artifactId>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -57,7 +49,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-
 
         <!-- test dependencies -->
 
