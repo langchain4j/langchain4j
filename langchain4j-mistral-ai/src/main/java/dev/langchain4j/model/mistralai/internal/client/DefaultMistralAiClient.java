@@ -89,13 +89,11 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
         MistralAiServerSentEventListener<AiMessage> listener = new MistralAiServerSentEventListener<>(handler,
                 (content, toolExecutionRequests) -> {
-            AiMessage aiMessage;
             if (!isNullOrEmpty(toolExecutionRequests)) {
-                aiMessage = AiMessage.from(toolExecutionRequests);
+                return AiMessage.from(toolExecutionRequests);
             } else {
-                aiMessage = AiMessage.from(content);
+                return AiMessage.from(content);
             }
-            return aiMessage;
         });
         httpClient.execute(httpRequest, new DefaultServerSentEventParser(), listener);
     }
