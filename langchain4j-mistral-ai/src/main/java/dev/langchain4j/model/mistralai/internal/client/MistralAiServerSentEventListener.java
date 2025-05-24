@@ -6,7 +6,6 @@ import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -28,8 +27,8 @@ class MistralAiServerSentEventListener<T> implements ServerSentEventListener {
     TokenUsage tokenUsage;
     FinishReason finishReason;
 
-    public MistralAiServerSentEventListener(StreamingResponseHandler<T> handler,
-                                            BiFunction<String, List<ToolExecutionRequest>, T> toResponse) {
+    public MistralAiServerSentEventListener(
+            StreamingResponseHandler<T> handler, BiFunction<String, List<ToolExecutionRequest>, T> toResponse) {
         this.handler = handler;
         this.toResponse = toResponse;
         contentBuilder = new StringBuffer();

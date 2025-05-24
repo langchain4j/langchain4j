@@ -8,10 +8,10 @@ import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils
 import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.toJson;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
-import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
@@ -87,14 +87,14 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .body(toJson(request))
                 .build();
 
-        MistralAiServerSentEventListener<AiMessage> listener = new MistralAiServerSentEventListener<>(handler,
-                (content, toolExecutionRequests) -> {
-            if (!isNullOrEmpty(toolExecutionRequests)) {
-                return AiMessage.from(toolExecutionRequests);
-            } else {
-                return AiMessage.from(content);
-            }
-        });
+        MistralAiServerSentEventListener<AiMessage> listener =
+                new MistralAiServerSentEventListener<>(handler, (content, toolExecutionRequests) -> {
+                    if (!isNullOrEmpty(toolExecutionRequests)) {
+                        return AiMessage.from(toolExecutionRequests);
+                    } else {
+                        return AiMessage.from(content);
+                    }
+                });
         httpClient.execute(httpRequest, new DefaultServerSentEventParser(), listener);
     }
 
@@ -125,10 +125,9 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .body(toJson(request))
                 .build();
 
-        MistralAiServerSentEventListener<String> listener = new MistralAiServerSentEventListener<>(handler,
-                (content, toolExecutionRequests) -> content);
-        httpClient.execute(
-                httpRequest, new DefaultServerSentEventParser(), listener);
+        MistralAiServerSentEventListener<String> listener =
+                new MistralAiServerSentEventListener<>(handler, (content, toolExecutionRequests) -> content);
+        httpClient.execute(httpRequest, new DefaultServerSentEventParser(), listener);
     }
 
     @Override

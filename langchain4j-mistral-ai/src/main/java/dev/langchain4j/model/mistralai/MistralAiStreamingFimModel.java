@@ -1,5 +1,10 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -7,14 +12,8 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiStreamingFimModelBuilderFactory;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents a Mistral AI FIM Completion Model with a language completion interface, users can define the starting point of the text/code using a prompt, and the ending point of the text/code using an optional suffix and an optional stop.
@@ -118,8 +117,7 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
         private Boolean logRequests;
         private Boolean logResponses;
 
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * @param httpClientBuilder the HTTP client builder to use for creating the HTTP client
