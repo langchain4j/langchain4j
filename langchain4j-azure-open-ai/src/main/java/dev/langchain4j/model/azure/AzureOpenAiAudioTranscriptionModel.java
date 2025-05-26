@@ -11,6 +11,7 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.model.azure.spi.AzureOpenAiAudioTranscriptionModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
@@ -164,7 +165,6 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioModel {
     @Override
     public Response<String> transcribe(Audio audio) {
         AudioTranscriptionOptions options = new AudioTranscriptionOptions(null) // audio.audioData()
-                .setPrompt(audio.prompt())
                 .setModel(deploymentName)
                 .setLanguage(language)
                 .setResponseFormat(responseFormat);

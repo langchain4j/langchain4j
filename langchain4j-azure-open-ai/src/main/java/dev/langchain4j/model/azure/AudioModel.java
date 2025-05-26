@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.model.output.Response;
 
 public interface AudioModel {

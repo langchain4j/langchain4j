@@ -2,6 +2,7 @@ package dev.langchain4j.model.azure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.model.output.Response;
 import java.io.File;
 import java.io.IOException;
@@ -26,8 +27,7 @@ public class AzureOpenAiAudioTranscriptionModelIT {
         File audioFile = new File("src/test/resources/hello.mp3");
         String audioData = Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(audioFile));
 
-        Audio audio =
-                Audio.builder().base64Data(audioData).mimeType("audio/mpeg").build();
+        Audio audio = Audio.builder().base64Data(audioData).mimeType("audio/mpeg").build();
 
         Response<String> response = model.transcribe(audio);
         String message = response.content().toString();
