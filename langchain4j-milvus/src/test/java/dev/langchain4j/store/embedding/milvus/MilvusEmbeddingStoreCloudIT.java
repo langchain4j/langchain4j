@@ -23,10 +23,11 @@ class MilvusEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
     private static final String COLLECTION_NAME = "test_collection";
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
-            .uri(System.getenv("MILVUS_URI"))
-            .token(System.getenv("MILVUS_API_KEY"))
-            .username(System.getenv("MILVUS_USERNAME"))
-            .password(System.getenv("MILVUS_PASSWORD"))
+            .uri("https://in03-867b3b928640632.serverless.gcp-us-west1.cloud.zilliz.com")
+            .token(
+                    "ddde4f5fa2c753683fbc184b858c9348edbef1a1fa1b0cf50ffea468ae586df4bd7f37f0bd9ee1424e80c8129d4ddf0300936b93")
+            .username("db_867b3b928640632")
+            .password("Uv7>L<nx,R{CHTUR")
             .collectionName(COLLECTION_NAME)
             .consistencyLevel(STRONG)
             .dimension(384)

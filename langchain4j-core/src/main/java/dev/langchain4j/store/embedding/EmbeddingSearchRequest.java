@@ -21,6 +21,8 @@ public class EmbeddingSearchRequest {
     private final int maxResults;
     private final double minScore;
     private final Filter filter;
+    private final int searchMode; // 0 - dense (default), 1 - sparse, 2 - hybrid
+    private final String queryText;
 
     /**
      * Creates an instance of an EmbeddingSearchRequest.
@@ -36,12 +38,17 @@ public class EmbeddingSearchRequest {
      *                       matches the {@link Filter} will be returned.
      *                       Please note that not all {@link EmbeddingStore}s support this feature yet.
      *                       This is an optional parameter. Default: no filtering
+     * @param searchMode     The search mode to be used. 0 - dense vector search, 1 - full-text search (sparse vector), 2 - hybrid search.
+     *                       This is an optional parameter. Default: 0
+     * @param queryText     The text of the query. This is the plain text used to do full-text search.
      */
-    public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
+    public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter, Integer searchMode, String queryText) {
         this.queryEmbedding = ensureNotNull(queryEmbedding, "queryEmbedding");
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
         this.minScore = ensureBetween(getOrDefault(minScore, 0.0), 0.0, 1.0, "minScore");
         this.filter = filter;
+        this.searchMode = getOrDefault(searchMode, 0);
+        this.queryText = queryText;
     }
 
     public static EmbeddingSearchRequestBuilder builder() {
@@ -64,21 +71,31 @@ public class EmbeddingSearchRequest {
         return filter;
     }
 
+    public int searchMode() {
+        return searchMode;
+    }
+
+    public String queryText() {
+        return queryText;
+    }
+
     public boolean equals(final Object o) {
         if (o == this) return true;
         if (!(o instanceof EmbeddingSearchRequest other)) return false;
         return this.maxResults == other.maxResults
                 && this.minScore == other.minScore
                 && Objects.equals(this.queryEmbedding, other.queryEmbedding)
-                && Objects.equals(this.filter, other.filter);
+                && Objects.equals(this.filter, other.filter)
+                && this.searchMode == other.searchMode
+                && Objects.equals(this.queryText, other.queryText);
     }
 
     public int hashCode() {
-        return Objects.hash(queryEmbedding, maxResults, minScore, filter);
+        return Objects.hash(queryEmbedding, maxResults, minScore, filter, searchMode, queryText);
     }
 
     public String toString() {
-        return "EmbeddingSearchRequest(queryEmbedding=" + this.queryEmbedding + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter=" + this.filter + ")";
+        return "EmbeddingSearchRequest(queryEmbedding=" + this.queryEmbedding + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter=" + this.filter + ", searchMode=" + this.searchMode + ", queryText=" + this.queryText + ")";
     }
 
     public static class EmbeddingSearchRequestBuilder {
@@ -86,6 +103,8 @@ public class EmbeddingSearchRequest {
         private Integer maxResults;
         private Double minScore;
         private Filter filter;
+        private Integer searchMode;
+        private String queryText;
 
         EmbeddingSearchRequestBuilder() {
         }
@@ -110,8 +129,18 @@ public class EmbeddingSearchRequest {
             return this;
         }
 
+        public EmbeddingSearchRequestBuilder searchMode(Integer searchMode) {
+            this.searchMode = searchMode;
+            return this;
+        }
+
+        public EmbeddingSearchRequestBuilder queryText(String queryText) {
+            this.queryText = queryText;
+            return this;
+        }
+
         public EmbeddingSearchRequest build() {
-            return new EmbeddingSearchRequest(this.queryEmbedding, this.maxResults, this.minScore, this.filter);
+            return new EmbeddingSearchRequest(this.queryEmbedding, this.maxResults, this.minScore, this.filter, this.searchMode, this.queryText);
         }
     }
 }
