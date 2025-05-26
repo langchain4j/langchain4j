@@ -40,7 +40,7 @@ The library is under active development. While some features are still being wor
 the core functionality is in place, allowing you to start building LLM-powered apps now!
 
 For easier integration, LangChain4j also includes integration with
-[Quarkus](/tutorials/quarkus-integration), [Spring Boot](/tutorials/spring-boot-integration) and [Helidon](/tutorials/helidon-integration)
+[Quarkus](/tutorials/quarkus-integration), [Spring Boot](/tutorials/spring-boot-integration), [Helidon](/tutorials/helidon-integration) and [Micronaut](/tutorials/micronaut-integration)
 
 
 ## LangChain4j Features
