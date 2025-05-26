@@ -1,13 +1,12 @@
-package dev.langchain4j.data.audio;
-
-import java.net.URI;
-import java.util.Objects;
+package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
+import java.util.Objects;
+
 public class Audio {
 
-    private final URI url;
+    private final String prompt;
     private final String base64Data;
     private final String mimeType;
 
@@ -17,9 +16,9 @@ public class Audio {
      * @param builder the builder.
      */
     private Audio(Builder builder) {
-        this.url = builder.url;
         this.base64Data = builder.base64Data;
         this.mimeType = builder.mimeType;
+        this.prompt = builder.prompt;
     }
 
     /**
@@ -32,21 +31,21 @@ public class Audio {
     }
 
     /**
-     * Get the url of the audio.
-     *
-     * @return the url of the audio, or null if not set.
-     */
-    public URI url() {
-        return url;
-    }
-
-    /**
      * Get the base64 data of the audio.
      *
      * @return the base64 data of the audio, or null if not set.
      */
     public String base64Data() {
         return base64Data;
+    }
+
+    /**
+     * Get the prompt of the audio.
+     *
+     * @return the prompt, or null if not set.
+     */
+    public String prompt() {
+        return prompt;
     }
 
     /**
@@ -63,23 +62,22 @@ public class Audio {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Audio that = (Audio) o;
-        return Objects.equals(this.url, that.url)
-                && Objects.equals(this.base64Data, that.base64Data)
-                && Objects.equals(this.mimeType, that.mimeType);
+        return Objects.equals(this.base64Data, that.base64Data)
+                && Objects.equals(this.mimeType, that.mimeType)
+                && Objects.equals(this.prompt, that.prompt);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(url, base64Data, mimeType);
+        return Objects.hash(base64Data, mimeType, prompt);
     }
 
     @Override
     public String toString() {
-        return "Audio {" +
-                " url = " + quoted(url) +
-                ", base64Data = " + quoted(base64Data) +
-                ", mimeType = " + quoted(mimeType) +
-                " }";
+        return "Audio {" + " base64Data = "
+                + quoted(base64Data) + ", mimeType = "
+                + quoted(mimeType) + ", prompt = "
+                + quoted(prompt) + " }";
     }
 
     /**
@@ -87,36 +85,14 @@ public class Audio {
      */
     public static class Builder {
 
-        URI url;
+        private String prompt;
         private String base64Data;
         private String mimeType;
 
         /**
          * Create a new {@link Builder}.
          */
-        public Builder() {
-        }
-
-        /**
-         * Set the url of the audio.
-         *
-         * @param url the url of the audio.
-         * @return {@code this}
-         */
-        public Builder url(URI url) {
-            this.url = url;
-            return this;
-        }
-
-        /**
-         * Set the url of the audio.
-         *
-         * @param url the url of the audio.
-         * @return {@code this}
-         */
-        public Builder url(String url) {
-            return url(URI.create(url));
-        }
+        public Builder() {}
 
         /**
          * Set the base64 data of the audio.
@@ -137,6 +113,17 @@ public class Audio {
          */
         public Builder mimeType(String mimeType) {
             this.mimeType = mimeType;
+            return this;
+        }
+
+        /**
+         * Set the prompt.
+         *
+         * @param prompt the prompt.
+         * @return {@code this}
+         */
+        public Builder prompt(String prompt) {
+            this.prompt = prompt;
             return this;
         }
 
