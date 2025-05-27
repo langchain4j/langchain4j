@@ -60,7 +60,6 @@ public class OracleDocumentLoader {
      *
      * @param pref   JSON Preference specifying the file, directory, or table
      */
-    // public List<Document> loadDocuments(String pref) throws JsonProcessingException, IOException, SQLException {
     public List<Document> loadDocuments(String pref) throws IOException, SQLException {
         List<Document> documents = new ArrayList<>();
 
