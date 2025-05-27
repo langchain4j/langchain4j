@@ -350,7 +350,7 @@ The default implementation is `LLMGraphTransformer`, which uses a language model
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-community-llm-graph-transformer</artifactId>
-  <version>${langchain4j.version}</version>
+  <version>${latest version here}</version>
 </dependency>
 ```
 
