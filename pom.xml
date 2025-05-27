@@ -137,19 +137,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-                <version>2.43.0</version>
-                <configuration>
-                    <ratchetFrom>origin/main</ratchetFrom>
-                    <pom>
-                        <sortPom>
-                            <nrOfIndentSpace>4</nrOfIndentSpace>
-                        </sortPom>
-                    </pom>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>com.simpligility.maven.plugins</groupId>
                 <artifactId>android-maven-plugin</artifactId>
                 <version>4.6.0</version>
@@ -200,6 +187,7 @@
     </reporting>
 
     <profiles>
+
         <profile>
             <id>jdk21</id>
             <activation>
@@ -209,6 +197,7 @@
                 <module>langchain4j-jlama</module>
             </modules>
         </profile>
+
         <profile>
             <id>openrewrite</id>
             <!-- `mvn -Popenrewrite -Dspotless.check.skip=true org.openrewrite.maven:rewrite-maven-plugin:run` -->
@@ -237,6 +226,28 @@
                 </plugins>
             </build>
         </profile>
+
+        <profile>
+            <id>spotless</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>2.44.4</version>
+                        <configuration>
+                            <ratchetFrom>origin/main</ratchetFrom>
+                            <pom>
+                                <sortPom>
+                                    <nrOfIndentSpace>4</nrOfIndentSpace>
+                                </sortPom>
+                            </pom>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
     </profiles>
 
 </project>

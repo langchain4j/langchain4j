@@ -41,7 +41,6 @@ jobs:
             -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs \
             -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs \
             -pl !langchain4j-core,!langchain4j-parent \
-            -Dspotless.check.skip=true \
             -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

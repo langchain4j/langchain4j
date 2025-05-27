@@ -28,7 +28,6 @@ jobs:
           mvn -B -U \
             -pl langchain4j-core,langchain4j-parent \
             -Psign \
-            -Dspotless.check.skip=true \
             clean deploy
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

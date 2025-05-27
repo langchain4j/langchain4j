@@ -604,19 +604,6 @@
             </plugin>
 
             <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>validate</phase>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration combine.children="append">
@@ -751,6 +738,7 @@
     </build>
 
     <profiles>
+
         <profile>
             <id>sign</id>
             <activation>
@@ -777,6 +765,7 @@
                 </plugins>
             </build>
         </profile>
+
         <profile>
             <id>compliance</id>
             <activation>
@@ -835,6 +824,7 @@
                 </plugins>
             </build>
         </profile>
+
         <profile>
             <id>kotlin</id>
             <build>
@@ -854,6 +844,27 @@
                 </plugins>
             </build>
         </profile>
+
+        <profile>
+            <id>spotless</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                                <phase>validate</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
     </profiles>
 
     <repositories>
