@@ -32,34 +32,52 @@ public class OracleIngestIT extends OracleContainerTestBase {
     @Test
     @DisplayName("ingest")
     void testIngest() throws IOException, SQLException, URISyntaxException {
-        copyFile("/models/ALL-MINILM-L6-V2.onnx", "/tmp/ALL-MINILM-L6-V2.onnx");
+        String embedderPref;
+
+        if (isContainerRunning()) {
+            embedderPref = "{\"provider\": \"database\", \"model\": \"allmini\"}";
+
+            copyResourceFile("/models/ALL-MINILM-L6-V2.onnx", "/tmp/ALL-MINILM-L6-V2.onnx");
+
+            try (Connection conn = getSysConnection()) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.addBatch("grant create any directory to testuser");
+                    stmt.addBatch("grant create mining model to testuser");
+                    stmt.executeBatch();
+                }
+            }
+
+            try (Connection conn = getConnection()) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.addBatch("create or replace directory MODEL_DIR as '/tmp'");
+                    stmt.executeBatch();
+                }
+
+                boolean result =
+                        OracleEmbeddingModel.loadOnnxModel(conn, "MODEL_DIR", "ALL-MINILM-L6-V2.onnx", "allmini");
+            }
+        } else {
+            embedderPref = "{\"provider\": \"database\", \"model\": \"" + System.getenv("DEMO_ONNX_MODEL") + "\"}";
+
+            try (Connection conn = getConnection()) {
+                boolean result = OracleEmbeddingModel.loadOnnxModel(
+                        conn,
+                        System.getenv("DEMO_ONNX_DIR"),
+                        System.getenv("DEMO_ONNX_FILE"),
+                        System.getenv("DEMO_ONNX_MODEL"));
+            }
+        }
 
         URL resourceUrl = OracleDocumentLoaderIT.class.getResource("/example-files/story-about-happy-carrot.txt");
         File file = Paths.get(resourceUrl.toURI()).toFile();
         String absolutePath = file.getAbsolutePath();
 
-        try (Connection conn = getSysConnection()) {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.addBatch("grant create any directory to testuser");
-                stmt.addBatch("grant create mining model to testuser");
-                stmt.executeBatch();
-            }
-        }
-
         try (Connection conn = getConnection()) {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.addBatch("create or replace directory MODEL_DIR as '/tmp'");
-                stmt.executeBatch();
-            }
-
-            boolean result = OracleEmbeddingModel.loadOnnxModel(conn, "MODEL_DIR", "ALL-MINILM-L6-V2.onnx", "allmini");
-
             ObjectMapper mapper = new ObjectMapper();
             FilePreference filePref = new FilePreference();
             filePref.setFilename(absolutePath);
             String loaderPref = mapper.writeValueAsString(filePref);
 
-            String embedderPref = "{\"provider\": \"database\", \"model\": \"allmini\"}";
             String splitterPref = "{\"by\": \"chars\", \"max\": 50}";
 
             OracleDocumentLoader loader = new OracleDocumentLoader(conn);

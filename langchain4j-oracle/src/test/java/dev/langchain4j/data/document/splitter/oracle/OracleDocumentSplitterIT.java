@@ -15,30 +15,18 @@ import org.junit.jupiter.api.Test;
 
 public class OracleDocumentSplitterIT extends OracleContainerTestBase {
 
-    String content = "Equipment rental in North America is predicted to “normalize” going into 2024,\n" + "\n"
-            + "according to Josh Nickell, vice president of equipment rental for the American Rental\n"
-            + "\n"
-            + "Association (ARA).\n"
-            + "\n"
-            + "“Rental is going back to ‘normal,’ but normal means that strategy matters again -\n"
-            + "\n"
-            + "geography matters, fleet mix matters, customer type matters,” Nickell said. “In\n"
-            + "\n"
-            + "late 2020 to 2022, you just showed up with equipment and you made money.\n"
-            + "\n"
-            + "“Everybody was breaking records, from the national rental chains to the smallest\n"
-            + "\n"
-            + "rental companies; everybody was having record years, and everybody was raising\n"
-            + "\n"
-            + "prices. The conversation was, ‘How much are you up?’ And now, the conversation\n"
-            + "\n"
-            + "is changing to ‘What’s my market like?’”\n"
-            + "\n"
-            + "Nickell stressed this shouldn’t be taken as a pessimistic viewpoint. It’s simply\n"
-            + "\n"
-            + "coming back down to Earth from unprecedented circumstances during the time of Covid.\n"
-            + "\n"
-            + "Rental companies are still seeing growth, but at a more moderate level.";
+    String content = "The tower is 324 meters (1,063 ft) tall, "
+            + "about the same height as an 81-storey building, and the tallest "
+            + "structure in Paris. Its base is square, measuring 125 meters (410 ft) "
+            + "on each side. During its construction, the Eiffel Tower surpassed the "
+            + "Washington Monument to become the tallest man-made structure in the world, "
+            + "a title it held for 41 years until the Chrysler Building in New York City "
+            + "was finished in 1930. It was the first structure to reach a height of "
+            + "300 meters. Due to the addition of a broadcasting aerial at the top "
+            + "of the tower in 1957, it is now taller than the Chrysler Building "
+            + "by 5.2 meters (17 ft). Excluding transmitters, the Eiffel Tower is "
+            + "the second tallest free-standing structure in France after the "
+            + "Millau Viaduct.";
 
     @Test
     @DisplayName("split string input by chars")

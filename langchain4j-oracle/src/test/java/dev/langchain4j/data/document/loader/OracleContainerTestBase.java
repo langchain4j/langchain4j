@@ -10,16 +10,45 @@ import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.oracle.OracleContainer;
 import org.testcontainers.utility.MountableFile;
 
-/**
- *
- * @author david
- */
 public class OracleContainerTestBase {
+    // NB: need to use the regular image as the slim image doesn't include dbms_vector
     private static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.6-faststart";
     private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
     private static final PoolDataSource SYSDBA_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
 
     static OracleContainer container;
+
+    @BeforeAll
+    static void beforeAll() throws SQLException {
+        if (System.getenv("ORACLE_JDBC_URL") == null) {
+            container = new OracleContainer(ORACLE_IMAGE_NAME)
+                    .withStartupTimeout(Duration.ofSeconds(600))
+                    .withConnectTimeoutSeconds(600)
+                    .withDatabaseName("pdb1")
+                    .withUsername("testuser")
+                    .withPassword("testpwd");
+            container.start();
+
+            initDataSource(DATA_SOURCE, container.getJdbcUrl(), container.getUsername(), container.getPassword());
+            initDataSource(SYSDBA_DATA_SOURCE, container.getJdbcUrl(), "sys as sysdba", container.getPassword());
+        } else {
+            initDataSource(
+                    DATA_SOURCE,
+                    System.getenv("ORACLE_JDBC_URL"),
+                    System.getenv("ORACLE_JDBC_USER"),
+                    System.getenv("ORACLE_JDBC_PASSWORD"));
+            initDataSource(
+                    SYSDBA_DATA_SOURCE,
+                    System.getenv("ORACLE_JDBC_URL"),
+                    System.getenv("ORACLE_JDBC_USER"),
+                    System.getenv("ORACLE_JDBC_PASSWORD"));
+        }
+    }
+
+    @AfterAll
+    static void afterAll() {
+        if (container != null) container.stop();
+    }
 
     static void initDataSource(PoolDataSource dataSource, String url, String username, String password) {
         try {
@@ -32,23 +61,8 @@ public class OracleContainerTestBase {
         }
     }
 
-    @BeforeAll
-    static void beforeAll() throws SQLException {
-        container = new OracleContainer(ORACLE_IMAGE_NAME)
-                .withStartupTimeout(Duration.ofSeconds(600))
-                .withConnectTimeoutSeconds(600)
-                .withDatabaseName("pdb1")
-                .withUsername("testuser")
-                .withPassword("testpwd");
-        container.start();
-
-        initDataSource(DATA_SOURCE, container.getJdbcUrl(), container.getUsername(), container.getPassword());
-        initDataSource(SYSDBA_DATA_SOURCE, container.getJdbcUrl(), "sys as sysdba", container.getPassword());
-    }
-
-    @AfterAll
-    static void afterAll() {
-        container.stop();
+    public boolean isContainerRunning() {
+        return container != null;
     }
 
     public Connection getConnection() throws SQLException {
@@ -63,7 +77,12 @@ public class OracleContainerTestBase {
         return DATA_SOURCE;
     }
 
-    public void copyFile(String resourcePath, String mountPath) {
+    public String getUsername() {
+        if (container != null) return container.getUsername();
+        else return System.getenv("ORACLE_JDBC_USER");
+    }
+
+    public void copyResourceFile(String resourcePath, String mountPath) {
         MountableFile file = MountableFile.forClasspathResource(resourcePath);
         container.copyFileToContainer(file, mountPath);
     }

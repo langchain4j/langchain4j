@@ -76,40 +76,49 @@ public class OracleDocumentLoaderIT extends OracleContainerTestBase {
     @Test
     @DisplayName("load from table")
     void testTable() throws IOException, SQLException {
-        copyFile("/example-files/story-about-happy-carrot.docx", "/tmp/story-about-happy-carrot.docx");
-        copyFile("/example-files/story-about-happy-carrot.pdf", "/tmp/story-about-happy-carrot.pdf");
-        copyFile("/example-files/story-about-happy-carrot.txt", "/tmp/story-about-happy-carrot.txt");
+        TablePreference loaderPref = new TablePreference();
 
-        try (Connection conn = getSysConnection()) {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.addBatch("grant create any directory to testuser");
-                stmt.executeBatch();
+        if (isContainerRunning()) {
+            copyResourceFile("/example-files/story-about-happy-carrot.docx", "/tmp/story-about-happy-carrot.docx");
+            copyResourceFile("/example-files/story-about-happy-carrot.pdf", "/tmp/story-about-happy-carrot.pdf");
+            copyResourceFile("/example-files/story-about-happy-carrot.txt", "/tmp/story-about-happy-carrot.txt");
+
+            try (Connection conn = getSysConnection()) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.addBatch("grant create any directory to testuser");
+                    stmt.executeBatch();
+                }
             }
+
+            try (Connection conn = getConnection()) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.addBatch("create or replace directory DATA_DIR as '/tmp'");
+                    stmt.addBatch("drop table if exists docs");
+                    stmt.addBatch("create table docs(id number primary key, text blob)");
+                    stmt.addBatch(
+                            "insert into docs values(1, to_blob(bfilename('DATA_DIR', 'story-about-happy-carrot.docx')))");
+                    stmt.addBatch(
+                            "insert into docs values(2, to_blob(bfilename('DATA_DIR', 'story-about-happy-carrot.pdf')))");
+                    stmt.addBatch(
+                            "insert into docs values(3, to_blob(bfilename('DATA_DIR', 'story-about-happy-carrot.txt')))");
+                    stmt.executeBatch();
+                }
+
+                loaderPref.setOwner("testuser");
+                loaderPref.setTableName("docs");
+                loaderPref.setColumnName("text");
+            }
+        } else {
+            loaderPref.setOwner(System.getenv("DEMO_OWNER"));
+            loaderPref.setTableName(System.getenv("DEMO_TABLE"));
+            loaderPref.setColumnName(System.getenv("DEMO_COLUMN"));
         }
 
         try (Connection conn = getConnection()) {
-            OracleDocumentLoader loader = new OracleDocumentLoader(conn);
-
-            try (Statement stmt = conn.createStatement()) {
-                stmt.addBatch("create or replace directory DATA_DIR as '/tmp'");
-                stmt.addBatch("drop table if exists docs");
-                stmt.addBatch("create table docs(id number primary key, text blob)");
-                stmt.addBatch(
-                        "insert into docs values(1, to_blob(bfilename('DATA_DIR', 'story-about-happy-carrot.docx')))");
-                stmt.addBatch(
-                        "insert into docs values(2, to_blob(bfilename('DATA_DIR', 'story-about-happy-carrot.pdf')))");
-                stmt.addBatch(
-                        "insert into docs values(3, to_blob(bfilename('DATA_DIR', 'story-about-happy-carrot.txt')))");
-                stmt.executeBatch();
-            }
-
             ObjectMapper mapper = new ObjectMapper();
-            TablePreference loaderPref = new TablePreference();
-            loaderPref.setOwner("testuser");
-            loaderPref.setTableName("docs");
-            loaderPref.setColumnName("text");
             String pref = mapper.writeValueAsString(loaderPref);
 
+            OracleDocumentLoader loader = new OracleDocumentLoader(conn);
             List<Document> docs = loader.loadDocuments(pref);
             assertThat(docs.size()).isGreaterThan(1);
             for (Document doc : docs) {
@@ -126,7 +135,7 @@ public class OracleDocumentLoaderIT extends OracleContainerTestBase {
 
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode rootNode = mapper.createObjectNode();
-            rootNode.put("file", "");
+            rootNode.put("file", "file.txt");
             rootNode.put("extraProperty", "");
             String pref = mapper.writeValueAsString(rootNode);
 
