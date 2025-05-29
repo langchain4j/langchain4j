@@ -1,6 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -45,7 +45,7 @@ public class MistralAiModels {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static MistralAiModels withApiKey(String apiKey) {
@@ -58,7 +58,7 @@ public class MistralAiModels {
      * @return the response containing the list of models
      */
     public Response<List<MistralAiModelCard>> availableModels() {
-        MistralAiModelResponse response = withRetry(client::listModels, maxRetries);
+        MistralAiModelResponse response = withRetryMappingExceptions(client::listModels, maxRetries);
         return Response.from(response.getData());
     }
 

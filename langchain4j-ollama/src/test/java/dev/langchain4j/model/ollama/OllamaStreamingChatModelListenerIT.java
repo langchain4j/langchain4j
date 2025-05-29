@@ -1,17 +1,18 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollama;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Collections.singletonList;
 
-public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+import dev.langchain4j.exception.ModelNotFoundException;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+
+public class OllamaStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
-    protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
+    protected StreamingChatModel createModel(ChatModelListener listener) {
         return OllamaStreamingChatModel.builder()
                 .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
                 .modelName(modelName())
@@ -30,7 +31,7 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
     }
 
     @Override
-    protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected StreamingChatModel createFailingModel(ChatModelListener listener) {
         return OllamaStreamingChatModel.builder()
                 .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
                 .modelName("banana")
@@ -42,7 +43,7 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return NullPointerException.class;
+        return ModelNotFoundException.class;
     }
 
     @Override
@@ -52,11 +53,6 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
 
     @Override
     protected boolean assertResponseId() {
-        return false;
-    }
-
-    @Override
-    protected boolean assertFinishReason() {
         return false;
     }
 }

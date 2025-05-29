@@ -1,5 +1,5 @@
 ---
-sidebar_position: 19
+sidebar_position: 20
 ---
 
 # Xinference
@@ -15,7 +15,7 @@ sidebar_position: 19
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-xinference</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
@@ -26,7 +26,7 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>1.0.0-alpha1</version>
+        <version>${latest version here}</version>
         <typ>pom</typ>
         <scope>import</scope>
     </dependency>

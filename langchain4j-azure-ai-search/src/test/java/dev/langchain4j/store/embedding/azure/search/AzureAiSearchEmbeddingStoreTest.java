@@ -1,13 +1,13 @@
 package dev.langchain4j.store.embedding.azure.search;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-
-public class AzureAiSearchEmbeddingStoreTest {
+class AzureAiSearchEmbeddingStoreTest {
 
     String endpoint = "http://localhost";
     AzureKeyCredential keyCredential = new AzureKeyCredential("TEST");
@@ -16,7 +16,7 @@ public class AzureAiSearchEmbeddingStoreTest {
     String indexName = "TEST";
 
     @Test
-    public void empty_endpoint_should_not_be_allowed() {
+    void empty_endpoint_should_not_be_allowed() {
         try {
             new AzureAiSearchEmbeddingStore(null, keyCredential, false, dimensions, null, null);
             fail("Expected IllegalArgumentException to be thrown");
@@ -26,7 +26,7 @@ public class AzureAiSearchEmbeddingStoreTest {
     }
 
     @Test
-    public void index_and_index_name_should_not_both_be_defined() {
+    void index_and_index_name_should_not_both_be_defined() {
         try {
             new AzureAiSearchEmbeddingStore(endpoint, keyCredential, false, index, indexName, null);
             fail("Expected IllegalArgumentException to be thrown");

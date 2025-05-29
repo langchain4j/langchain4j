@@ -81,6 +81,24 @@
         "allPublicFields": true
     },
     {
+      "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+    },
+    {
+      "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContentSource",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+    },
+    {
         "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicMessage",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -127,6 +145,15 @@
     },
     {
         "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true,
+        "allDeclaredFields": true,
+        "allPublicFields": true
+    },
+    {
+        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicThinking",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,

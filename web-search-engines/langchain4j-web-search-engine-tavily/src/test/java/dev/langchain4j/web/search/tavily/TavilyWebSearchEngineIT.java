@@ -1,16 +1,15 @@
 package dev.langchain4j.web.search.tavily;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchEngineIT;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchResults;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.net.URI;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".+")
 class TavilyWebSearchEngineIT extends WebSearchEngineIT {
@@ -64,7 +63,7 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         assertThat(answerResult.url()).isEqualTo(URI.create("https://tavily.com/"));
         assertThat(answerResult.snippet()).isNotBlank();
         assertThat(answerResult.content()).isNull();
-        assertThat(answerResult.metadata()).isNull();
+        assertThat(answerResult.metadata()).isEmpty();
 
         results.subList(1, results.size()).forEach(result -> {
             assertThat(result.title()).isNotBlank();
@@ -77,9 +76,8 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         assertThat(results).anyMatch(result -> result.url().toString().contains("langchain4j.dev"));
     }
 
-
     @Test
-    void test_complex_url_parsing(){
+    void complex_url_parsing() {
 
         // given
         TavilyWebSearchEngine tavilyWebSearchEngine = TavilyWebSearchEngine.builder()

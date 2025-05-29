@@ -12,7 +12,7 @@ https://duckdb.org/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-duckdb</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 

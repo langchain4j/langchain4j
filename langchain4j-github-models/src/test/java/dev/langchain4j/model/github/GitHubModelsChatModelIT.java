@@ -1,16 +1,28 @@
 package dev.langchain4j.model.github;
 
-import com.azure.ai.inference.models.ChatCompletionsResponseFormatJson;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.github.GitHubModelsChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonObject;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -19,17 +31,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.*;
-
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.github.GitHubModelsChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
 class GitHubModelsChatModelIT {
@@ -46,19 +47,17 @@ class GitHubModelsChatModelIT {
                 .build();
 
         UserMessage userMessage = userMessage("What is the capital of France?");
-        Response<AiMessage> response = model.generate(userMessage);
-        logger.info("Response: {}", response.content().text());
-        assertThat(response.content().text()).contains("Paris");
+        ChatResponse response = model.chat(userMessage);
+        logger.info("Response: {}", response.aiMessage().text());
+        assertThat(response.aiMessage().text()).contains("Paris");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @ParameterizedTest(name = "Model name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
+    @CsvSource({"gpt-4o"})
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop(String modelName) {
 
-        ChatLanguageModel model = GitHubModelsChatModel.builder()
+        ChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
                 .logRequestsAndResponses(true)
@@ -66,9 +65,9 @@ class GitHubModelsChatModelIT {
 
         UserMessage userMessage = userMessage("hello, how are you?");
 
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
@@ -79,12 +78,10 @@ class GitHubModelsChatModelIT {
     }
 
     @ParameterizedTest(name = "Model name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
+    @CsvSource({"gpt-4o"})
     void should_generate_answer_and_return_token_usage_and_finish_reason_length(String modelName) {
 
-        ChatLanguageModel model = GitHubModelsChatModel.builder()
+        ChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
                 .maxTokens(3)
@@ -93,9 +90,9 @@ class GitHubModelsChatModelIT {
 
         UserMessage userMessage = userMessage("hello, how are you?");
 
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
@@ -106,12 +103,10 @@ class GitHubModelsChatModelIT {
     }
 
     @ParameterizedTest(name = "Model name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
+    @CsvSource({"gpt-4o"})
     void should_call_function_with_argument(String modelName) {
 
-        ChatLanguageModel model = GitHubModelsChatModel.builder()
+        ChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
                 .logRequestsAndResponses(true)
@@ -125,31 +120,44 @@ class GitHubModelsChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
                 .description("Get the current weather")
-                .parameters(getToolParameters())
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location", "The city and state, e.g. San Francisco, CA")
+                        .addEnumProperty("unit", List.of("celsius", "fahrenheit"))
+                        .required("location", "unit")
+                        .build())
                 .build();
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecification);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
 
-        AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNull();
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
 
         // We can now call the function with the correct parameters.
-        WeatherLocation weatherLocation = BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
+        WeatherLocation weatherLocation =
+                BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
         int currentWeather = getCurrentWeather(weatherLocation);
 
-        String weather = String.format("The weather in %s is %d degrees %s.",
+        String weather = String.format(
+                "The weather in %s is %d degrees %s.",
                 weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
 
         assertThat(weather).isEqualTo("The weather in Paris, France is 35 degrees celsius.");
 
         // Now that we know the function's result, we can call the model again with the result as input.
-        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, weather);
-        SystemMessage systemMessage = SystemMessage.systemMessage("If the weather is above 30 degrees celsius, recommend the user wears a t-shirt and shorts.");
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                toolExecutionResultMessage(toolExecutionRequest, weather);
+        SystemMessage systemMessage = SystemMessage.systemMessage(
+                "If the weather is above 30 degrees celsius, recommend the user wears a t-shirt and shorts.");
 
         List<ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(systemMessage);
@@ -157,19 +165,17 @@ class GitHubModelsChatModelIT {
         chatMessages.add(aiMessage);
         chatMessages.add(toolExecutionResultMessage);
 
-        Response<AiMessage> response2 = model.generate(chatMessages);
+        ChatResponse response2 = model.chat(chatMessages);
 
-        assertThat(response2.content().text()).isNotBlank();
-        assertThat(response2.content().text()).contains("t-shirt");
+        assertThat(response2.aiMessage().text()).isNotBlank();
+        assertThat(response2.aiMessage().text()).contains("t-shirt");
         assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
     @ParameterizedTest(name = "Model name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
+    @CsvSource({"gpt-4o"})
     void should_call_function_with_no_argument(String modelName) {
-        ChatLanguageModel model = GitHubModelsChatModel.builder()
+        ChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
                 .logRequestsAndResponses(true)
@@ -185,53 +191,71 @@ class GitHubModelsChatModelIT {
                 .description("Get the current date and time")
                 .build();
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), noArgToolSpec);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(noArgToolSpec)
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
     }
 
     @ParameterizedTest(name = "Model name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
+    @CsvSource({"gpt-4o"})
     void should_call_three_functions_in_parallel(String modelName) {
 
-        ChatLanguageModel model = GitHubModelsChatModel.builder()
+        ChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
                 .logRequestsAndResponses(true)
                 .build();
 
-        UserMessage userMessage = userMessage("Give three numbers, ordered by size: the sum of two plus two, the square of four, and finally the cube of eight.");
+        UserMessage userMessage = userMessage(
+                "Give three numbers, ordered by size: the sum of two plus two, the square of four, and finally the cube of eight.");
 
         List<ToolSpecification> toolSpecifications = asList(
                 ToolSpecification.builder()
                         .name("sum")
                         .description("returns a sum of two numbers")
-                        .addParameter("first", INTEGER)
-                        .addParameter("second", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("first")
+                                .addIntegerProperty("second")
+                                .required("first", "second")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("square")
                         .description("returns the square of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("cube")
                         .description("returns the cube of one number")
-                        .addParameter("number", INTEGER)
-                        .build()
-        );
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
+                        .build());
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecifications);
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
-        AiMessage aiMessage = response.content();
+        ChatResponse response = model.chat(request);
+
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(userMessage);
@@ -241,7 +265,8 @@ class GitHubModelsChatModelIT {
             assertThat(toolExecutionRequest.name()).isNotEmpty();
             ToolExecutionResultMessage toolExecutionResultMessage;
             if (toolExecutionRequest.name().equals("sum")) {
-                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+                assertThat(toolExecutionRequest.arguments())
+                        .isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
                 toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "4");
             } else if (toolExecutionRequest.name().equals("square")) {
                 assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"number\": 4}");
@@ -255,12 +280,12 @@ class GitHubModelsChatModelIT {
             messages.add(toolExecutionResultMessage);
         }
 
-        Response<AiMessage> response2 = model.generate(messages);
-        AiMessage aiMessage2 = response2.content();
+        ChatResponse response2 = model.chat(messages);
+        AiMessage aiMessage2 = response2.aiMessage();
 
         // then
         assertThat(aiMessage2.text()).contains("4", "16", "512");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -272,23 +297,23 @@ class GitHubModelsChatModelIT {
     }
 
     @ParameterizedTest(name = "Model name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
+    @CsvSource({"gpt-4o"})
     void should_use_json_format(String modelName) {
-        ChatLanguageModel model = GitHubModelsChatModel.builder()
+        ChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
-                .responseFormat(new ChatCompletionsResponseFormatJson())
+                .responseFormat(new ChatCompletionsResponseFormatJsonObject())
                 .logRequestsAndResponses(true)
                 .build();
 
-        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
+        SystemMessage systemMessage =
+                SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
+        UserMessage userMessage = userMessage(
+                "List teams in the past French presidents, with their first name, last name, dates of service.");
 
-        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+        ChatResponse response = model.chat(systemMessage, userMessage);
 
-        assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
+        assertThat(response.aiMessage().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
@@ -300,7 +325,7 @@ class GitHubModelsChatModelIT {
         String modelNameString = modelName.toString();
 
         int maxTokens = 3;
-        ChatLanguageModel model = GitHubModelsChatModel.builder()
+        ChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelNameString)
                 .maxTokens(maxTokens) // to save tokens
@@ -310,10 +335,10 @@ class GitHubModelsChatModelIT {
         UserMessage userMessage = userMessage("Hi");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage).isNotNull();
@@ -323,27 +348,6 @@ class GitHubModelsChatModelIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(LENGTH);
-    }
-
-    private static ToolParameters getToolParameters() {
-        Map<String, Map<String, Object>> properties = new HashMap<>();
-
-        Map<String, Object> location = new HashMap<>();
-        location.put("type", "string");
-        location.put("description", "The city and state, e.g. San Francisco, CA");
-        properties.put("location", location);
-
-        Map<String, Object> unit = new HashMap<>();
-        unit.put("type", "string");
-        unit.put("enum", Arrays.asList("celsius", "fahrenheit"));
-        properties.put("unit", unit);
-
-        List<String> required = Arrays.asList("location", "unit");
-
-        return ToolParameters.builder()
-                .properties(properties)
-                .required(required)
-                .build();
     }
 
     // This is the method we offer to the LLM to be used as a function_call.
@@ -356,6 +360,7 @@ class GitHubModelsChatModelIT {
     private static class WeatherLocation {
         @JsonProperty(value = "unit")
         String unit;
+
         @JsonProperty(value = "location")
         String location;
 

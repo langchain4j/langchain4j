@@ -1,16 +1,15 @@
 package dev.langchain4j.service;
 
-import com.google.gson.reflect.TypeToken;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
 
 class TypeUtilsTest {
 
@@ -20,12 +19,10 @@ class TypeUtilsTest {
      * dev.langchain4j.service.TypeUtils#typeHasRawClass(java.lang.reflect.Type, java.lang.Class)
      * dev.langchain4j.service.TypeUtils#resolveFirstGenericParameterClass(java.lang.reflect.Type)
      **********************************************************************************************/
-
     @Test
-    void testIntegerReturnType() {
+    void integerReturnType() {
         // Given Integer
-        Type returnType = new TypeToken<Integer>() {
-        }.getType();
+        Type returnType = new TypeReference<Integer>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Integer.class);
@@ -34,10 +31,9 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testStringReturnType() {
+    void stringReturnType() {
         // Given String
-        Type returnType = new TypeToken<String>() {
-        }.getType();
+        Type returnType = new TypeReference<String>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(String.class);
@@ -46,10 +42,9 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testResultStringReturnType() {
+    void resultStringReturnType() {
         // Given Result<String>
-        Type returnType = new TypeToken<Result<String>>() {
-        }.getType();
+        Type returnType = new TypeReference<Result<String>>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Result.class);
@@ -58,10 +53,9 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testListOfStringsReturnType() {
+    void listOfStringsReturnType() {
         // Given List<String>
-        Type returnType = new TypeToken<List<String>>() {
-        }.getType();
+        Type returnType = new TypeReference<List<String>>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(List.class);
@@ -70,10 +64,9 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testSetOfIntegersReturnType() {
+    void setOfIntegersReturnType() {
         // Given Set<Integer>
-        Type returnType = new TypeToken<Set<Integer>>() {
-        }.getType();
+        Type returnType = new TypeReference<Set<Integer>>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Set.class);
@@ -82,10 +75,9 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testResultSetOfIntegersReturnType() {
+    void resultSetOfIntegersReturnType() {
         // Given Result<Set<Integer>
-        Type returnType = new TypeToken<Result<Set<Integer>>>() {
-        }.getType();
+        Type returnType = new TypeReference<Result<Set<Integer>>>() {}.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Result.class);
@@ -93,51 +85,52 @@ class TypeUtilsTest {
         assertThat(TypeUtils.resolveFirstGenericParameterClass(returnType)).isEqualTo(Set.class);
     }
 
-
     /**********************************************************************************************
      * Tests covering:
      * dev.langchain4j.service.TypeUtils#validateReturnTypesAreProperlyParametrized(java.lang.String, java.lang.reflect.Type)
      **********************************************************************************************/
-
     interface ListNoParametrizedTypeInvalidServiceDefinition {
         List ask(String input);
     }
 
     @Test
-    void testListNoParametrizedTypeInvalidServiceDefinition() {
+    void listNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException = assertThrows(IllegalArgumentException.class, () -> {
-            AiServices.builder(ListNoParametrizedTypeInvalidServiceDefinition.class)
-                    .chatLanguageModel(stubModel)
-                    .build();
-        });
+        IllegalArgumentException illegalArgumentException =
+                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
+                                ListNoParametrizedTypeInvalidServiceDefinition.class)
+                        .chatModel(stubModel)
+                        .build());
 
         // Then
-        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'List' of the method 'ask' must be parameterized with a concrete type, for example: List<String> or List<MyCustomPojo>");
+        assertThat(illegalArgumentException.getMessage())
+                .isEqualTo(
+                        "The return type 'List' of the method 'ask' must be parameterized with a concrete type, for example: List<String> or List<MyCustomPojo>");
     }
-
 
     interface SetNoParametrizedTypeInvalidServiceDefinition {
         Set ask(String input);
     }
 
     @Test
-    void testSetNoParametrizedTypeInvalidServiceDefinition() {
+    void setNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException = assertThrows(IllegalArgumentException.class, () -> {
-            AiServices.builder(SetNoParametrizedTypeInvalidServiceDefinition.class)
-                    .chatLanguageModel(stubModel)
-                    .build();
-        });
+        IllegalArgumentException illegalArgumentException =
+                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
+                                SetNoParametrizedTypeInvalidServiceDefinition.class)
+                        .chatModel(stubModel)
+                        .build());
 
         // Then
-        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Set' of the method 'ask' must be parameterized with a concrete type, for example: Set<String> or Set<MyCustomPojo>");
+        assertThat(illegalArgumentException.getMessage())
+                .isEqualTo(
+                        "The return type 'Set' of the method 'ask' must be parameterized with a concrete type, for example: Set<String> or Set<MyCustomPojo>");
     }
 
     interface ResultNoParametrizedTypeInvalidServiceDefinition {
@@ -145,19 +138,21 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testResultNoParametrizedTypeInvalidServiceDefinition() {
+    void resultNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException = assertThrows(IllegalArgumentException.class, () -> {
-            AiServices.builder(ResultNoParametrizedTypeInvalidServiceDefinition.class)
-                    .chatLanguageModel(stubModel)
-                    .build();
-        });
+        IllegalArgumentException illegalArgumentException =
+                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
+                                ResultNoParametrizedTypeInvalidServiceDefinition.class)
+                        .chatModel(stubModel)
+                        .build());
 
         // Then
-        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result' of the method 'ask' must be parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
+        assertThat(illegalArgumentException.getMessage())
+                .isEqualTo(
+                        "The return type 'Result' of the method 'ask' must be parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
     }
 
     interface ResultListNoParametrizedTypeInvalidServiceDefinition {
@@ -165,19 +160,21 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testResultListNoParametrizedTypeInvalidServiceDefinition() {
+    void resultListNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException = assertThrows(IllegalArgumentException.class, () -> {
-            AiServices.builder(ResultListNoParametrizedTypeInvalidServiceDefinition.class)
-                    .chatLanguageModel(stubModel)
-                    .build();
-        });
+        IllegalArgumentException illegalArgumentException =
+                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
+                                ResultListNoParametrizedTypeInvalidServiceDefinition.class)
+                        .chatModel(stubModel)
+                        .build());
 
         // Then
-        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result<List>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
+        assertThat(illegalArgumentException.getMessage())
+                .isEqualTo(
+                        "The return type 'Result<List>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
     }
 
     interface ListWildcardTypeInvalidServiceDefinition {
@@ -185,19 +182,20 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testListWildcardTypeInvalidServiceDefinition() {
+    void listWildcardTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException = assertThrows(IllegalArgumentException.class, () -> {
-            AiServices.builder(ListWildcardTypeInvalidServiceDefinition.class)
-                    .chatLanguageModel(stubModel)
-                    .build();
-        });
+        IllegalArgumentException illegalArgumentException = assertThrows(
+                IllegalArgumentException.class, () -> AiServices.builder(ListWildcardTypeInvalidServiceDefinition.class)
+                        .chatModel(stubModel)
+                        .build());
 
         // Then
-        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'List<?>' of the method 'ask' must be parameterized with a concrete type, for example: List<String> or List<MyCustomPojo>");
+        assertThat(illegalArgumentException.getMessage())
+                .isEqualTo(
+                        "The return type 'List<?>' of the method 'ask' must be parameterized with a concrete type, for example: List<String> or List<MyCustomPojo>");
     }
 
     interface ResultListWildcardTypeInvalidServiceDefinition {
@@ -205,19 +203,21 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testResultListWildcardTypeInvalidServiceDefinition() {
+    void resultListWildcardTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException = assertThrows(IllegalArgumentException.class, () -> {
-            AiServices.builder(ResultListWildcardTypeInvalidServiceDefinition.class)
-                    .chatLanguageModel(stubModel)
-                    .build();
-        });
+        IllegalArgumentException illegalArgumentException =
+                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
+                                ResultListWildcardTypeInvalidServiceDefinition.class)
+                        .chatModel(stubModel)
+                        .build());
 
         // Then
-        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result<List<?>>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
+        assertThat(illegalArgumentException.getMessage())
+                .isEqualTo(
+                        "The return type 'Result<List<?>>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
     }
 
     interface ResultListTypeParamTypeInvalidServiceDefinition<MY_TYPE extends Object> {
@@ -225,19 +225,20 @@ class TypeUtilsTest {
     }
 
     @Test
-    void testResultListTypeParamTypeInvalidServiceDefinition() {
+    void resultListTypeParamTypeInvalidServiceDefinition() {
         // Given
-        ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         // When
-        IllegalArgumentException illegalArgumentException = assertThrows(IllegalArgumentException.class, () -> {
-            AiServices.builder(ResultListTypeParamTypeInvalidServiceDefinition.class)
-                    .chatLanguageModel(stubModel)
-                    .build();
-        });
+        IllegalArgumentException illegalArgumentException =
+                assertThrows(IllegalArgumentException.class, () -> AiServices.builder(
+                                ResultListTypeParamTypeInvalidServiceDefinition.class)
+                        .chatModel(stubModel)
+                        .build());
 
         // Then
-        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result<List<MY_TYPE>>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
+        assertThat(illegalArgumentException.getMessage())
+                .isEqualTo(
+                        "The return type 'Result<List<MY_TYPE>>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
     }
-
 }

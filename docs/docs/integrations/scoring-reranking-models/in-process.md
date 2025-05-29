@@ -21,7 +21,7 @@ By default, scoring (reranking) model uses the CPU.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 ```java
@@ -39,7 +39,7 @@ If you want to use the GPU, `onnxruntime_gpu` version can be found
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
     <exclusions>
         <exclusion>
             <groupId>com.microsoft.onnxruntime</groupId>

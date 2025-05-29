@@ -18,7 +18,7 @@ Most of the basic "agentic" functionality can be built using a high-level [AI Se
 and [Tool](/tutorials/tools#high-level-tool-api) APIs.
 
 If you need more flexibility, you can use the low-level
-[ChatLanguageModel](/tutorials/chat-and-language-models),
+[ChatModel](/tutorials/chat-and-language-models),
 [ToolSpecification](/tutorials/tools#low-level-tool-api)
 and [ChatMemory](/tutorials/chat-memory) APIs.
 
@@ -29,7 +29,7 @@ LangChain4j does not support _high-level_ abstractions like "agent" in
 or [CrewAI](https://www.crewai.com/) to build multi-agent systems.
 
 However, you can still build multi-agent systems by using the low-level
-[ChatLanguageModel](/tutorials/chat-and-language-models),
+[ChatModel](/tutorials/chat-and-language-models),
 [ToolSpecification](/tutorials/tools#low-level-tool-api)
 and [ChatMemory](/tutorials/chat-memory) APIs.
 

@@ -13,7 +13,7 @@ https://azure.microsoft.com/en-us/products/cosmos-db/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-cosmos-mongo-vcore</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 

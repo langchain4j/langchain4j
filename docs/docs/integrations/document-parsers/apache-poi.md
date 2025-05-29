@@ -11,7 +11,7 @@ sidebar_position: 3
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-parser-apache-poi</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 

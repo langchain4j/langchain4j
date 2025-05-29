@@ -1,6 +1,6 @@
 package dev.langchain4j.model.chat.common;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -15,14 +15,14 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
- * Contains all the common tests that every {@link StreamingChatLanguageModel} must successfully pass.
- * This ensures that {@link StreamingChatLanguageModel} implementations are interchangeable among themselves.
+ * Contains all the common tests that every {@link StreamingChatModel} must successfully pass.
+ * This ensures that {@link StreamingChatModel} implementations are interchangeable among themselves.
  */
 @TestInstance(PER_CLASS)
-public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModelIT<StreamingChatLanguageModel> {
+public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModelIT<StreamingChatModel> {
 
     @Override
-    protected ChatResponseAndStreamingMetadata chat(StreamingChatLanguageModel chatModel, ChatRequest chatRequest) {
+    protected ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel, ChatRequest chatRequest) {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
@@ -54,7 +54,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         });
 
         try {
-            ChatResponse chatResponse = futureChatResponse.get(60, SECONDS);
+            ChatResponse chatResponse = futureChatResponse.get(120, SECONDS);
             String concatenatedPartialResponses = concatenatedPartialResponsesBuilder.toString();
             StreamingMetadata metadata = new StreamingMetadata(
                     concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,

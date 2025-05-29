@@ -1,24 +1,26 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.List;
-
+import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel.InputType.SEARCH_QUERY;
 import static dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel.Model.COHERE_EMBED_ENGLISH_V3;
 import static dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel.Model.COHERE_EMBED_MULTILINGUAL_V3;
 import static dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel.Truncate.END;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.output.Response;
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-public class BedrockCohereEmbeddingModelIT {
+class BedrockCohereEmbeddingModelIT {
 
     @Test
-    void testCohereMultilingualEmbeddingModel() {
+    void cohereMultilingualEmbeddingModel() {
 
         BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel.builder()
                 .model(COHERE_EMBED_ENGLISH_V3)
@@ -41,7 +43,7 @@ public class BedrockCohereEmbeddingModelIT {
     }
 
     @Test
-    void testCohereMultilingualEmbeddingModelBatch() {
+    void cohereMultilingualEmbeddingModelBatch() {
 
         BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel.builder()
                 .model(COHERE_EMBED_MULTILINGUAL_V3)
@@ -51,9 +53,7 @@ public class BedrockCohereEmbeddingModelIT {
 
         assertThat(embeddingModel).isNotNull();
 
-        List<TextSegment> segments = List.of(
-                TextSegment.from("How are you?"),
-                TextSegment.from("What is your name?"));
+        List<TextSegment> segments = List.of(TextSegment.from("How are you?"), TextSegment.from("What is your name?"));
 
         Response<List<Embedding>> response = embeddingModel.embedAll(segments);
         assertThat(response).isNotNull();
@@ -68,5 +68,10 @@ public class BedrockCohereEmbeddingModelIT {
         assertThat(response.finishReason()).isNull();
 
         assertThat(embeddingModel.dimension()).isEqualTo(1024);
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
     }
 }

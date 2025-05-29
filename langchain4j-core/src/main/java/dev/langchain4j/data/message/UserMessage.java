@@ -1,15 +1,15 @@
 package dev.langchain4j.data.message;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.USER;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableList;
 
 /**
  * Represents a message from a user, typically an end user of the application.
@@ -48,7 +48,6 @@ public class UserMessage implements ChatMessage {
 
     /**
      * Creates a {@link UserMessage} from one or multiple {@link Content}s.
-     * {@link Content} can be either {@link TextContent} or {@link ImageContent}.
      * <br>
      * Will have a {@code null} name.
      *
@@ -60,7 +59,6 @@ public class UserMessage implements ChatMessage {
 
     /**
      * Creates a {@link UserMessage} from a name and one or multiple {@link Content}s.
-     * {@link Content} can be either {@link TextContent} or {@link ImageContent}.
      *
      * @param name     the name.
      * @param contents the contents.
@@ -71,7 +69,6 @@ public class UserMessage implements ChatMessage {
 
     /**
      * Creates a {@link UserMessage} from a list of {@link Content}s.
-     * {@link Content} can be either {@link TextContent} or {@link ImageContent}.
      * <br>
      * Will have a {@code null} name.
      *
@@ -79,19 +76,18 @@ public class UserMessage implements ChatMessage {
      */
     public UserMessage(List<Content> contents) {
         this.name = null;
-        this.contents = unmodifiableList(ensureNotEmpty(contents, "contents"));
+        this.contents = copy(ensureNotEmpty(contents, "contents"));
     }
 
     /**
      * Creates a {@link UserMessage} from a name and a list of {@link Content}s.
-     * {@link Content} can be either {@link TextContent} or {@link ImageContent}.
      *
      * @param name     the name.
      * @param contents the contents.
      */
     public UserMessage(String name, List<Content> contents) {
-        this.name = ensureNotBlank(name, "name");
-        this.contents = unmodifiableList(ensureNotEmpty(contents, "contents"));
+        this.name = name;
+        this.contents = copy(ensureNotEmpty(contents, "contents"));
     }
 
     /**
@@ -104,7 +100,7 @@ public class UserMessage implements ChatMessage {
     }
 
     /**
-     * The contents of the message. {@link Content} can be either {@link TextContent} or {@link ImageContent}.
+     * The {@link Content}s of the message.
      *
      * @return the contents.
      */
@@ -138,19 +134,6 @@ public class UserMessage implements ChatMessage {
         return contents.size() == 1 && contents.get(0) instanceof TextContent;
     }
 
-    /**
-     * {@link UserMessage} can contain not just a single {@code String text}, but also multiple {@link Content}s,
-     * which can be either {@link TextContent} or {@link ImageContent}.
-     * Therefore, this method is deprecated. Please use {@link #singleText()} if you only expect a single text,
-     * or use {@link #contents()} otherwise.
-     *
-     * @deprecated Use {@link #singleText()} or {@link #contents()} instead.
-     */
-    @Deprecated(forRemoval = true)
-    public String text() {
-        return singleText();
-    }
-
     @Override
     public ChatMessageType type() {
         return USER;
@@ -176,6 +159,38 @@ public class UserMessage implements ChatMessage {
                 " name = " + quoted(name) +
                 " contents = " + contents +
                 " }";
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String name;
+        private List<Content> contents;
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder contents(List<Content> contents) {
+            this.contents = contents;
+            return this;
+        }
+
+        public Builder addContent(Content content) {
+            if (this.contents == null) {
+                this.contents = new ArrayList<>();
+            }
+            this.contents.add(content);
+            return this;
+        }
+
+        public UserMessage build() {
+            return new UserMessage(name, contents);
+        }
     }
 
     /**

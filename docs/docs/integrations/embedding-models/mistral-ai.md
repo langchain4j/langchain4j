@@ -1,5 +1,5 @@
 ---
-sidebar_position: 11
+sidebar_position: 12
 ---
 
 # Mistral AI
@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.0.0-alpha1'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:1.0.0-alpha1'
+implementation 'dev.langchain4j:langchain4j:1.0.1-beta6'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:1.0.1-beta6'
 ```
 #### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -83,9 +83,12 @@ public class HelloWorld {
         
         String userQuery = "What is your favourite sport?";
         Embedding queryEmbedding = embeddingModel.embed(userQuery).content();
-        int maxResults = 1;
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(queryEmbedding, maxResults);
-        EmbeddingMatch<TextSegment> embeddingMatch = relevant.get(0);
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(1)
+                .build();
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
+        EmbeddingMatch<TextSegment> embeddingMatch = searchResult.matches().get(0);
 
         System.out.println("Question: " + userQuery); // What is your favourite sport?
         System.out.println("Response: " + embeddingMatch.embedded().text()); // I like football.

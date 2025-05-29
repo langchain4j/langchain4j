@@ -13,7 +13,7 @@ https://tavily.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-web-search-engine-tavily</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 

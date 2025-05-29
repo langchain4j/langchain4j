@@ -1,16 +1,16 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiTokenUsage;
-import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests if Ollama can be used via OpenAI API (langchain4j-open-ai module)
@@ -18,9 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class OllamaOpenAiChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
-    ChatLanguageModel model = OpenAiChatModel.builder()
-            .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
-            .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
+    ChatModel model = OpenAiChatModel.builder()
+            .baseUrl(ollamaBaseUrl(ollama) + "/v1")
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .logRequests(true)
@@ -34,12 +33,12 @@ class OllamaOpenAiChatModelIT extends AbstractOllamaLanguageModelInfrastructure 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        ChatResponse response = model.chat(userMessage);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).contains("Berlin");
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         OpenAiTokenUsage tokenUsage = (OpenAiTokenUsage) response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();

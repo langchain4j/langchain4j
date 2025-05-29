@@ -1,5 +1,5 @@
 ---
-sidebar_position: 18
+sidebar_position: 19
 ---
 
 # ZhiPu AI
@@ -38,7 +38,7 @@ Before `1.0.0-alpha1`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-zhipu-ai</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
@@ -50,7 +50,7 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>1.0.0-alpha1</version>
+        <version>${latest version here}</version>
         <typ>pom</typ>
         <scope>import</scope>
     </dependency>
@@ -92,7 +92,7 @@ Same as `ZhipuAiChatModel`, except `maxRetries`.
 You can initialize `ZhipuAiChatModel` by using following code:
 
 ```java
-ChatLanguageModel qwenModel = ZhipuAiChatModel.builder()
+ChatModel qwenModel = ZhipuAiChatModel.builder()
                     .apiKey("You API key here")
                     .callTimeout(Duration.ofSeconds(60))
                     .connectTimeout(Duration.ofSeconds(60))
@@ -104,12 +104,12 @@ ChatLanguageModel qwenModel = ZhipuAiChatModel.builder()
 Or more custom for other parameters:
 
 ```java
-ChatLanguageModel qwenModel = ZhipuAiChatModel.builder()
+ChatModel qwenModel = ZhipuAiChatModel.builder()
                     .apiKey("You API key here")
                     .model("glm-4")
                     .temperature(0.6)
                     .maxToken(1024)
-                    .maxRetries(1)
+                    .maxRetries(2)
                     .callTimeout(Duration.ofSeconds(60))
                     .connectTimeout(Duration.ofSeconds(60))
                     .writeTimeout(Duration.ofSeconds(60))

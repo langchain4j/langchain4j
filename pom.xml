@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.0.0-alpha2-SNAPSHOT</version>
+    <version>1.1.0-beta7-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -15,8 +15,14 @@
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
+        <module>langchain4j-kotlin</module>
 
         <module>langchain4j-easy-rag</module>
+        <module>langchain4j-mcp</module>
+
+        <!-- http clients -->
+        <module>langchain4j-http-client</module>
+        <module>http-clients/langchain4j-http-client-jdk</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
@@ -29,8 +35,10 @@
         <module>langchain4j-mistral-ai</module>
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
+        <module>langchain4j-onnx-scoring</module>
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
+        <module>langchain4j-open-ai-official</module>
         <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>
@@ -48,15 +56,14 @@
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-infinispan</module>
+        <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-mongodb-atlas</module>
-        <module>langchain4j-neo4j</module>
         <module>langchain4j-oracle</module>
         <module>langchain4j-opensearch</module>
         <module>langchain4j-pgvector</module>
         <module>langchain4j-pinecone</module>
         <module>langchain4j-qdrant</module>
-        <module>langchain4j-redis</module>
         <module>langchain4j-tablestore</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
@@ -91,8 +98,6 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
-        <module>langchain4j-onnx-scoring</module>
-        <module>langchain4j-mcp</module>
 
     </modules>
 
@@ -105,7 +110,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.3</version>
+                <version>3.1.4</version>
                 <configuration>
                     <!-- do not deploy langchain4j-aggregator's pom.xml (this file) -->
                     <skip>true</skip>
@@ -130,19 +135,6 @@
                         <phase>site</phase>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-                <version>2.43.0</version>
-                <configuration>
-                    <ratchetFrom>origin/main</ratchetFrom>
-                    <pom>
-                        <sortPom>
-                            <nrOfIndentSpace>4</nrOfIndentSpace>
-                        </sortPom>
-                    </pom>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>com.simpligility.maven.plugins</groupId>
@@ -195,6 +187,7 @@
     </reporting>
 
     <profiles>
+
         <profile>
             <id>jdk21</id>
             <activation>
@@ -204,9 +197,10 @@
                 <module>langchain4j-jlama</module>
             </modules>
         </profile>
+
         <profile>
             <id>openrewrite</id>
-            <!-- `mvn -P openrewrite rewrite:run` -->
+            <!-- `mvn -Popenrewrite -Dspotless.check.skip=true org.openrewrite.maven:rewrite-maven-plugin:run` -->
             <build>
                 <plugins>
                     <plugin>
@@ -215,7 +209,8 @@
                         <version>5.43.4</version>
                         <configuration>
                             <activeRecipes>
-                                <!--<recipe>org.openrewrite.java.OrderImports</recipe>-->
+                                <recipe>org.openrewrite.java.testing.cleanup.TestsShouldNotBePublic</recipe>
+                                <recipe>org.openrewrite.java.testing.cleanup.RemoveTestPrefix</recipe>
                                 <recipe>org.openrewrite.java.testing.assertj.Assertj</recipe>
                             </activeRecipes>
                             <failOnDryRunResults>true</failOnDryRunResults>
@@ -231,6 +226,28 @@
                 </plugins>
             </build>
         </profile>
+
+        <profile>
+            <id>spotless</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>2.44.4</version>
+                        <configuration>
+                            <ratchetFrom>origin/main</ratchetFrom>
+                            <pom>
+                                <sortPom>
+                                    <nrOfIndentSpace>4</nrOfIndentSpace>
+                                </sortPom>
+                            </pom>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
     </profiles>
 
 </project>

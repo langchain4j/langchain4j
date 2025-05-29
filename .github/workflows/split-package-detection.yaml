@@ -1,0 +1,41 @@
+name: Split Package Detection
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  # Optional: Run manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  check-split-packages:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Build with Maven
+        run: mvn package -Dmaven.javadoc.skip=true -DskipTests -DskipITs
+
+      - name: Make script executable
+        run: chmod +x ./check-split-packages.sh
+
+      - name: Run split package detection
+        run: ./check-split-packages.sh
+
+      - name: Upload results as artifact if failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: split-package-report
+          path: |
+            check-split-packages.sh
+            # You could save the output to a file and include that too

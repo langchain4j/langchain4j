@@ -14,49 +14,49 @@ token-by-token instead of waiting for the entire text to be generated.
 This significantly improves the user experience, as the user does not need to wait an unknown
 amount of time and can start reading the response almost immediately.
 
-For the `ChatLanguageModel` and `LanguageModel` interfaces, there are corresponding
-`StreamingChatLanguageModel` and `StreamingLanguageModel` interfaces.
+For the `ChatModel` and `LanguageModel` interfaces, there are corresponding
+`StreamingChatModel` and `StreamingLanguageModel` interfaces.
 These have a similar API but can stream the responses.
-They accept an implementation of the `StreamingResponseHandler` interface as an argument.
+They accept an implementation of the `StreamingChatResponseHandler` interface as an argument.
 
 ```java
-public interface StreamingResponseHandler<T> {
+public interface StreamingChatResponseHandler {
 
-    void onNext(String token);
- 
-    default void onComplete(Response<T> response) {}
+    void onPartialResponse(String partialResponse);
+
+    void onCompleteResponse(ChatResponse completeResponse);
 
     void onError(Throwable error);
 }
 ```
 
-By implementing `StreamingResponseHandler`, you can define actions for the following events:
-- When the next token is generated: `onNext(String token)` is invoked.
+By implementing `StreamingChatResponseHandler`, you can define actions for the following events:
+- When the next partial response is generated: `onPartialResponse(String partialResponse)` is invoked.
+Partial response can consist of a single or more tokens.
 For instance, you can send the token directly to the UI as soon as it becomes available.
-- When the LLM has completed generation: `onComplete(Response<T> response)` is invoked.
-Here, `T` stands for `AiMessage` in the case of `StreamingChatLanguageModel`,
-and `String` for `StreamingLanguageModel`. The `Response` object contains the complete response.
+- When the LLM has completed generation: `onCompleteResponse(ChatResponse completeResponse)` is invoked.
+The `ChatResponse` object contains the complete response (`AiMessage`) as well as `ChatResponseMetadata`.
 - When an error occurs: `onError(Throwable error)` is invoked.
 
-Below is an example of how to implement streaming with `StreamingChatLanguageModel`:
+Below is an example of how to implement streaming with `StreamingChatModel`:
 ```java
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
     .apiKey(System.getenv("OPENAI_API_KEY"))
     .modelName(GPT_4_O_MINI)
     .build();
 
 String userMessage = "Tell me a joke";
 
-model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
+model.chat(userMessage, new StreamingChatResponseHandler() {
 
     @Override
-    public void onNext(String token) {
-        System.out.println("onNext: " + token);
+    public void onPartialResponse(String partialResponse) {
+        System.out.println("onPartialResponse: " + partialResponse);
     }
 
     @Override
-    public void onComplete(Response<AiMessage> response) {
-        System.out.println("onComplete: " + response);
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        System.out.println("onCompleteResponse: " + completeResponse);
     }
 
     @Override
@@ -67,20 +67,21 @@ model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
 ```
 
 A more compact way to stream the response is to use the `LambdaStreamingResponseHandler` class.
-This utility class provides static methods to create a `StreamingResponseHandler` using lambda expressions.
+This utility class provides static methods to create a `StreamingChatResponseHandler` using lambda expressions.
 The way to use lambdas to stream the response is quite simple. 
-You just call the `onNext()` static method with a lambda expression that defines what to do with the token:
+You just call the `onPartialResponse()` static method with a lambda expression that defines what to do with the partial response:
 
 ```java
-import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponse;
 
-model.generate("Tell me a joke", onNext(System.out::print));
+model.chat("Tell me a joke", onPartialResponse(System.out::print));
 ```
 
-The `onNextAndError()` method allows you to define actions for both the `onNext()` and `onError()` events:
+The `onPartialResponseAndError()` method allows you to define actions for both
+the `onPartialResponse()` and `onError()` events:
 
 ```java
-import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNextAndError;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseAndError;
 
-model.generate("Tell me a joke", onNextAndError(System.out::print, Throwable::printStackTrace));
+model.chat("Tell me a joke", onPartialResponseAndError(System.out::print, Throwable::printStackTrace));
 ```

@@ -25,7 +25,7 @@ class JinaEmbeddingModelIT {
                 .modelName("jina-embeddings-v2-base-en")
                 .timeout(ofSeconds(10))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         String text = "hello";
@@ -55,7 +55,7 @@ class JinaEmbeddingModelIT {
                 .timeout(ofSeconds(10))
                 .lateChunking(false)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         String text = "hello";
@@ -83,7 +83,7 @@ class JinaEmbeddingModelIT {
                 .modelName("jina-embeddings-v2-base-en")
                 .timeout(ofSeconds(10))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");
@@ -126,7 +126,7 @@ class JinaEmbeddingModelIT {
                 .timeout(ofSeconds(10))
                 .lateChunking(false)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");
@@ -170,7 +170,7 @@ class JinaEmbeddingModelIT {
                 .timeout(ofSeconds(10))
                 .lateChunking(true)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");
@@ -214,7 +214,7 @@ class JinaEmbeddingModelIT {
                 .timeout(ofSeconds(10))
                 .lateChunking(false)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");
@@ -244,7 +244,7 @@ class JinaEmbeddingModelIT {
                 .timeout(ofSeconds(10))
                 .lateChunking(true)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         // when embedding the same segments

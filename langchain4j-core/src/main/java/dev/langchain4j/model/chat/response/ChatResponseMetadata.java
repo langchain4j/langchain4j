@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat.response;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -10,7 +9,6 @@ import java.util.Objects;
  * Represents common chat response metadata supported by most LLM providers.
  * Specific LLM provider integrations can extend this interface to add provider-specific metadata.
  */
-@Experimental
 public class ChatResponseMetadata {
 
     private final String id;
@@ -39,6 +37,18 @@ public class ChatResponseMetadata {
 
     public FinishReason finishReason() {
         return finishReason;
+    }
+
+    public Builder<?> toBuilder() {
+        return toBuilder(builder());
+    }
+
+    protected Builder<?> toBuilder(Builder<?> builder) {
+        return builder
+                .id(id)
+                .modelName(modelName)
+                .tokenUsage(tokenUsage)
+                .finishReason(finishReason);
     }
 
     @Override
@@ -71,7 +81,7 @@ public class ChatResponseMetadata {
         return new Builder<>();
     }
 
-    public static class Builder<T extends ChatResponseMetadata.Builder<T>> {
+    public static class Builder<T extends Builder<T>> {
 
         private String id;
         private String modelName;

@@ -9,20 +9,13 @@ import java.util.Arrays;
 
 class InMemoryChatMemoryStoreTest implements WithAssertions {
     @Test
-    public void test() {
+    void test() {
         InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
         assertThat(store.getMessages("foo")).isEmpty();
 
-        store.updateMessages(
-                "foo",
-                Arrays.asList(
-                        new UserMessage("abc def"),
-                        new AiMessage("ghi jkl")));
+        store.updateMessages("foo", Arrays.asList(new UserMessage("abc def"), new AiMessage("ghi jkl")));
 
-
-        assertThat(store.getMessages("foo")).containsExactly(
-                new UserMessage("abc def"),
-                new AiMessage("ghi jkl"));
+        assertThat(store.getMessages("foo")).containsExactly(new UserMessage("abc def"), new AiMessage("ghi jkl"));
 
         store.deleteMessages("foo");
 

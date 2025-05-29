@@ -3,11 +3,9 @@ package dev.langchain4j.model.azure;
 import com.azure.ai.openai.models.*;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -23,8 +21,6 @@ import static java.util.stream.Collectors.toList;
  * in fact it almost certainly won't be.
  */
 class AzureOpenAiStreamingResponseBuilder {
-
-    Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingResponseBuilder.class);
 
     private final StringBuffer contentBuilder = new StringBuffer();
     private final StringBuffer toolNameBuilder = new StringBuffer();
@@ -123,13 +119,11 @@ class AzureOpenAiStreamingResponseBuilder {
         }
     }
 
-    public Response<AiMessage> build(Tokenizer tokenizer, boolean forcefulToolExecution) {
+    public Response<AiMessage> build(TokenCountEstimator tokenCountEstimator) {
 
         String content = contentBuilder.toString();
-        TokenUsage contentDeltaOutTokenUsage = 
-            !content.isEmpty() ?
-                tokenUsage(content, tokenizer):
-                new TokenUsage(0,0);
+        TokenUsage tokenUsage =
+                content.isEmpty() ? new TokenUsage(inputTokenCount, 0) : tokenUsage(content, tokenCountEstimator);
 
         String toolName = toolNameBuilder.toString();
         if (!toolName.isEmpty()) {
@@ -141,7 +135,7 @@ class AzureOpenAiStreamingResponseBuilder {
                     !content.isEmpty() ?
                         AiMessage.from(content, singletonList(toolExecutionRequest)) :
                         AiMessage.from(toolExecutionRequest),
-                    tokenUsage(singletonList(toolExecutionRequest), tokenizer, forcefulToolExecution).add(contentDeltaOutTokenUsage),
+                    tokenUsage,
                     finishReasonFrom(finishReason)
             );
         }
@@ -158,7 +152,7 @@ class AzureOpenAiStreamingResponseBuilder {
                     !content.isEmpty() ?
                         AiMessage.from(content, toolExecutionRequests) :
                         AiMessage.from(toolExecutionRequests),
-                    tokenUsage(toolExecutionRequests, tokenizer, forcefulToolExecution).add(contentDeltaOutTokenUsage),
+                    tokenUsage,
                     finishReasonFrom(finishReason)
             );
         }
@@ -166,7 +160,7 @@ class AzureOpenAiStreamingResponseBuilder {
         if (!content.isEmpty()) {
             return Response.from(
                     AiMessage.from(content),
-                    tokenUsage(content, tokenizer),
+                    tokenUsage(content, tokenCountEstimator),
                     finishReasonFrom(finishReason)
             );
         }
@@ -174,29 +168,11 @@ class AzureOpenAiStreamingResponseBuilder {
         return null;
     }
 
-    private TokenUsage tokenUsage(String content, Tokenizer tokenizer) {
-        if (tokenizer == null) {
+    private TokenUsage tokenUsage(String content, TokenCountEstimator tokenCountEstimator) {
+        if (tokenCountEstimator == null) {
             return null;
         }
-        int outputTokenCount = tokenizer.estimateTokenCountInText(content);
-        return new TokenUsage(inputTokenCount, outputTokenCount);
-    }
-
-    private TokenUsage tokenUsage(List<ToolExecutionRequest> toolExecutionRequests, Tokenizer tokenizer, boolean forcefulToolExecution) {
-        if (tokenizer == null) {
-            return null;
-        }
-
-        int outputTokenCount = 0;
-        if (forcefulToolExecution) {
-            // OpenAI calculates output tokens differently when tool is executed forcefully
-            for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-                outputTokenCount += tokenizer.estimateTokenCountInForcefulToolExecutionRequest(toolExecutionRequest);
-            }
-        } else {
-            outputTokenCount = tokenizer.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);
-        }
-
+        int outputTokenCount = tokenCountEstimator.estimateTokenCountInText(content);
         return new TokenUsage(inputTokenCount, outputTokenCount);
     }
 

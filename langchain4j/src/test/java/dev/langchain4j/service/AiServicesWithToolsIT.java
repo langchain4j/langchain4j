@@ -1,5 +1,21 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.assertj.core.data.MapEntry.entry;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,26 +26,26 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
-import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,36 +53,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
-
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
-import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
-import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonMap;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.assertj.core.data.MapEntry.entry;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-
 @ExtendWith(MockitoExtension.class)
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class AiServicesWithToolsIT {
 
-    static Stream<ChatLanguageModel> models() {
+    static Stream<ChatModel> models() {
         return Stream.of(
                 OpenAiChatModel.builder()
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -86,30 +77,26 @@ class AiServicesWithToolsIT {
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
-                        .build()
-        );
+                        .build());
     }
 
-    static Stream<ChatLanguageModel> modelsWithoutParallelToolCalling() {
-        return Stream.of(
-                OpenAiChatModel.builder()
-                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                        .apiKey(System.getenv("OPENAI_API_KEY"))
-                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .modelName(GPT_4_O_MINI)
-                        .parallelToolCalls(false) // to force the model to call tools sequentially
-                        .temperature(0.0)
-                        .logRequests(true)
-                        .logResponses(true)
-                        .build()
-        );
+    static Stream<ChatModel> modelsWithoutParallelToolCalling() {
+        return Stream.of(OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .parallelToolCalls(false) // to force the model to call tools sequentially
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
     }
 
     interface Assistant {
 
-        Response<AiMessage> chat(String userMessage);
+        Result<String> chat(String userMessage);
     }
-
 
     static class TransactionService {
 
@@ -138,52 +125,50 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_a_tool_then_answer(ChatLanguageModel chatLanguageModel) {
+    void should_execute_a_tool_then_answer(ChatModel chatModel) {
 
         TransactionService transactionService = spy(new TransactionService());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+        ChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(spyChatLanguageModel)
+                .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
                 .build();
 
         String userMessage = "What is the amounts of transaction T001?";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("11.1");
+        assertThat(result.content()).contains("11.1");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
-
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verifyNoMoreInteractions(transactionService);
-
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(4);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("getTransactionAmount");
-        assertThat(toolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
 
         ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
         assertThat(toolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
@@ -191,73 +176,68 @@ class AiServicesWithToolsIT {
         assertThat(toolExecutionResultMessage.text()).isEqualTo("11.1");
 
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(3).text()).contains("11.1");
+        assertThat(((AiMessage) messages.get(3)).text()).contains("11.1");
 
-
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()
-        );
+                        .build());
 
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()
-        );
+                        .build());
     }
 
     @ParameterizedTest
     @MethodSource("modelsWithoutParallelToolCalling")
-    void should_execute_multiple_tools_sequentially_then_answer(ChatLanguageModel chatLanguageModel) {
+    void should_execute_multiple_tools_sequentially_then_answer(ChatModel chatModel) {
 
         TransactionService transactionService = spy(new TransactionService());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+        ChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(spyChatLanguageModel)
+                .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002?";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("11.1", "22.2");
+        assertThat(result.content()).contains("11.1", "22.2");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
-
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verify(transactionService).getTransactionAmount("T002");
         verifyNoMoreInteractions(transactionService);
 
-
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(6);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("getTransactionAmount");
-        assertThat(toolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
 
         ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
         assertThat(toolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
@@ -267,10 +247,10 @@ class AiServicesWithToolsIT {
         AiMessage secondAiMessage = (AiMessage) messages.get(3);
         assertThat(secondAiMessage.text()).isNull();
         assertThat(secondAiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest secondToolExecutionRequest = secondAiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest secondToolExecutionRequest =
+                secondAiMessage.toolExecutionRequests().get(0);
         assertThat(secondToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
-        assertThat(secondToolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
+        assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
 
         ToolExecutionResultMessage secondToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(4);
         assertThat(secondToolExecutionResultMessage.id()).isEqualTo(secondToolExecutionRequest.id());
@@ -278,86 +258,80 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecutionResultMessage.text()).isEqualTo("22.2");
 
         assertThat(messages.get(5)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(5).text()).contains("11.1", "22.2");
+        assertThat(((AiMessage) messages.get(5)).text()).contains("11.1", "22.2");
 
-
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()
-        );
+                        .build());
 
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()
-        );
+                        .build());
 
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2), messages.get(3), messages.get(4))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()
-        );
+                        .build());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_multiple_tools_in_parallel_then_answer(ChatLanguageModel chatLanguageModel) {
+    void should_execute_multiple_tools_in_parallel_then_answer(ChatModel chatModel) {
 
         TransactionService transactionService = spy(new TransactionService());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+        ChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(spyChatLanguageModel)
+                .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002? Call tools in parallel!";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("11.1", "22.2");
+        assertThat(result.content()).contains("11.1", "22.2");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
-
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verify(transactionService).getTransactionAmount("T002");
         verifyNoMoreInteractions(transactionService);
 
-
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(5);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
 
         AiMessage aiMessage = (AiMessage) messages.get(1);
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
-        ToolExecutionRequest firstToolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest firstToolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(firstToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
-        assertThat(firstToolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
+        assertThat(firstToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
 
-        ToolExecutionRequest secondToolExecutionRequest = aiMessage.toolExecutionRequests().get(1);
+        ToolExecutionRequest secondToolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(1);
         assertThat(secondToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
-        assertThat(secondToolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
+        assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
 
         ToolExecutionResultMessage firstToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
         assertThat(firstToolExecutionResultMessage.id()).isEqualTo(firstToolExecutionRequest.id());
@@ -370,85 +344,20 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecutionResultMessage.text()).isEqualTo("22.2");
 
         assertThat(messages.get(4)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(4).text()).contains("11.1", "22.2");
+        assertThat(((AiMessage) messages.get(4)).text()).contains("11.1", "22.2");
 
-
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()
-        );
+                        .build());
 
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2), messages.get(3))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()
-        );
+                        .build());
     }
-
-
-    static class StringListProcessor {
-
-        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
-                .name("processStrings")
-                .description("Processes list of strings")
-                .parameters(JsonObjectSchema.builder()
-                        .addProperties(singletonMap("arg0", JsonArraySchema.builder()
-                                .description("List of strings to process")
-                                .items(new JsonStringSchema())
-                                .build()))
-                        .required("arg0")
-                        .build())
-                .build();
-
-        @Tool("Processes list of strings")
-        void processStrings(@P("List of strings to process") List<String> strings) {
-            System.out.printf("called processStrings(%s)%n", strings);
-        }
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_tool_with_List_of_Strings_parameter(ChatLanguageModel chatLanguageModel) {
-
-        StringListProcessor stringListProcessor = spy(new StringListProcessor());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(spyChatLanguageModel)
-                .chatMemory(chatMemory)
-                .tools(stringListProcessor)
-                .build();
-
-        String userMessage = "Process strings 'cat' and 'dog' together in a single tool call.";
-
-        // when
-        assistant.chat(userMessage);
-
-        // then
-        verify(stringListProcessor).processStrings(asList("cat", "dog"));
-        verifyNoMoreInteractions(stringListProcessor);
-
-        List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
-                        .messages(messages.get(0))
-                        .toolSpecifications(StringListProcessor.EXPECTED_SPECIFICATION)
-                        .build()
-        );
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
-                        .messages(messages.get(0), messages.get(1), messages.get(2))
-                        .toolSpecifications(StringListProcessor.EXPECTED_SPECIFICATION)
-                        .build()
-        );
-    }
-
 
     static class IntegerListProcessor {
 
@@ -456,10 +365,12 @@ class AiServicesWithToolsIT {
                 .name("processIntegers")
                 .description("Processes list of integers")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(singletonMap("arg0", JsonArraySchema.builder()
-                                .description("List of integers to process")
-                                .items(new JsonIntegerSchema())
-                                .build()))
+                        .addProperties(singletonMap(
+                                "arg0",
+                                JsonArraySchema.builder()
+                                        .description("List of integers to process")
+                                        .items(new JsonIntegerSchema())
+                                        .build()))
                         .required("arg0")
                         .build())
                 .build();
@@ -472,16 +383,16 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_tool_with_List_of_Integers_parameter(ChatLanguageModel chatLanguageModel) {
+    void should_use_tool_with_List_of_Integers_parameter(ChatModel chatModel) {
 
         IntegerListProcessor integerListProcessor = spy(new IntegerListProcessor());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+        ChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(spyChatLanguageModel)
+                .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(integerListProcessor)
                 .build();
@@ -496,20 +407,17 @@ class AiServicesWithToolsIT {
         verifyNoMoreInteractions(integerListProcessor);
 
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(IntegerListProcessor.EXPECTED_SPECIFICATION)
-                        .build()
-        );
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+                        .build());
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(IntegerListProcessor.EXPECTED_SPECIFICATION)
-                        .build()
-        );
+                        .build());
     }
-
 
     static class StringArrayProcessor {
 
@@ -517,10 +425,12 @@ class AiServicesWithToolsIT {
                 .name("processStrings")
                 .description("Processes array of strings")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(singletonMap("arg0", JsonArraySchema.builder()
-                                .description("Array of strings to process")
-                                .items(new JsonStringSchema())
-                                .build()))
+                        .addProperties(singletonMap(
+                                "arg0",
+                                JsonArraySchema.builder()
+                                        .description("Array of strings to process")
+                                        .items(new JsonStringSchema())
+                                        .build()))
                         .required("arg0")
                         .build())
                 .build();
@@ -533,16 +443,16 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_tool_with_Array_of_Strings_parameter(ChatLanguageModel chatLanguageModel) {
+    void should_use_tool_with_Array_of_Strings_parameter(ChatModel chatModel) {
 
         StringArrayProcessor stringArrayProcessor = spy(new StringArrayProcessor());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+        ChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(spyChatLanguageModel)
+                .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(stringArrayProcessor)
                 .build();
@@ -553,168 +463,25 @@ class AiServicesWithToolsIT {
         assistant.chat(userMessage);
 
         // then
-        verify(stringArrayProcessor).processStrings(new String[]{"cat", "dog"});
+        verify(stringArrayProcessor).processStrings(new String[] {"cat", "dog"});
         verifyNoMoreInteractions(stringArrayProcessor);
 
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(StringArrayProcessor.EXPECTED_SPECIFICATION)
-                        .build()
-        );
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
+                        .build());
+        verify(spyChatModel)
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(StringArrayProcessor.EXPECTED_SPECIFICATION)
-                        .build()
-        );
-    }
-
-
-    static class WeatherService {
-
-        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
-                .name("currentTemperature")
-                .parameters(JsonObjectSchema.builder()
-                        .addProperties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                            put("arg0", new JsonStringSchema());
-                            put("arg1", JsonEnumSchema.builder()
-                                    .enumValues("CELSIUS", "fahrenheit", "Kelvin")
-                                    .build());
-                        }})
-                        .required("arg0", "arg1")
-                        .build())
-                .build();
-
-        @Tool
-        int currentTemperature(String city, TemperatureUnit unit) {
-            System.out.printf("called currentTemperature(%s, %s)%n", city, unit);
-            return 37;
-        }
-    }
-
-    enum TemperatureUnit {
-        CELSIUS, fahrenheit, Kelvin
+                        .build());
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_tool_with_enum_parameter(ChatLanguageModel chatLanguageModel) {
-
-        // given
-        WeatherService weatherService = spy(new WeatherService());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(spyChatLanguageModel)
-                .chatMemory(chatMemory)
-                .tools(weatherService)
-                .build();
-
-        // when
-        Response<AiMessage> response = assistant.chat("What is the temperature in Munich now, in kelvin?");
-
-        // then
-        assertThat(response.content().text()).contains("37");
-
-        verify(weatherService).currentTemperature("Munich", Kelvin);
-        verifyNoMoreInteractions(weatherService);
-
-        List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
-                        .messages(messages.get(0))
-                        .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                        .build()
-        );
-        verify(spyChatLanguageModel).chat(
-                ChatRequest.builder()
-                        .messages(messages.get(0), messages.get(1), messages.get(2))
-                        .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                        .build()
-        );
-    }
-
-    // TODO test Lists, Sets, Arrays of different types (including enums).
-
-
-    static class QueryService {
-
-        @Tool("Execute the query and return the result")
-        String executeQuery(@P("query to execute") Query query) {
-            assertThat(query).isNotNull();
-            assertThat(query.select).containsExactly("name");
-            assertThat(query.where).containsExactly(new Condition("country", EQUALS, "India"));
-            assertThat(query.limit).isEqualTo(3);
-
-            return "Amar, Akbar, Antony";
-        }
-    }
-
-    static record Query(
-
-        @Description("List of fields to fetch records")
-        List<String> select,
-
-        @Description("List of conditions to filter on. Pass null if no condition")
-        List<Condition> where,
-
-        @Description("limit on number of records")
-        Integer limit,
-
-        @Description("offset for fetching records")
-        Integer offset)
-    {}
-
-    static record Condition(
-
-        @Description("Field to filter on")
-        String field,
-
-        @Description("Operator to apply")
-        Operator operator,
-
-        @Description("Value to compare with")
-        String value)
-    {}
-
-    enum Operator {
-
-        EQUALS,
-        NOT_EQUALS,
-        IS_NULL,
-        IS_NOT_NULL
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_tool_with_pojo(ChatLanguageModel chatLanguageModel) {
-
-        // given
-        QueryService queryService = spy(new QueryService());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(spyChatLanguageModel)
-                .chatMemory(chatMemory)
-                .tools(queryService)
-                .build();
-
-        Response<AiMessage> response = assistant.chat("Give me the names of 3 users from India");
-
-        assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_programmatically_configured_tools(ChatLanguageModel chatLanguageModel) {
+    void should_use_programmatically_configured_tools(ChatModel chatModel) {
 
         // given
         ToolSpecification toolSpecification = ToolSpecification.builder()
@@ -732,44 +499,15 @@ class AiServicesWithToolsIT {
         };
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .tools(singletonMap(toolSpecification, toolExecutor))
                 .build();
 
         // when
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+        Result<String> result = assistant.chat("When does my booking 123-456 starts?");
 
         // then
-        assertThat(response.content().text()).contains("2027");
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_programmatically_configured_tools_old_API(ChatLanguageModel chatLanguageModel) {
-
-        // given
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("get_booking_details")
-                .description("Returns booking details")
-                .addParameter("bookingNumber", type("string")) // old API
-                .build();
-
-        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
-            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
-            assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
-            return "Booking period: from 1 July 2027 to 10 July 2027";
-        };
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .tools(singletonMap(toolSpecification, toolExecutor))
-                .build();
-
-        // when
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
-
-        // then
-        assertThat(response.content().text()).contains("2027");
+        assertThat(result.content()).contains("2027");
     }
 
     static class BookingToolExecutor implements ToolExecutor {
@@ -805,127 +543,104 @@ class AiServicesWithToolsIT {
         };
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(models().findFirst().get())
+                .chatModel(models().findFirst().get())
                 .toolProvider(toolProvider)
                 .build();
 
         assistant.chat("When does my holiday 123-456 starts?");
         verifyNoInteractions(toolExecutor); // user message does not contain word "booking"
 
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
-        assertThat(response.content().text()).contains("2027");
+        Result<String> result = assistant.chat("When does my booking 123-456 starts?");
+        assertThat(result.content()).contains("2027");
         verify(toolExecutor).execute(any(), any());
         verifyNoMoreInteractions(toolExecutor);
     }
 
+    static class Calculator {
+
+        @Tool("applies the function xyz on the provided number")
+        int xyz(@P("number to operate on") int number) {
+            System.out.printf("called xyz(%s)%n", number);
+            return number + 1;
+        }
+    }
+
     @Test
-    void should_use_tool_provider_old_API() {
+    void should_allow_configuring_tools_and_tool_provider_simultaneously() {
 
         ToolExecutor toolExecutor = spy(new BookingToolExecutor());
 
-        ToolProvider toolProvider = (toolProviderRequest) -> {
-            if (toolProviderRequest.userMessage().singleText().contains("booking")) {
-                ToolSpecification toolSpecification = ToolSpecification.builder()
-                        .name("get_booking_details")
-                        .description("Returns booking details")
-                        .addParameter("bookingNumber", type("string")) // old API
-                        .build();
-                return ToolProviderResult.builder()
-                        .add(toolSpecification, toolExecutor)
-                        .build();
-            } else {
-                return null;
-            }
+        Calculator calculator = spy(new Calculator());
+
+        ToolProvider toolProvider = request -> {
+            ToolSpecification toolSpecification = ToolSpecification.builder()
+                    .name("get_booking_details")
+                    .description("Returns booking details")
+                    .parameters(JsonObjectSchema.builder()
+                            .addStringProperty("bookingNumber")
+                            .build())
+                    .build();
+            return ToolProviderResult.builder()
+                    .add(toolSpecification, toolExecutor)
+                    .build();
         };
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(models().findFirst().get())
+                .chatModel(models().findFirst().get())
                 .toolProvider(toolProvider)
+                .tools(calculator)
                 .build();
 
-        assistant.chat("When does my holiday 123-456 starts?");
-        verifyNoInteractions(toolExecutor); // user message does not contain word "booking"
+        Result<String> result = assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
+        assertThat(result.content()).contains("2028");
 
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
-        assertThat(response.content().text()).contains("2027");
+        verify(calculator).xyz(2027);
+        verifyNoMoreInteractions(calculator);
+
         verify(toolExecutor).execute(any(), any());
         verifyNoMoreInteractions(toolExecutor);
     }
 
     @Test
-    void should_not_allow_configuring_tools_and_tool_provider_simultaneously() {
+    void should_throw_if_static_and_dynamic_tools_are_duplicated() {
+        Calculator calculator = spy(new Calculator());
 
-        ChatLanguageModel chatLanguageModel = new ChatModelMock("mocked");
+        ToolProvider toolProvider = request -> {
+            ToolSpecification toolSpecification = ToolSpecification.builder()
+                    .name("xyz")
+                    .description("applies the function xyz on the provided number")
+                    .parameters(JsonObjectSchema.builder()
+                            .addIntegerProperty("number")
+                            .build())
+                    .build();
+            return ToolProviderResult.builder()
+                    .add(toolSpecification, (ToolExecutionRequest toolExecutionRequest, Object memoryId) -> {
+                        Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+                        assertThat(arguments).containsExactly(entry("number", 2027));
+                        return "3000";
+                    })
+                    .build();
+        };
 
-        // First provider then tools
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
-                AiServices.builder(Assistant.class)
-                        .chatLanguageModel(chatLanguageModel)
-                        .toolProvider((ToolProviderRequest request) -> null)
-                        .tools(new HashMap<>())
-                        .build());
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .toolProvider(toolProvider)
+                .tools(calculator)
+                .build();
 
-        // First provider then static tools
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
-                AiServices.builder(Assistant.class)
-                        .chatLanguageModel(chatLanguageModel)
-                        .toolProvider((ToolProviderRequest request) -> null)
-                        .tools(new StringArrayProcessor())
-                        .build());
-
-        // First tools then provider
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
-                AiServices.builder(Assistant.class)
-                        .chatLanguageModel(chatLanguageModel)
-                        .tools(new HashMap<>())
-                        .toolProvider((ToolProviderRequest request) -> null)
-                        .build());
-
-        // First static tools then provider
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
-                AiServices.builder(Assistant.class)
-                        .chatLanguageModel(chatLanguageModel)
-                        .tools(new StringArrayProcessor())
-                        .toolProvider((ToolProviderRequest request) -> null)
-                        .build());
+        assertThat(
+                assertThrows(IllegalConfigurationException.class,
+                        () -> assistant.chat("Apply the function xyz on the number 2027"))
+        ).hasMessageContaining("xyz");
     }
 
     private static Map<String, Object> toMap(String arguments) {
         try {
-            return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {
-            });
+            return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
-
-    static class Clock {
-
-        @Tool
-        String currentTime() {
-            return "16:37:43";
-        }
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_execute_tool_without_parameters(ChatLanguageModel chatLanguageModel) {
-
-        // given
-        Clock clock = spy(new Clock());
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .tools(clock)
-                .build();
-
-        // when
-        Response<AiMessage> response = assistant.chat("What is the time now?");
-
-        // then
-        assertThat(response.content().text()).contains("16:37:43");
-    }
-
 
     interface AssistantReturningResult {
 
@@ -934,17 +649,17 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    public void should_execute_a_tool_and_context_included_in_result(ChatLanguageModel chatLanguageModel) {
+    void should_execute_a_tool_and_context_included_in_result(ChatModel chatModel) {
 
         // given
         TransactionService transactionService = spy(new TransactionService());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+        ChatModel spyChatModel = spy(chatModel);
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
-                .chatLanguageModel(spyChatLanguageModel)
+                .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
                 .build();
@@ -961,30 +676,29 @@ class AiServicesWithToolsIT {
         assertThat(toolExecution.request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
         assertThat(toolExecution.result()).isEqualTo("11.1");
 
-        verify(spyChatLanguageModel, times(2)).chat(any(ChatRequest.class));
+        verify(spyChatModel, times(2)).chat(any(ChatRequest.class));
     }
-
 
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-    void should_execute_multi_tool_in_parallel_and_context_included_in_result(ChatLanguageModel chatLanguageModel) {
+    void should_execute_multi_tool_in_parallel_and_context_included_in_result(ChatModel chatModel) {
 
         // given
         TransactionService transactionService = spy(new TransactionService());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+        ChatModel spyChatModel = spy(chatModel);
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
-                .chatLanguageModel(spyChatLanguageModel)
+                .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
                 .build();
 
-        String userMessage = "What are the amounts of transactions T001 and T002? " +
-                "First call getTransactionAmount for T001, then for T002, in parallel. Do not answer before you know all amounts!";
+        String userMessage = "What are the amounts of transactions T001 and T002? "
+                + "First call getTransactionAmount for T001, then for T002, in parallel. Do not answer before you know all amounts!";
 
         // when
         Result<AiMessage> result = assistant.chat(userMessage);
@@ -1002,22 +716,23 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecution.request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
         assertThat(secondToolExecution.result()).contains("22.2");
 
-        verify(spyChatLanguageModel, times(2)).chat(any(ChatRequest.class));
+        verify(spyChatModel, times(2)).chat(any(ChatRequest.class));
     }
 
     @ParameterizedTest
     @MethodSource("modelsWithoutParallelToolCalling")
-    public void should_execute_multiple_tools_sequentially_and_context_included_in_result(ChatLanguageModel chatLanguageModel) {
+    void should_execute_multiple_tools_sequentially_and_context_included_in_result(
+            ChatModel chatModel) {
 
         // given
         TransactionService transactionService = spy(new TransactionService());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+        ChatModel spyChatModel = spy(chatModel);
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
-                .chatLanguageModel(spyChatLanguageModel)
+                .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
                 .build();
@@ -1040,6 +755,111 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecution.request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
         assertThat(secondToolExecution.result()).contains("22.2");
 
-        verify(spyChatLanguageModel, times(3)).chat(any(ChatRequest.class));
+        verify(spyChatModel, times(3)).chat(any(ChatRequest.class));
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    void should_not_execute_multiple_tools_sequentially_when_maxSequentialToolsInvocations_is_exceeded(
+            ChatModel chatModel) {
+
+        // given
+        TransactionService transactionService = spy(new TransactionService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatModel spyChatModel = spy(chatModel);
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatModel(spyChatModel)
+                .chatMemory(chatMemory)
+                .tools(transactionService)
+                .maxSequentialToolsInvocations(1) // only one sequential tool call allowed, the test makes 3
+                .build();
+
+        String userMessage = "What are the amounts of transactions T001 and T002?";
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> assistant.chat(userMessage))
+                .withMessage("Something is wrong, exceeded 1 sequential tool executions");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+    void should_execute_tool_with_custom_return_type(ChatModel chatModel) {
+
+        LocalDate now = LocalDate.of(2025, 2, 24);
+
+        record ToolResult(LocalDate localDate) {}
+
+        class Tools {
+
+            @Tool
+            ToolResult currentDate() {
+                return new ToolResult(now);
+            }
+        }
+
+        Tools tools = spy(new Tools());
+
+        ChatModel spyChatModel = spy(chatModel);
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatModel(spyChatModel)
+                .tools(tools)
+                .build();
+
+        String userMessage = "What is the current date?";
+
+        // when
+        Result<AiMessage> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content().text())
+                .contains(String.valueOf(now.getYear()), String.valueOf(now.getDayOfMonth()));
+
+        verify(tools).currentDate();
+        verifyNoMoreInteractions(tools);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+    void should_execute_tool_with_custom_name(ChatModel chatModel) {
+
+        LocalDate now = LocalDate.of(2025, 2, 24);
+
+        class Tools {
+
+            private static final String CUSTOM_TOOL_NAME = "get_current_date";
+
+            @Tool(name = CUSTOM_TOOL_NAME)
+            LocalDate currentDate() {
+                return now;
+            }
+        }
+
+        Tools tools = spy(new Tools());
+
+        ChatModel spyChatModel = spy(chatModel);
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatModel(spyChatModel)
+                .tools(tools)
+                .build();
+
+        String userMessage = "What is the current date?";
+
+        // when
+        Result<AiMessage> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content().text())
+                .contains(String.valueOf(now.getYear()), String.valueOf(now.getDayOfMonth()));
+        assertThat(result.toolExecutions().get(0).request().name()).isEqualTo(Tools.CUSTOM_TOOL_NAME);
+
+        verify(tools).currentDate();
+        verifyNoMoreInteractions(tools);
     }
 }

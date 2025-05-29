@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 class QdrantFilterConverterTest {
 
     @Test
-    void testContainsFilter() {
+    void containsFilter() {
         Filter filter = new ContainsString("string-value", "contains");
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
@@ -21,7 +21,7 @@ class QdrantFilterConverterTest {
     }
 
     @Test
-    void testIsEqualToFilter() {
+    void isEqualToFilter() {
         Filter filter = new IsEqualTo("num-value", 5);
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
@@ -48,7 +48,7 @@ class QdrantFilterConverterTest {
     }
 
     @Test
-    void testIsNotEqualToFilter() {
+    void isNotEqualToFilter() {
         Filter filter = new IsNotEqualTo("num-value", 5);
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
@@ -111,7 +111,7 @@ class QdrantFilterConverterTest {
     }
 
     @Test
-    void testIsGreaterThanFilter() {
+    void isGreaterThanFilter() {
         Filter filter = new IsGreaterThan("key", 1);
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
 
@@ -121,7 +121,7 @@ class QdrantFilterConverterTest {
     }
 
     @Test
-    void testIsLessThanFilter() {
+    void isLessThanFilter() {
         Filter filter = new IsLessThan("key", 10);
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
 
@@ -131,7 +131,7 @@ class QdrantFilterConverterTest {
     }
 
     @Test
-    void testIsGreaterThanOrEqualToFilter() {
+    void isGreaterThanOrEqualToFilter() {
         Filter filter = new IsGreaterThanOrEqualTo("key", 1);
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
 
@@ -141,7 +141,7 @@ class QdrantFilterConverterTest {
     }
 
     @Test
-    void testIsLessThanOrEqualToFilter() {
+    void isLessThanOrEqualToFilter() {
         Filter filter = new IsLessThanOrEqualTo("key", 10);
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
 
@@ -151,7 +151,7 @@ class QdrantFilterConverterTest {
     }
 
     @Test
-    void testInFilter() {
+    void inFilter() {
         Filter filter = new IsIn("key", Arrays.asList(1, 2, 3));
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
@@ -178,7 +178,7 @@ class QdrantFilterConverterTest {
     }
 
     @Test
-    void testNInFilter() {
+    void nInFilter() {
         Filter filter = new IsNotIn("key", Arrays.asList(1, 2, 3, 4));
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();

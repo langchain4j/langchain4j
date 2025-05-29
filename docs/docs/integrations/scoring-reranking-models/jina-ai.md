@@ -20,7 +20,7 @@ It looks beyond the surface-level matching of terms to consider the deeper inter
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jina</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
     .build();
 
 return AiServices.builder(Assistant.class)
-    .chatLanguageModel(...)
+    .chatModel(...)
     .retrievalAugmentor(retrievalAugmentor)
     .build();
 ```

@@ -1,14 +1,13 @@
 package dev.langchain4j.model.localai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.time.Duration;
 
@@ -27,7 +26,6 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
     private final Double topP;
     private final Integer maxTokens;
 
-    @Builder
     public LocalAiStreamingLanguageModel(String baseUrl,
                                          String modelName,
                                          Double temperature,
@@ -41,14 +39,11 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
         timeout = timeout == null ? ofSeconds(60) : timeout;
 
         this.client = OpenAiClient.builder()
-                .openAiApiKey("ignored")
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
+                .logResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
@@ -97,9 +92,66 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     public static class LocalAiStreamingLanguageModelBuilder {
+        private String baseUrl;
+        private String modelName;
+        private Double temperature;
+        private Double topP;
+        private Integer maxTokens;
+        private Duration timeout;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
         public LocalAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public LocalAiStreamingLanguageModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public LocalAiStreamingLanguageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public LocalAiStreamingLanguageModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public LocalAiStreamingLanguageModelBuilder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public LocalAiStreamingLanguageModelBuilder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public LocalAiStreamingLanguageModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public LocalAiStreamingLanguageModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public LocalAiStreamingLanguageModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public LocalAiStreamingLanguageModel build() {
+            return new LocalAiStreamingLanguageModel(this.baseUrl, this.modelName, this.temperature, this.topP, this.maxTokens, this.timeout, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "LocalAiStreamingLanguageModel.LocalAiStreamingLanguageModelBuilder(baseUrl=" + this.baseUrl + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", topP=" + this.topP + ", maxTokens=" + this.maxTokens + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

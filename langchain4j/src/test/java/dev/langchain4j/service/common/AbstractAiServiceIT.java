@@ -2,7 +2,7 @@ package dev.langchain4j.service.common;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
@@ -22,15 +22,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
- * This test makes sure that all {@link ChatLanguageModel} implementations behave consistently
+ * This test makes sure that all {@link ChatModel} implementations behave consistently
  * when used with {@link AiServices}.
  */
 @TestInstance(PER_CLASS)
 public abstract class AbstractAiServiceIT {
 
-    protected abstract List<ChatLanguageModel> models();
+    protected abstract List<ChatModel> models();
 
-    protected List<ChatLanguageModel> modelsSupportingToolsAndJsonResponseFormatWithSchema() {
+    protected List<ChatModel> modelsSupportingToolsAndJsonResponseFormatWithSchema() {
         return models();
     }
 
@@ -41,13 +41,13 @@ public abstract class AbstractAiServiceIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_answer_simple_question(ChatLanguageModel model) {
+    void should_answer_simple_question(ChatModel model) {
 
         // given
         model = spy(model);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
 
         String userMessage = "What is the capital of Germany?";
@@ -58,18 +58,13 @@ public abstract class AbstractAiServiceIT {
         // then
         assertThat(result.content()).containsIgnoringCase("Berlin");
 
-        TokenUsage tokenUsage = result.tokenUsage();
-        assertThat(tokenUsage).isNotNull();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertTokenUsage(result.tokenUsage(), model);
 
         if (assertFinishReason()) {
             assertThat(result.finishReason()).isEqualTo(STOP);
         }
 
-        assertThat(result.sources()).isNull();
+        assertThat(result.sources()).isEmpty();
 
         assertThat(result.toolExecutions()).isEmpty();
 
@@ -82,7 +77,9 @@ public abstract class AbstractAiServiceIT {
     @ParameterizedTest
     @MethodSource("modelsSupportingToolsAndJsonResponseFormatWithSchema")
     @EnabledIf("supportsToolsAndJsonResponseFormatWithSchema")
-    void should_execute_tool_then_return_structured_output(ChatLanguageModel model) {
+    void should_execute_tool_then_return_structured_output(ChatModel model) {
+
+        // TODO fail if model does not support RESPONSE_FORMAT_JSON_SCHEMA and tools
 
         // given
         model = spy(model);
@@ -96,7 +93,7 @@ public abstract class AbstractAiServiceIT {
 
         interface WeatherAssistant {
 
-            WeatherReport chat(String city);
+            Result<WeatherReport> chat(String city);
         }
 
         class WeatherTools {
@@ -110,14 +107,15 @@ public abstract class AbstractAiServiceIT {
         WeatherTools weatherTools = spy(new WeatherTools());
 
         WeatherAssistant weatherAssistant = AiServices.builder(WeatherAssistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(weatherTools)
                 .build();
 
         String userMessage = "What is the weather in Munich?";
 
         // when
-        WeatherReport weatherReport = weatherAssistant.chat(userMessage);
+        Result<WeatherReport> result = weatherAssistant.chat(userMessage);
+        WeatherReport weatherReport = result.content();
 
         // then
         assertThat(weatherReport.city()).isEqualTo("Munich");
@@ -150,6 +148,8 @@ public abstract class AbstractAiServiceIT {
 //                .build());
 //        verifyNoMoreInteractions(model);
 
+        assertTokenUsage(result.tokenUsage(), model);
+
         if (assertToolInteractions()) {
             verify(weatherTools).getWeather("Munich");
             verifyNoMoreInteractions(weatherTools);
@@ -166,6 +166,22 @@ public abstract class AbstractAiServiceIT {
 
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return supportsTools() && supportsJsonResponseFormatWithSchema();
+    }
+
+    protected boolean assertTokenUsage() {
+        return true;
+    }
+
+    private void assertTokenUsage(TokenUsage tokenUsage, ChatModel chatModel) {
+        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(chatModel));
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
+        return TokenUsage.class;
     }
 
     protected boolean assertFinishReason() {

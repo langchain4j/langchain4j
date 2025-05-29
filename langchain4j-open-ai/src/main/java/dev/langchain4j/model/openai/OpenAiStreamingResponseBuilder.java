@@ -1,13 +1,14 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.chat.ChatCompletionChoice;
-import dev.ai4j.openai4j.chat.ChatCompletionResponse;
-import dev.ai4j.openai4j.chat.Delta;
-import dev.ai4j.openai4j.chat.FunctionCall;
-import dev.ai4j.openai4j.chat.ToolCall;
-import dev.ai4j.openai4j.completion.CompletionChoice;
-import dev.ai4j.openai4j.completion.CompletionResponse;
-import dev.ai4j.openai4j.shared.Usage;
+import dev.langchain4j.Internal;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.openai.internal.chat.FunctionCall;
+import dev.langchain4j.model.openai.internal.chat.ToolCall;
+import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
+import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
+import dev.langchain4j.model.openai.internal.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -21,8 +22,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -31,6 +32,7 @@ import static java.util.stream.Collectors.toList;
  * and there is no guarantee that this thread will be the same as the one that initiated the request,
  * in fact it almost certainly won't be.
  */
+@Internal
 public class OpenAiStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
@@ -57,7 +59,7 @@ public class OpenAiStreamingResponseBuilder {
             this.id.set(partialResponse.id());
         }
         if (partialResponse.created() != null) {
-            this.created.set(Long.valueOf(partialResponse.created()));
+            this.created.set(partialResponse.created());
         }
         if (!isNullOrBlank(partialResponse.model())) {
             this.model.set(partialResponse.model());

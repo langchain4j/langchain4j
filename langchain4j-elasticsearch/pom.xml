@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.0.0-alpha2-SNAPSHOT</version>
+        <version>1.1.0-beta7-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -26,22 +24,24 @@
         # Elasticsearch started by Testcontainers with a specific password
         mvn verify -DELASTICSEARCH_LOCAL_PASSWORD=changeme
         -->
-        <ELASTICSEARCH_CLOUD_URL />
-        <ELASTICSEARCH_CLOUD_API_KEY />
-        <ELASTICSEARCH_LOCAL_URL />
+        <ELASTICSEARCH_CLOUD_URL></ELASTICSEARCH_CLOUD_URL>
+        <ELASTICSEARCH_CLOUD_API_KEY></ELASTICSEARCH_CLOUD_API_KEY>
+        <ELASTICSEARCH_LOCAL_URL></ELASTICSEARCH_LOCAL_URL>
         <ELASTICSEARCH_LOCAL_PASSWORD>changeme</ELASTICSEARCH_LOCAL_PASSWORD>
     </properties>
 
     <dependencies>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>${project.version}</version>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>
+            <version>${elastic.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>jakarta.json</groupId>
@@ -65,10 +65,13 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+
+        <!-- test dependencies -->
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>${project.version}</version>
+            <version>1.1.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -85,12 +88,6 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -115,13 +112,6 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j2-impl</artifactId>
-            <version>2.22.1</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -137,8 +127,8 @@
     <build>
         <testResources>
             <testResource>
-                <directory>src/test/resources</directory>
                 <filtering>true</filtering>
+                <directory>src/test/resources</directory>
             </testResource>
         </testResources>
 
@@ -157,14 +147,5 @@
             </plugin>
         </plugins>
     </build>
-
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
 
 </project>

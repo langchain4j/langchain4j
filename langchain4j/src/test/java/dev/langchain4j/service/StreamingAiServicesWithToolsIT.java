@@ -7,15 +7,14 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -47,7 +46,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesWithToolsIT {
 
-    static Stream<StreamingChatLanguageModel> models() {
+    static Stream<StreamingChatModel> models() {
         return Stream.of(
                 OpenAiStreamingChatModel.builder()
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -90,17 +89,17 @@ class StreamingAiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_execute_a_tool_then_answer(StreamingChatLanguageModel model) throws Exception {
+    void should_execute_a_tool_then_answer(StreamingChatModel model) throws Exception {
 
         // given
         TransactionService transactionService = spy(new TransactionService());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        StreamingChatLanguageModel spyModel = spy(model);
+        StreamingChatModel spyModel = spy(model);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
                 .build();
@@ -108,17 +107,16 @@ class StreamingAiServicesWithToolsIT {
         String userMessage = "What is the amounts of transaction T001?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
-                .onError(future::completeExceptionally)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(futureResponse::complete)
+                .onError(futureResponse::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, SECONDS);
+        ChatResponse response = futureResponse.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("11.1");
+        assertThat(response.aiMessage().text()).contains("11.1");
 
         // then
         verify(transactionService).getTransactionAmount("T001");
@@ -172,17 +170,17 @@ class StreamingAiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_tool_with_enum_parameter(StreamingChatLanguageModel model) throws Exception {
+    void should_use_tool_with_enum_parameter(StreamingChatModel model) throws Exception {
 
         // given
         WeatherService weatherService = spy(new WeatherService());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        StreamingChatLanguageModel spyModel = spy(model);
+        StreamingChatModel spyModel = spy(model);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .chatMemory(chatMemory)
                 .tools(weatherService)
                 .build();
@@ -190,17 +188,16 @@ class StreamingAiServicesWithToolsIT {
         String userMessage = "What is the temperature in Munich now, in Celsius?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, SECONDS);
+        ChatResponse response = future.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains(String.valueOf(TEMPERATURE));
+        assertThat(response.aiMessage().text()).contains(String.valueOf(TEMPERATURE));
 
         verify(weatherService).currentTemperature("Munich", CELSIUS);
         verifyNoMoreInteractions(weatherService);
@@ -236,12 +233,12 @@ class StreamingAiServicesWithToolsIT {
                 .add(EXPECTED_SPECIFICATION, toolExecutor)
                 .build();
 
-        StreamingChatLanguageModel spyModel = spy(models().findFirst().get());
+        StreamingChatModel spyModel = spy(models().findFirst().get());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .chatMemory(chatMemory)
                 .toolProvider(toolProvider)
                 .build();
@@ -249,17 +246,16 @@ class StreamingAiServicesWithToolsIT {
         String userMessage = "What is the amounts of transactions T001?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, SECONDS);
+        ChatResponse response = future.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("11.1");
+        assertThat(response.aiMessage().text()).contains("11.1");
 
         // then
         verify(toolExecutor).execute(any(), any());
@@ -319,10 +315,10 @@ class StreamingAiServicesWithToolsIT {
         // given
         WeatherService weatherService = spy(new WeatherService());
 
-        StreamingChatLanguageModel spyModel = spy(models().findFirst().get());
+        StreamingChatModel spyModel = spy(models().findFirst().get());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .tools(weatherService)
                 .build();
@@ -330,20 +326,19 @@ class StreamingAiServicesWithToolsIT {
         String userMessage = "What is the temperature in Munich and London, in Celsius?";
 
         List<ToolExecution> toolExecutions = new ArrayList<>();
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
 
         // when
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
+                .onPartialResponse(ignored -> {})
                 .onToolExecuted(toolExecutions::add)
-                .onComplete(future::complete)
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, SECONDS);
+        ChatResponse response = future.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
+        assertThat(response.aiMessage().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
 
         // then
         verify(weatherService).currentTemperature("Munich", CELSIUS);
@@ -362,7 +357,7 @@ class StreamingAiServicesWithToolsIT {
         assertThat(toolExecutions.get(1).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
     }
 
-    public static void verifyNoMoreInteractionsFor(StreamingChatLanguageModel model) {
+    public static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
         try {
             verify(model, atLeastOnce()).doChat(any(), any());
         } catch (Throwable ignored) {
@@ -380,6 +375,11 @@ class StreamingAiServicesWithToolsIT {
         }
         try {
             verify(model, atLeastOnce()).listeners();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).provider();
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }

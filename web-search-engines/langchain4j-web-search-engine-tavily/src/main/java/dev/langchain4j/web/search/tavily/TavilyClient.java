@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
-import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
@@ -25,7 +24,6 @@ class TavilyClient {
 
     private final TavilyApi tavilyApi;
 
-    @Builder
     public TavilyClient(String baseUrl, Duration timeout) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
@@ -41,6 +39,10 @@ class TavilyClient {
                 .build();
 
         this.tavilyApi = retrofit.create(TavilyApi.class);
+    }
+
+    public static TavilyClientBuilder builder() {
+        return new TavilyClientBuilder();
     }
 
     public TavilyResponse search(TavilySearchRequest searchRequest) {
@@ -63,5 +65,31 @@ class TavilyClient {
         String body = response.errorBody().string();
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
+    }
+
+    public static class TavilyClientBuilder {
+        private String baseUrl;
+        private Duration timeout;
+
+        TavilyClientBuilder() {
+        }
+
+        public TavilyClientBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public TavilyClientBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public TavilyClient build() {
+            return new TavilyClient(this.baseUrl, this.timeout);
+        }
+
+        public String toString() {
+            return "TavilyClient.TavilyClientBuilder(baseUrl=" + this.baseUrl + ", timeout=" + this.timeout + ")";
+        }
     }
 }

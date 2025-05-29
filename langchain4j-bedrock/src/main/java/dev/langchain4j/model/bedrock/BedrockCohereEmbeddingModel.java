@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.bedrock.internal.Json.fromJson;
@@ -46,7 +46,7 @@ public class BedrockCohereEmbeddingModel implements EmbeddingModel {
         this.model = ensureNotBlank(builder.model, "model");
         this.inputType = ensureNotBlank(builder.inputType, "inputType");
         this.truncate = builder.truncate;
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     private BedrockRuntimeClient initClient(Builder builder) {
@@ -63,7 +63,7 @@ public class BedrockCohereEmbeddingModel implements EmbeddingModel {
         Map<String, Object> requestParameters = toRequestParameters(textSegments);
         String requestJson = toJson(requestParameters);
 
-        InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(requestJson), maxRetries);
+        InvokeModelResponse invokeModelResponse = withRetryMappingExceptions(() -> invoke(requestJson), maxRetries);
 
         String responseJson = invokeModelResponse.body().asUtf8String();
         BedrockCohereEmbeddingResponse embeddingResponse = fromJson(responseJson, BedrockCohereEmbeddingResponse.class);

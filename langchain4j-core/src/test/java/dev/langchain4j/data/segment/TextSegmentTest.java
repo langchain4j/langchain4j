@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 class TextSegmentTest implements WithAssertions {
     @Test
-    public void test_blank() {
+    void blank() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> TextSegment.from(" "))
                 .withMessageContaining("text cannot be null or blank");
@@ -20,7 +20,7 @@ class TextSegmentTest implements WithAssertions {
     }
 
     @Test
-    public void test_equals_hashCode() {
+    void equals_hash_code() {
         TextSegment ts1 = TextSegment.from("text");
         TextSegment ts2 = TextSegment.from("text");
 
@@ -54,21 +54,20 @@ class TextSegmentTest implements WithAssertions {
     }
 
     @Test
-    public void test_accessors() {
+    void accessors() {
         Metadata metadata = new Metadata();
         metadata.put("abc", "123");
         TextSegment ts = TextSegment.from("text", metadata);
 
         assertThat(ts.text()).isEqualTo("text");
         assertThat(ts.metadata()).isEqualTo(metadata);
-        assertThat(ts.metadata("abc")).isEqualTo("123");
+        assertThat(ts.metadata().getString("abc")).isEqualTo("123");
 
-        assertThat(ts)
-                .hasToString("TextSegment { text = \"text\" metadata = {abc=123} }");
+        assertThat(ts).hasToString("TextSegment { text = \"text\" metadata = {abc=123} }");
     }
 
     @Test
-    public void test_builders() {
+    void builders() {
         assertThat(new TextSegment("abc", new Metadata()))
                 .isEqualTo(TextSegment.from("abc"))
                 .isEqualTo(TextSegment.textSegment("abc"))
@@ -82,5 +81,4 @@ class TextSegmentTest implements WithAssertions {
                 .isEqualTo(TextSegment.from("abc", metadata))
                 .isEqualTo(TextSegment.textSegment("abc", metadata));
     }
-
 }

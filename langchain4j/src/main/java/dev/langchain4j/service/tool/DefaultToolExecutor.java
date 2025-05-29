@@ -3,8 +3,6 @@ package dev.langchain4j.service.tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.internal.Json;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -15,28 +13,30 @@ import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
-    private static final Logger log = LoggerFactory.getLogger(DefaultToolExecutor.class);
-
     private final Object object;
-    private final Method method;
+    private final Method originalMethod;
+    private final Method methodToInvoke;
 
     public DefaultToolExecutor(Object object, Method method) {
         this.object = Objects.requireNonNull(object, "object");
-        this.method = Objects.requireNonNull(method, "method");
+        this.originalMethod = Objects.requireNonNull(method, "method");
+        this.methodToInvoke = this.originalMethod;
     }
 
     public DefaultToolExecutor(Object object, ToolExecutionRequest toolExecutionRequest) {
         this.object = Objects.requireNonNull(object, "object");
         Objects.requireNonNull(toolExecutionRequest, "toolExecutionRequest");
-        this.method = findMethod(object, toolExecutionRequest);
+        this.originalMethod = findMethod(object, toolExecutionRequest);
+        this.methodToInvoke = this.originalMethod;
     }
 
-    Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
+    private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
         String requestedMethodName = toolExecutionRequest.name();
 
         for (Method method : object.getClass().getDeclaredMethods()) {
@@ -45,46 +45,49 @@ public class DefaultToolExecutor implements ToolExecutor {
             }
         }
 
-        throw new IllegalArgumentException(
-                String.format("Method '%s' is not found in object '%s'",
-                        requestedMethodName, object.getClass().getName()));
+        throw new IllegalArgumentException(String.format(
+                "Method '%s' is not found in object '%s'",
+                requestedMethodName, object.getClass().getName()));
+    }
+
+    /**
+     * When methods annotated with @Tool are wrapped into proxies (AOP),
+     * the parameters of the proxied method do not retain their original names.
+     * Therefore, access to the original method is required to retrieve those names.
+     *
+     * @param object         the object on which the method should be invoked
+     * @param originalMethod the original method, used to retrieve parameter names and prepare arguments
+     * @param methodToInvoke the method that should actually be invoked
+     */
+    public DefaultToolExecutor(Object object, Method originalMethod, Method methodToInvoke) {
+        this.object = Objects.requireNonNull(object, "object");
+        this.originalMethod = Objects.requireNonNull(originalMethod, "originalMethod");
+        this.methodToInvoke = Objects.requireNonNull(methodToInvoke, "methodToInvoke");
     }
 
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-        log.debug("About to execute {} for memoryId {}", toolExecutionRequest, memoryId);
-
-        // TODO ensure this method never throws exceptions
 
         Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-        Object[] arguments = prepareArguments(method, argumentsMap, memoryId);
+        Object[] arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
         try {
-            String result = execute(arguments);
-            log.debug("Tool execution result: {}", result);
-            return result;
+            return execute(arguments);
         } catch (IllegalAccessException e) {
             try {
-                method.setAccessible(true);
-                String result = execute(arguments);
-                log.debug("Tool execution result: {}", result);
-                return result;
+                methodToInvoke.setAccessible(true);
+                return execute(arguments);
             } catch (IllegalAccessException e2) {
                 throw new RuntimeException(e2);
             } catch (InvocationTargetException e2) {
-                Throwable cause = e2.getCause();
-                log.error("Error while executing tool", cause);
-                return cause.getMessage();
+                return e2.getCause().getMessage();
             }
         } catch (InvocationTargetException e) {
-            Throwable cause = e.getCause();
-            log.error("Error while executing tool", cause);
-            return cause.getMessage();
+            return  e.getCause().getMessage();
         }
     }
 
-    private String execute(Object[] arguments)
-            throws IllegalAccessException, InvocationTargetException {
-        Object result = method.invoke(object, arguments);
-        Class<?> returnType = method.getReturnType();
+    private String execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
+        Object result = methodToInvoke.invoke(object, arguments);
+        Class<?> returnType = methodToInvoke.getReturnType();
         if (returnType == void.class) {
             return "Success";
         } else if (returnType == String.class) {
@@ -94,11 +97,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    static Object[] prepareArguments(
-            Method method,
-            Map<String, Object> argumentsMap,
-            Object memoryId
-    ) {
+    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, Object memoryId) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -124,30 +123,30 @@ public class DefaultToolExecutor implements ToolExecutor {
         return arguments;
     }
 
-    static Object coerceArgument(
-            Object argument,
-            String parameterName,
-            Class<?> parameterClass,
-            Type parameterType) {
+    static Object coerceArgument(Object argument, String parameterName, Class<?> parameterClass, Type parameterType) {
         if (parameterClass == String.class) {
             return argument.toString();
         }
 
-        // TODO handle enum and collection of enums (e.g. wrong case, etc)
         if (parameterClass.isEnum()) {
             try {
                 @SuppressWarnings({"unchecked", "rawtypes"})
                 Class<Enum> enumClass = (Class<Enum>) parameterClass;
                 try {
-                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument).toString());
+                    return Enum.valueOf(
+                            enumClass, Objects.requireNonNull(argument).toString());
                 } catch (IllegalArgumentException e) {
                     // try to convert to uppercase as a last resort
-                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument).toString().toUpperCase());
+                    return Enum.valueOf(
+                            enumClass,
+                            Objects.requireNonNull(argument).toString().toUpperCase());
                 }
             } catch (Exception | Error e) {
-                throw new IllegalArgumentException(String.format(
-                        "Argument \"%s\" is not a valid enum value for %s: <%s>",
-                        parameterName, parameterClass.getName(), argument), e);
+                throw new IllegalArgumentException(
+                        String.format(
+                                "Argument \"%s\" is not a valid enum value for %s: <%s>",
+                                parameterName, parameterClass.getName(), argument),
+                        e);
             }
         }
 
@@ -175,55 +174,46 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if (parameterClass == Integer.class || parameterClass == int.class) {
-            return (int) getBoundedLongValue(
-                    argument, parameterName, parameterClass, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            return (int)
+                    getBoundedLongValue(argument, parameterName, parameterClass, Integer.MIN_VALUE, Integer.MAX_VALUE);
         }
 
         if (parameterClass == Long.class || parameterClass == long.class) {
-            return getBoundedLongValue(
-                    argument, parameterName, parameterClass, Long.MIN_VALUE, Long.MAX_VALUE);
+            return getBoundedLongValue(argument, parameterName, parameterClass, Long.MIN_VALUE, Long.MAX_VALUE);
         }
 
         if (parameterClass == Short.class || parameterClass == short.class) {
-            return (short) getBoundedLongValue(
-                    argument, parameterName, parameterClass, Short.MIN_VALUE, Short.MAX_VALUE);
+            return (short)
+                    getBoundedLongValue(argument, parameterName, parameterClass, Short.MIN_VALUE, Short.MAX_VALUE);
         }
 
         if (parameterClass == Byte.class || parameterClass == byte.class) {
-            return (byte) getBoundedLongValue(
-                    argument, parameterName, parameterClass, Byte.MIN_VALUE, Byte.MAX_VALUE);
+            return (byte) getBoundedLongValue(argument, parameterName, parameterClass, Byte.MIN_VALUE, Byte.MAX_VALUE);
         }
 
         if (parameterClass == BigInteger.class) {
-            return BigDecimal.valueOf(
-                    getNonFractionalDoubleValue(argument, parameterName, parameterClass)).toBigInteger();
-        }
-
-        if (parameterClass.isArray() && argument instanceof Collection) {
-            Class<?> type = parameterClass.getComponentType();
-            if (type == String.class) {
-                return ((Collection<String>) argument).toArray(new String[0]);
-            }
-            // TODO: Consider full type coverage.
+            return BigDecimal.valueOf(getNonFractionalDoubleValue(argument, parameterName, parameterClass))
+                    .toBigInteger();
         }
 
         if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {
+            // Conversion to JSON and back is required when parameterType is a POJO
             return Json.fromJson(Json.toJson(argument), parameterType);
+        }
+
+        if (parameterClass == UUID.class) {
+            return UUID.fromString(argument.toString());
         }
 
         if (argument instanceof String) {
             return Json.fromJson(argument.toString(), parameterClass);
         } else {
-            String result = Json.toJson(argument);
-            return Json.fromJson(result, parameterClass);
+            // Conversion to JSON and back is required when parameterClass is a POJO
+            return Json.fromJson(Json.toJson(argument), parameterClass);
         }
     }
 
-    private static double getDoubleValue(
-            Object argument,
-            String parameterName,
-            Class<?> parameterType
-    ) {
+    private static double getDoubleValue(Object argument, String parameterName, Class<?> parameterType) {
         if (argument instanceof String) {
             try {
                 return Double.parseDouble(argument.toString());
@@ -239,11 +229,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         return ((Number) argument).doubleValue();
     }
 
-    private static double getNonFractionalDoubleValue(
-            Object argument,
-            String parameterName,
-            Class<?> parameterType
-    ) {
+    private static double getNonFractionalDoubleValue(Object argument, String parameterName, Class<?> parameterType) {
         double doubleValue = getDoubleValue(argument, parameterName, parameterType);
         if (!hasNoFractionalPart(doubleValue)) {
             throw new IllegalArgumentException(String.format(
@@ -254,12 +240,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     private static void checkBounds(
-            double doubleValue,
-            String parameterName,
-            Class<?> parameterType,
-            double minValue,
-            double maxValue
-    ) {
+            double doubleValue, String parameterName, Class<?> parameterType, double minValue, double maxValue) {
         if (doubleValue < minValue || doubleValue > maxValue) {
             throw new IllegalArgumentException(String.format(
                     "Argument \"%s\" is out of range for %s: <%s>",
@@ -267,18 +248,12 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    private static long getBoundedLongValue(
-            Object argument,
-            String parameterName,
-            Class<?> parameterType,
-            long minValue,
-            long maxValue
-    ) {
+    public static long getBoundedLongValue(
+            Object argument, String parameterName, Class<?> parameterType, long minValue, long maxValue) {
         double doubleValue = getNonFractionalDoubleValue(argument, parameterName, parameterType);
         checkBounds(doubleValue, parameterName, parameterType, minValue, maxValue);
         return (long) doubleValue;
     }
-
 
     static boolean hasNoFractionalPart(Double doubleValue) {
         return doubleValue.equals(Math.floor(doubleValue));

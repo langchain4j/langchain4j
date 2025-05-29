@@ -17,7 +17,7 @@ It can also be persisted and restored to/from a JSON string or a file.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 

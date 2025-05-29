@@ -12,14 +12,21 @@ import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.github.spi.GitHubModelsStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -40,9 +47,11 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ModelProvider.GITHUB_MODELS;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.contentFilterManagement;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerRequest;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerResponse;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createListenerRequest;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createListenerResponse;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.setupChatCompletionsBuilder;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.toAzureAiMessages;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.toToolChoice;
@@ -59,7 +68,7 @@ import static java.util.Collections.singletonList;
  * <p>
  * The list of models, as well as the documentation and a playground to test them, can be found at https://github.com/marketplace/models
  */
-public class GitHubModelsStreamingChatModel implements StreamingChatLanguageModel {
+public class GitHubModelsStreamingChatModel implements StreamingChatModel {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubModelsStreamingChatModel.class);
 
@@ -140,17 +149,62 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
+        ChatRequestParameters parameters = request.parameters();
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .build())
+                        .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            generate(request.messages(), legacyHandler);
+        } else {
+            if (parameters.toolChoice() == REQUIRED) {
+                if (toolSpecifications.size() != 1) {
+                    throw new UnsupportedFeatureException(
+                            "%s.%s is currently supported only when there is a single tool".formatted(
+                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                }
+                generate(request.messages(), toolSpecifications.get(0), legacyHandler);
+            } else {
+                generate(request.messages(), toolSpecifications, legacyHandler);
+            }
+        }
+    }
+
+    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, null, null, handler);
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, toolSpecifications, null, handler);
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, null, toolSpecification, handler);
     }
 
@@ -180,9 +234,10 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
         GitHubModelsStreamingResponseBuilder responseBuilder = new GitHubModelsStreamingResponseBuilder();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
 
         listeners.forEach(listener -> {
             try {
@@ -233,21 +288,12 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                     }
                 },
                 throwable -> {
-                    Response<AiMessage> response = responseBuilder.build();
-
-                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
-                            responseId.get(),
-                            responseModel.get(),
-                            response
-                    );
-
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(
                             throwable,
-                            requestContext.request(),
-                            modelListenerPartialResponse,
+                            requestContext.chatRequest(),
+                            provider(),
                             requestContext.attributes()
                     );
-
                     listeners.forEach(listener -> {
                         try {
                             listener.onError(errorContext);
@@ -259,14 +305,15 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                 },
                 () -> {
                     Response<AiMessage> response = responseBuilder.build();
-                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    ChatResponse listenerResponse = createListenerResponse(
                             responseId.get(),
                             options.getModel(),
                             response
                     );
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                            modelListenerResponse,
-                            requestContext.request(),
+                            listenerResponse,
+                            requestContext.chatRequest(),
+                            provider(),
                             requestContext.attributes()
                     );
                     listeners.forEach(listener -> {
@@ -292,6 +339,16 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         if (message != null && message.getContent() != null) {
             handler.onNext(message.getContent());
         }
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return GITHUB_MODELS;
     }
 
     public static Builder builder() {

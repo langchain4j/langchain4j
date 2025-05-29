@@ -19,14 +19,18 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.jlama.spi.JlamaStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Builder;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -34,16 +38,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
+import static dev.langchain4j.model.jlama.Json.fromJson;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
+public class JlamaStreamingChatModel implements StreamingChatModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;
     private final UUID id = UUID.randomUUID();
 
-    @Builder
     public JlamaStreamingChatModel(Path modelCachePath,
                                    String modelName,
                                    String authToken,
@@ -54,7 +59,7 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
                                    Float temperature,
                                    Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
+        JlamaModel jlamaModel = RetryUtils.withRetryMappingExceptions(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 2);
 
         JlamaModel.Loader loader = jlamaModel.loader();
         if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
@@ -82,28 +87,66 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .build())
+                        .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
+            generate(chatRequest.messages(), legacyHandler);
+        } else {
+            generate(chatRequest.messages(), toolSpecifications, legacyHandler);
+        }
+    }
+
+    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, List.of(), handler);
     }
 
-
-    @Override
-    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         if (model.promptSupport().isEmpty())
             throw new UnsupportedOperationException("This model does not support chat generation");
 
         PromptSupport.Builder promptBuilder = model.promptSupport().get().builder();
         for (ChatMessage message : messages) {
             switch (message.type()) {
-                case SYSTEM -> promptBuilder.addSystemMessage(((SystemMessage)message).text());
+                case SYSTEM -> promptBuilder.addSystemMessage(((SystemMessage) message).text());
                 case USER -> {
                     StringBuilder finalMessage = new StringBuilder();
-                    UserMessage userMessage = (UserMessage)message;
+                    UserMessage userMessage = (UserMessage) message;
                     for (Content content : userMessage.contents()) {
                         if (content.type() != ContentType.TEXT)
                             throw new UnsupportedOperationException("Unsupported content type: " + content.type());
 
-                        finalMessage.append(((TextContent)content).text());
+                        finalMessage.append(((TextContent) content).text());
                     }
                     promptBuilder.addUserMessage(finalMessage.toString());
                 }
@@ -114,12 +157,12 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
 
                     if (aiMessage.hasToolExecutionRequests())
                         for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                            ToolCall toolCall = new ToolCall(toolExecutionRequest.name(), toolExecutionRequest.id(), Json.fromJson(toolExecutionRequest.arguments(), LinkedHashMap.class));
+                            ToolCall toolCall = new ToolCall(toolExecutionRequest.name(), toolExecutionRequest.id(), fromJson(toolExecutionRequest.arguments(), LinkedHashMap.class));
                             promptBuilder.addToolCall(toolCall);
                         }
                 }
                 case TOOL_EXECUTION_RESULT -> {
-                    ToolExecutionResultMessage toolMessage = (ToolExecutionResultMessage)message;
+                    ToolExecutionResultMessage toolMessage = (ToolExecutionResultMessage) message;
                     ToolResult result = ToolResult.from(toolMessage.toolName(), toolMessage.id(), toolMessage.text());
                     promptBuilder.addToolResult(result);
                 }
@@ -153,9 +196,72 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     public static class JlamaStreamingChatModelBuilder {
+        private Path modelCachePath;
+        private String modelName;
+        private String authToken;
+        private Integer threadCount;
+        private Boolean quantizeModelAtRuntime;
+        private Path workingDirectory;
+        private DType workingQuantizedType;
+        private Float temperature;
+        private Integer maxTokens;
+
         public JlamaStreamingChatModelBuilder() {
             // This is public, so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public JlamaStreamingChatModelBuilder modelCachePath(Path modelCachePath) {
+            this.modelCachePath = modelCachePath;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder authToken(String authToken) {
+            this.authToken = authToken;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder threadCount(Integer threadCount) {
+            this.threadCount = threadCount;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder quantizeModelAtRuntime(Boolean quantizeModelAtRuntime) {
+            this.quantizeModelAtRuntime = quantizeModelAtRuntime;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder workingDirectory(Path workingDirectory) {
+            this.workingDirectory = workingDirectory;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder workingQuantizedType(DType workingQuantizedType) {
+            this.workingQuantizedType = workingQuantizedType;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder temperature(Float temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public JlamaStreamingChatModelBuilder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public JlamaStreamingChatModel build() {
+            return new JlamaStreamingChatModel(this.modelCachePath, this.modelName, this.authToken, this.threadCount, this.quantizeModelAtRuntime, this.workingDirectory, this.workingQuantizedType, this.temperature, this.maxTokens);
+        }
+
+        public String toString() {
+            return "JlamaStreamingChatModel.JlamaStreamingChatModelBuilder(modelCachePath=" + this.modelCachePath + ", modelName=" + this.modelName + ", authToken=" + this.authToken + ", threadCount=" + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", workingDirectory=" + this.workingDirectory + ", workingQuantizedType=" + this.workingQuantizedType + ", temperature=" + this.temperature + ", maxTokens=" + this.maxTokens + ")";
         }
     }
 }

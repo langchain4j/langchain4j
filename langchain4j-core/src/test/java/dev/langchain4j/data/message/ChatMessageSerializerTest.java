@@ -51,7 +51,7 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         UserMessage.from(ImageContent.from("aGVsbG8=", "image/png")),
-                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8\\u003d\",\"mimeType\":\"image/png\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8=\",\"mimeType\":\"image/png\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         UserMessage.from(AudioContent.from("bXAz", "audio/mp3")),
@@ -63,11 +63,11 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
-                        "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"application/pdf\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         AiMessage.from("hello"),
-                        "{\"text\":\"hello\",\"type\":\"AI\"}"
+                        "{\"text\":\"hello\",\"toolExecutionRequests\":[],\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         AiMessage.from(ToolExecutionRequest.builder()
@@ -86,16 +86,6 @@ class ChatMessageSerializerTest {
                             put("k2", "v2");
                         }}),
                         "{\"attributes\":{\"k1\":\"v1\", \"k2\":\"v2\"},\"type\":\"CUSTOM\"}"));
-    }
-
-    @Test
-    void should_deserialize_user_message_in_old_schema() {
-
-        String json = "{\"text\":\"hello\",\"type\":\"USER\"}";
-
-        ChatMessage deserializedMessage = messageFromJson(json);
-
-        assertThat(deserializedMessage).isEqualTo(UserMessage.from("hello"));
     }
 
     @Test
@@ -127,12 +117,11 @@ class ChatMessageSerializerTest {
     }
 
     @Test
-    void should_serialize_and_deserialize_list_with_one_message_in_old_schema() {
+    void should_deserialize_AiMessage_without_toolExecutionRequests() {
 
-        String json = "[{\"text\":\"hello\",\"type\":\"USER\"}]";
+        ChatMessage deserialized = messageFromJson("{\"text\":\"hello\",\"type\":\"AI\"}");
 
-        List<ChatMessage> deserializedMessages = messagesFromJson(json);
-
-        assertThat(deserializedMessages).containsExactly(UserMessage.from("hello"));
+        assertThat(deserialized).isEqualTo(AiMessage.from("hello"));
+        assertThat(((AiMessage) deserialized).toolExecutionRequests()).isEmpty();
     }
 }

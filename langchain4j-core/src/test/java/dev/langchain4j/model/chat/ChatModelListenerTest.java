@@ -1,15 +1,12 @@
 package dev.langchain4j.model.chat;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -26,7 +23,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class ChatModelListenerTest {
 
-    static class TestChatModel implements ChatLanguageModel {
+    static class TestChatModel implements ChatModel {
 
         private final List<ChatModelListener> listeners;
 
@@ -44,16 +41,6 @@ class ChatModelListenerTest {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from("hi"))
                     .build();
-        }
-
-        @Override
-        public Response<AiMessage> generate(List<ChatMessage> messages) {
-            return Response.from(AiMessage.from("hi"));
-        }
-
-        @Override
-        public ChatRequestParameters defaultRequestParameters() {
-            return ChatRequestParameters.builder().build();
         }
     }
 

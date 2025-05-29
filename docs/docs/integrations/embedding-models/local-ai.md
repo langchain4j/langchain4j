@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 ---
 
 # LocalAI
@@ -13,7 +13,7 @@ https://localai.io/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-local-ai</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 

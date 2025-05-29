@@ -1,6 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -13,6 +13,8 @@ import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -20,11 +22,36 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 class AiServicesSystemAndUserMessageConfigsTest {
 
     @Spy
-    ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds("Berlin");
+    ChatModel model = ChatModelMock.thatAlwaysResponds("Berlin");
 
     @AfterEach
     void afterEach() {
-        verifyNoMoreInteractions(chatLanguageModel);
+        try {
+            verify(model, atLeastOnce()).doChat(any());
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).defaultRequestParameters();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).supportedCapabilities();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).listeners();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).provider();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        verifyNoMoreInteractions(model);
     }
 
     interface AiService {
@@ -42,7 +69,10 @@ class AiServicesSystemAndUserMessageConfigsTest {
         String chat4(@UserMessage String userMessage, @V("country") String country);
 
         @SystemMessage("Given a name of a country, answer with {{answerInstructions}}")
-        String chat5(@V("answerInstructions") String answerInstructions, @UserMessage String userMessage, @V("country") String country);
+        String chat5(
+                @V("answerInstructions") String answerInstructions,
+                @UserMessage String userMessage,
+                @V("country") String country);
 
         @SystemMessage("Given a name of a country, answer with a name of it's capital")
         @UserMessage("Country: Germany")
@@ -77,7 +107,10 @@ class AiServicesSystemAndUserMessageConfigsTest {
         String chat14(@UserMessage String userMessage, @V("country") String country);
 
         // with systemMessageProvider
-        String chat15(@V("answerInstructions") String answerInstructions, @UserMessage String userMessage, @V("country") String country);
+        String chat15(
+                @V("answerInstructions") String answerInstructions,
+                @UserMessage String userMessage,
+                @V("country") String country);
 
         // with systemMessageProvider
         @UserMessage("Country: Germany")
@@ -103,7 +136,6 @@ class AiServicesSystemAndUserMessageConfigsTest {
         @SystemMessage("This message should take precedence over the one provided by systemMessageProvider")
         String chat21(String userMessage);
 
-
         // illegal
 
         @SystemMessage("Given a name of a country, answer with {{answerInstructions}}")
@@ -114,422 +146,427 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void test_system_message_configuration_1() {
+    void system_message_configuration_1() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
-        assertThat(aiService.chat1("Country: Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat1("Country: Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_2() {
+    void system_message_configuration_2() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
-        assertThat(aiService.chat2("Country: Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat2("Country: Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_3() {
+    void system_message_configuration_3() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
         assertThat(aiService.chat3("a name of it's capital", "Country: Germany"))
                 .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_4() {
+    void system_message_configuration_4() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
-        assertThat(aiService.chat4("Country: {{country}}", "Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat4("Country: {{country}}", "Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_5() {
+    void system_message_configuration_5() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
         assertThat(aiService.chat5("a name of it's capital", "Country: {{country}}", "Germany"))
                 .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_6() {
+    void system_message_configuration_6() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
-        assertThat(aiService.chat6())
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat6()).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_7() {
+    void system_message_configuration_7() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
-        assertThat(aiService.chat7("a name of it's capital"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat7("a name of it's capital")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_8() {
+    void system_message_configuration_8() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
-        assertThat(aiService.chat8("Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_9() {
+    void system_message_configuration_9() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
-        assertThat(aiService.chat9("Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat9("Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_10() {
+    void system_message_configuration_10() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
-        assertThat(aiService.chat10("a name of it's capital", "Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat10("a name of it's capital", "Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_11() {
+    void system_message_configuration_11() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
         // when-then
-        assertThat(aiService.chat11("Country: Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat11("Country: Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_12() {
+    void system_message_configuration_12() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
         // when-then
-        assertThat(aiService.chat12("Country: Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat12("Country: Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_13() {
+    void system_message_configuration_13() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 
         // when-then
         assertThat(aiService.chat13("a name of it's capital", "Country: Germany"))
                 .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_14() {
+    void system_message_configuration_14() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
         // when-then
-        assertThat(aiService.chat14("Country: {{country}}", "Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat14("Country: {{country}}", "Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_15() {
+    void system_message_configuration_15() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 
         // when-then
         assertThat(aiService.chat15("a name of it's capital", "Country: {{country}}", "Germany"))
                 .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_16() {
+    void system_message_configuration_16() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
         // when-then
-        assertThat(aiService.chat16())
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat16()).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_17() {
+    void system_message_configuration_17() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 
         // when-then
-        assertThat(aiService.chat17("a name of it's capital"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat17("a name of it's capital")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_18() {
+    void system_message_configuration_18() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
         // when-then
-        assertThat(aiService.chat18("Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat18("Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_19() {
+    void system_message_configuration_19() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with a name of it's capital")
                 .build();
 
         // when-then
-        assertThat(aiService.chat19("Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat19("Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_20() {
+    void system_message_configuration_20() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 
         // when-then
-        assertThat(aiService.chat20("a name of it's capital", "Germany"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("Given a name of a country, answer with a name of it's capital"),
-                userMessage("Country: Germany")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat20("a name of it's capital", "Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
     }
 
     @Test
-    void test_system_message_configuration_21() {
+    void system_message_configuration_21() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "This message should be ignored")
                 .build();
 
         // when-then
-        assertThat(aiService.chat21("What is the capital of Germany?"))
-                .containsIgnoringCase("Berlin");
-        verify(chatLanguageModel).chat(ChatRequest.builder().messages(
-                systemMessage("This message should take precedence over the one provided by systemMessageProvider"),
-                userMessage("What is the capital of Germany?")
-        ).build());
-        verify(chatLanguageModel).supportedCapabilities();
+        assertThat(aiService.chat21("What is the capital of Germany?")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage(
+                                        "This message should take precedence over the one provided by systemMessageProvider"),
+                                userMessage("What is the capital of Germany?"))
+                        .build());
     }
 
     @Test
-    void test_illegal_system_message_configuration_1() {
+    void illegal_system_message_configuration_1() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat1("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("Parameter 'arg1' of method 'illegalChat1' should be annotated " +
-                        "with @V or @UserMessage or @UserName or @MemoryId");
+                .hasMessage("Parameter 'arg1' of method 'illegalChat1' should be annotated "
+                        + "with @V or @UserMessage or @UserName or @MemoryId");
     }
 
     @Test
-    void test_illegal_system_message_configuration_2() {
+    void illegal_system_message_configuration_2() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(model)
                 .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
                 .build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat2("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("Parameter 'arg1' of method 'illegalChat2' should be annotated " +
-                        "with @V or @UserMessage or @UserName or @MemoryId");
+                .hasMessage("Parameter 'arg1' of method 'illegalChat2' should be annotated "
+                        + "with @V or @UserMessage or @UserName or @MemoryId");
     }
 }

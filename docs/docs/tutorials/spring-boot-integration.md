@@ -27,7 +27,7 @@ For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `l
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -40,26 +40,26 @@ langchain4j.open-ai.chat-model.log-responses=true
 ...
 ```
 
-In this case, an instance of `OpenAiChatModel` (an implementation of a `ChatLanguageModel`) will be automatically created,
+In this case, an instance of `OpenAiChatModel` (an implementation of a `ChatModel`) will be automatically created,
 and you can autowire it where needed:
 ```java
 @RestController
 public class ChatController {
 
-    ChatLanguageModel chatLanguageModel;
+    ChatModel chatModel;
 
-    public ChatController(ChatLanguageModel chatLanguageModel) {
-        this.chatLanguageModel = chatLanguageModel;
+    public ChatController(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @GetMapping("/chat")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.generate(message);
+        return chatModel.chat(message);
     }
 }
 ```
 
-If you need an instance of a `StreamingChatLanguageModel`,
+If you need an instance of a `StreamingChatModel`,
 use the `streaming-chat-model` instead of the `chat-model` properties:
 ```
 langchain4j.open-ai.streaming-chat-model.api-key=${OPENAI_API_KEY}
@@ -78,7 +78,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -115,8 +115,8 @@ class AssistantController {
 
 ### Automatic Component Wiring
 The following components will be automatically wired into the AI Service if available in the application context:
-- `ChatLanguageModel`
-- `StreamingChatLanguageModel`
+- `ChatModel`
+- `StreamingChatModel`
 - `ChatMemory`
 - `ChatMemoryProvider`
 - `ContentRetriever`
@@ -155,7 +155,7 @@ In this case, use the explicit wiring mode (explained below).
 If you have multiple AI Services and want to wire different LangChain4j components into each of them,
 you can specify which components to use with explicit wiring mode (`@AiService(wiringMode = EXPLICIT)`).
 
-Let's say we have two `ChatLanguageModel`s configured:
+Let's say we have two `ChatModel`s configured:
 ```properties
 # OpenAI
 langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
@@ -228,7 +228,7 @@ See more details [here](/tutorials/ai-services#flux).
 
 ## Observability
 
-To enable observability for a `ChatLanguageModel` or `StreamingChatLanguageModel`
+To enable observability for a `ChatModel` or `StreamingChatModel`
 bean, you need to declare one or more `ChatModelListener` beans:
 
 ```java
@@ -261,7 +261,7 @@ class MyConfiguration {
 ```
 
 Every `ChatModelListener` bean in the application context will be automatically
-injected into all `ChatLanguageModel` and `StreamingChatLanguageModel` beans
+injected into all `ChatModel` and `StreamingChatModel` beans
 created by one of our Spring Boot starters.
 
 ## Testing
@@ -273,6 +273,6 @@ created by one of our Spring Boot starters.
 LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.2.
 
 ## Examples
-- [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatLanguageModelController.java) using [ChatLanguageModel API](/tutorials/chat-and-language-models)
+- [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatModelController.java) using [ChatModel API](/tutorials/chat-and-language-models)
 - [High-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/aiservice/AssistantController.java) using [AI Services](/tutorials/ai-services)
 - [Example of customer support agent using Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/main/java/dev/langchain4j/example/CustomerSupportAgentApplication.java)

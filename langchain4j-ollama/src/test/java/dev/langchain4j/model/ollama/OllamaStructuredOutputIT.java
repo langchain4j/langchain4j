@@ -1,10 +1,16 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -14,20 +20,13 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
-import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageModelInfrastructure {
 
@@ -42,20 +41,21 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
             .required("name", "capital", "languages")
             .build();
 
-    record CountryInfo(String name, String capital, List<String> languages) {
-    }
+    record CountryInfo(String name, String capital, List<String> languages) {}
 
     @Test
     void should_generate_structured_output_using_chat_request_api() {
         // given
-        ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
+        ChatModel ollamaChatModel = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
+                .modelName(MODEL_NAME)
                 .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         // when
-        final ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder()
+        ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder()
                 .messages(userMessage("Tell me about Canada."))
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
@@ -63,10 +63,10 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                         .build())
                 .build());
 
-        final String response = chatResponse.aiMessage().text();
+        String response = chatResponse.aiMessage().text();
 
         // then
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(response, CountryInfo.class);
+        CountryInfo countryInfo = fromJson(response, CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
@@ -77,9 +77,9 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     void should_generate_structured_output_using_response_format() {
 
         // given
-        ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
+        ChatModel ollamaChatModel = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
+                .modelName(MODEL_NAME)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
@@ -90,11 +90,11 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                 .build();
 
         // when
-        final Response<AiMessage> chatResponse = ollamaChatModel.generate(UserMessage.from("Tell me about Canada."));
-        final String response = chatResponse.content().text();
+        ChatResponse chatResponse = ollamaChatModel.chat(UserMessage.from("Tell me about Canada."));
+        String response = chatResponse.aiMessage().text();
 
         // then
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(response, CountryInfo.class);
+        CountryInfo countryInfo = fromJson(response, CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
@@ -105,9 +105,9 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     void should_generate_structured_output_using_response_format_streaming() throws Exception {
 
         // given
-        StreamingChatLanguageModel streamingOllamaChatModelWithResponseFormat = OllamaStreamingChatModel.builder()
+        StreamingChatModel streamingOllamaChatModelWithResponseFormat = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
+                .modelName(MODEL_NAME)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
@@ -118,16 +118,15 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                 .build();
 
         // when
-        CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
-        streamingOllamaChatModelWithResponseFormat.generate("Tell me about Canada.", new StreamingResponseHandler<>() {
+        CompletableFuture<ChatResponse> secondFutureResponse = new CompletableFuture<>();
+        streamingOllamaChatModelWithResponseFormat.chat("Tell me about Canada.", new StreamingChatResponseHandler() {
 
             @Override
-            public void onNext(String token) {
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
-            public void onComplete(Response<AiMessage> response) {
-                secondFutureResponse.complete(response);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                secondFutureResponse.complete(completeResponse);
             }
 
             @Override
@@ -137,9 +136,9 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         });
 
         // then
-        Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.content();
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(secondAiMessage.text(), CountryInfo.class);
+        ChatResponse secondResponse = secondFutureResponse.get(30, SECONDS);
+        AiMessage secondAiMessage = secondResponse.aiMessage();
+        CountryInfo countryInfo = fromJson(secondAiMessage.text(), CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
@@ -167,9 +166,9 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     @Test
     void language_model_should_generate_structured_output() {
         // given
-        final LanguageModel languageModel = OllamaLanguageModel.builder()
+        LanguageModel languageModel = OllamaLanguageModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
+                .modelName(MODEL_NAME)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
@@ -180,10 +179,10 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                 .build();
 
         // when
-        final Response<String> generated = languageModel.generate("Tell me about Canada.");
+        Response<String> generated = languageModel.generate("Tell me about Canada.");
 
         // then
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(generated.content(), CountryInfo.class);
+        CountryInfo countryInfo = fromJson(generated.content(), CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
@@ -193,9 +192,9 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     @Test
     void streaming_language_model_should_generate_structured_output() {
         // given
-        final StreamingLanguageModel languageModel = OllamaStreamingLanguageModel.builder()
+        StreamingLanguageModel languageModel = OllamaStreamingLanguageModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
+                .modelName(MODEL_NAME)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
@@ -209,9 +208,9 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
 
         // when
         languageModel.generate("Tell me about Canada.", handler);
-        final Response<String> generated = handler.get();
+        Response<String> generated = handler.get();
 
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(generated.content(), CountryInfo.class);
+        CountryInfo countryInfo = fromJson(generated.content(), CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");

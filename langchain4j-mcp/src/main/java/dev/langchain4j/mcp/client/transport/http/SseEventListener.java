@@ -15,16 +15,22 @@ public class SseEventListener extends EventSourceListener {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(SseEventListener.class);
+    private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
     private final boolean logEvents;
     // this will contain the POST url for sending commands to the server
     private final CompletableFuture<String> initializationFinished;
     private final McpOperationHandler messageHandler;
+    private final Runnable onFailure;
 
     public SseEventListener(
-            McpOperationHandler messageHandler, boolean logEvents, CompletableFuture initializationFinished) {
+            McpOperationHandler messageHandler,
+            boolean logEvents,
+            CompletableFuture initializationFinished,
+            Runnable onFailure) {
         this.messageHandler = messageHandler;
         this.logEvents = logEvents;
         this.initializationFinished = initializationFinished;
+        this.onFailure = onFailure;
     }
 
     @Override
@@ -36,7 +42,7 @@ public class SseEventListener extends EventSourceListener {
     public void onEvent(EventSource eventSource, String id, String type, String data) {
         if (type.equals("message")) {
             if (logEvents) {
-                log.debug("< {}", data);
+                trafficLog.info("< {}", data);
             }
             try {
                 JsonNode jsonNode = OBJECT_MAPPER.readTree(data);
@@ -65,6 +71,9 @@ public class SseEventListener extends EventSourceListener {
         }
         if (t != null && (t.getMessage() == null || !t.getMessage().contains("Socket closed"))) {
             log.warn("SSE channel failure", t);
+            if (onFailure != null) {
+                onFailure.run();
+            }
         }
     }
 

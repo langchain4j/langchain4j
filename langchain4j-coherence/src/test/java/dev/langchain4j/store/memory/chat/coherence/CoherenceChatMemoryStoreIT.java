@@ -1,5 +1,8 @@
 package dev.langchain4j.store.memory.chat.coherence;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.oracle.bedrock.junit.CoherenceClusterExtension;
 import com.oracle.bedrock.junit.SessionBuilders;
 import com.oracle.bedrock.runtime.coherence.CoherenceClusterMember;
@@ -18,17 +21,13 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.RegisterExtension;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CoherenceChatMemoryStoreIT {
 
@@ -37,15 +36,13 @@ class CoherenceChatMemoryStoreIT {
 
     @RegisterExtension
     static CoherenceClusterExtension cluster = new CoherenceClusterExtension()
-            .with(ClusterName.of("NamedMapEmbeddingRepositoryIT"),
+            .with(
+                    ClusterName.of("NamedMapEmbeddingRepositoryIT"),
                     WellKnownAddress.loopback(),
                     LocalHost.only(),
                     IPv4Preferred.autoDetect(),
                     SystemProperty.of("coherence.serializer", "pof"))
-            .include(3, CoherenceClusterMember.class,
-                    DisplayName.of("storage"),
-                    RoleName.of("storage"),
-                    testLogs);
+            .include(3, CoherenceClusterMember.class, DisplayName.of("storage"), RoleName.of("storage"), testLogs);
 
     static Session session;
 
@@ -54,7 +51,7 @@ class CoherenceChatMemoryStoreIT {
     private CoherenceChatMemoryStore memoryStore;
 
     @BeforeAll
-    public static void beforeAll() {
+    static void beforeAll() {
         session = cluster.buildSession(SessionBuilders.storageDisabledMember(RoleName.of("test")));
     }
 
@@ -77,7 +74,7 @@ class CoherenceChatMemoryStoreIT {
 
         // when
         List<ChatMessage> chatMessages = new ArrayList<>();
-        String sysMessage = "You are a large language model working with Langchain4j";
+        String sysMessage = "You are a large language model working with LangChain4j";
         chatMessages.add(new SystemMessage(sysMessage));
         List<Content> userMsgContents = new ArrayList<>();
         userMsgContents.add(new ImageContent("someCatImageUrl"));
@@ -102,7 +99,7 @@ class CoherenceChatMemoryStoreIT {
     void should_delete_messages_from_coherence() {
         // given
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         memoryStore.updateMessages(userId, chatMessages);
         List<ChatMessage> messages = memoryStore.getMessages(userId);
         assertThat(messages).hasSize(1);
@@ -140,7 +137,7 @@ class CoherenceChatMemoryStoreIT {
     @Test
     void updateMessages_memoryId_null() {
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         assertThatThrownBy(() -> memoryStore.updateMessages(null, chatMessages))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("memoryId cannot be null");

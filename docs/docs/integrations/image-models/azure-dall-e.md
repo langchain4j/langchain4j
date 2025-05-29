@@ -4,9 +4,21 @@ sidebar_position: 1
 
 # Azure OpenAI Dall·E
 
+:::note
+
+This is the documentation for the `Azure OpenAI` integration, that uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+
+LangChain4j provides 3 different integrations with OpenAI for generating images, and this is #3 :
+
+- [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
+
+- [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
+- [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+
+:::
+
 Azure OpenAI provides a few image models (`dall-e-3`, etc.)
 that can be used for various image processing tasks.
-
 
 ## Maven Dependency
 
@@ -15,7 +27,7 @@ that can be used for various image processing tasks.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -24,7 +36,7 @@ that can be used for various image processing tasks.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 

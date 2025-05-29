@@ -4,6 +4,19 @@ sidebar_position: 6
 
 # GitHub Models
 
+:::note
+
+This is the documentation for the `GitHub Models` integration, that uses the Azure AI Inference API to access GitHub Models.
+
+LangChain4j provides 4 different integrations with OpenAI for using chat models, and this is #4 :
+
+- [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
+- [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
+- [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
+- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
+
+:::
+
 If you want to develop a generative AI application, you can use GitHub Models to find and experiment with AI models for free.
 Once you are ready to bring your application to production, you can switch to a token from a paid Azure account.
 
@@ -20,7 +33,7 @@ Once you are ready to bring your application to production, you can switch to a 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-github-models</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -57,7 +70,7 @@ Create a `GitHubModelsChatModelConfiguration` Spring Bean:
 ```Java
 package com.example.demo.configuration.github;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.github.GitHubModelsChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -72,7 +85,7 @@ public class GitHubModelsChatModelConfiguration {
     private String gitHubToken;
 
     @Bean
-    ChatLanguageModel gitHubModelsChatLanguageModel() {
+    ChatModel gitHubModelsChatModel() {
         return GitHubModelsChatModel.builder()
                 .gitHubToken(gitHubToken)
                 .modelName("gpt-4o-mini")
@@ -88,17 +101,17 @@ or autowired where needed, for example:
 
 ```java
 @RestController
-class ChatLanguageModelController {
+class ChatModelController {
 
-    ChatLanguageModel chatLanguageModel;
+    ChatModel chatModel;
 
-    ChatLanguageModelController(ChatLanguageModel chatLanguageModel) {
-        this.chatLanguageModel = chatLanguageModel;
+    ChatModelController(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @GetMapping("/model")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.generate(message);
+        return chatModel.chat(message);
     }
 }
 ```
@@ -121,7 +134,7 @@ Create a `GitHubModelsStreamingChatModelConfiguration` Spring Bean:
 ```Java
 package com.example.demo.configuration.github;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.github.GitHubModelsChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -136,7 +149,7 @@ public class GitHubModelsStreamingChatModelConfiguration {
     private String gitHubToken;
 
     @Bean
-    GitHubModelsStreamingChatModel gitHubModelsStreamingChatLanguageModel() {
+    GitHubModelsStreamingChatModel gitHubModelsStreamingChatModel() {
         return GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName("gpt-4o-mini")

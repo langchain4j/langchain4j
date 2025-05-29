@@ -6,11 +6,9 @@ import com.github.tjake.jlama.safetensors.DType;
 import com.github.tjake.jlama.safetensors.SafeTensorSupport;
 import com.github.tjake.jlama.safetensors.prompt.Function;
 import com.github.tjake.jlama.safetensors.prompt.Tool;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import lombok.Getter;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,7 +16,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
 
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 
 /**
  * A Jlama model. Very basic information. Allows the model to be loaded with different options.
@@ -26,16 +24,12 @@ import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.to
 class JlamaModel {
     private final JlamaModelRegistry registry;
 
-    @Getter
     private final ModelSupport.ModelType modelType;
 
-    @Getter
     private final String modelName;
 
-    @Getter
     private final Optional<String> owner;
 
-    @Getter
     private final String modelId;
 
     private final boolean isLocal;
@@ -66,6 +60,22 @@ class JlamaModel {
                 Optional.empty(),
                 authToken,
                 Optional.empty());
+    }
+
+    public ModelSupport.ModelType getModelType() {
+        return this.modelType;
+    }
+
+    public String getModelName() {
+        return this.modelName;
+    }
+
+    public Optional<String> getOwner() {
+        return this.owner;
+    }
+
+    public String getModelId() {
+        return this.modelId;
     }
 
     public class Loader {
@@ -133,11 +143,6 @@ class JlamaModel {
             JsonObjectSchema parameters = toolSpecification.parameters();
             for (Map.Entry<String, JsonSchemaElement> p : parameters.properties().entrySet()) {
                 builder.addParameter(p.getKey(), toMap(p.getValue()), parameters.required().contains(p.getKey()));
-            }
-        } else if (toolSpecification.toolParameters() != null) {
-            ToolParameters parameters = toolSpecification.toolParameters();
-            for (Map.Entry<String, Map<String, Object>> p : parameters.properties().entrySet()) {
-                builder.addParameter(p.getKey(), p.getValue(), parameters.required().contains(p.getKey()));
             }
         }
 

@@ -1,5 +1,7 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.Internal;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
@@ -9,7 +11,9 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 /**
  * Utility class for validating method arguments.
  */
+@Internal
 public class ValidationUtils {
+
     private ValidationUtils() {}
 
     /**
@@ -66,6 +70,22 @@ public class ValidationUtils {
         }
 
         return collection;
+    }
+
+    /**
+     * Ensures that the given array is not null and not empty.
+     * @param array The array to check.
+     * @param name The name of the array to be used in the exception message.
+     * @return The array if it is not null and not empty.
+     * @param <T> The component type of the array.
+     * @throws IllegalArgumentException if the array is null or empty.
+     */
+    public static <T> T[] ensureNotEmpty(T[] array, String name) {
+        if (array == null || array.length == 0) {
+            throw illegalArgument("%s cannot be null or empty", name);
+        }
+
+        return array;
     }
 
     /**

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # Google Vertex AI
@@ -17,14 +17,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai</artifactId>
-  <version>1.0.0-alpha1</version>
+  <version>1.0.1-beta6</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai:1.0.0-alpha1'
+implementation 'dev.langchain4j:langchain4j-vertex-ai:1.0.1-beta6'
 ```
 
 ### Try out an example code:
@@ -69,11 +69,11 @@ public class VertexAiEmbeddingModelExample {
 
 ### Available Embedding models
 
-|English models|Multilingual models| Multimodal embeddings |
-|---|---|-----------------------|
-|`textembedding-gecko@001`|`textembedding-gecko-multilingual@001`|`multimodalembedding`|
-|`textembedding-gecko@003`|`text-multilingual-embedding-002`|                       |
-|`text-embedding-004`|   |                       |
+|English models|Multilingual models|
+|---|---|
+|`textembedding-gecko@001`|`textembedding-gecko-multilingual@001`|
+|`textembedding-gecko@003`|`text-multilingual-embedding-002`|
+|`text-embedding-004`|   |
 
 [List of supported languages for multi lingual model](https://cloud.google.com/vertex-ai/generative-ai/docs/embeddings/get-text-embeddings#language_coverage_for_textembedding-gecko-multilingual_models)
 
@@ -94,7 +94,7 @@ EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
     .endpoint("us-central1-aiplatform.googleapis.com:443") // optional
     .publisher("google")
     .modelName(MODEL_NAME)
-    .maxRetries(3)             // 3 by default
+    .maxRetries(2)             // 2 by default
     .maxSegmentsPerBatch(250)  // up to 250 segments per batch
     .maxTokensPerBatch(2048)   // up to 2048 tokens per segment
     .taskType()                // see below for the different task types

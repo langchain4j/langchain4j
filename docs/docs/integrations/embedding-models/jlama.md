@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 # Jlama
@@ -16,13 +16,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jlama</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 
 <dependency>
@@ -38,8 +38,8 @@ For Maven project `pom.xml`
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.0.0-alpha1'
-implementation 'dev.langchain4j:langchain4j-jlama:1.0.0-alpha1'
+implementation 'dev.langchain4j:langchain4j:1.0.1-beta6'
+implementation 'dev.langchain4j:langchain4j-jlama:1.0.1-beta6'
 ```
 
 ## Embedding
@@ -79,9 +79,12 @@ public class HelloWorld {
         
         String userQuery = "What is your favourite sport?";
         Embedding queryEmbedding = embeddingModel.embed(userQuery).content();
-        int maxResults = 1;
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(queryEmbedding, maxResults);
-        EmbeddingMatch<TextSegment> embeddingMatch = relevant.get(0);
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(1)
+                .build();
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
+        EmbeddingMatch<TextSegment> embeddingMatch = searchResult.matches().get(0);
 
         System.out.println("Question: " + userQuery); // What is your favourite sport?
         System.out.println("Response: " + embeddingMatch.embedded().text()); // I like football.

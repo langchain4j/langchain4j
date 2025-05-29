@@ -14,13 +14,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class McpLoggingHttpTransportIT extends McpLoggingTestBase {
+class McpLoggingHttpTransportIT extends McpLoggingTestBase {
 
     private static final Logger log = LoggerFactory.getLogger(McpLoggingHttpTransportIT.class);
     private static Process process;
 
     @BeforeAll
-    public static void setup() throws IOException, InterruptedException, TimeoutException {
+    static void setup() throws IOException, InterruptedException, TimeoutException {
         skipTestsIfJbangNotAvailable();
         process = startServerHttp("logging_mcp_server.java");
         logMessageHandler = new TestMcpLogHandler();
@@ -37,7 +37,7 @@ public class McpLoggingHttpTransportIT extends McpLoggingTestBase {
     }
 
     @AfterAll
-    public static void teardown() throws Exception {
+    static void teardown() throws Exception {
         if (mcpClient != null) {
             mcpClient.close();
         }

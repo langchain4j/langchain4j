@@ -13,7 +13,7 @@ https://www.couchbase.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-couchbase</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -134,8 +134,12 @@ Here, we're using the embedding model to generate a vector for the phrase "what 
 vector is then being used to find the most relevant answer in the database:
 ```java
 Embedding queryEmbedding = embeddingModel.embed("What is your favourite sport?").content();
-List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(queryEmbedding, 1);
-EmbeddingMatch<TextSegment> embeddingMatch = relevant.get(0);
+EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        .queryEmbedding(queryEmbedding)
+        .maxResults(1)
+        .build();
+EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
+EmbeddingMatch<TextSegment> embeddingMatch = searchResult.matches().get(0);
 ```
 
 The relevancy score and text of the selected answer can then be printed to the application output:

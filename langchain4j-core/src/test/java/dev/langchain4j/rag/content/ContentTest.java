@@ -1,17 +1,16 @@
 package dev.langchain4j.rag.content;
 
-import dev.langchain4j.data.segment.TextSegment;
-import org.junit.jupiter.api.Test;
-
-import java.util.Map;
-
 import static dev.langchain4j.rag.content.ContentMetadata.SCORE;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.data.segment.TextSegment;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 class ContentTest {
 
     @Test
-    void test_create_from_string() {
+    void create_from_string() {
 
         // given
         String contentText = "content";
@@ -24,7 +23,7 @@ class ContentTest {
     }
 
     @Test
-    void test_create_from_text_segment() {
+    void create_from_text_segment() {
 
         // given
         TextSegment segment = TextSegment.from("text");
@@ -37,30 +36,24 @@ class ContentTest {
     }
 
     @Test
-    void test_create_from_embedding_match() {
+    void create_from_embedding_match() {
 
         // given
         TextSegment segment = TextSegment.from("text");
-        Map<ContentMetadata, Object> metadata = Map.of(
-                SCORE, 0.2d,
-                ContentMetadata.EMBEDDING_ID, "test-eid"
-        );
+        Map<ContentMetadata, Object> metadata = Map.of(SCORE, 0.2d, ContentMetadata.EMBEDDING_ID, "test-eid");
 
         // when
         Content content = Content.from(segment, metadata);
 
         // then
-        assertThat(content.textSegment())
-                .isSameAs(segment);
-        assertThat(content.metadata())
-                .isNotEmpty();
+        assertThat(content.textSegment()).isSameAs(segment);
+        assertThat(content.metadata()).isNotEmpty();
         assertThat(content.metadata())
                 .containsExactlyEntriesOf(Map.of(SCORE, 0.2, ContentMetadata.EMBEDDING_ID, "test-eid"));
-
     }
 
     @Test
-    void test_equals_hashCode() {
+    void equals_hash_code() {
 
         // given
         Content content1 = Content.from(TextSegment.from("content"), Map.of(SCORE, 1.0));
@@ -76,13 +69,14 @@ class ContentTest {
     }
 
     @Test
-    void test_toString() {
+    void to_string() {
 
         // given
         final var content = Content.from("content");
 
         // then
         assertThat(content)
-                .hasToString("DefaultContent[textSegment=TextSegment { text = \"content\" metadata = {} }, metadata={}]");
+                .hasToString(
+                        "DefaultContent { textSegment = TextSegment { text = \"content\" metadata = {} }, metadata = {} }");
     }
 }

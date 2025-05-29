@@ -13,6 +13,8 @@ import com.mongodb.client.result.InsertManyResult;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import org.bson.BsonArray;
@@ -122,7 +124,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         applicationName = getOrDefault(applicationName, "LangChain4j");
         this.kind = VectorIndexType.fromString(kind);
         this.numLists = getOrDefault(numLists, 1);
-        // TODO: update this value as a user input once LangChain4J only
+        // TODO: update this value as a user input once LangChain4j only
         //  supports other similarity types other than Cosine.
         this.dimensions = getOrDefault(dimensions, 1536);
         this.m = getOrDefault(m, 16);
@@ -188,6 +190,16 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     }
 
     @Override
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        if (request.filter() != null) {
+            throw new UnsupportedOperationException("EmbeddingSearchRequest.Filter is not supported yet.");
+        }
+
+        List<EmbeddingMatch<TextSegment>> matches =
+                findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
+        return new EmbeddingSearchResult<>(matches);
+    }
+
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
 
         List<Bson> pipeline = new ArrayList<>();

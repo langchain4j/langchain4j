@@ -5,11 +5,10 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 
 import java.net.URI;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -22,12 +21,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * <p>
  */
 public class WebSearchOrganicResult {
+
     private final String title;
     private final URI url;
     private final String snippet;
     private final String content;
     private final Map<String, String> metadata;
-
 
     /**
      * Constructs a WebSearchOrganicResult object with the given title and URL.
@@ -40,7 +39,7 @@ public class WebSearchOrganicResult {
         this.url = ensureNotNull(url, "url");
         this.snippet = null;
         this.content = null;
-        this.metadata = null;
+        this.metadata = Map.of();
     }
 
     /**
@@ -56,7 +55,7 @@ public class WebSearchOrganicResult {
         this.url = ensureNotNull(url, "url");
         this.snippet = snippet;
         this.content = content;
-        this.metadata = null;
+        this.metadata = Map.of();
     }
 
     /**
@@ -73,7 +72,7 @@ public class WebSearchOrganicResult {
         this.url = ensureNotNull(url,"url");
         this.snippet = snippet;
         this.content = content;
-        this.metadata = getOrDefault(metadata, new HashMap<>());
+        this.metadata = copy(metadata);
     }
 
     /**
@@ -181,7 +180,7 @@ public class WebSearchOrganicResult {
 
     private Metadata copyToMetadata() {
         Metadata docMetadata = new Metadata();
-        docMetadata.add("url", url);
+        docMetadata.put("url", url.toString());
         if (metadata != null) {
             for (Map.Entry<String, String> entry : metadata.entrySet()) {
                 docMetadata.put(entry.getKey(), entry.getValue());

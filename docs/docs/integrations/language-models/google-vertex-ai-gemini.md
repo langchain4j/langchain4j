@@ -68,14 +68,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-gemini</artifactId>
-  <version>1.0.0-alpha1</version>
+  <version>1.0.1-beta6</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:1.0.0-alpha1'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:1.0.1-beta6'
 ```
 
 ### Try out an example code:
@@ -91,9 +91,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
+import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModel;
 
 public class GeminiProVisionWithImageInput {
 
@@ -105,20 +105,20 @@ public class GeminiProVisionWithImageInput {
         "Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
     public static void main(String[] args) {
-        ChatLanguageModel visionModel = VertexAiGeminiChatModel.builder()
+        ChatModel visionModel = VertexAiGeminiChatModel.builder()
             .project(PROJECT_ID)
             .location(LOCATION)
             .modelName(MODEL_NAME)
             .build();
 
-        Response<AiMessage> response = visionModel.generate(
+        ChatResponse response = visionModel.chat(
             UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 TextContent.from("What do you see?")
             )
         );
         
-        System.out.println(response.content().text());
+        System.out.println(response.aiMessage().text());
     }
 }
 ```
@@ -132,22 +132,30 @@ var model = VertexAiGeminiStreamingChatModel.builder()
         .modelName(GEMINI_1_5_PRO)
         .build();
 
-model.generate("Why is the sky blue?", new StreamingResponseHandler<>() {
-    void onNext(String token) {
-        System.print("token");
+model.chat("Why is the sky blue?", new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse) {
+        System.print(partialResponse);
     }
 
-    void onError(Throwable error) {
+    @Override
+    public void onCompleteResponse(ChatResponse completeResponse){
+        System.print(completeResponse);
+    }
+
+    @Override
+    public void onError(Throwable error) {
         error.printStackTrace();
     }
 });
 ```
 
-You can use the shortcut `onNext()` and `onNextAndError()` utility functions from `LambdaStreamingResponseHandler`:
+You can use the shortcut `onPartialResponse()` and `onPartialResponseAndError()` utility functions from `LambdaStreamingResponseHandler`:
 
 ```java
-model.generate("Why is the sky blue?", onNext(System.out::print));
-model.generate("Why is the sky blue?", onNextAndError(System.out::print, Throwable::printStackTrace));
+model.chat("Why is the sky blue?", onPartialResponse(System.out::print));
+model.chat("Why is the sky blue?", onPartialResponseAndError(System.out::print, Throwable::printStackTrace));
 ```
 
 ### Available models
@@ -185,7 +193,7 @@ ChatModel model = VertexAiGeminiChatModel.builder()
     .topP(0.95)                 // topP (between 0 and 1) — cumulative probability of the most probable tokens
     .topK(3)                    // topK (positive integer) — pick a token among the most probable ones
     .seed(1234)                 // seed for the random number generator
-    .maxRetries(3)              // maximum number of retries
+    .maxRetries(2)              // maximum number of retries
     .responseMimeType("application/json") // to get JSON structured outputs
     .responseSchema(/*...*/)    // structured output following the provided schema
     .safetySettings(/*...*/)    // specify safety settings to filter inappropriate content
@@ -208,7 +216,7 @@ Gemini is a `multimodal` model which accepts text, but also images, audio and vi
 ### Describing the content of an image
 
 ```java
-ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+ChatModel model = VertexAiGeminiChatModel.builder()
     .project(PROJECT_ID)
     .location(LOCATION)
     .modelName(GEMINI_1_5_PRO)
@@ -219,7 +227,7 @@ UserMessage userMessage = UserMessage.from(
     TextContent.from("What do you see? Reply in one word.")
 );
 
-Response<AiMessage> response = model.generate(userMessage);
+ChatResponse response = model.chat(userMessage);
 ```
 
 The URL can be a web URL, or can point at a file stored in Google Cloud Storage buckets,
@@ -246,18 +254,18 @@ var model = VertexAiGeminiChatModel.builder()
     .logResponses(true)
     .build();
 
-UserMessage msg = UserMessage.from(
+UserMessage message = UserMessage.from(
     PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
     TextContent.from("Provide a summary of the document")
 );
 
-Response<AiMessage> response = model.generate(List.of(msg));
+ChatResponse response = model.chat(message);
 ```
 
 ### Tool calling
 
 ```java
-ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+ChatModel model = VertexAiGeminiChatModel.builder()
         .project(PROJECT_ID)
         .location(LOCATION)
         .modelName(GEMINI_1_5_PRO)
@@ -266,15 +274,18 @@ ChatLanguageModel model = VertexAiGeminiChatModel.builder()
 ToolSpecification weatherToolSpec = ToolSpecification.builder()
         .name("getWeatherForecast")
         .description("Get the weather forecast for a location")
-        .addParameter("location", JsonSchemaProperty.STRING,
-                JsonSchemaProperty.description("the location to get the weather forecast for"))
+        .parameters(JsonObjectSchema.builder()
+                .addStringProperty("location", "the location to get the weather forecast for")
+                .required("location")
+                .build())
         .build();
 
-List<ChatMessage> allMessages = new ArrayList<>();
-UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
-allMessages.add(weatherQuestion);
+ChatRequest request = ChatRequest.builder()
+        .messages(UserMessage.from("What is the weather in Paris?"))
+        .toolSpecifications(weatherToolSpec)
+        .build();
 
-Response<AiMessage> messageResponse = model.generate(allMessages, weatherToolSpec);
+ChatResponse response = model.chat(request);
 ```
 
 The model will reply back with a tool execution request instead of a text message.
@@ -311,7 +322,7 @@ interface Assistant {
 Calculator calculator = new Calculator();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatLanguageModel(model)
+        .chatModel(model)
         .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
         .tools(calculator)
         .build();
@@ -333,7 +344,7 @@ var modelWithSearch = VertexAiGeminiChatModel.builder()
     .useGoogleSearch(true)
     .build();
 
-String resp = modelWithSearch.generate("What is the score of yesterday's football match from Paris Saint Germain?");
+String resp = modelWithSearch.chat("What is the score of yesterday's football match from Paris Saint Germain?");
 ```
 
 ### Grounding responses with Vertex AI Search results
@@ -364,7 +375,7 @@ var modelWithResponseMimeType = VertexAiGeminiChatModel.builder()
     .build();
 
 String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler.";
-String jsonResponse = modelWithResponseMimeType.generate(userMessage).content().text();
+String jsonResponse = modelWithResponseMimeType.chat(userMessage).content().text();
 // {"name": "Klaus", "surname": "Heisler"}
 ```
 

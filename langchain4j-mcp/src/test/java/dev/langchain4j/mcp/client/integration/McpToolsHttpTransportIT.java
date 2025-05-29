@@ -17,13 +17,13 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class McpToolsHttpTransportIT extends McpToolsTestBase {
+class McpToolsHttpTransportIT extends McpToolsTestBase {
 
     private static final Logger log = LoggerFactory.getLogger(McpToolsHttpTransportIT.class);
     private static Process process;
 
     @BeforeAll
-    public static void setup() throws IOException, InterruptedException, TimeoutException {
+    static void setup() throws IOException, InterruptedException, TimeoutException {
         skipTestsIfJbangNotAvailable();
         process = startServerHttp("tools_mcp_server.java");
         McpTransport transport = new HttpMcpTransport.Builder()
@@ -38,7 +38,7 @@ public class McpToolsHttpTransportIT extends McpToolsTestBase {
     }
 
     @AfterAll
-    public static void teardown() throws Exception {
+    static void teardown() throws Exception {
         if (mcpClient != null) {
             mcpClient.close();
         }
@@ -51,7 +51,7 @@ public class McpToolsHttpTransportIT extends McpToolsTestBase {
      * Verify that the MCP client fails gracefully when the server returns a 404.
      */
     @Test
-    public void wrongUrl() throws Exception {
+    void wrongUrl() throws Exception {
         McpClient badClient = null;
         try {
             McpTransport transport = new HttpMcpTransport.Builder()
