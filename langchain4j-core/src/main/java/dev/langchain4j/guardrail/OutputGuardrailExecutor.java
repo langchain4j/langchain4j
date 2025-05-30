@@ -3,7 +3,10 @@ package dev.langchain4j.guardrail;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.memory.ChatMemory;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -66,19 +69,16 @@ public non-sealed class OutputGuardrailExecutor
             }
 
             // If we get here we know it is some kind of retry
-            var chatMemory = accumulatedParams.requestParams().chatMemory();
+            // We don't want to add intermediary UserMessages to the memory
+            var chatMessages = Optional.ofNullable(
+                            accumulatedParams.requestParams().chatMemory())
+                    .map(ChatMemory::messages)
+                    .orElseGet(ArrayList::new);
+            result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
-            if (chatMemory != null) {
-                result.getReprompt().map(UserMessage::from).ifPresent(chatMemory::add);
-            }
-
-            // Re-execute the request
-            var response = accumulatedParams.chatExecutor().execute(chatMemory);
-
-            if (chatMemory != null) {
-                // Add response to the chat memory
-                chatMemory.add(response.aiMessage());
-            }
+            // Re-execute the request with the appended message
+            // But don't add it or the resulting message to the memory
+            var response = accumulatedParams.chatExecutor().execute(chatMessages);
 
             attempt++;
             accumulatedParams = OutputGuardrailRequest.builder()

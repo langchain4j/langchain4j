@@ -1,8 +1,13 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -20,12 +25,24 @@ public interface ChatExecutor {
     /**
      * Executes a chat request using the provided chat memory.
      *
-     *
      * @param chatMemory The chat memory containing the context of the conversation.
      *                   It provides the history of messages required for proper interaction with the chat language model.
      * @return A response object containing the AI's response and additional metadata.
+     * @see #execute(List)
      */
-    ChatResponse execute(@Nullable ChatMemory chatMemory);
+    default ChatResponse execute(@Nullable ChatMemory chatMemory) {
+        var messages = Optional.ofNullable(chatMemory).map(ChatMemory::messages).orElseGet(ArrayList::new);
+
+        return execute(messages);
+    }
+
+    /**
+     * Executes a chat request using the provided chat messages
+     * @param chatMessages The chat messages containing the context of the conversation.
+     *                     It provides the history of messages required for proper interaction with the chat model
+     * @return A response object containing the AI's response and additional metadata.
+     */
+    ChatResponse execute(List<@NonNull ChatMessage> chatMessages);
 
     /**
      * Creates a new {@link Builder} instance for constructing {@link ChatExecutor} objects

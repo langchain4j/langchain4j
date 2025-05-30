@@ -2,13 +2,12 @@ package dev.langchain4j.model.chat;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.ArrayList;
-import java.util.Optional;
+import java.util.List;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 /**
  * A concrete implementation of the {@link ChatExecutor} interface that executes
@@ -37,10 +36,9 @@ final class DefaultChatExecutor implements ChatExecutor {
     }
 
     @Override
-    public ChatResponse execute(@Nullable ChatMemory chatMemory) {
-        var messages = Optional.ofNullable(chatMemory).map(ChatMemory::messages).orElseGet(ArrayList::new);
+    public ChatResponse execute(List<@NonNull ChatMessage> chatMessages) {
+        var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
 
-        var newChatRequest = this.chatRequest.toBuilder().messages(messages).build();
         return execute(newChatRequest);
     }
 

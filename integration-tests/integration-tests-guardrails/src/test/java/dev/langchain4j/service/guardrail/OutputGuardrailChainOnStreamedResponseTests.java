@@ -1,11 +1,16 @@
 package dev.langchain4j.service.guardrail;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.atIndex;
 
 import com.example.SingletonClassInstanceFactory;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -16,6 +21,7 @@ import dev.langchain4j.service.UserMessage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class OutputGuardrailChainOnStreamedResponseTests extends BaseGuardrailTests {
@@ -31,6 +37,42 @@ class OutputGuardrailChainOnStreamedResponseTests extends BaseGuardrailTests {
         assertThat(firstGuardrail.spy()).isEqualTo(1);
         assertThat(secondGuardrail.spy()).isEqualTo(1);
         assertThat(firstGuardrail.lastAccess()).isLessThan(secondGuardrail.lastAccess());
+        assertThat(firstGuardrail.chatMemory())
+                .isNotNull()
+                .extracting(ChatMemory::messages)
+                .satisfies(messages -> assertThat(messages)
+                        .isNotNull()
+                        .hasSize(2)
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.USER),
+                                atIndex(0))
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.AI),
+                                atIndex(1)));
+        assertThat(secondGuardrail.chatMemory())
+                .isNotNull()
+                .extracting(ChatMemory::messages)
+                .satisfies(messages -> assertThat(messages)
+                        .isNotNull()
+                        .hasSize(2)
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.USER),
+                                atIndex(0))
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.AI),
+                                atIndex(1)));
     }
 
     @Test
@@ -43,6 +85,42 @@ class OutputGuardrailChainOnStreamedResponseTests extends BaseGuardrailTests {
         assertThat(firstGuardrail.spy()).isEqualTo(1);
         assertThat(secondGuardrail.spy()).isEqualTo(1);
         assertThat(secondGuardrail.lastAccess()).isLessThan(firstGuardrail.lastAccess());
+        assertThat(firstGuardrail.chatMemory())
+                .isNotNull()
+                .extracting(ChatMemory::messages)
+                .satisfies(messages -> assertThat(messages)
+                        .isNotNull()
+                        .hasSize(2)
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.USER),
+                                atIndex(0))
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.AI),
+                                atIndex(1)));
+        assertThat(secondGuardrail.chatMemory())
+                .isNotNull()
+                .extracting(ChatMemory::messages)
+                .satisfies(messages -> assertThat(messages)
+                        .isNotNull()
+                        .hasSize(2)
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.USER),
+                                atIndex(0))
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.AI),
+                                atIndex(1)));
     }
 
     @Test
@@ -54,8 +132,26 @@ class OutputGuardrailChainOnStreamedResponseTests extends BaseGuardrailTests {
         assertThat(value).isEqualTo("Hi! World! ");
         assertThat(firstGuardrail.spy()).isEqualTo(2);
         assertThat(secondGuardrail.spy()).isEqualTo(1);
-        assertThat(failingGuardrail.spy()).isEqualTo(2);
         assertThat(firstGuardrail.lastAccess()).isLessThan(secondGuardrail.lastAccess());
+        assertThat(failingGuardrail.spy()).isEqualTo(2);
+        assertThat(failingGuardrail.chatMemory())
+                .isNotNull()
+                .extracting(ChatMemory::messages)
+                .satisfies(messages -> assertThat(messages)
+                        .isNotNull()
+                        .hasSize(2)
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.USER),
+                                atIndex(0))
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.AI),
+                                atIndex(1)));
     }
 
     public interface MyAiService {
@@ -77,6 +173,13 @@ class OutputGuardrailChainOnStreamedResponseTests extends BaseGuardrailTests {
     public static class FirstGuardrail implements OutputGuardrail {
         private final AtomicInteger spy = new AtomicInteger(0);
         private volatile AtomicLong lastAccess = new AtomicLong();
+        private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
+
+        @Override
+        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
+            this.chatMemory.set(params.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(params);
+        }
 
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
@@ -96,12 +199,23 @@ class OutputGuardrailChainOnStreamedResponseTests extends BaseGuardrailTests {
 
         public long lastAccess() {
             return lastAccess.get();
+        }
+
+        public ChatMemory chatMemory() {
+            return chatMemory.get();
         }
     }
 
     public static class SecondGuardrail implements OutputGuardrail {
         private final AtomicInteger spy = new AtomicInteger(0);
         private volatile AtomicLong lastAccess = new AtomicLong();
+        private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
+
+        @Override
+        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
+            this.chatMemory.set(params.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(params);
+        }
 
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
@@ -122,10 +236,21 @@ class OutputGuardrailChainOnStreamedResponseTests extends BaseGuardrailTests {
         public long lastAccess() {
             return lastAccess.get();
         }
+
+        public ChatMemory chatMemory() {
+            return chatMemory.get();
+        }
     }
 
     public static class FailingGuardrail implements OutputGuardrail {
         private final AtomicInteger spy = new AtomicInteger(0);
+        private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
+
+        @Override
+        public OutputGuardrailResult validate(OutputGuardrailRequest params) {
+            this.chatMemory.set(params.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(params);
+        }
 
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
@@ -137,6 +262,10 @@ class OutputGuardrailChainOnStreamedResponseTests extends BaseGuardrailTests {
 
         public int spy() {
             return spy.get();
+        }
+
+        public ChatMemory chatMemory() {
+            return chatMemory.get();
         }
     }
 
