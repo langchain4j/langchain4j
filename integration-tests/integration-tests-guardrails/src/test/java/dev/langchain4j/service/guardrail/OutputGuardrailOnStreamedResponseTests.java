@@ -2,6 +2,7 @@ package dev.langchain4j.service.guardrail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.fail;
 
 import com.example.SingletonClassInstanceFactory;
 import dev.langchain4j.data.message.AiMessage;
@@ -15,7 +16,9 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class OutputGuardrailOnStreamedResponseTests extends BaseGuardrailTests {
@@ -45,6 +48,41 @@ class OutputGuardrailOnStreamedResponseTests extends BaseGuardrailTests {
         assertThat(koGuardrail.spy()).isEqualTo(2);
     }
 
+    @Test
+    void streamingPartialResponsesBuffered() {
+        var okPartials = new ArrayList<String>();
+        var okComplete = new AtomicReference<ChatResponse>();
+
+        this.aiService
+                .ok("1")
+                .onPartialResponse(okPartials::add)
+                .onError(t -> fail(t.getMessage()))
+                .onCompleteResponse(okComplete::set)
+                .start();
+
+        assertThat(okPartials).hasSize(3).containsExactly("Hi!", " ", "World!");
+        assertThat(okComplete.get())
+                .isNotNull()
+                .extracting(m -> m.aiMessage().text())
+                .isEqualTo("Hi! World! ");
+    }
+
+    @Test
+    void streamingPartialResponsesNotShownOnError() {
+        var repromptPartials = new ArrayList<String>();
+        var repromptComplete = new AtomicReference<ChatResponse>();
+
+        assertThatExceptionOfType(OutputGuardrailException.class).isThrownBy(() -> this.aiService
+                .reprompt("1")
+                .onPartialResponse(repromptPartials::add)
+                .onError(t -> fail(t.getMessage()))
+                .onCompleteResponse(repromptComplete::set)
+                .start());
+
+        assertThat(repromptPartials).isEmpty();
+        assertThat(repromptComplete.get()).isNull();
+    }
+
     public interface MyAiService {
         @UserMessage("Say Hi!")
         @OutputGuardrails(OKGuardrail.class)
@@ -53,6 +91,10 @@ class OutputGuardrailOnStreamedResponseTests extends BaseGuardrailTests {
         @UserMessage("Say Hi!")
         @OutputGuardrails(KOGuardrail.class)
         TokenStream ko(@MemoryId String mem);
+
+        @UserMessage("Say Hi!")
+        @OutputGuardrails(RepromptGuardrail.class)
+        TokenStream reprompt(@MemoryId String mem);
 
         static MyAiService create() {
             return createAiService(
@@ -71,6 +113,13 @@ class OutputGuardrailOnStreamedResponseTests extends BaseGuardrailTests {
 
         public int spy() {
             return spy.get();
+        }
+    }
+
+    public static class RepromptGuardrail implements OutputGuardrail {
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            return reprompt("reorompt", "reprompt");
         }
     }
 

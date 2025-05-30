@@ -65,6 +65,16 @@ public abstract class AbstractGuardrailService implements GuardrailService {
                 .orElseGet(OutputGuardrailResult::success);
     }
 
+    @Override
+    public <MethodKey> boolean hasInputGuardrails(@Nullable MethodKey method) {
+        return !getInputGuardrails(method).isEmpty();
+    }
+
+    @Override
+    public <MethodKey> boolean hasOutputGuardrails(@Nullable MethodKey method) {
+        return !getOutputGuardrails(method).isEmpty();
+    }
+
     // These methods below really only exist for testing purposes
     // That's why they are package-scoped
     int getInputGuardrailMethodCount() {
@@ -75,10 +85,6 @@ public abstract class AbstractGuardrailService implements GuardrailService {
         return this.outputGuardrails.size();
     }
 
-    <MethodKey> void addInputGuardrail(MethodKey method, InputGuardrailExecutor executor) {
-        this.inputGuardrails.put(method, executor);
-    }
-
     <MethodKey> Optional<dev.langchain4j.guardrail.config.InputGuardrailsConfig> getInputConfig(MethodKey method) {
         return Optional.ofNullable(this.inputGuardrails.get(method)).map(InputGuardrailExecutor::config);
     }
@@ -87,14 +93,16 @@ public abstract class AbstractGuardrailService implements GuardrailService {
         return Optional.ofNullable(this.outputGuardrails.get(method)).map(OutputGuardrailExecutor::config);
     }
 
-    <MethodKey> List<InputGuardrail> getInputGuardrails(MethodKey method) {
-        return Optional.ofNullable(this.inputGuardrails.get(method))
+    <MethodKey> List<InputGuardrail> getInputGuardrails(@Nullable MethodKey method) {
+        return Optional.ofNullable(method)
+                .map(this.inputGuardrails::get)
                 .map(InputGuardrailExecutor::guardrails)
                 .orElseGet(List::of);
     }
 
-    <MethodKey> List<OutputGuardrail> getOutputGuardrails(MethodKey method) {
-        return Optional.ofNullable(this.outputGuardrails.get(method))
+    <MethodKey> List<OutputGuardrail> getOutputGuardrails(@Nullable MethodKey method) {
+        return Optional.ofNullable(method)
+                .map(this.outputGuardrails::get)
                 .map(OutputGuardrailExecutor::guardrails)
                 .orElseGet(List::of);
     }

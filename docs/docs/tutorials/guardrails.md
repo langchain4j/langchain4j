@@ -414,9 +414,9 @@ public interface StreamingAssistant {
 }
 ```
 
-In this scenario, the output guardrails will be executed once the entire stream is complete, or more specifically, when `TokenStream.onCompleteResponse` is called.
+In this scenario, the output guardrails will be executed once the entire stream is complete, or more specifically, when `TokenStream.onCompleteResponse` is called. `onPartialResponse` will be buffered and replayed once the guardrails succeed.
 
-In the situation where a **_retry_** or **_reprompt_** in the chain eventually succeeds, then the entire chain is re-executed _synchronously_. Each guardraill will be re-executed one after the other in the original order. Once the chain completes the result is passed into `TokenStream.onCompleteResponse`.
+In the situation where a **_retry_** or **_reprompt_** in the chain eventually succeeds, then the entire chain is re-executed _synchronously_. Each guardrail will be re-executed one after the other in the original order. Once the chain completes the result is passed into `TokenStream.onCompleteResponse`.
 
 ### Out-of-the-box Output Guardrails
 

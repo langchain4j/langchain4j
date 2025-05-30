@@ -65,6 +65,22 @@ public interface GuardrailService {
             @Nullable MethodKey method, OutputGuardrailRequest params);
 
     /**
+     * Whether or not a method has any input guardrails associated with it
+     * @param method The method
+     * @return {@code true} If {@code method} has input guardrails. {@code false} otherwise
+     * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
+     */
+    <MethodKey> boolean hasInputGuardrails(@Nullable MethodKey method);
+
+    /**
+     * Whether or not a method has any output guardrails associated with it
+     * @param method The method
+     * @return {@code true} If {@code method} has output guardrails. {@code false} otherwise
+     * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
+     */
+    <MethodKey> boolean hasOutputGuardrails(@Nullable MethodKey method);
+
+    /**
      * Executes the guardrails associated with a given method and parameters, returning the appropriate response.
      *
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.

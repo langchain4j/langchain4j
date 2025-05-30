@@ -19,6 +19,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -55,6 +56,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
+    private final List<String> responseBuffer = new ArrayList<>();
 
     AiServiceStreamingResponseHandler(
             ChatExecutor chatExecutor,
@@ -90,7 +92,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onPartialResponse(String partialResponse) {
-        partialResponseHandler.accept(partialResponse);
+        // If we're using output guardrails, then buffer the partial response until the guardrails have completed
+        if (context.guardrailService().hasOutputGuardrails(methodKey)) {
+            responseBuffer.add(partialResponse);
+        } else {
+            partialResponseHandler.accept(partialResponse);
+        }
     }
 
     @Override
@@ -148,21 +155,29 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .build();
 
                 // Invoke output guardrails
-                if (commonGuardrailParams != null) {
-                    var newCommonParams = GuardrailRequestParams.builder()
-                            .chatMemory(getMemory())
-                            .augmentationResult(commonGuardrailParams.augmentationResult())
-                            .userMessageTemplate(commonGuardrailParams.userMessageTemplate())
-                            .variables(commonGuardrailParams.variables())
-                            .build();
+                if (context.guardrailService().hasOutputGuardrails(methodKey)) {
+                    if (commonGuardrailParams != null) {
+                        var newCommonParams = GuardrailRequestParams.builder()
+                                .chatMemory(getMemory())
+                                .augmentationResult(commonGuardrailParams.augmentationResult())
+                                .userMessageTemplate(commonGuardrailParams.userMessageTemplate())
+                                .variables(commonGuardrailParams.variables())
+                                .build();
 
-                    var outputGuardrailParams = OutputGuardrailRequest.builder()
-                            .responseFromLLM(finalChatResponse)
-                            .chatExecutor(chatExecutor)
-                            .requestParams(newCommonParams)
-                            .build();
+                        var outputGuardrailParams = OutputGuardrailRequest.builder()
+                                .responseFromLLM(finalChatResponse)
+                                .chatExecutor(chatExecutor)
+                                .requestParams(newCommonParams)
+                                .build();
 
-                    finalChatResponse = context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
+                        finalChatResponse =
+                                context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
+                    }
+
+                    // If we have output guardrails, we should process all of the partial responses first before
+                    // completing
+                    responseBuffer.forEach(partialResponseHandler::accept);
+                    responseBuffer.clear();
                 }
 
                 // TODO should completeResponseHandler accept all ChatResponses that happened?
