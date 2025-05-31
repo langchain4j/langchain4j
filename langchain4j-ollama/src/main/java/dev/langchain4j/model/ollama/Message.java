@@ -19,6 +19,7 @@ class Message {
 
     private Role role;
     private String content;
+    private String thinking;
     private List<String> images;
     private List<ToolCall> toolCalls;
     private Map<String, Object> additionalFields;
@@ -78,6 +79,14 @@ class Message {
     @JsonAnySetter
     public void setAdditionalFields(Map<String, Object> additionalFields) {
         this.additionalFields = additionalFields;
+    }
+
+    public String getThinking() {
+        return thinking;
+    }
+
+    public void setThinking(final String thinking) {
+        this.thinking = thinking;
     }
 
     static class Builder {

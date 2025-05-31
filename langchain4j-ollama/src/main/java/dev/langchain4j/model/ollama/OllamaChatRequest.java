@@ -25,6 +25,8 @@ class OllamaChatRequest {
     private List<Tool> tools;
     private Integer keepAlive;
 
+    private Boolean think;
+
     OllamaChatRequest() {}
 
     OllamaChatRequest(Builder builder) {
@@ -35,6 +37,7 @@ class OllamaChatRequest {
         this.tools = builder.tools;
         this.format = builder.format;
         this.keepAlive = builder.keepAlive;
+        this.think = builder.think;
     }
 
     static Builder builder() {
@@ -97,6 +100,14 @@ class OllamaChatRequest {
         this.keepAlive = keepAlive;
     }
 
+    public Boolean getThink() {
+        return think;
+    }
+
+    public void setThink(final Boolean think) {
+        this.think = think;
+    }
+
     static class Builder {
 
         private String model;
@@ -106,6 +117,7 @@ class OllamaChatRequest {
         private Boolean stream;
         private List<Tool> tools;
         private Integer keepAlive;
+        private Boolean think;
 
         Builder model(String model) {
             this.model = model;
@@ -141,6 +153,12 @@ class OllamaChatRequest {
             this.keepAlive = keepAlive;
             return this;
         }
+
+        Builder think(Boolean think) {
+            this.think = think;
+            return this;
+        }
+
 
         OllamaChatRequest build() {
             return new OllamaChatRequest(this);
