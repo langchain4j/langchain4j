@@ -159,7 +159,6 @@ class OllamaChatRequest {
             return this;
         }
 
-
         OllamaChatRequest build() {
             return new OllamaChatRequest(this);
         }

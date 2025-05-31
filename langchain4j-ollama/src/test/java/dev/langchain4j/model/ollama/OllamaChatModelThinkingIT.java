@@ -1,19 +1,16 @@
 package dev.langchain4j.model.ollama;
 
-import org.junit.jupiter.api.Test;
-
-import java.time.Duration;
-import java.util.List;
-
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
 class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructure {
 
-    Message whySkyIsBlueMessage = Message.builder()
-            .role(Role.USER)
-            .content("Why sky is blue?")
-            .build();
+    Message whySkyIsBlueMessage =
+            Message.builder().role(Role.USER).content("Why sky is blue?").build();
 
     OllamaClient ollamaClient = OllamaClient.builder()
             .baseUrl(ollamaBaseUrl(ollama))
@@ -27,9 +24,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         // given AbstractOllamaInfrastructure
 
         // when
-        OllamaChatResponse ollamaChatResponse = ollamaClient.chat(OllamaChatRequest.builder()
-                .think(true)
-                .stream(false)
+        OllamaChatResponse ollamaChatResponse = ollamaClient.chat(OllamaChatRequest.builder().think(true).stream(false)
                 .model(MODEL_NAME)
                 .messages(List.of(whySkyIsBlueMessage))
                 .build());
@@ -43,9 +38,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         // given AbstractOllamaInfrastructure
 
         // when
-        OllamaChatResponse ollamaChatResponse = ollamaClient.chat(OllamaChatRequest.builder()
-                .think(false)
-                .stream(false)
+        OllamaChatResponse ollamaChatResponse = ollamaClient.chat(OllamaChatRequest.builder().think(false).stream(false)
                 .model(MODEL_NAME)
                 .messages(List.of(whySkyIsBlueMessage))
                 .build());
@@ -59,8 +52,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         // given AbstractOllamaInfrastructure
 
         // when
-        OllamaChatResponse ollamaChatResponse = ollamaClient.chat(OllamaChatRequest.builder()
-                .stream(false)
+        OllamaChatResponse ollamaChatResponse = ollamaClient.chat(OllamaChatRequest.builder().stream(false)
                 .model(MODEL_NAME)
                 .messages(List.of(whySkyIsBlueMessage))
                 .build());

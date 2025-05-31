@@ -1,16 +1,15 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.List;
 import java.util.Map;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -24,10 +23,14 @@ class Message {
     private List<ToolCall> toolCalls;
     private Map<String, Object> additionalFields;
 
-    Message() {
-    }
+    Message() {}
 
-    public Message(Role role, String content, List<String> images, List<ToolCall> toolCalls, Map<String, Object> additionalFields) {
+    public Message(
+            Role role,
+            String content,
+            List<String> images,
+            List<ToolCall> toolCalls,
+            Map<String, Object> additionalFields) {
         this.role = role;
         this.content = content;
         this.images = images;
