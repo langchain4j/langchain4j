@@ -1,12 +1,13 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.Response;
-import java.util.List;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -92,5 +93,16 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(runningOllamaModel.getName()).contains(TINY_DOLPHIN_MODEL);
         assertThat(runningOllamaModel.getDigest()).isNotBlank();
         assertThat(runningOllamaModel.getExpiresAt()).isNotNull();
+    }
+
+    @Test
+    void should_return_ollama_model_capability() {
+        // when
+        OllamaModel ollamaModel = OllamaModel.builder().name(TINY_DOLPHIN_MODEL).build();
+
+        Response<OllamaModelCard> response = ollamaModels.modelCard(ollamaModel);
+
+        assertThat(response.content().getCapabilities()).isNotEmpty();
+        assertThat(response.content().getCapabilities()).contains(OllamaCapability.COMPLETION);
     }
 }

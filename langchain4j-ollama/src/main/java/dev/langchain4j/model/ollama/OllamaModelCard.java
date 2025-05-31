@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
@@ -24,6 +25,7 @@ public class OllamaModelCard {
     private Map<String, Object> modelInfo;
     @JsonDeserialize(using = OllamaDateDeserializer.class)
     private OffsetDateTime modifiedAt;
+    private List<OllamaCapability> capabilities;
 
     OllamaModelCard() {
     }
@@ -95,6 +97,14 @@ public class OllamaModelCard {
         this.modifiedAt = modifiedAt;
     }
 
+    public List<OllamaCapability> getCapabilities() {
+        return capabilities;
+    }
+
+    public void setCapabilities(List<OllamaCapability> capabilities) {
+        this.capabilities = capabilities;
+    }
+
     public static class Builder {
 
         private String license;
@@ -104,6 +114,7 @@ public class OllamaModelCard {
         private OllamaModelDetails details;
         private Map<String, Object> modelInfo;
         private OffsetDateTime modifiedAt;
+        private List<OllamaCapability> capabilities;
 
         public Builder license(String license) {
             this.license = license;
@@ -132,6 +143,11 @@ public class OllamaModelCard {
 
         public Builder modelInfo(Map<String, Object> modelInfo) {
             this.modelInfo = modelInfo;
+            return this;
+        }
+
+        public Builder capabilities(List<OllamaCapability> capabilities) {
+            this.capabilities = capabilities;
             return this;
         }
 
