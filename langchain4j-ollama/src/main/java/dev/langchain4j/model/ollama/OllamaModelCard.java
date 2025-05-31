@@ -1,16 +1,15 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -23,12 +22,13 @@ public class OllamaModelCard {
     private String template;
     private OllamaModelDetails details;
     private Map<String, Object> modelInfo;
+
     @JsonDeserialize(using = OllamaDateDeserializer.class)
     private OffsetDateTime modifiedAt;
+
     private List<OllamaCapability> capabilities;
 
-    OllamaModelCard() {
-    }
+    OllamaModelCard() {}
 
     public OllamaModelCard(String modelfile, String parameters, String template, OllamaModelDetails details) {
         this.modelfile = modelfile;

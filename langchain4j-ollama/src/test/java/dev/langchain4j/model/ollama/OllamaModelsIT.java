@@ -1,13 +1,12 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.output.Response;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
