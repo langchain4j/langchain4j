@@ -1,17 +1,17 @@
 package dev.langchain4j.store.embedding.milvus;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStoreIT.MILVUS_DOCKER_IMAGE;
+import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
+
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.milvus.MilvusContainer;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStoreIT.MILVUS_DOCKER_IMAGE;
-import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 
 @Testcontainers
 class MilvusEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
