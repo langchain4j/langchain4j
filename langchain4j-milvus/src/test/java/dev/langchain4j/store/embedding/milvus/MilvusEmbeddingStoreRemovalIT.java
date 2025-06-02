@@ -10,13 +10,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.milvus.MilvusContainer;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStoreIT.MILVUS_DOCKER_IMAGE;
 import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 
 @Testcontainers
 class MilvusEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.5.8");
+    static MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(milvus.getEndpoint())
