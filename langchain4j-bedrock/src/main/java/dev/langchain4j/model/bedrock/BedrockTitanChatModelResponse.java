@@ -3,17 +3,12 @@ package dev.langchain4j.model.bedrock;
 import dev.langchain4j.model.bedrock.internal.BedrockChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.List;
 
 /**
  * @deprecated please use {@link BedrockChatModel}
  */
 @Deprecated(forRemoval = true, since = "1.0.0-beta2")
-@Getter
-@Setter
 public class BedrockTitanChatModelResponse implements BedrockChatModelResponse {
 
     @Override
@@ -50,14 +45,52 @@ public class BedrockTitanChatModelResponse implements BedrockChatModelResponse {
         return new TokenUsage(inputTextTokenCount, result.tokenCount);
     }
 
-    @Getter
-    @Setter
     public static class Result {
         private int tokenCount;
         private String outputText;
         private String completionReason;
+
+        public int getTokenCount() {
+            return tokenCount;
+        }
+
+        public void setTokenCount(final int tokenCount) {
+            this.tokenCount = tokenCount;
+        }
+
+        public String getOutputText() {
+            return outputText;
+        }
+
+        public void setOutputText(final String outputText) {
+            this.outputText = outputText;
+        }
+
+        public String getCompletionReason() {
+            return completionReason;
+        }
+
+        public void setCompletionReason(final String completionReason) {
+            this.completionReason = completionReason;
+        }
     }
 
     private int inputTextTokenCount;
     private List<Result> results;
+
+    public int getInputTextTokenCount() {
+        return inputTextTokenCount;
+    }
+
+    public void setInputTextTokenCount(final int inputTextTokenCount) {
+        this.inputTextTokenCount = inputTextTokenCount;
+    }
+
+    public List<Result> getResults() {
+        return results;
+    }
+
+    public void setResults(final List<Result> results) {
+        this.results = results;
+    }
 }

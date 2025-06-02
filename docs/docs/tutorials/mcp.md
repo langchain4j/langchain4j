@@ -46,17 +46,21 @@ To create an MCP client from the transport:
 
 ```java
 McpClient mcpClient = new DefaultMcpClient.Builder()
+    .key("MyMCPClient")
     .transport(transport)
     .build();
 ```
+
+Note that the client key is optional, but it is recommended to set it, especially
+if there are multiple MCP clients, and it is necessary to disambiguate among them.
 
 ### MCP Tool Provider
 
 Finally, you create an MCP tool provider from the client:
 
 ```java
-ToolProvider toolProvider = McpToolProvider.builder()
-    .mcpClients(List.of(mcpClient))
+McpToolProvider toolProvider = McpToolProvider.builder()
+    .mcpClients(mcpClient)
     .build();
 ```
 
@@ -67,6 +71,43 @@ by the `builder.failIfOneServerFails(boolean)` method. The default is `false`,
 which means that the tool provider will ignore the error from one server and 
 continue with the other servers. If you set it to `true`, a failure from any 
 server will cause the tool provider to throw an exception.
+
+Moreover, a MCP servers may often provide tens of tools, while a given AI service
+may only need a few of them, both to prevent the usage of an unwanted tool and to 
+reduce the possibility of hallucinations. The `McpToolProvider` allows to filter 
+these tools by name as it follows:
+
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+    .mcpClients(mcpClient)
+    .filterToolNames("get_issue", "get_issue_comments", "list_issues")
+    .build();
+```
+
+In this way the AI service configured with this `ToolProvider` could only use
+those mentioned 3 tools, allowing it to read existing issues, but preventing it
+from creating new ones. More in general, a `ToolProvider` allows to filter tools
+through a `BiPredicate<McpClient, ToolSpecification>`. This could be also useful
+when multiple MCP clients expose tools with the same and then conflicting names. 
+For example, the following `ToolProvider` takes tools from two MCP clients
+but since they both have a tool named `echoInteger`, it takes only the one from 
+the MCP client with key `numeric-mcp`:
+
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+    .mcpClients(mcpClient1, mcpClient2)
+    .filter((mcpClient, tool) ->
+            !tool.name().startsWith("echoInteger") || 
+            mcpClient.key().equals("numeric-mcp"))
+    .build();
+```
+
+Note that calling the `filter` method multiple time on the same `McpToolProvider`
+builder will result in a conjunction (AND) of all those filters.
+
+In order to allow applications to connect or disconnect from MCP servers at 
+runtime, it is also possible to dynamically add and remove clients and filters 
+to an existing `McpToolProvider` instance.
 
 To bind a tool provider to an AI service, simply use the `toolProvider` method
 of an AI service builder:

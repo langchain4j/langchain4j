@@ -14,16 +14,16 @@ class JlamaExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
     private JlamaExceptionMapper() { }
 
     @Override
-    public RuntimeException mapException(final Exception e) {
-        if (e instanceof IOException && e.getMessage().startsWith(JLAMA_IOEXCEPTION_START_MESSAGE)) {
-            String httpStatusCode = e.getMessage().substring(JLAMA_IOEXCEPTION_START_MESSAGE.length(), JLAMA_IOEXCEPTION_START_MESSAGE.length() + 3);
+    public RuntimeException mapException(Throwable t) {
+        if (t instanceof IOException && t.getMessage().startsWith(JLAMA_IOEXCEPTION_START_MESSAGE)) {
+            String httpStatusCode = t.getMessage().substring(JLAMA_IOEXCEPTION_START_MESSAGE.length(), JLAMA_IOEXCEPTION_START_MESSAGE.length() + 3);
             try {
-                return mapHttpStatusCode(e, Integer.parseInt(httpStatusCode));
+                return mapHttpStatusCode(t, Integer.parseInt(httpStatusCode));
             } catch (NumberFormatException nfe) {
                 // ignore
             }
         }
 
-        return new InternalServerException(e);
+        return new InternalServerException(t);
     }
 }

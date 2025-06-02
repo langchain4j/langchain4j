@@ -5,28 +5,19 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.0.0-beta4-SNAPSHOT</version>
+        <version>1.1.0-beta7-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-vertex-ai</artifactId>
     <name>LangChain4j :: Integration :: Google Vertex AI</name>
 
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>com.google.cloud</groupId>
                 <artifactId>google-cloud-discoveryengine-bom</artifactId>
-                <version>0.45.0</version>
+                <version>0.59.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -38,36 +29,29 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>${project.version}</version>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
 
         <!-- Google Vertex AI library -->
-
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-aiplatform</artifactId>
-            <version>3.50.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
+            <version>3.64.0</version>
         </dependency>
 
         <!-- Ranking API -->
-
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-discoveryengine</artifactId>
         </dependency>
 
-        <!-- testing dependencies -->
+
+        <!-- test dependencies -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>${project.version}</version>
+            <version>1.1.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -76,13 +60,14 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>${project.version}</version>
+            <version>1.1.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>${project.version}</version>
+            <version>1.1.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -103,9 +88,9 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>2.0.16</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
 </project>

@@ -28,7 +28,7 @@ class VoyageAiJsonUtils {
         }
     }
 
-    static <T> T toObject(String jsonStr, Class<T> clazz) {
+    static <T> T fromJson(String jsonStr, Class<T> clazz) {
         try {
             return OBJECT_MAPPER.readValue(jsonStr, clazz);
         } catch (JsonProcessingException e) {
@@ -36,7 +36,7 @@ class VoyageAiJsonUtils {
         }
     }
 
-    static <T> T toObject(String jsonStr, TypeReference<T> typeReference) {
+    static <T> T fromJson(String jsonStr, TypeReference<T> typeReference) {
         try {
             return OBJECT_MAPPER.readValue(jsonStr, typeReference);
         } catch (JsonProcessingException e) {

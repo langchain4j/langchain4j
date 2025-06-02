@@ -15,7 +15,6 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +73,7 @@ public class OpenAiChatModel implements ChatModel {
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
             commonParameters = DefaultChatRequestParameters.builder().build();
