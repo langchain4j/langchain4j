@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.CODESTRAL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_MEDIUM_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
@@ -66,9 +67,9 @@ class MistralAiChatModelIT {
             .logResponses(true)
             .build();
 
-    ChatModel openCodestralMamba = MistralAiChatModel.builder()
+    ChatModel codestral = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName("open-codestral-mamba")
+            .modelName(CODESTRAL_LATEST)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -576,7 +577,7 @@ class MistralAiChatModelIT {
         UserMessage userMessage = userMessage("Write a java code for fibonacci");
 
         // when
-        ChatResponse response = openCodestralMamba.chat(userMessage);
+        ChatResponse response = codestral.chat(userMessage);
 
         // then
         assertThat(response.aiMessage().text()).isNotBlank();
