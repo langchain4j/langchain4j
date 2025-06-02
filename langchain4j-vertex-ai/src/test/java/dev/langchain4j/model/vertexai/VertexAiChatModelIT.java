@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+@Disabled("TODO: configure custom model")
 class VertexAiChatModelIT {
 
     @Test
