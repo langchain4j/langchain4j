@@ -79,6 +79,7 @@
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <retrofit.version>2.9.0</retrofit.version>
         <slf4j.version>2.0.17</slf4j.version>
+        <selenium.webdriver.version>4.33.0</selenium.webdriver.version>
         <testcontainers.version>1.20.4</testcontainers.version>
         <tinylog.version>2.6.2</tinylog.version>
         <wiremock.version>3.12.1</wiremock.version>
