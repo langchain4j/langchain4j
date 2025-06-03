@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -64,7 +65,7 @@ public class AzureOpenAiImageModel implements ImageModel {
             String responseFormat) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = client;
+        this.client = ensureNotNull(client, "client");
     }
 
     public AzureOpenAiImageModel(

@@ -2,6 +2,7 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.data.embedding.Embedding.from;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
@@ -60,7 +61,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private AzureOpenAiEmbeddingModel(OpenAIClient client, String deploymentName, Integer dimensions) {
         this(deploymentName, dimensions);
-        this.client = client;
+        this.client = ensureNotNull(client, "client");
     }
 
     public AzureOpenAiEmbeddingModel(
@@ -148,7 +149,6 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     private AzureOpenAiEmbeddingModel(String deploymentName, Integer dimensions) {
-
         this.deploymentName = ensureNotBlank(deploymentName, "deploymentName");
         this.dimensions = dimensions;
     }
@@ -201,8 +201,11 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     protected Integer knownDimension() {
-        if (dimensions != null) return dimensions;
-        return AzureOpenAiEmbeddingModelName.knownDimension(deploymentName);
+        if (dimensions != null) {
+            return dimensions;
+        } else {
+            return AzureOpenAiEmbeddingModelName.knownDimension(deploymentName);
+        }
     }
 
     public static class Builder {

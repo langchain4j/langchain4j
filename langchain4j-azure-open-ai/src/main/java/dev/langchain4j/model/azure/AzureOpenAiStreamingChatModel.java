@@ -1,5 +1,7 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -360,17 +362,17 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         this.maxTokens = maxTokens;
         this.temperature = temperature;
         this.topP = topP;
-        this.logitBias = logitBias;
+        this.logitBias = copy(logitBias);
         this.user = user;
-        this.stop = stop;
+        this.stop = copy(stop);
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.dataSources = dataSources;
+        this.dataSources = copyIfNotNull(dataSources);
         this.enhancements = enhancements;
         this.seed = seed;
         this.responseFormat = responseFormat;
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        this.listeners = copy(listeners);
     }
 
     @Override

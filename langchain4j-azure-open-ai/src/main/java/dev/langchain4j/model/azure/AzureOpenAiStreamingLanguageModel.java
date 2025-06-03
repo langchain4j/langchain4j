@@ -1,6 +1,8 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -93,7 +95,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 stop,
                 presencePenalty,
                 frequencyPenalty);
-        this.client = client;
+        this.client = ensureNotNull(client, "client");
     }
 
     public AzureOpenAiStreamingLanguageModel(
@@ -265,11 +267,11 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         this.maxTokens = maxTokens;
         this.temperature = temperature;
         this.topP = topP;
-        this.logitBias = logitBias;
+        this.logitBias = copy(logitBias);
         this.user = user;
         this.logprobs = logprobs;
         this.echo = echo;
-        this.stop = stop;
+        this.stop = copy(stop);
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
     }

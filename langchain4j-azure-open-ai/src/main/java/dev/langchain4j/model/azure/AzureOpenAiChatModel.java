@@ -1,9 +1,11 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerRequest;
@@ -17,7 +19,6 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefini
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 import com.azure.ai.openai.OpenAIClient;
@@ -50,7 +51,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -104,7 +104,7 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final ResponseFormat responseFormat;
     private final Boolean strictJsonSchema;
     private final List<ChatModelListener> listeners;
-    private Set<Capability> supportedCapabilities;
+    private final Set<Capability> supportedCapabilities;
 
     public AzureOpenAiChatModel(
             OpenAIClient client,
@@ -142,7 +142,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 strictJsonSchema,
                 listeners,
                 capabilities);
-        this.client = client;
+        this.client = ensureNotNull(client, "client");
     }
 
     public AzureOpenAiChatModel(
@@ -341,18 +341,18 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.maxTokens = maxTokens;
         this.temperature = temperature;
         this.topP = topP;
-        this.logitBias = logitBias;
+        this.logitBias = copy(logitBias);
         this.user = user;
-        this.stop = stop;
+        this.stop = copy(stop);
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.dataSources = dataSources;
+        this.dataSources = copyIfNotNull(dataSources);
         this.enhancements = enhancements;
         this.seed = seed;
         this.responseFormat = responseFormat;
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        this.supportedCapabilities = copyIfNotNull(capabilities);
+        this.listeners = copy(listeners);
+        this.supportedCapabilities = copy(capabilities);
     }
 
     @Override
