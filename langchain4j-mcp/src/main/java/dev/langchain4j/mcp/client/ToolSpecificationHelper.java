@@ -117,6 +117,8 @@ class ToolSpecificationHelper {
                 }
                 builder.items(jsonNodeToJsonSchemaElement(node.get("items")));
                 return builder.build();
+            } else if (nodeType.equals("null")) {
+                return new JsonNullSchema();
             } else {
                 throw new IllegalArgumentException("Unknown element type: " + nodeType);
             }
