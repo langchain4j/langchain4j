@@ -13,7 +13,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(OPEN_MIXTRAL_8X22B)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
 

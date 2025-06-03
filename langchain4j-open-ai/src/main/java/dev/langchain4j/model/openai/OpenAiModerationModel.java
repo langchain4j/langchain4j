@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
@@ -71,7 +72,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 .input(inputs)
                 .build();
 
-        ModerationResponse response = withRetry(() -> client.moderation(request).execute(), maxRetries);
+        ModerationResponse response = withRetryMappingExceptions(() -> client.moderation(request).execute(), maxRetries);
 
         int i = 0;
         for (ModerationResult moderationResult : response.results()) {

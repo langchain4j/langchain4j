@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.0.0-beta4-SNAPSHOT</version>
+    <version>1.1.0-beta7-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -34,13 +34,6 @@
         <url>https://github.com/langchain4j/langchain4j/tree/main</url>
     </scm>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-    </distributionManagement>
-
     <properties>
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
@@ -48,19 +41,19 @@
         <kotlin.compiler.jvmTarget>${java.version}</kotlin.compiler.jvmTarget>
         <kotlin.compiler.languageVersion>1.9</kotlin.compiler.languageVersion>
         <kotlin.compiler.apiVersion>1.9</kotlin.compiler.apiVersion>
-        <kotlin-compiler.version>2.1.20</kotlin-compiler.version>
+        <kotlin-compiler.version>2.1.21</kotlin-compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
         <dokka.version>2.0.0</dokka.version>
-        <ai-mocks.version>0.3.5</ai-mocks.version>
+        <ai-mocks.version>0.4.1</ai-mocks.version>
         <assertj.version>3.27.3</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.2.2</awaitility.version>
         <aws.java.sdk.version>2.31.6</aws.java.sdk.version>
         <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
-        <azure-sdk.version>1.2.31</azure-sdk.version>
+        <azure-sdk.version>1.2.34</azure-sdk.version>
         <elastic.version>8.15.3</elastic.version>
         <github-api.version>1.318</github-api.version>
         <httpclient5.version>5.2.1</httpclient5.version>
@@ -73,15 +66,15 @@
         <kotest.version>5.9.1</kotest.version>
         <kotlin.version>1.9.25</kotlin.version>
         <kotlinx-coroutines.version>1.8.1</kotlinx-coroutines.version>
-        <langchain4j-embeddings.version>${project.version}</langchain4j-embeddings.version>
+        <langchain4j-embeddings.version>1.1.0-beta7-SNAPSHOT</langchain4j-embeddings.version>
         <log4j.version>2.24.3</log4j.version>
         <logback.version>1.3.14</logback.version>
         <lombok.version>1.18.38</lombok.version>
-        <milvus-sdk-java.version>2.5.7</milvus-sdk-java.version>
+        <milvus-sdk-java.version>2.5.9</milvus-sdk-java.version>
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
         <mockito.version>5.14.2</mockito.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <openai-java.version>1.4.1</openai-java.version>
+        <openai-java.version>2.2.1</openai-java.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <retrofit.version>2.9.0</retrofit.version>
@@ -369,11 +362,15 @@
 
     <repositories>
         <repository>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
-            <id>snapshot-repo</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+            <id>central-portal-snapshots</id>
+            <name>Central Portal Snapshots</name>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
         </repository>
     </repositories>
 
@@ -403,7 +400,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-install-plugin</artifactId>
-                    <version>3.1.3</version>
+                    <version>3.1.4</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -621,19 +618,6 @@
             </plugin>
 
             <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>validate</phase>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration combine.children="append">
@@ -664,14 +648,13 @@
             </plugin>
 
             <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.13</version>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.7.0</version>
                 <extensions>true</extensions>
                 <configuration>
-                    <serverId>ossrh</serverId>
-                    <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>false</autoPublish>
                 </configuration>
             </plugin>
 
@@ -731,7 +714,7 @@
                                 <requireMavenVersion>
                                     <version>3.8</version>
                                 </requireMavenVersion>
-                                <!-- TODO: Add requireUpperBoundDeps -->
+                                <requireUpperBoundDeps></requireUpperBoundDeps>
                             </rules>
                         </configuration>
                     </execution>
@@ -751,10 +734,10 @@
                 <executions>
                     <execution>
                         <id>flatten</id>
-                        <phase>process-resources</phase>
                         <goals>
                             <goal>flatten</goal>
                         </goals>
+                        <phase>process-resources</phase>
                     </execution>
                     <execution>
                         <id>flatten.clean</id>
@@ -769,6 +752,7 @@
     </build>
 
     <profiles>
+
         <profile>
             <id>sign</id>
             <activation>
@@ -795,6 +779,7 @@
                 </plugins>
             </build>
         </profile>
+
         <profile>
             <id>compliance</id>
             <activation>
@@ -853,6 +838,7 @@
                 </plugins>
             </build>
         </profile>
+
         <profile>
             <id>kotlin</id>
             <build>
@@ -872,5 +858,27 @@
                 </plugins>
             </build>
         </profile>
+
+        <profile>
+            <id>spotless</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                                <phase>validate</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
     </profiles>
+
 </project>
