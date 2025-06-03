@@ -1,6 +1,5 @@
 package dev.langchain4j.model.vertexai.gemini;
 
-import com.google.cloud.vertexai.api.GoogleSearchRetrieval;
 import com.google.cloud.vertexai.api.Retrieval;
 import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.VertexAISearch;
@@ -13,11 +12,8 @@ class ResponseGrounding {
 
     static Tool googleSearchTool() {
         return Tool.newBuilder()
-            .setGoogleSearchRetrieval(
-                GoogleSearchRetrieval.newBuilder()
-//                    .setDisableAttribution(false)
-                    .build())
-            .build();
+                .setGoogleSearch(Tool.GoogleSearch.newBuilder().build())
+                .build();
     }
 
     /**
