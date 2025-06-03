@@ -26,7 +26,7 @@ class VertexAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected String modelName() {
-        return "gemini-1.5-flash";
+        return "gemini-2.0-flash-lite";
     }
 
     @Override
