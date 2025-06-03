@@ -1,9 +1,13 @@
 package dev.langchain4j.data.document.loader.selenium;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.transformer.jsoup.HtmlToTextDocumentTransformer;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,11 +17,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.testcontainers.containers.BrowserWebDriverContainer;
-
-import java.time.Duration;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class SeleniumDocumentLoaderIT {
 
@@ -30,8 +29,7 @@ class SeleniumDocumentLoaderIT {
 
     @BeforeAll
     static void beforeAll() {
-        chromeContainer = new BrowserWebDriverContainer<>()
-                .withCapabilities(new ChromeOptions());
+        chromeContainer = new BrowserWebDriverContainer<>().withCapabilities(new ChromeOptions());
         chromeContainer.start();
         webDriver = new RemoteWebDriver(chromeContainer.getSeleniumAddress(), new ChromeOptions());
         loader = SeleniumDocumentLoader.builder()
@@ -60,7 +58,8 @@ class SeleniumDocumentLoaderIT {
 
     @Test
     void should_load_html_document() {
-        String url = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/langchain4j/src/test/resources/test-file-utf8.txt";
+        String url =
+                "https://raw.githubusercontent.com/langchain4j/langchain4j/main/langchain4j/src/test/resources/test-file-utf8.txt";
         Document document = loader.load(url, parser);
         Document textDocument = extractor.transform(document);
         assertThat(textDocument.text()).isEqualTo("test content");
@@ -91,7 +90,8 @@ class SeleniumDocumentLoaderIT {
                 .timeout(Duration.ofSeconds(10))
                 .build()
                 .pageReadyCondition((ExpectedCondition<Boolean>) wd -> true); // Always ready
-        String url = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/langchain4j/src/test/resources/test-file-utf8.txt";
+        String url =
+                "https://raw.githubusercontent.com/langchain4j/langchain4j/main/langchain4j/src/test/resources/test-file-utf8.txt";
         Document document = customLoader.load(url, parser);
         assertThat(document.text()).contains("test");
         customLoader.close();

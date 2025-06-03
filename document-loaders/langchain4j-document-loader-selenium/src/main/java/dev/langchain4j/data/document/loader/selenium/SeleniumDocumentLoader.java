@@ -29,7 +29,9 @@ public class SeleniumDocumentLoader implements AutoCloseable {
         if (logger.isTraceEnabled()) {
             logger.trace("Waiting for document.readyState to be complete");
         }
-        return ((JavascriptExecutor) requireNonNull(wd)).executeScript("return document.readyState").equals("complete");
+        return ((JavascriptExecutor) requireNonNull(wd))
+                .executeScript("return document.readyState")
+                .equals("complete");
     };
 
     private SeleniumDocumentLoader(WebDriver webDriver, Duration timeout) {
