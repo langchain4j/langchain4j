@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.CODESTRAL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_MEDIUM_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
@@ -64,9 +65,9 @@ class MistralAiStreamingChatModelIT {
             .logResponses(true)
             .build();
 
-    StreamingChatModel openCodestralMamba = MistralAiStreamingChatModel.builder()
+    StreamingChatModel codestral = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName("open-codestral-mamba")
+            .modelName(CODESTRAL_LATEST)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -615,7 +616,7 @@ class MistralAiStreamingChatModelIT {
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        openCodestralMamba.chat(singletonList(userMessage), handler);
+        codestral.chat(singletonList(userMessage), handler);
 
         ChatResponse response = handler.get();
 

@@ -57,13 +57,13 @@ class VertexAiGeminiChatModelIT {
     static final String DICE_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
-    public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-001";
     public static final Gson GSON = new Gson();
+    public static final String MODEL_NAME = "gemini-2.0-flash";
 
     ChatModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
+            .modelName(MODEL_NAME)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -71,7 +71,7 @@ class VertexAiGeminiChatModelIT {
     ChatModel imageModel = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
+            .modelName(MODEL_NAME)
             .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
@@ -137,7 +137,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .maxOutputTokens(1)
                 .build();
 
@@ -163,7 +163,7 @@ class VertexAiGeminiChatModelIT {
 
         // given
         VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
-        GenerativeModel generativeModel = new GenerativeModel(GEMINI_1_5_PRO, vertexAi);
+        GenerativeModel generativeModel = new GenerativeModel(MODEL_NAME, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
         ChatModel model = new VertexAiGeminiChatModel(generativeModel, generationConfig);
@@ -298,7 +298,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .build();
 
         ToolSpecification weatherToolSpec = ToolSpecification.builder()
@@ -550,7 +550,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash-001")
+                .modelName("gemini-2.0-flash-lite")
                 .temperature(0.0f)
                 .topK(1)
                 .logRequests(true)
@@ -595,7 +595,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel modelWithSearch = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash-001")
+                .modelName("gemini-2.0-flash-lite")
                 .useGoogleSearch(true)
                 .build();
 
@@ -613,7 +613,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel modelWithResponseMimeType = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash-001")
+                .modelName("gemini-2.0-flash-lite")
                 .responseMimeType("application/json")
                 .build();
 
@@ -643,7 +643,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash-001")
+                .modelName("gemini-2.0-flash-lite")
                 .safetySettings(safetySettings)
                 .temperature(0.0f)
                 .topP(0.0f)
@@ -682,7 +682,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .responseMimeType("application/json")
@@ -712,7 +712,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .toolCallingMode(ToolCallingMode.ANY)
@@ -750,7 +750,7 @@ class VertexAiGeminiChatModelIT {
         ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .toolCallingMode(ToolCallingMode.NONE)
@@ -784,7 +784,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -807,7 +807,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(false) // videos are huge in logs
                 .logResponses(true)
                 .build();
@@ -830,7 +830,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(false) // videos are huge in logs
                 .logResponses(true)
                 .build();
@@ -856,7 +856,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -880,7 +880,7 @@ class VertexAiGeminiChatModelIT {
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .responseSchema(Schema.newBuilder()
