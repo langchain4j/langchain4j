@@ -3,6 +3,7 @@ package dev.langchain4j.model.azure;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerRequest;
@@ -350,9 +351,9 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<ChatModelListener> listeners,
             Set<Capability> capabilities) {
 
-        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
+        this.deploymentName = ensureNotBlank(deploymentName, "deploymentName");
         this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = temperature;
         this.topP = topP;
         this.logitBias = logitBias;
         this.user = user;

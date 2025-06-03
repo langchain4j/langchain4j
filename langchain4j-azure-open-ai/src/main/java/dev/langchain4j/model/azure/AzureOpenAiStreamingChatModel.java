@@ -3,6 +3,7 @@ package dev.langchain4j.model.azure;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerRequest;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerResponse;
@@ -419,10 +420,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             List<ChatModelListener> listeners,
             Set<Capability> capabilities) { // TODO capabilities are not used
 
-        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenCountEstimator = getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        this.deploymentName = ensureNotBlank(deploymentName, "deploymentName");
+        this.tokenCountEstimator = getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo")); // TODO
         this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = temperature;
         this.topP = topP;
         this.logitBias = logitBias;
         this.user = user;

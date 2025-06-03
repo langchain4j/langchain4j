@@ -1,8 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.data.embedding.Embedding.from;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.AzureOpenAiEmbeddingModelName.TEXT_EMBEDDING_ADA_002;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
@@ -150,7 +149,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private AzureOpenAiEmbeddingModel(String deploymentName, Integer dimensions) {
 
-        this.deploymentName = getOrDefault(deploymentName, TEXT_EMBEDDING_ADA_002.modelName());
+        this.deploymentName = ensureNotBlank(deploymentName, "deploymentName");
         this.dimensions = dimensions;
     }
 

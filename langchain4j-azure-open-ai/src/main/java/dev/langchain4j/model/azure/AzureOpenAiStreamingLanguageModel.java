@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -260,10 +261,10 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             Double presencePenalty,
             Double frequencyPenalty) {
 
-        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenCountEstimator = getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        this.deploymentName = ensureNotBlank(deploymentName, "deploymentName");
+        this.tokenCountEstimator = getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo")); // TODO
         this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = temperature;
         this.topP = topP;
         this.logitBias = logitBias;
         this.user = user;

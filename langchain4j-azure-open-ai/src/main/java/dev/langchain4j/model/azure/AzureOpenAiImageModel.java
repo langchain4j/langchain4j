@@ -1,6 +1,6 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -16,8 +16,6 @@ import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an OpenAI image model, hosted on Azure, such as dall-e-3.
@@ -48,15 +46,13 @@ import org.slf4j.LoggerFactory;
  */
 public class AzureOpenAiImageModel implements ImageModel {
 
-    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiImageModel.class);
-
     private OpenAIClient client;
     private final String deploymentName;
-    private ImageGenerationQuality quality = null;
-    private ImageSize size = null;
-    private String user = null;
-    private ImageGenerationStyle style = null;
-    private ImageGenerationResponseFormat responseFormat = null;
+    private ImageGenerationQuality quality;
+    private ImageSize size;
+    private String user;
+    private ImageGenerationStyle style;
+    private ImageGenerationResponseFormat responseFormat;
 
     public AzureOpenAiImageModel(
             OpenAIClient client,
@@ -169,7 +165,7 @@ public class AzureOpenAiImageModel implements ImageModel {
 
     private AzureOpenAiImageModel(
             String deploymentName, String quality, String size, String user, String style, String responseFormat) {
-        this.deploymentName = getOrDefault(deploymentName, "dall-e-3");
+        this.deploymentName = ensureNotBlank(deploymentName, "deploymentName");
         if (quality != null) {
             this.quality = ImageGenerationQuality.fromString(quality);
         }

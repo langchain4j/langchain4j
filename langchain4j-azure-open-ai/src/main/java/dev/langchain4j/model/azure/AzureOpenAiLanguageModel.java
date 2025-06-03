@@ -1,6 +1,6 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -18,8 +18,6 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -49,8 +47,6 @@ import org.slf4j.LoggerFactory;
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiLanguageModel implements LanguageModel {
-
-    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiLanguageModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
@@ -261,9 +257,9 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
             Double frequencyPenalty,
             Integer bestOf) {
 
-        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
+        this.deploymentName = ensureNotBlank(deploymentName, "deploymentName");
         this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = temperature;
         this.topP = topP;
         this.logitBias = logitBias;
         this.user = user;
