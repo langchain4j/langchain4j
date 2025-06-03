@@ -179,7 +179,6 @@ class InternalAzureOpenAiHelper {
         }
 
         maxRetries = getOrDefault(maxRetries, 2);
-        maxRetries = getOrDefault(maxRetries, 2);
         ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
         exponentialBackoffOptions.setMaxRetries(maxRetries);
         RetryOptions retryOptions = new RetryOptions(exponentialBackoffOptions);
