@@ -421,7 +421,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             Set<Capability> capabilities) { // TODO capabilities are not used
 
         this.deploymentName = ensureNotBlank(deploymentName, "deploymentName");
-        this.tokenCountEstimator = getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo")); // TODO
+        this.tokenCountEstimator = tokenCountEstimator;
         this.maxTokens = maxTokens;
         this.temperature = temperature;
         this.topP = topP;
@@ -530,7 +530,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .setSeed(seed)
                 .setResponseFormat(chatCompletionsResponseFormat);
 
-        int inputTokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
+        Integer inputTokenCount = null;
+        if (tokenCountEstimator != null) {
+            inputTokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
+        }
 
         if (toolThatMustBeExecuted != null) {
             options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));

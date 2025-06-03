@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
+import com.knuddels.jtokkit.api.EncodingRegistry;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -16,19 +17,12 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.TokenCountEstimator;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
 
+import static com.knuddels.jtokkit.api.EncodingType.O200K_BASE;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_0301;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0125_PREVIEW;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_1106_PREVIEW;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_TURBO;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_PREVIEW;
 
 /**
  * This class can be used to estimate the cost (in tokens) before calling OpenAI or when using streaming.
@@ -37,19 +31,11 @@ import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_
  */
 public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
 
-    private final String modelName;
-    private final Optional<Encoding> encoding;
+    private static final EncodingRegistry ENCODING_REGISTRY = Encodings.newDefaultEncodingRegistry();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    /**
-     * Creates an instance of the {@code AzureOpenAiTokenCountEstimator} for the "gpt-3.5-turbo" model.
-     *
-     * @deprecated Please use other constructors and specify the model name explicitly.
-     */
-    @Deprecated(forRemoval = true)
-    public AzureOpenAiTokenCountEstimator() {
-        this(GPT_3_5_TURBO.modelType());
-    }
+    private final String modelName;
+    private final Encoding encoding;
 
     /**
      * Creates an instance of the {@code AzureOpenAiTokenCountEstimator} for a given {@link AzureOpenAiChatModelName}.
@@ -77,22 +63,22 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
      */
     public AzureOpenAiTokenCountEstimator(String modelName) {
         this.modelName = ensureNotBlank(modelName, "modelName");
-        // If the model is unknown, we should NOT fail fast during the creation of AzureOpenAiTokenCountEstimator.
-        // Doing so would cause the failure of every OpenAI***Model that uses this token count estimator.
-        // This is done to account for situations when a new OpenAI model is available,
-        // but JTokkit does not yet support it.
-        this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
+        if (modelName.startsWith("o") || modelName.startsWith("gpt-4.")) {
+            // temporary fix until https://github.com/knuddelsgmbh/jtokkit/pull/118 is released
+            this.encoding = ENCODING_REGISTRY.getEncoding(O200K_BASE);
+        } else {
+            this.encoding = ENCODING_REGISTRY.getEncodingForModel(modelName).orElseThrow(unknownModelException());
+        }
     }
 
     public int estimateTokenCountInText(String text) {
-        return encoding.orElseThrow(unknownModelException())
-                .countTokensOrdinary(text);
+        return encoding.countTokensOrdinary(text);
     }
 
     @Override
     public int estimateTokenCountInMessage(ChatMessage message) {
         int tokenCount = 1; // 1 token for role
-        tokenCount += extraTokensPerMessage();
+        tokenCount += 3; // extra tokens per each message
 
         if (message instanceof SystemMessage) {
             tokenCount += estimateTokenCountIn((SystemMessage) message);
@@ -126,8 +112,8 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
             }
         }
 
-        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW.toString())) {
-            tokenCount += extraTokensPerName();
+        if (userMessage.name() != null) {
+            tokenCount += 1; // extra tokens per name
             tokenCount += estimateTokenCountInText(userMessage.name());
         }
 
@@ -142,11 +128,7 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
         }
 
         if (aiMessage.hasToolExecutionRequests()) {
-            if (isOneOfLatestModels()) {
-                tokenCount += 6;
-            } else {
-                tokenCount += 3;
-            }
+            tokenCount += 6;
             if (aiMessage.toolExecutionRequests().size() == 1) {
                 tokenCount -= 1;
                 ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -176,27 +158,15 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
             }
         }
 
+        if (modelName.startsWith("o4")) {
+            tokenCount += 2;
+        }
+
         return tokenCount;
     }
 
     private int estimateTokenCountIn(ToolExecutionResultMessage toolExecutionResultMessage) {
         return estimateTokenCountInText(toolExecutionResultMessage.text());
-    }
-
-    private int extraTokensPerMessage() {
-        if (modelName.equals(GPT_3_5_TURBO_0301.modelName())) {
-            return 4;
-        } else {
-            return 3;
-        }
-    }
-
-    private int extraTokensPerName() {
-        if (modelName.equals(GPT_3_5_TURBO_0301.toString())) {
-            return -1; // if there's a name, the role is omitted
-        } else {
-            return 1;
-        }
     }
 
     @Override
@@ -207,25 +177,13 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
         for (ChatMessage message : messages) {
             tokenCount += estimateTokenCountInMessage(message);
         }
+        if (modelName.startsWith("o") ) {
+            tokenCount -= 1;
+        }
         return tokenCount;
     }
 
     private Supplier<IllegalArgumentException> unknownModelException() {
         return () -> illegalArgument("Model '%s' is unknown to jtokkit", modelName);
-    }
-
-    private boolean isOneOfLatestModels() {
-        return isOneOfLatestGpt3Models() || isOneOfLatestGpt4Models();
-    }
-
-    private boolean isOneOfLatestGpt3Models() {
-        return modelName.equals(GPT_3_5_TURBO_1106.toString())
-                || modelName.equals(GPT_3_5_TURBO.toString());
-    }
-
-    private boolean isOneOfLatestGpt4Models() {
-        return modelName.equals(GPT_4_TURBO.toString())
-                || modelName.equals(GPT_4_1106_PREVIEW.toString())
-                || modelName.equals(GPT_4_0125_PREVIEW.toString());
     }
 }

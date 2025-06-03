@@ -95,8 +95,7 @@ class AzureOpenAiStreamingChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1} with custom async client set to {2} ")
     @CsvSource({"gpt-4o,        gpt-4o, true", "gpt-4o,        gpt-4o, false"})
-    void should_custom_models_work(String deploymentName, String gptVersion, boolean useCustomAsyncClient)
-            throws Exception {
+    void should_custom_models_work(String deploymentName, String gptVersion, boolean useCustomAsyncClient) {
 
         OpenAIAsyncClient asyncClient = null;
         OpenAIClient client = null;

@@ -94,6 +94,11 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return false; // TODO implement
     }
 
+    @Override
+    protected boolean assertTokenUsage() {
+        return false; // testing AzureOpenAiStreamingChatModel without TokenCountEstimator
+    }
+
     protected boolean assertFinishReason() {
         return false; // TODO implement
     }
