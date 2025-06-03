@@ -2,6 +2,7 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
@@ -9,8 +10,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.azure.ai.openai.OpenAIAsyncClient;
-import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -22,6 +21,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -41,8 +41,8 @@ class AzureOpenAiStreamingChatModelIT {
     public long STREAMING_TIMEOUT = 120;
 
     @ParameterizedTest(name = "Deployment name {0} using {1} with async client set to {2}")
-    @CsvSource({"gpt-4o,        gpt-4o, true", "gpt-4o,        gpt-4o, false"})
-    void should_stream_answer(String deploymentName, String gptVersion, boolean useAsyncClient) throws Exception {
+    @CsvSource({"gpt-4o, gpt-4o"})
+    void should_stream_answer(String deploymentName, String gptVersion) throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
@@ -51,7 +51,6 @@ class AzureOpenAiStreamingChatModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .useAsyncClient(useAsyncClient)
                 .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
@@ -98,21 +97,8 @@ class AzureOpenAiStreamingChatModelIT {
     void should_custom_models_work(String deploymentName, String gptVersion, boolean useCustomAsyncClient) {
 
         OpenAIAsyncClient asyncClient = null;
-        OpenAIClient client = null;
         if (useCustomAsyncClient) {
             asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(
-                    System.getenv("AZURE_OPENAI_ENDPOINT"),
-                    gptVersion,
-                    System.getenv("AZURE_OPENAI_KEY"),
-                    Duration.ofSeconds(30),
-                    5,
-                    null,
-                    null,
-                    true,
-                    null,
-                    null);
-        } else {
-            client = InternalAzureOpenAiHelper.setupSyncClient(
                     System.getenv("AZURE_OPENAI_ENDPOINT"),
                     gptVersion,
                     System.getenv("AZURE_OPENAI_KEY"),
@@ -127,7 +113,6 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .openAIAsyncClient(asyncClient)
-                .openAIClient(client)
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
@@ -156,11 +141,13 @@ class AzureOpenAiStreamingChatModelIT {
     @ValueSource(strings = {"gpt-4o"})
     void should_use_json_format(String deploymentName) {
 
+        ResponseFormat responseFormat = JSON;
+
         StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .responseFormat(new ChatCompletionsJsonResponseFormat())
+                .responseFormat(responseFormat)
                 .temperature(0.0)
                 .maxTokens(50)
                 .logRequestsAndResponses(true)

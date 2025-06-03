@@ -25,7 +25,6 @@ import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
 import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
-import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
@@ -102,10 +101,6 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final List<AzureChatExtensionConfiguration> dataSources;
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
-
-    @Deprecated
-    private ChatCompletionsResponseFormat chatCompletionsResponseFormat;
-
     private final ResponseFormat responseFormat;
     private final Boolean strictJsonSchema;
     private final List<ChatModelListener> listeners;
@@ -125,7 +120,6 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             List<ChatModelListener> listeners,
@@ -144,7 +138,6 @@ public class AzureOpenAiChatModel implements ChatModel {
                 dataSources,
                 enhancements,
                 seed,
-                chatCompletionsResponseFormat,
                 responseFormat,
                 strictJsonSchema,
                 listeners,
@@ -169,7 +162,6 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             Duration timeout,
@@ -194,7 +186,6 @@ public class AzureOpenAiChatModel implements ChatModel {
                 dataSources,
                 enhancements,
                 seed,
-                chatCompletionsResponseFormat,
                 responseFormat,
                 strictJsonSchema,
                 listeners,
@@ -229,7 +220,6 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             Duration timeout,
@@ -254,7 +244,6 @@ public class AzureOpenAiChatModel implements ChatModel {
                 dataSources,
                 enhancements,
                 seed,
-                chatCompletionsResponseFormat,
                 responseFormat,
                 strictJsonSchema,
                 listeners,
@@ -289,7 +278,6 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             Duration timeout,
@@ -314,7 +302,6 @@ public class AzureOpenAiChatModel implements ChatModel {
                 dataSources,
                 enhancements,
                 seed,
-                chatCompletionsResponseFormat,
                 responseFormat,
                 strictJsonSchema,
                 listeners,
@@ -345,7 +332,6 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             List<ChatModelListener> listeners,
@@ -363,11 +349,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.dataSources = dataSources;
         this.enhancements = enhancements;
         this.seed = seed;
-        this.chatCompletionsResponseFormat = chatCompletionsResponseFormat;
         this.responseFormat = responseFormat;
-        if (this.chatCompletionsResponseFormat != null && this.responseFormat != null) {
-            throw new IllegalArgumentException("You can't set both chatCompletionsResponseFormat and responseFormat");
-        }
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copyIfNotNull(capabilities);
@@ -419,12 +401,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<ToolSpecification> toolSpecifications,
             ToolSpecification toolThatMustBeExecuted,
             ResponseFormat responseFormat) {
-        ChatCompletionsResponseFormat chatCompletionsResponseFormat = null;
-        if (responseFormat != null) {
-            chatCompletionsResponseFormat = toAzureOpenAiResponseFormat(responseFormat, this.strictJsonSchema);
-        } else {
-            chatCompletionsResponseFormat = this.chatCompletionsResponseFormat;
-        }
+
         ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
                 .setModel(deploymentName)
                 .setMaxTokens(maxTokens)
@@ -438,7 +415,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
                 .setSeed(seed)
-                .setResponseFormat(chatCompletionsResponseFormat);
+                .setResponseFormat(toAzureOpenAiResponseFormat(responseFormat, this.strictJsonSchema));
 
         if (toolThatMustBeExecuted != null) {
             options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
@@ -533,7 +510,6 @@ public class AzureOpenAiChatModel implements ChatModel {
         private List<AzureChatExtensionConfiguration> dataSources;
         private AzureChatEnhancementConfiguration enhancements;
         private Long seed;
-        private ChatCompletionsResponseFormat chatCompletionsResponseFormat;
         private ResponseFormat responseFormat;
         private Boolean strictJsonSchema;
         private Duration timeout;
@@ -680,15 +656,6 @@ public class AzureOpenAiChatModel implements ChatModel {
             return this;
         }
 
-        /**
-         * @deprecated For JSON output, you can replace `.responseFormat(new ChatCompletionsJsonResponseFormat())` with a `JsonSchema` in the `ResponseFormat`. You can then use `.strictJsonSchema(true)`to force JSON schema adherence.
-         */
-        @Deprecated(forRemoval = true)
-        public Builder responseFormat(ChatCompletionsResponseFormat chatCompletionsResponseFormat) {
-            this.chatCompletionsResponseFormat = chatCompletionsResponseFormat;
-            return this;
-        }
-
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
@@ -773,7 +740,6 @@ public class AzureOpenAiChatModel implements ChatModel {
                             dataSources,
                             enhancements,
                             seed,
-                            chatCompletionsResponseFormat,
                             responseFormat,
                             strictJsonSchema,
                             timeout,
@@ -802,7 +768,6 @@ public class AzureOpenAiChatModel implements ChatModel {
                             dataSources,
                             enhancements,
                             seed,
-                            chatCompletionsResponseFormat,
                             responseFormat,
                             strictJsonSchema,
                             timeout,
@@ -831,7 +796,6 @@ public class AzureOpenAiChatModel implements ChatModel {
                         dataSources,
                         enhancements,
                         seed,
-                        chatCompletionsResponseFormat,
                         responseFormat,
                         strictJsonSchema,
                         timeout,
@@ -857,7 +821,6 @@ public class AzureOpenAiChatModel implements ChatModel {
                         dataSources,
                         enhancements,
                         seed,
-                        chatCompletionsResponseFormat,
                         responseFormat,
                         strictJsonSchema,
                         listeners,
