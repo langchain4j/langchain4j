@@ -223,20 +223,16 @@ class InternalAzureOpenAiHelper {
     }
 
     public static ChatRequestMessage toOpenAiMessage(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
             ChatRequestAssistantMessage chatRequestAssistantMessage =
                     new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
             chatRequestAssistantMessage.setToolCalls(toolExecutionRequestsFrom(message));
             return chatRequestAssistantMessage;
-        } else if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+        } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
-        } else if (message instanceof SystemMessage) {
-            SystemMessage systemMessage = (SystemMessage) message;
+        } else if (message instanceof SystemMessage systemMessage) {
             return new ChatRequestSystemMessage(systemMessage.text());
-        } else if (message instanceof UserMessage) {
-            UserMessage userMessage = (UserMessage) message;
+        } else if (message instanceof UserMessage userMessage) {
             ChatRequestUserMessage chatRequestUserMessage;
             if (userMessage.hasSingleText()) {
                 chatRequestUserMessage = new ChatRequestUserMessage(
@@ -247,8 +243,7 @@ class InternalAzureOpenAiHelper {
                             if (content instanceof TextContent) {
                                 String text = ((TextContent) content).text();
                                 return new ChatMessageTextContentItem(text);
-                            } else if (content instanceof ImageContent) {
-                                ImageContent imageContent = (ImageContent) content;
+                            } else if (content instanceof ImageContent imageContent) {
                                 if (imageContent.image().url() == null) {
                                     throw new UnsupportedFeatureException("Image URL is not present. "
                                             + "Base64 encoded images are not supported at the moment.");
@@ -282,8 +277,7 @@ class InternalAzureOpenAiHelper {
     }
 
     private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
             if (aiMessage.hasToolExecutionRequests()) {
                 return aiMessage.toolExecutionRequests().stream()
                         .map(toolExecutionRequest -> new ChatCompletionsFunctionToolCall(
