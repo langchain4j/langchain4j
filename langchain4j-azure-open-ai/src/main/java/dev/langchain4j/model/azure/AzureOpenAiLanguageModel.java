@@ -1,6 +1,6 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
@@ -263,11 +263,11 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
         this.maxTokens = maxTokens;
         this.temperature = temperature;
         this.topP = topP;
-        this.logitBias = copy(logitBias);
+        this.logitBias = copyIfNotNull(logitBias);
         this.user = user;
         this.logprobs = logprobs;
         this.echo = echo;
-        this.stop = copy(stop);
+        this.stop = copyIfNotNull(stop);
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.bestOf = bestOf;
