@@ -1,41 +1,41 @@
 package dev.langchain4j.model.azure.common;
 
+import static java.time.Duration.ofSeconds;
+
+import dev.langchain4j.model.azure.AzureOpenAiChatRequestParameters;
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.List;
-
-import static java.time.Duration.ofSeconds;
-
 class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL = AzureOpenAiStreamingChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-4o-mini")
-            .logRequestsAndResponses(false) // images are huge in logs
-            .timeout(ofSeconds(120))
-            .build();
+    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL =
+            AzureOpenAiStreamingChatModel.builder()
+                    .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .deploymentName("gpt-4o-mini")
+                    .logRequestsAndResponses(false) // images are huge in logs
+                    .timeout(ofSeconds(120))
+                    .build();
 
-    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA = AzureOpenAiStreamingChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-4o-mini")
-            .logRequestsAndResponses(false) // images are huge in logs
-            .strictJsonSchema(true)
-            .build();
+    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA =
+            AzureOpenAiStreamingChatModel.builder()
+                    .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .deploymentName("gpt-4o-mini")
+                    .logRequestsAndResponses(false) // images are huge in logs
+                    .strictJsonSchema(true)
+                    .build();
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(
-                AZURE_OPEN_AI_STREAMING_CHAT_MODEL,
-                AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA
-        );
+        return List.of(AZURE_OPEN_AI_STREAMING_CHAT_MODEL, AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA);
     }
 
     @Override
@@ -55,26 +55,6 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
@@ -82,6 +62,31 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // Azure OpenAI does not support base64-encoded images
+    }
+
+    @Override
+    protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
+        AzureOpenAiStreamingChatModel.Builder azureOpenAiChatModelBuilder = AzureOpenAiStreamingChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .defaultRequestParameters(parameters)
+                .logRequestsAndResponses(true);
+        if (parameters.modelName() == null) {
+            azureOpenAiChatModelBuilder.deploymentName("gpt-4o-mini");
+        }
+        return azureOpenAiChatModelBuilder.build();
+    }
+
+    @Override
+    protected String customModelName() {
+        return "gpt-4-turbo-2024-04-09";
+    }
+
+    @Override
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return AzureOpenAiChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override

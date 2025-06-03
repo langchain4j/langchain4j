@@ -12,10 +12,10 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
@@ -261,7 +261,8 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             Double frequencyPenalty) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenCountEstimator = getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        this.tokenCountEstimator =
+                getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo"));
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -289,8 +290,10 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .setPresencePenalty(presencePenalty)
                 .setFrequencyPenalty(frequencyPenalty);
 
-        Integer inputTokenCount = tokenCountEstimator == null ? null : tokenCountEstimator.estimateTokenCountInText(prompt);
-        AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
+        Integer inputTokenCount =
+                tokenCountEstimator == null ? null : tokenCountEstimator.estimateTokenCountInText(prompt);
+        AzureOpenAiStreamingResponseBuilder responseBuilder =
+                new AzureOpenAiStreamingResponseBuilder(options.getModel(), inputTokenCount);
 
         try {
             client.getCompletionsStream(deploymentName, options).stream().forEach(completions -> {
@@ -298,10 +301,10 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 handle(completions, handler);
             });
 
-            Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
+            ChatResponse response = responseBuilder.build(tokenCountEstimator);
 
             handler.onComplete(
-                    Response.from(response.content().text(), response.tokenUsage(), response.finishReason()));
+                    Response.from(response.aiMessage().text(), response.tokenUsage(), response.finishReason()));
         } catch (Exception exception) {
             handler.onError(exception);
         }

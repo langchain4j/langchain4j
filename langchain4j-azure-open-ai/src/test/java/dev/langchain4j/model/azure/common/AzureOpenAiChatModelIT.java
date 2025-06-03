@@ -1,9 +1,10 @@
 package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.azure.AzureOpenAiChatRequestParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -50,26 +51,6 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
@@ -77,6 +58,31 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // Azure OpenAI does not support base64-encoded images
+    }
+
+    @Override
+    protected ChatModel createModelWith(ChatRequestParameters parameters) {
+        AzureOpenAiChatModel.Builder azureOpenAiChatModelBuilder = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .defaultRequestParameters(parameters)
+                .logRequestsAndResponses(true);
+        if (parameters.modelName() == null) {
+            azureOpenAiChatModelBuilder.deploymentName("gpt-4o-mini");
+        }
+        return azureOpenAiChatModelBuilder.build();
+    }
+
+    @Override
+    protected String customModelName() {
+        return "gpt-4-turbo-2024-04-09";
+    }
+
+    @Override
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return AzureOpenAiChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
