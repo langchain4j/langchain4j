@@ -1,7 +1,6 @@
 package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
 
 import java.util.List;

@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -22,14 +21,14 @@ import static java.util.stream.Collectors.toList;
  */
 class AzureOpenAiStreamingResponseBuilder {
 
+    private final Integer inputTokenCount;
+
     private final StringBuffer contentBuilder = new StringBuffer();
-    private final StringBuffer toolNameBuilder = new StringBuffer();
-    private final StringBuffer toolArgumentsBuilder = new StringBuffer();
+
     private String toolExecutionsIndex = "call_undefined";
     private final Map<String, ToolExecutionRequestBuilder> toolExecutionRequestBuilderHashMap = new HashMap<>();
-    private volatile CompletionsFinishReason finishReason;
 
-    private final Integer inputTokenCount;
+    private volatile CompletionsFinishReason finishReason;
 
     public AzureOpenAiStreamingResponseBuilder(Integer inputTokenCount) {
         this.inputTokenCount = inputTokenCount;
@@ -80,8 +79,7 @@ class AzureOpenAiStreamingResponseBuilder {
                         throw new IllegalStateException("Function without an id defined in the tool call");
                     }
                 }
-                if (toolCall instanceof ChatCompletionsFunctionToolCall) {
-                    ChatCompletionsFunctionToolCall functionCall = (ChatCompletionsFunctionToolCall) toolCall;
+                if (toolCall instanceof ChatCompletionsFunctionToolCall functionCall) {
                     if (functionCall.getFunction().getName() != null) {
                         toolExecutionRequestBuilder.nameBuilder.append(functionCall.getFunction().getName());
                     }
@@ -124,21 +122,6 @@ class AzureOpenAiStreamingResponseBuilder {
         String content = contentBuilder.toString();
         TokenUsage tokenUsage =
                 content.isEmpty() ? new TokenUsage(inputTokenCount, 0) : tokenUsage(content, tokenCountEstimator);
-
-        String toolName = toolNameBuilder.toString();
-        if (!toolName.isEmpty()) {
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(toolName)
-                    .arguments(toolArgumentsBuilder.toString())
-                    .build();
-            return Response.from(
-                    !content.isEmpty() ?
-                        AiMessage.from(content, singletonList(toolExecutionRequest)) :
-                        AiMessage.from(toolExecutionRequest),
-                    tokenUsage,
-                    finishReasonFrom(finishReason)
-            );
-        }
 
         if (!toolExecutionRequestBuilderHashMap.isEmpty()) {
             List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderHashMap.values().stream()

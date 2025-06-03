@@ -3,13 +3,9 @@ package dev.langchain4j.model.azure;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerRequest;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerResponse;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
@@ -17,9 +13,8 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toOpenAiMess
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.singletonList;
 
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
@@ -30,34 +25,22 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
@@ -86,23 +69,17 @@ import org.slf4j.LoggerFactory;
  */
 public class AzureOpenAiChatModel implements ChatModel {
 
-    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModel.class);
-
     private OpenAIClient client;
-    private final String deploymentName;
-    private final Integer maxTokens;
-    private final Double temperature;
-    private final Double topP;
+
+    private final ChatRequestParameters defaultRequestParameters;
+
     private final Map<String, Integer> logitBias;
     private final String user;
-    private final List<String> stop;
-    private final Double presencePenalty;
-    private final Double frequencyPenalty;
     private final List<AzureChatExtensionConfiguration> dataSources;
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
-    private final ResponseFormat responseFormat;
     private final Boolean strictJsonSchema;
+
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
 
@@ -122,6 +99,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             Long seed,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
+            ChatRequestParameters defaultRequestParameters,
             List<ChatModelListener> listeners,
             Set<Capability> capabilities) {
 
@@ -140,6 +118,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 seed,
                 responseFormat,
                 strictJsonSchema,
+                defaultRequestParameters,
                 listeners,
                 capabilities);
         this.client = ensureNotNull(client, "client");
@@ -168,6 +147,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             Integer maxRetries,
             ProxyOptions proxyOptions,
             boolean logRequestsAndResponses,
+            ChatRequestParameters defaultRequestParameters,
             List<ChatModelListener> listeners,
             String userAgentSuffix,
             Map<String, String> customHeaders,
@@ -188,6 +168,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 seed,
                 responseFormat,
                 strictJsonSchema,
+                defaultRequestParameters,
                 listeners,
                 capabilities);
         this.client = setupSyncClient(
@@ -226,6 +207,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             Integer maxRetries,
             ProxyOptions proxyOptions,
             boolean logRequestsAndResponses,
+            ChatRequestParameters defaultRequestParameters,
             List<ChatModelListener> listeners,
             String userAgentSuffix,
             Map<String, String> customHeaders,
@@ -246,6 +228,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 seed,
                 responseFormat,
                 strictJsonSchema,
+                defaultRequestParameters,
                 listeners,
                 capabilities);
         this.client = setupSyncClient(
@@ -284,6 +267,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             Integer maxRetries,
             ProxyOptions proxyOptions,
             boolean logRequestsAndResponses,
+            ChatRequestParameters defaultRequestParameters,
             List<ChatModelListener> listeners,
             String userAgentSuffix,
             Map<String, String> customHeaders,
@@ -304,6 +288,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 seed,
                 responseFormat,
                 strictJsonSchema,
+                defaultRequestParameters,
                 listeners,
                 capabilities);
         this.client = setupSyncClient(
@@ -334,25 +319,41 @@ public class AzureOpenAiChatModel implements ChatModel {
             Long seed,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
+            ChatRequestParameters defaultRequestParameters,
             List<ChatModelListener> listeners,
             Set<Capability> capabilities) {
 
-        this.deploymentName = ensureNotBlank(deploymentName, "deploymentName");
-        this.maxTokens = maxTokens;
-        this.temperature = temperature;
-        this.topP = topP;
+        if (defaultRequestParameters != null) {
+            validate(defaultRequestParameters);
+        } else {
+            defaultRequestParameters = DefaultChatRequestParameters.builder().build();
+        }
+
+        this.defaultRequestParameters = ChatRequestParameters.builder()
+                .modelName(getOrDefault(deploymentName, defaultRequestParameters.modelName()))
+                .temperature(getOrDefault(temperature, defaultRequestParameters.temperature()))
+                .topP(getOrDefault(topP, defaultRequestParameters.topP()))
+                .frequencyPenalty(getOrDefault(frequencyPenalty, defaultRequestParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(presencePenalty, defaultRequestParameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(maxTokens, defaultRequestParameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(stop, defaultRequestParameters.stopSequences()))
+                .responseFormat(getOrDefault(responseFormat, defaultRequestParameters.responseFormat()))
+                .build();
+
         this.logitBias = copy(logitBias);
         this.user = user;
-        this.stop = copy(stop);
-        this.presencePenalty = presencePenalty;
-        this.frequencyPenalty = frequencyPenalty;
         this.dataSources = copyIfNotNull(dataSources);
         this.enhancements = enhancements;
         this.seed = seed;
-        this.responseFormat = responseFormat;
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
+
         this.listeners = copy(listeners);
         this.supportedCapabilities = copy(capabilities);
+    }
+
+    @Override
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override
@@ -361,116 +362,43 @@ public class AzureOpenAiChatModel implements ChatModel {
     }
 
     @Override
-    public ChatResponse chat(ChatRequest request) {
-
+    public ChatResponse doChat(ChatRequest request) {
         ChatRequestParameters parameters = request.parameters();
-        ChatRequestValidationUtils.validateParameters(parameters);
-        if (parameters.toolChoice() == REQUIRED) {
-            if (parameters.toolSpecifications().size() != 1) {
-                throw new UnsupportedFeatureException(String.format(
-                        "%s.%s is currently supported only when there is a single tool",
-                        ToolChoice.class.getSimpleName(), REQUIRED.name()));
-            }
-        }
+        validate(parameters);
 
-        // If the response format is not specified in the request, use the one specified in the model
-        ResponseFormat responseFormat = parameters.responseFormat();
-        if (responseFormat == null) {
-            responseFormat = this.responseFormat;
-        }
-
-        ToolSpecification toolThatMustBeExecuted = null;
-        if (parameters.toolChoice() == REQUIRED) {
-            toolThatMustBeExecuted = parameters.toolSpecifications().get(0);
-        }
-
-        Response<AiMessage> response =
-                generate(request.messages(), parameters.toolSpecifications(), toolThatMustBeExecuted, responseFormat);
-
-        return ChatResponse.builder()
-                .aiMessage(response.content())
-                .metadata(ChatResponseMetadata.builder()
-                        .tokenUsage(response.tokenUsage())
-                        .finishReason(response.finishReason())
-                        .build())
-                .build();
-    }
-
-    private Response<AiMessage> generate(
-            List<ChatMessage> messages,
-            List<ToolSpecification> toolSpecifications,
-            ToolSpecification toolThatMustBeExecuted,
-            ResponseFormat responseFormat) {
-
-        ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
-                .setModel(deploymentName)
-                .setMaxTokens(maxTokens)
-                .setTemperature(temperature)
-                .setTopP(topP)
+        ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(request.messages()))
+                .setModel(parameters.modelName())
+                .setTemperature(parameters.temperature())
+                .setTopP(parameters.topP())
+                .setFrequencyPenalty(parameters.frequencyPenalty())
+                .setPresencePenalty(parameters.presencePenalty())
+                .setMaxTokens(parameters.maxOutputTokens())
+                .setStop(parameters.stopSequences())
+                .setResponseFormat(toAzureOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
                 .setLogitBias(logitBias)
                 .setUser(user)
-                .setStop(stop)
-                .setPresencePenalty(presencePenalty)
-                .setFrequencyPenalty(frequencyPenalty)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
-                .setSeed(seed)
-                .setResponseFormat(toAzureOpenAiResponseFormat(responseFormat, this.strictJsonSchema));
+                .setSeed(seed);
 
-        if (toolThatMustBeExecuted != null) {
-            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
-            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
+        if (!parameters.toolSpecifications().isEmpty()) {
+            options.setTools(toToolDefinitions(parameters.toolSpecifications()));
         }
-        if (!isNullOrEmpty(toolSpecifications)) {
-            options.setTools(toToolDefinitions(toolSpecifications));
+        if (parameters.toolChoice() != null) {
+            options.setToolChoice(toToolChoice(parameters.toolChoice()));
         }
 
-        ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
-        listeners.forEach(listener -> {
-            try {
-                listener.onRequest(requestContext);
-            } catch (Exception e) {
-                logger.warn("Exception while calling model listener", e);
-            }
-        });
+        ChatCompletions chatCompletions = client.getChatCompletions(parameters.modelName(), options);
 
-        try {
-            ChatCompletions chatCompletions = client.getChatCompletions(deploymentName, options);
-            Response<AiMessage> response = Response.from(
-                    aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()),
-                    tokenUsageFrom(chatCompletions.getUsage()),
-                    finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason()));
-
-            ChatResponse listenerResponse =
-                    createListenerResponse(chatCompletions.getId(), options.getModel(), response);
-            ChatModelResponseContext responseContext =
-                    new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
-            listeners.forEach(listener -> {
-                try {
-                    listener.onResponse(responseContext);
-                } catch (Exception e) {
-                    logger.warn("Exception while calling model listener", e);
-                }
-            });
-
-            return response;
-        } catch (Exception exception) {
-
-            ChatModelErrorContext errorContext =
-                    new ChatModelErrorContext(exception, listenerRequest, provider(), attributes);
-
-            listeners.forEach(listener -> {
-                try {
-                    listener.onError(errorContext);
-                } catch (Exception e2) {
-                    logger.warn("Exception while calling model listener", e2);
-                }
-            });
-
-            throw exception;
-        }
+        return ChatResponse.builder()
+                .aiMessage(aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()))
+                .metadata(ChatResponseMetadata.builder()
+                        .id(chatCompletions.getId())
+                        .modelName(chatCompletions.getModel())
+                        .tokenUsage(tokenUsageFrom(chatCompletions.getUsage()))
+                        .finishReason(finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason()))
+                        .build())
+                .build();
     }
 
     @Override
@@ -491,6 +419,8 @@ public class AzureOpenAiChatModel implements ChatModel {
     }
 
     public static class Builder {
+
+        private ChatRequestParameters defaultRequestParameters;
 
         private String endpoint;
         private String serviceVersion;
@@ -521,6 +451,11 @@ public class AzureOpenAiChatModel implements ChatModel {
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
         private Set<Capability> capabilities;
+
+        public Builder defaultRequestParameters(ChatRequestParameters parameters) {
+            this.defaultRequestParameters = parameters;
+            return this;
+        }
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -746,6 +681,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
+                            defaultRequestParameters,
                             listeners,
                             userAgentSuffix,
                             customHeaders,
@@ -774,6 +710,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
+                            defaultRequestParameters,
                             listeners,
                             userAgentSuffix,
                             customHeaders,
@@ -802,6 +739,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         maxRetries,
                         proxyOptions,
                         logRequestsAndResponses,
+                        defaultRequestParameters,
                         listeners,
                         userAgentSuffix,
                         customHeaders,
@@ -823,6 +761,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         seed,
                         responseFormat,
                         strictJsonSchema,
+                        defaultRequestParameters,
                         listeners,
                         capabilities);
             }

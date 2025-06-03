@@ -2,7 +2,6 @@ package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 
 import java.util.List;

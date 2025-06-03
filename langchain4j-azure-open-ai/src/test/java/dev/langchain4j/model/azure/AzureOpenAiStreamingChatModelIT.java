@@ -5,6 +5,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -238,7 +239,7 @@ class AzureOpenAiStreamingChatModelIT {
                 .isEqualTo(response.tokenUsage().inputTokenCount()
                         + response.tokenUsage().outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         ToolExecutionResultMessage toolExecutionResultMessage =
                 toolExecutionResultMessage(toolExecutionRequest, "four");
