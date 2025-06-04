@@ -6,12 +6,13 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class VertexAiGeminiStreamingChatModelBuilderTest {
+
     @Test
     void setCustomHeader() {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-                .project("projectId")
-                .location("location")
-                .modelName("gemini-flash-1.5")
+                .project("does-not-matter")
+                .location("does-not-matter")
+                .modelName("does-not-matter")
                 .customHeaders(Map.of("foo", "bar"))
                 .build();
 
@@ -22,9 +23,9 @@ class VertexAiGeminiStreamingChatModelBuilderTest {
     @Test
     void setDefaultUserAgent() {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-                .project("projectId")
-                .location("location")
-                .modelName("gemini-flash-1.5")
+                .project("does-not-matter")
+                .location("does-not-matter")
+                .modelName("does-not-matter")
                 .build();
 
         final String actualFooHeader = model.vertexAI().getHeaders().getOrDefault("user-agent", "error");
@@ -34,9 +35,9 @@ class VertexAiGeminiStreamingChatModelBuilderTest {
     @Test
     void overwriteDefaultUserAgent() {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-                .project("projectId")
-                .location("location")
-                .modelName("gemini-flash-1.5")
+                .project("does-not-matter")
+                .location("does-not-matter")
+                .modelName("does-not-matter")
                 .customHeaders(Map.of("user-agent", "my-custom-user-agent"))
                 .build();
 

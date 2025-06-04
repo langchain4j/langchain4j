@@ -59,12 +59,12 @@ import org.junitpioneer.jupiter.RetryingTest;
 
 class VertexAiGeminiStreamingChatModelIT {
 
-    public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-001";
+    public static final String MODEL_NAME = "gemini-2.0-flash";
 
     StreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_5_PRO)
+            .modelName(MODEL_NAME)
             .build();
 
     @Test
@@ -132,7 +132,7 @@ class VertexAiGeminiStreamingChatModelIT {
         StreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .maxOutputTokens(1)
                 .build();
 
@@ -160,7 +160,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // given
         VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
-        GenerativeModel generativeModel = new GenerativeModel(GEMINI_1_5_PRO, vertexAi);
+        GenerativeModel generativeModel = new GenerativeModel(MODEL_NAME, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
         StreamingChatModel model = new VertexAiGeminiStreamingChatModel(generativeModel, generationConfig);
@@ -386,7 +386,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash-001")
+                .modelName("gemini-2.0-flash-lite")
                 .logRequests(true)
                 .logResponses(true)
                 .temperature(0.0f)
@@ -444,7 +444,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel modelWithSearch = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash-001")
+                .modelName("gemini-2.0-flash-lite")
                 .useGoogleSearch(true)
                 .build();
 
@@ -464,7 +464,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel modelWithResponseMimeType = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash-001")
+                .modelName("gemini-2.0-flash-lite")
                 .responseMimeType("application/json")
                 .build();
 
@@ -497,7 +497,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash-001")
+                .modelName("gemini-2.0-flash-lite")
                 .safetySettings(safetySettings)
                 .logRequests(true)
                 .logResponses(true)
@@ -532,7 +532,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .responseMimeType("application/json")
@@ -562,7 +562,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .toolCallingMode(ToolCallingMode.ANY)
@@ -604,7 +604,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .toolCallingMode(ToolCallingMode.NONE)
@@ -641,7 +641,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -665,7 +665,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(false) // videos are huge in logs
                 .logResponses(true)
                 .build();
@@ -689,7 +689,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(false) // videos are huge in logs
                 .logResponses(true)
                 .build();
@@ -716,7 +716,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -741,7 +741,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_1_5_PRO)
+                .modelName(MODEL_NAME)
                 .logRequests(true)
                 .logResponses(true)
                 .responseSchema(Schema.newBuilder()

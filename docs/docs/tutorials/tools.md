@@ -268,7 +268,7 @@ This means that the LLM will have to produce a value for such a parameter.
 A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
-void getTemperature(String location, @P(required = false) Unit unit) {
+void getTemperature(String location, @P(value = "Unit of temperature", required = false) Unit unit) {
     ...
 }
 ```

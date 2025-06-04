@@ -74,7 +74,10 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
         ImagesResponse response = client.images().generate(imageGenerateParams, requestOptions());
 
-        return Response.from(fromOpenAiImage(response.data().get(0)));
+        if (response.data().isEmpty() && response.data().get().isEmpty()) {
+            throw new IllegalArgumentException("Image generation failed: no image returned");
+        }
+        return Response.from(fromOpenAiImage(response.data().get().get(0)));
     }
 
     @Override
@@ -85,7 +88,11 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
         ImagesResponse response = client.images().generate(imageGenerateParams, requestOptions());
 
-        return Response.from(response.data().stream()
+        if (response.data().isEmpty()) {
+            throw new IllegalArgumentException("Image generation failed: no image returned");
+        }
+
+        return Response.from(response.data().get().stream()
                 .map(OpenAiOfficialImageModel::fromOpenAiImage)
                 .toList());
     }
