@@ -419,7 +419,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             inputTokenCount = tokenCountEstimator.estimateTokenCountInMessages(request.messages());
         }
 
-        AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
+        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount);
 
         Flux<ChatCompletions> chatCompletionsStream = asyncClient.getChatCompletionsStream(parameters.modelName(), options);
 

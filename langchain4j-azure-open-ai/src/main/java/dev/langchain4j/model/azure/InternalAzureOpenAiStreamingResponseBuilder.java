@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.models.*;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.TokenCountEstimator;
@@ -19,7 +20,8 @@ import static java.util.stream.Collectors.toList;
  * and there is no guarantee that this thread will be the same as the one that initiated the request,
  * in fact it almost certainly won't be.
  */
-class AzureOpenAiStreamingResponseBuilder {
+@Internal
+class InternalAzureOpenAiStreamingResponseBuilder {
 
     private final Integer inputTokenCount;
 
@@ -30,11 +32,11 @@ class AzureOpenAiStreamingResponseBuilder {
 
     private volatile CompletionsFinishReason finishReason;
 
-    public AzureOpenAiStreamingResponseBuilder(Integer inputTokenCount) {
+    InternalAzureOpenAiStreamingResponseBuilder(Integer inputTokenCount) {
         this.inputTokenCount = inputTokenCount;
     }
 
-    public void append(ChatCompletions completions) {
+    void append(ChatCompletions completions) {
         if (completions == null) {
             return;
         }
@@ -91,7 +93,7 @@ class AzureOpenAiStreamingResponseBuilder {
         }
     }
 
-    public void append(Completions completions) {
+    void append(Completions completions) {
         if (completions == null) {
             return;
         }
@@ -117,7 +119,7 @@ class AzureOpenAiStreamingResponseBuilder {
         }
     }
 
-    public Response<AiMessage> build(TokenCountEstimator tokenCountEstimator) {
+    Response<AiMessage> build(TokenCountEstimator tokenCountEstimator) {
 
         String content = contentBuilder.toString();
 
