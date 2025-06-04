@@ -56,6 +56,7 @@ import com.azure.core.http.policy.RetryOptions;
 import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -84,11 +85,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Internal
 class InternalAzureOpenAiHelper {
 
-    public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
+    static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
-    public static OpenAIClient setupSyncClient(
+    static OpenAIClient setupSyncClient(
             String endpoint,
             String serviceVersion,
             Object credential,
@@ -113,7 +115,7 @@ class InternalAzureOpenAiHelper {
         return openAIClientBuilder.buildClient();
     }
 
-    public static OpenAIAsyncClient setupAsyncClient(
+    static OpenAIAsyncClient setupAsyncClient(
             String endpoint,
             String serviceVersion,
             Object credential,
@@ -205,7 +207,7 @@ class InternalAzureOpenAiHelper {
         return new OpenAIClientBuilder().credential(tokenCredential);
     }
 
-    public static OpenAIServiceVersion getOpenAIServiceVersion(String serviceVersion) {
+    static OpenAIServiceVersion getOpenAIServiceVersion(String serviceVersion) {
         for (OpenAIServiceVersion version : OpenAIServiceVersion.values()) {
             if (version.getVersion().equals(serviceVersion)) {
                 return version;
@@ -214,12 +216,12 @@ class InternalAzureOpenAiHelper {
         return OpenAIServiceVersion.getLatest();
     }
 
-    public static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
+    static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
 
         return messages.stream().map(InternalAzureOpenAiHelper::toOpenAiMessage).collect(toList());
     }
 
-    public static ChatRequestMessage toOpenAiMessage(ChatMessage message) {
+    static ChatRequestMessage toOpenAiMessage(ChatMessage message) {
         if (message instanceof AiMessage aiMessage) {
             ChatRequestAssistantMessage chatRequestAssistantMessage =
                     new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
@@ -286,7 +288,7 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
-    public static List<ChatCompletionsToolDefinition> toToolDefinitions(
+    static List<ChatCompletionsToolDefinition> toToolDefinitions(
             Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
                 .map(InternalAzureOpenAiHelper::toToolDefinition)
@@ -301,7 +303,7 @@ class InternalAzureOpenAiHelper {
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
-    public static ChatCompletionsToolSelection toToolChoice(ToolChoice toolChoice) {
+    static ChatCompletionsToolSelection toToolChoice(ToolChoice toolChoice) {
         ChatCompletionsToolSelectionPreset preset = switch (toolChoice) {
             case AUTO -> ChatCompletionsToolSelectionPreset.AUTO;
             case REQUIRED -> ChatCompletionsToolSelectionPreset.REQUIRED;
@@ -359,7 +361,7 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    public static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
+    static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
         String text = chatResponseMessage.getContent();
 
         if (isNullOrEmpty(chatResponseMessage.getToolCalls())) {
@@ -381,7 +383,7 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    public static Image imageFrom(ImageGenerationData imageGenerationData) {
+    static Image imageFrom(ImageGenerationData imageGenerationData) {
         Image.Builder imageBuilder = Image.builder().revisedPrompt(imageGenerationData.getRevisedPrompt());
 
         String urlString = imageGenerationData.getUrl();
@@ -400,7 +402,7 @@ class InternalAzureOpenAiHelper {
         return imageBuilder.build();
     }
 
-    public static TokenUsage tokenUsageFrom(CompletionsUsage openAiUsage) {
+    static TokenUsage tokenUsageFrom(CompletionsUsage openAiUsage) {
         if (openAiUsage == null) {
             return null;
         }
@@ -408,7 +410,7 @@ class InternalAzureOpenAiHelper {
                 openAiUsage.getPromptTokens(), openAiUsage.getCompletionTokens(), openAiUsage.getTotalTokens());
     }
 
-    public static FinishReason finishReasonFrom(CompletionsFinishReason openAiFinishReason) {
+    static FinishReason finishReasonFrom(CompletionsFinishReason openAiFinishReason) {
         if (openAiFinishReason == null) {
             return null;
         } else if (openAiFinishReason == CompletionsFinishReason.STOPPED) {
