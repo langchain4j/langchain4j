@@ -18,6 +18,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import wiremock.net.javacrumbs.jsonunit.core.internal.Node.JsonMap;
 
 class ToolSpecificationHelperTest {
 
@@ -362,5 +363,56 @@ class ToolSpecificationHelperTest {
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications.get(0).parameters().properties().get("value"))
                 .isInstanceOf(JsonObjectSchema.class);
+    }
+
+    @Test
+    public void nullType() throws JsonProcessingException {
+        // the 'type' parameter is "null" and so most not be present
+        // trimmed version from Atalassian's MCP server
+        String text =
+                """
+                [{
+                  "name": "createCompassCustomFieldDefinition",
+                  "description": "Create a new Compass custom field definition",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "cloudId": {
+                        "type": "string",
+                        "description": "Unique identifier for an Atlassian Cloud instance in the form of a UUID. Can also be a site URL. If not working, use the 'getAccessibleAtlassianResources' tool to find accessible Cloud IDs."
+                      },
+                      "fieldSelections": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "null"
+                            },
+                            "description": "An list of options for the custom field definition, expressed as maps. The keys should be the options, and the values should all be null. Only used for SingleSelect and MultiSelect custom field definitions."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "An list of options for the custom field definition, expressed as maps. The keys should be the options, and the values should all be null. Only used for SingleSelect and MultiSelect custom field definitions."
+                      }
+                    },
+                    "required": [
+                      "cloudId"
+                    ],
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                  }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(toolSpecifications.get(0).parameters().properties().get("fieldSelections"))
+                .isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema jsAny = (JsonAnyOfSchema) toolSpecifications.get(0).parameters().properties().get("fieldSelections");
+        assertThat(jsAny.anyOf()).hasSize(2);
+        assertThat(jsAny.anyOf().get(0)).isInstanceOf(JsonObjectSchema.class);
+        assertThat(jsAny.anyOf().get(1)).isInstanceOf(JsonNullSchema.class);
+        
     }
 }
