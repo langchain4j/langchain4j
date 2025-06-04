@@ -306,13 +306,10 @@ public class AnthropicChatModel implements ChatModel {
     }
 
     @Override
-    public ChatResponse chat(ChatRequest chatRequest) {
-        ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidationUtils.validateParameters(parameters);
-        ChatRequestValidationUtils.validate(parameters.toolChoice());
-        ChatRequestValidationUtils.validate(parameters.responseFormat());
+    public ChatResponse doChat(ChatRequest chatRequest) {
+        validate(chatRequest.parameters());
 
-        Response<AiMessage> response = generate(chatRequest.messages(), parameters.toolSpecifications());
+        Response<AiMessage> response = generate(chatRequest.messages(), chatRequest.parameters().toolSpecifications());
 
         return ChatResponse.builder()
                 .aiMessage(response.content())
@@ -321,6 +318,12 @@ public class AnthropicChatModel implements ChatModel {
                         .finishReason(response.finishReason())
                         .build())
                 .build();
+    }
+
+    private static void validate(ChatRequestParameters parameters) {
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
     }
 
     private Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {

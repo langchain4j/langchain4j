@@ -35,16 +35,18 @@ abstract class OllamaBaseChatModel {
                 .logResponses(builder.logResponses)
                 .build();
 
-        ChatRequestParameters commonParameters = getOrDefault(builder.defaultRequestParameters,
-                () -> DefaultChatRequestParameters.builder().build());
-        validate(commonParameters);
-
-        OllamaChatRequestParameters ollamaParameters;
-        if (builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters) {
-            ollamaParameters = ollamaChatRequestParameters;
+        ChatRequestParameters commonParameters;
+        if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
+            commonParameters = builder.defaultRequestParameters;
         } else {
-            ollamaParameters = OllamaChatRequestParameters.builder().build();
+            commonParameters = DefaultChatRequestParameters.DEFAULT_INSTANCE;
         }
+
+        OllamaChatRequestParameters ollamaParameters =
+                builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters ?
+                        ollamaChatRequestParameters :
+                        OllamaChatRequestParameters.DEFAULT_INSTANCE;
 
         this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters
