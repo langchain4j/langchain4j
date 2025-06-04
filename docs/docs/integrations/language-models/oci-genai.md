@@ -17,7 +17,7 @@ With dedicated AI clusters, you can host foundational models on dedicated GPUs t
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artificatId>langchain4j-oci-genai</artificatId>
+    <artifactId>langchain4j-community-oci-genai</artifactId>
     <version>1.0.1-beta6</version>
 </dependency>
 ```
@@ -44,7 +44,7 @@ More information can be found in [OCI SDK documentation](https://docs.oracle.com
 
 
 ## APIs
-Package `dev.langchain4j.model.oracle.oci.genai`
+Package `dev.langchain4j.community.model.oracle.oci.genai`
 
 API is separated for Cohere and Meta models as the configuration differs.
 

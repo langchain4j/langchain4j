@@ -189,12 +189,6 @@
                 <version>1.1.0-beta7-SNAPSHOT</version>
             </dependency>
 
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-oci-genai</artifactId>
-                <version>1.1.0-beta7-SNAPSHOT</version>
-            </dependency>
-
             <!-- embedding stores -->
 
             <dependency>
