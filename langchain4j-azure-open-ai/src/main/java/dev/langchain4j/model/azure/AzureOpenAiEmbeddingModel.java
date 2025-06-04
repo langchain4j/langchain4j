@@ -129,9 +129,10 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         for (int i = 0; i < texts.size(); i += BATCH_SIZE) {
 
             List<String> batch = texts.subList(i, Math.min(i + BATCH_SIZE, texts.size()));
-
             EmbeddingsOptions options = new EmbeddingsOptions(batch).setDimensions(dimensions);
-            Embeddings response = client.getEmbeddings(deploymentName, options);
+
+            Embeddings response = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
+                    client.getEmbeddings(deploymentName, options));
 
             for (EmbeddingItem embeddingItem : response.getData()) {
                 Embedding embedding = from(embeddingItem.getEmbedding());

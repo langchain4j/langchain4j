@@ -153,7 +153,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             handler.onComplete(
                     Response.from(response.content().text(), response.tokenUsage(), response.finishReason()));
         } catch (Exception exception) {
-            handler.onError(exception);
+            handler.onError(AzureOpenAiExceptionMapper.INSTANCE.mapException(exception));
         }
     }
 

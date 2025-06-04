@@ -195,7 +195,8 @@ public class AzureOpenAiChatModel implements ChatModel {
             options.setToolChoice(toToolChoice(parameters.toolChoice()));
         }
 
-        ChatCompletions chatCompletions = client.getChatCompletions(parameters.modelName(), options);
+        ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
+                client.getChatCompletions(parameters.modelName(), options));
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()))

@@ -108,6 +108,7 @@ public class AzureOpenAiImageModel implements ImageModel {
 
     @Override
     public Response<Image> generate(String prompt) {
+
         ImageGenerationOptions options = new ImageGenerationOptions(prompt)
                 .setModel(deploymentName)
                 .setQuality(quality)
@@ -116,7 +117,9 @@ public class AzureOpenAiImageModel implements ImageModel {
                 .setStyle(style)
                 .setResponseFormat(responseFormat);
 
-        ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
+        ImageGenerations imageGenerations = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
+                client.getImageGenerations(deploymentName, options));
+
         Image image = imageFrom(imageGenerations.getData().get(0));
         return Response.from(image);
     }

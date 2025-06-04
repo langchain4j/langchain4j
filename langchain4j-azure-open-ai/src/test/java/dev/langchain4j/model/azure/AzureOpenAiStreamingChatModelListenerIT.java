@@ -1,6 +1,6 @@
 package dev.langchain4j.model.azure;
 
-import com.azure.core.exception.ClientAuthenticationException;
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -42,6 +42,6 @@ class AzureOpenAiStreamingChatModelListenerIT extends AbstractStreamingChatModel
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return ClientAuthenticationException.class;
+        return AuthenticationException.class;
     }
 }
