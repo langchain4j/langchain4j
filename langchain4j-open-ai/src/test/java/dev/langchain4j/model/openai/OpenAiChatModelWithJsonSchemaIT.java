@@ -44,6 +44,7 @@ class OpenAiChatModelWithJsonSchemaIT {
 
     record Shapes(List<Shape> shapes) {}
 
+    // TODO move to common tests
     @Test
     void should_generate_valid_json_with_anyof() throws JsonProcessingException {
 

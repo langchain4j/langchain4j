@@ -120,43 +120,31 @@ class AzureOpenAiStreamingResponseBuilder {
     public Response<AiMessage> build(TokenCountEstimator tokenCountEstimator) {
 
         String content = contentBuilder.toString();
-        TokenUsage tokenUsage =
-                content.isEmpty() ? new TokenUsage(inputTokenCount, 0) : tokenUsage(content, tokenCountEstimator);
 
+        List<ToolExecutionRequest> toolExecutionRequests = null;
         if (!toolExecutionRequestBuilderHashMap.isEmpty()) {
-            List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderHashMap.values().stream()
+            toolExecutionRequests = toolExecutionRequestBuilderHashMap.values().stream()
                     .map(it -> ToolExecutionRequest.builder()
                             .id(it.idBuilder.toString())
                             .name(it.nameBuilder.toString())
                             .arguments(it.argumentsBuilder.toString())
                             .build())
                     .collect(toList());
-            return Response.from(
-                    !content.isEmpty() ?
-                        AiMessage.from(content, toolExecutionRequests) :
-                        AiMessage.from(toolExecutionRequests),
-                    tokenUsage,
-                    finishReasonFrom(finishReason)
-            );
-        }
-        
-        if (!content.isEmpty()) {
-            return Response.from(
-                    AiMessage.from(content),
-                    tokenUsage(content, tokenCountEstimator),
-                    finishReasonFrom(finishReason)
-            );
-        }
-        
-        return null;
-    }
 
-    private TokenUsage tokenUsage(String content, TokenCountEstimator tokenCountEstimator) {
-        if (tokenCountEstimator == null) {
-            return null;
         }
-        int outputTokenCount = tokenCountEstimator.estimateTokenCountInText(content);
-        return new TokenUsage(inputTokenCount, outputTokenCount);
+
+        AiMessage aiMessage = AiMessage.builder()
+                .text(content.isEmpty() ? null : content)
+                .toolExecutionRequests(toolExecutionRequests)
+                .build();
+
+        TokenUsage tokenUsage = null;
+        if (tokenCountEstimator != null) {
+            int outputTokenCount = tokenCountEstimator.estimateTokenCountInMessage(aiMessage);
+            tokenUsage = new TokenUsage(inputTokenCount, outputTokenCount);
+        }
+
+        return Response.from(aiMessage, tokenUsage, finishReasonFrom(finishReason));
     }
 
     private static class ToolExecutionRequestBuilder {

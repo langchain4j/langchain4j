@@ -15,6 +15,7 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefini
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Arrays.asList;
 
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
@@ -101,7 +102,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             Boolean strictJsonSchema,
             ChatRequestParameters defaultRequestParameters,
             List<ChatModelListener> listeners,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         this(
                 deploymentName,
@@ -120,7 +121,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 strictJsonSchema,
                 defaultRequestParameters,
                 listeners,
-                capabilities);
+                supportedCapabilities);
         this.client = ensureNotNull(client, "client");
     }
 
@@ -151,7 +152,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<ChatModelListener> listeners,
             String userAgentSuffix,
             Map<String, String> customHeaders,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         this(
                 deploymentName,
@@ -170,7 +171,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 strictJsonSchema,
                 defaultRequestParameters,
                 listeners,
-                capabilities);
+                supportedCapabilities);
         this.client = setupSyncClient(
                 endpoint,
                 serviceVersion,
@@ -211,7 +212,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<ChatModelListener> listeners,
             String userAgentSuffix,
             Map<String, String> customHeaders,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         this(
                 deploymentName,
@@ -230,7 +231,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 strictJsonSchema,
                 defaultRequestParameters,
                 listeners,
-                capabilities);
+                supportedCapabilities);
         this.client = setupSyncClient(
                 endpoint,
                 serviceVersion,
@@ -271,7 +272,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             List<ChatModelListener> listeners,
             String userAgentSuffix,
             Map<String, String> customHeaders,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         this(
                 deploymentName,
@@ -290,7 +291,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 strictJsonSchema,
                 defaultRequestParameters,
                 listeners,
-                capabilities);
+                supportedCapabilities);
         this.client = setupSyncClient(
                 endpoint,
                 serviceVersion,
@@ -321,7 +322,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             Boolean strictJsonSchema,
             ChatRequestParameters defaultRequestParameters,
             List<ChatModelListener> listeners,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         if (defaultRequestParameters != null) {
             validate(defaultRequestParameters);
@@ -348,7 +349,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
 
         this.listeners = copy(listeners);
-        this.supportedCapabilities = copy(capabilities);
+        this.supportedCapabilities = copy(supportedCapabilities);
     }
 
     @Override
@@ -450,7 +451,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private String userAgentSuffix;
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
-        private Set<Capability> capabilities;
+        private Set<Capability> supportedCapabilities;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -647,15 +648,16 @@ public class AzureOpenAiChatModel implements ChatModel {
             return this;
         }
 
-        public Builder supportedCapabilities(Set<Capability> capabilities) {
-            this.capabilities = capabilities;
+        public Builder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
             return this;
         }
 
+        public Builder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
+        }
+
         public AzureOpenAiChatModel build() {
-            if (this.capabilities == null) {
-                capabilities = new HashSet<>();
-            }
             if (openAIClient == null) {
                 if (tokenCredential != null) {
                     return new AzureOpenAiChatModel(
@@ -685,7 +687,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                             listeners,
                             userAgentSuffix,
                             customHeaders,
-                            capabilities);
+                            supportedCapabilities);
                 } else if (keyCredential != null) {
                     return new AzureOpenAiChatModel(
                             endpoint,
@@ -714,7 +716,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                             listeners,
                             userAgentSuffix,
                             customHeaders,
-                            capabilities);
+                            supportedCapabilities);
                 }
                 return new AzureOpenAiChatModel(
                         endpoint,
@@ -743,7 +745,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         listeners,
                         userAgentSuffix,
                         customHeaders,
-                        capabilities);
+                        supportedCapabilities);
             } else {
                 return new AzureOpenAiChatModel(
                         openAIClient,
@@ -763,7 +765,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                         strictJsonSchema,
                         defaultRequestParameters,
                         listeners,
-                        capabilities);
+                        supportedCapabilities);
             }
         }
     }

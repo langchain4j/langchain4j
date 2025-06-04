@@ -14,6 +14,7 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Arrays.asList;
 
 import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
@@ -43,6 +44,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -111,7 +113,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             Boolean strictJsonSchema,
             ChatRequestParameters defaultRequestParameters,
             List<ChatModelListener> listeners,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         this(
                 deploymentName,
@@ -131,7 +133,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 strictJsonSchema,
                 defaultRequestParameters,
                 listeners,
-                capabilities);
+                supportedCapabilities);
 
         this.asyncClient = ensureNotNull(asyncClient, "asyncClient");
     }
@@ -164,7 +166,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             List<ChatModelListener> listeners,
             String userAgentSuffix,
             Map<String, String> customHeaders,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         this(
                 deploymentName,
@@ -184,7 +186,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 strictJsonSchema,
                 defaultRequestParameters,
                 listeners,
-                capabilities);
+                supportedCapabilities);
 
         this.asyncClient = setupAsyncClient(
                 endpoint,
@@ -227,7 +229,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             List<ChatModelListener> listeners,
             String userAgentSuffix,
             Map<String, String> customHeaders,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         this(
                 deploymentName,
@@ -247,7 +249,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 strictJsonSchema,
                 defaultRequestParameters,
                 listeners,
-                capabilities);
+                supportedCapabilities);
 
         this.asyncClient = setupAsyncClient(
                 endpoint,
@@ -290,7 +292,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             List<ChatModelListener> listeners,
             String userAgentSuffix,
             Map<String, String> customHeaders,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         this(
                 deploymentName,
@@ -310,7 +312,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 strictJsonSchema,
                 defaultRequestParameters,
                 listeners,
-                capabilities);
+                supportedCapabilities);
 
         this.asyncClient = setupAsyncClient(
                 endpoint,
@@ -343,7 +345,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             Boolean strictJsonSchema,
             ChatRequestParameters defaultRequestParameters,
             List<ChatModelListener> listeners,
-            Set<Capability> capabilities) {
+            Set<Capability> supportedCapabilities) {
 
         if (defaultRequestParameters != null) {
             validate(defaultRequestParameters);
@@ -372,7 +374,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         this.tokenCountEstimator = tokenCountEstimator;
 
         this.listeners = copy(listeners);
-        this.supportedCapabilities = copy(capabilities);
+        this.supportedCapabilities = copy(supportedCapabilities);
     }
 
     @Override
@@ -521,7 +523,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private String userAgentSuffix;
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
-        private Set<Capability> capabilities;
+        private Set<Capability> supportedCapabilities;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -723,9 +725,13 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public Builder supportedCapabilities(Set<Capability> capabilities) {
-            this.capabilities = capabilities;
+        public Builder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
             return this;
+        }
+
+        public Builder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
         public AzureOpenAiStreamingChatModel build() {
@@ -759,7 +765,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                             listeners,
                             userAgentSuffix,
                             customHeaders,
-                            capabilities);
+                            supportedCapabilities);
                 } else if (keyCredential != null) {
                     return new AzureOpenAiStreamingChatModel(
                             endpoint,
@@ -789,7 +795,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                             listeners,
                             userAgentSuffix,
                             customHeaders,
-                            capabilities);
+                            supportedCapabilities);
                 }
                 return new AzureOpenAiStreamingChatModel(
                         endpoint,
@@ -819,7 +825,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         listeners,
                         userAgentSuffix,
                         customHeaders,
-                        capabilities);
+                        supportedCapabilities);
             } else {
                 return new AzureOpenAiStreamingChatModel(
                         openAIAsyncClient,
@@ -840,7 +846,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         strictJsonSchema,
                         defaultRequestParameters,
                         listeners,
-                        capabilities);
+                        supportedCapabilities);
             }
         }
     }

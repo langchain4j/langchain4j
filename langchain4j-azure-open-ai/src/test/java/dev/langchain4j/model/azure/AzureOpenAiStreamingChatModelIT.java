@@ -195,19 +195,15 @@ class AzureOpenAiStreamingChatModelIT {
 
         ChatRequest request = ChatRequest.builder()
                 .messages(userMessage)
-                .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(toolSpecification)
-                        .toolChoice(REQUIRED)
-                        .build())
+                .toolSpecifications(toolSpecification)
+                .toolChoice(REQUIRED)
                 .build();
 
         model.chat(request, new StreamingChatResponseHandler() {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                Exception e =
-                        new IllegalStateException("partialResponse() should never be called when tool is executed");
-                futureResponse.completeExceptionally(e);
+                futureResponse.completeExceptionally(new IllegalStateException("onPartialResponse() should never be called when tool is executed"));
             }
 
             @Override
@@ -232,9 +228,8 @@ class AzureOpenAiStreamingChatModelIT {
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
-        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
-        // TODO uncomment once https://github.com/langchain4j/langchain4j/issues/1068 is done
-        // assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().inputTokenCount()).isPositive();
+        assertThat(response.tokenUsage().outputTokenCount()).isPositive();
         assertThat(response.tokenUsage().totalTokenCount())
                 .isEqualTo(response.tokenUsage().inputTokenCount()
                         + response.tokenUsage().outputTokenCount());
@@ -437,6 +432,7 @@ class AzureOpenAiStreamingChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
                 .toolSpecifications(toolSpecification)
+                .toolChoice(REQUIRED)
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -445,7 +441,7 @@ class AzureOpenAiStreamingChatModelIT {
         ChatResponse response = handler.get();
 
         assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
-        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.tokenUsage()).isNull();
     }
 
     @AfterEach
