@@ -12,6 +12,8 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
+    public static final OpenAiChatRequestParameters DEFAULT_INSTANCE = OpenAiChatRequestParameters.builder().build();
+
     private final Integer maxCompletionTokens;
     private final Map<String, Integer> logitBias;
     private final Boolean parallelToolCalls;
