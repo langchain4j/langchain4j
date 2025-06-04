@@ -4,6 +4,7 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.HttpVersion;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
@@ -99,7 +100,13 @@ public class JdkHttpClient implements HttpClient {
                 .uri(URI.create(request.url()));
 
         if (request.version() != null) {
-            builder.version(request.version());
+            if (request.version() == HttpVersion.HTTP_1_1) {
+                builder.version(java.net.http.HttpClient.Version.HTTP_1_1);
+            } else if (request.version() == HttpVersion.HTTP_2) {
+                builder.version(java.net.http.HttpClient.Version.HTTP_2);
+            }else {
+                throw new IllegalArgumentException("Unsupported HTTP version: " + request.version());
+            }
         }
 
         request.headers().forEach((name, values) -> {
@@ -124,11 +131,16 @@ public class JdkHttpClient implements HttpClient {
     }
 
     private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, String body) {
+        HttpVersion httpVersion = switch (response.version()) {
+            case HTTP_1_1 -> HttpVersion.HTTP_1_1;
+            case HTTP_2 -> HttpVersion.HTTP_2;
+            default -> throw new IllegalArgumentException("Unsupported HTTP version: " + response.version());
+        };
         return SuccessfulHttpResponse.builder()
                 .statusCode(response.statusCode())
                 .headers(response.headers().map())
                 .body(body)
-                .version(response.version())
+                .version(httpVersion)
                 .build();
     }
 

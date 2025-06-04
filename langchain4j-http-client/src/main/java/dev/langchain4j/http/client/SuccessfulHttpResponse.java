@@ -1,6 +1,5 @@
 package dev.langchain4j.http.client;
 
-import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Map;
 
@@ -12,7 +11,7 @@ public class SuccessfulHttpResponse {
     private final int statusCode;
     private final Map<String, List<String>> headers;
     private final String body;
-    private final HttpClient.Version version;
+    private final HttpVersion version;
 
     public SuccessfulHttpResponse(Builder builder) {
         this.statusCode = ensureBetween(builder.statusCode, 200, 299, "statusCode");
@@ -33,7 +32,7 @@ public class SuccessfulHttpResponse {
         return body;
     }
 
-    public HttpClient.Version version() {
+    public HttpVersion version() {
         return version;
     }
 
@@ -46,7 +45,7 @@ public class SuccessfulHttpResponse {
         private int statusCode;
         private Map<String, List<String>> headers;
         private String body;
-        private HttpClient.Version version;
+        private HttpVersion version;
 
         private Builder() {
         }
@@ -66,7 +65,7 @@ public class SuccessfulHttpResponse {
             return this;
         }
 
-        public Builder version(HttpClient.Version version) {
+        public Builder version(HttpVersion version) {
             this.version = version;
             return this;
         }
