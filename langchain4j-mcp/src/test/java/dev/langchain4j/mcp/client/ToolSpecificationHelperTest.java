@@ -18,7 +18,6 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import wiremock.net.javacrumbs.jsonunit.core.internal.Node.JsonMap;
 
 class ToolSpecificationHelperTest {
 
@@ -409,10 +408,10 @@ class ToolSpecificationHelperTest {
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications.get(0).parameters().properties().get("fieldSelections"))
                 .isInstanceOf(JsonAnyOfSchema.class);
-        JsonAnyOfSchema jsAny = (JsonAnyOfSchema) toolSpecifications.get(0).parameters().properties().get("fieldSelections");
+        JsonAnyOfSchema jsAny = (JsonAnyOfSchema)
+                toolSpecifications.get(0).parameters().properties().get("fieldSelections");
         assertThat(jsAny.anyOf()).hasSize(2);
         assertThat(jsAny.anyOf().get(0)).isInstanceOf(JsonObjectSchema.class);
         assertThat(jsAny.anyOf().get(1)).isInstanceOf(JsonNullSchema.class);
-        
     }
 }
