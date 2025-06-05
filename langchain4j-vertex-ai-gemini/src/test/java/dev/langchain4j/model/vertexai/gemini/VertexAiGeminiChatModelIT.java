@@ -24,7 +24,11 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
@@ -53,6 +57,7 @@ class VertexAiGeminiChatModelIT {
     static final String DICE_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
+    public static final Gson GSON = new Gson();
     public static final String MODEL_NAME = "gemini-2.0-flash";
 
     ChatModel model = VertexAiGeminiChatModel.builder()
@@ -314,7 +319,7 @@ class VertexAiGeminiChatModelIT {
                 .messages(allMessages)
                 .toolSpecifications(weatherToolSpec)
                 .build();
-        
+
         // when
         ChatResponse messageResponse = model.chat(request);
 
@@ -364,8 +369,8 @@ class VertexAiGeminiChatModelIT {
 
         List<ChatMessage> allMessages = new ArrayList<>();
 
-        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789? " +
-                "Output just a (single) name of the product with more stock.");
+        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789? "
+                + "Output just a (single) name of the product with more stock.");
         allMessages.add(inventoryQuestion);
 
         ChatRequest request = ChatRequest.builder()
@@ -379,7 +384,8 @@ class VertexAiGeminiChatModelIT {
         // then
         assertThat(messageResponse.aiMessage().hasToolExecutionRequests()).isTrue();
 
-        List<ToolExecutionRequest> executionRequests = messageResponse.aiMessage().toolExecutionRequests();
+        List<ToolExecutionRequest> executionRequests =
+                messageResponse.aiMessage().toolExecutionRequests();
         assertThat(executionRequests).hasSize(2); // ie. parallel function execution requests
 
         String inventoryStock =
@@ -399,9 +405,7 @@ class VertexAiGeminiChatModelIT {
         messageResponse = model.chat(allMessages);
 
         // then
-        assertThat(messageResponse.aiMessage().text())
-                .contains("ABC123")
-                .doesNotContain("XYZ789");
+        assertThat(messageResponse.aiMessage().text()).contains("ABC123").doesNotContain("XYZ789");
     }
 
     static class Calculator {
@@ -694,7 +698,7 @@ class VertexAiGeminiChatModelIT {
         ChatResponse response = model.chat(messages);
 
         // then
-        Artist artist = new Gson().fromJson(response.aiMessage().text(), Artist.class);
+        Artist artist = GSON.fromJson(response.aiMessage().text(), Artist.class);
         assertThat(artist.artistName).contains("Anna");
         assertThat(artist.artistAge).isEqualTo(23);
         assertThat(artist.artistAdult).isTrue();
@@ -727,10 +731,8 @@ class VertexAiGeminiChatModelIT {
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
 
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
 
         // when
         ChatResponse answer = model.chat(request);
@@ -738,7 +740,8 @@ class VertexAiGeminiChatModelIT {
         // then
         assertThat(answer.aiMessage().hasToolExecutionRequests()).isEqualTo(true);
         assertThat(answer.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("add");
-        assertThat(answer.aiMessage().toolExecutionRequests().get(0).arguments()).isEqualTo("{\"a\":1.0,\"b\":2.0}");
+        assertThat(answer.aiMessage().toolExecutionRequests().get(0).arguments())
+                .isEqualTo("{\"a\":1.0,\"b\":2.0}");
     }
 
     @Test
@@ -765,10 +768,8 @@ class VertexAiGeminiChatModelIT {
 
         UserMessage msg = UserMessage.from("How much is 1 + 2?");
 
-        ChatRequest request = ChatRequest.builder()
-                .messages(msg)
-                .toolSpecifications(adder)
-                .build();
+        ChatRequest request =
+                ChatRequest.builder().messages(msg).toolSpecifications(adder).build();
 
         // when
         ChatResponse answer = model.chat(request);
@@ -906,6 +907,117 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response).isEqualTo("NEGATIVE");
+    }
+
+    // POJO classes for JSON deserialization
+    record CountryCapitals(List<CountryCapital> countries) {}
+
+    record CountryCapital(String country, String capital) {}
+
+    record CapitalInfo(String capital, String country) {}
+
+    @Test
+    void should_support_text_response_format() {
+        // given
+        UserMessage userMessage = UserMessage.from("List the capitals of Germany, France, and Italy");
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(List.of(userMessage))
+                .responseFormat(ResponseFormat.TEXT)
+                .build();
+
+        // when
+        ChatResponse response = model.chat(request);
+
+        // then
+        String textResponse = response.aiMessage().text();
+        assertThat(textResponse).contains("Berlin");
+        assertThat(textResponse).contains("Paris");
+        assertThat(textResponse).contains("Rome");
+    }
+
+    @Test
+    void should_support_json_response_format() {
+        // given
+        UserMessage userMessage = UserMessage.from(
+                "List the capitals of Germany, France, and Italy as JSON with this format: {\"countries\": [{\"country\": \"name\", \"capital\": \"capital\"}]}");
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(List.of(userMessage))
+                .responseFormat(ResponseFormat.JSON)
+                .build();
+
+        // when
+        ChatResponse response = model.chat(request);
+
+        // then
+        String jsonResponse = response.aiMessage().text();
+
+        // Verify it's valid JSON by parsing it with Gson
+
+        // Parse the JSON response into our POJO
+        CountryCapitals capitals = GSON.fromJson(jsonResponse, CountryCapitals.class);
+
+        // Verify we have the expected countries and capitals
+        assertThat(capitals.countries()).isNotNull();
+        assertThat(capitals.countries()).hasSize(3);
+
+        // Verify the expected countries and capitals
+        assertThat(capitals.countries())
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .isEqualTo(List.of(
+                        new CountryCapital("Germany", "Berlin"),
+                        new CountryCapital("France", "Paris"),
+                        new CountryCapital("Italy", "Rome")));
+    }
+
+    @Test
+    void should_support_json_response_format_with_schema() {
+        // given
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        JsonObjectSchema schema = JsonObjectSchema.builder()
+                .addProperty(
+                        "capital",
+                        JsonStringSchema.builder()
+                                .description("The capital city name")
+                                .build())
+                .addProperty(
+                        "country",
+                        JsonStringSchema.builder()
+                                .description("The country name")
+                                .build())
+                .required("capital", "country")
+                .build();
+
+        JsonSchema jsonSchema =
+                JsonSchema.builder().name("CountryCapital").rootElement(schema).build();
+
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(jsonSchema)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(List.of(userMessage))
+                .responseFormat(responseFormat)
+                .build();
+
+        // when
+        ChatResponse response = model.chat(request);
+
+        // then
+        String jsonResponse = response.aiMessage().text();
+
+        // Verify it's valid JSON by parsing it with Gson
+
+        // Parse the JSON response into our POJO
+        CapitalInfo info = GSON.fromJson(jsonResponse, CapitalInfo.class);
+
+        // Verify the expected data
+        assertThat(info.capital()).isEqualTo("Berlin");
+        assertThat(info.country()).isEqualTo("Germany");
     }
 
     @AfterEach
