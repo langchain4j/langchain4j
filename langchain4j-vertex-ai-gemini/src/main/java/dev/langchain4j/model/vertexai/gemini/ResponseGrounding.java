@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai.gemini;
 
+import com.google.cloud.vertexai.api.GoogleSearchRetrieval;
 import com.google.cloud.vertexai.api.Retrieval;
 import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.VertexAISearch;
@@ -10,10 +11,16 @@ import com.google.cloud.vertexai.api.VertexAISearch;
  */
 class ResponseGrounding {
 
-    static Tool googleSearchTool() {
-        return Tool.newBuilder()
-                .setGoogleSearch(Tool.GoogleSearch.newBuilder().build())
-                .build();
+    static Tool googleSearchTool(String modelName) {
+        if (modelName.startsWith("gemini-1")) {
+            return Tool.newBuilder()
+                    .setGoogleSearchRetrieval(GoogleSearchRetrieval.newBuilder().build())
+                    .build();
+        } else {
+            return Tool.newBuilder()
+                    .setGoogleSearch(Tool.GoogleSearch.newBuilder().build())
+                    .build();
+        }
     }
 
     /**
