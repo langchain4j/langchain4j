@@ -195,7 +195,7 @@ public class EmbeddingStoreIngestor {
         }
         if (textSegmentTransformer != null) {
             segments = textSegmentTransformer.transformAll(segments);
-            log.debug("Text segments were transformed into {} text segments", documents.size());
+            log.debug("Text segments were transformed into {} text segments", segments.size());
         }
 
         log.debug("Starting to embed {} text segments", segments.size());
