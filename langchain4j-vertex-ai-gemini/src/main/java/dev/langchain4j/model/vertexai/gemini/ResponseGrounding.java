@@ -11,13 +11,16 @@ import com.google.cloud.vertexai.api.VertexAISearch;
  */
 class ResponseGrounding {
 
-    static Tool googleSearchTool() {
-        return Tool.newBuilder()
-            .setGoogleSearchRetrieval(
-                GoogleSearchRetrieval.newBuilder()
-//                    .setDisableAttribution(false)
-                    .build())
-            .build();
+    static Tool googleSearchTool(String modelName) {
+        if (modelName.startsWith("gemini-1")) {
+            return Tool.newBuilder()
+                    .setGoogleSearchRetrieval(GoogleSearchRetrieval.newBuilder().build())
+                    .build();
+        } else {
+            return Tool.newBuilder()
+                    .setGoogleSearch(Tool.GoogleSearch.newBuilder().build())
+                    .build();
+        }
     }
 
     /**

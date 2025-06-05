@@ -39,31 +39,6 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
-    /**
-     * @deprecated please use {@link #OllamaEmbeddingModel(OllamaEmbeddingModelBuilder)} instead
-     */
-    @Deprecated(forRemoval = true, since = "1.0.0-beta5")
-    public OllamaEmbeddingModel(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            String modelName,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses,
-            Map<String, String> customHeaders) {
-        this.client = OllamaClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(baseUrl)
-                .timeout(timeout)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .customHeaders(customHeaders)
-                .build();
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxRetries = getOrDefault(maxRetries, 2);
-    }
-
     public static OllamaEmbeddingModelBuilder builder() {
         for (OllamaEmbeddingModelBuilderFactory factory : loadFactories(OllamaEmbeddingModelBuilderFactory.class)) {
             return factory.get();

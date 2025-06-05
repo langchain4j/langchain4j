@@ -52,31 +52,32 @@ class ToolSpecificationHelper {
                     .toArray(JsonSchemaElement[]::new);
             anyOf.anyOf(types);
             return anyOf.build();
-        } else if (node.get("type").getNodeType() != JsonNodeType.ARRAY) {
+        }
+        JsonNode typeNode = node.get("type");
+        // If no type is specified, default to object schema
+        if (typeNode == null
+                || (node.get("type").getNodeType() == JsonNodeType.STRING
+                        && node.get("type").asText().equals("object"))) {
+            JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
+            if (node.has("description")) {
+                builder.description(node.get("description").asText());
+            }
+            if (node.has("properties")) {
+                ObjectNode propertiesObject = (ObjectNode) node.get("properties");
+                for (Map.Entry<String, JsonNode> property : propertiesObject.properties()) {
+                    builder.addProperty(property.getKey(), jsonNodeToJsonSchemaElement(property.getValue()));
+                }
+            }
+            if (node.has("required")) {
+                builder.required(toStringArray((ArrayNode) node.get("required")));
+            }
+            if (node.has("additionalProperties")) {
+                builder.additionalProperties(node.get("additionalProperties").asBoolean(false));
+            }
+            return builder.build();
+        } else if (node.get("type").getNodeType() == JsonNodeType.STRING) {
             String nodeType = node.get("type").asText();
-            if (nodeType.equals("object")) {
-                JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
-                JsonNode required = node.get("required");
-                if (required != null) {
-                    builder.required(toStringArray((ArrayNode) required));
-                }
-                if (node.has("additionalProperties")) {
-                    builder.additionalProperties(
-                            node.get("additionalProperties").asBoolean(false));
-                }
-                JsonNode description = node.get("description");
-                if (description != null) {
-                    builder.description(description.asText());
-                }
-                JsonNode properties = node.get("properties");
-                if (properties != null) {
-                    ObjectNode propertiesObject = (ObjectNode) properties;
-                    for (Map.Entry<String, JsonNode> property : propertiesObject.properties()) {
-                        builder.addProperty(property.getKey(), jsonNodeToJsonSchemaElement(property.getValue()));
-                    }
-                }
-                return builder.build();
-            } else if (nodeType.equals("string")) {
+            if (nodeType.equals("string")) {
                 if (node.has("enum")) {
                     JsonEnumSchema.Builder builder = JsonEnumSchema.builder();
                     if (node.has("description")) {

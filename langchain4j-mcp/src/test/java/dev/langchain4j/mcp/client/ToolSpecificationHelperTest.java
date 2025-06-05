@@ -333,4 +333,34 @@ class ToolSpecificationHelperTest {
         assertThat(option2).isInstanceOf(JsonObjectSchema.class);
         assertThat(((JsonObjectSchema) option2).properties()).containsOnlyKeys("path", "line", "body");
     }
+
+    @Test
+    public void nullTypeName() throws JsonProcessingException {
+        // the 'value' parameter has an empty definition, so it can be anything
+        String text =
+                """
+                [{
+                   "name": "set_config_value",
+                   "description": "Set a specific configuration value by key",
+                   "inputSchema": {
+                     "type": "object",
+                     "properties": {
+                       "key": {
+                         "type": "string"
+                       },
+                       "value": {}
+                     },
+                     "required": [
+                       "key"
+                     ],
+                     "additionalProperties": false,
+                     "$schema": "http://json-schema.org/draft-07/schema#"
+                   }
+                 }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(toolSpecifications.get(0).parameters().properties().get("value"))
+                .isInstanceOf(JsonObjectSchema.class);
+    }
 }
