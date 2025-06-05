@@ -84,6 +84,7 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
 
+    // TODO keep old ctors deprecated for one more cycle? in all classes
     public AzureOpenAiChatModel(Builder builder) {
         if (builder.openAIClient == null) {
             if (builder.tokenCredential != null) {
