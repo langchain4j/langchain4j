@@ -111,6 +111,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             Boolean logRequests,
             Boolean logResponses,
             List<ChatModelListener> listeners) {
+        ensureNotBlank(modelName, "modelName");
+
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
@@ -147,7 +149,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         }
 
         if (useGoogleSearch != null && useGoogleSearch) {
-            googleSearch = ResponseGrounding.googleSearchTool();
+            googleSearch = ResponseGrounding.googleSearchTool(modelName);
         } else {
             googleSearch = null;
         }
@@ -200,7 +202,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
                 .build();
 
-        this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI)
+        this.generativeModel = new GenerativeModel(modelName, vertexAI)
                 .withGenerationConfig(generationConfig);
 
         this.maxRetries = getOrDefault(maxRetries, 2);
