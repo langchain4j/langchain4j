@@ -6,6 +6,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import dev.langchain4j.model.anthropic.AnthropicChatModel;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+
 import java.util.List;
 
 @JsonInclude(NON_NULL)
@@ -25,6 +28,7 @@ public class AnthropicCreateMessageRequest {
     public List<AnthropicTool> tools;
     public AnthropicToolChoice toolChoice;
     public AnthropicThinking thinking;
+    private ResponseFormat responseFormat;
 
     public AnthropicCreateMessageRequest() {}
 
@@ -40,7 +44,8 @@ public class AnthropicCreateMessageRequest {
             Integer topK,
             List<AnthropicTool> tools,
             AnthropicToolChoice toolChoice,
-            AnthropicThinking thinking) {
+            AnthropicThinking thinking,
+            ResponseFormat responseFormat) {
         this.model = model;
         this.messages = messages;
         this.system = system;
@@ -53,6 +58,7 @@ public class AnthropicCreateMessageRequest {
         this.tools = tools;
         this.toolChoice = toolChoice;
         this.thinking = thinking;
+        this.responseFormat = responseFormat;
     }
 
     public String getModel() {
@@ -151,6 +157,10 @@ public class AnthropicCreateMessageRequest {
         this.thinking = thinking;
     }
 
+    public ResponseFormat getResponseFormat() {
+        return responseFormat;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -184,6 +194,7 @@ public class AnthropicCreateMessageRequest {
         private List<AnthropicTool> tools;
         private AnthropicToolChoice toolChoice;
         private AnthropicThinking thinking;
+        private ResponseFormat responseFormat;
 
         public Builder model(String model) {
             this.model = model;
@@ -245,6 +256,11 @@ public class AnthropicCreateMessageRequest {
             return this;
         }
 
+        public Builder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
         public AnthropicCreateMessageRequest build() {
             return new AnthropicCreateMessageRequest(
                     model,
@@ -258,7 +274,8 @@ public class AnthropicCreateMessageRequest {
                     topK,
                     tools,
                     toolChoice,
-                    thinking);
+                    thinking,
+                    responseFormat);
         }
     }
 }

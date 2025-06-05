@@ -6,7 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createListenerRequest;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createListenerResponse;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
@@ -39,6 +39,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -90,69 +91,31 @@ public class AnthropicChatModel implements ChatModel {
     private final Integer thinkingBudgetTokens;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
+    private final ChatRequestParameters defaultRequestParameters;
 
-    /**
-     * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.
-     *
-     * @param baseUrl             The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
-     * @param apiKey              The API key for authentication with the Anthropic API.
-     * @param version             The value of the "anthropic-version" HTTP header. Default: "2023-06-01"
-     * @param beta                The value of the "anthropic-beta" HTTP header.
-     * @param modelName           The name of the Anthropic model to use.
-     * @param temperature         The temperature
-     * @param topP                The top-P
-     * @param topK                The top-K
-     * @param maxTokens           The maximum number of tokens to generate. Default: 1024
-     * @param stopSequences       The custom text sequences that will cause the model to stop generating
-     * @param cacheSystemMessages If true, it will add cache_control block to all system messages. Default: false
-     * @param cacheTools          If true, it will add cache_control block to all tools. Default: false
-     * @param timeout             The timeout for API requests. Default: 60 seconds
-     * @param maxRetries          The maximum number of retries for API requests. Default: 2
-     * @param logRequests         Whether to log the content of API requests using SLF4J. Default: false
-     * @param logResponses        Whether to log the content of API responses using SLF4J. Default: false
-     * @param listeners           A list of {@link ChatModelListener} instances to be notified.
-     */
-    private AnthropicChatModel(
-            String baseUrl,
-            String apiKey,
-            String version,
-            String beta,
-            String modelName,
-            Double temperature,
-            Double topP,
-            Integer topK,
-            Integer maxTokens,
-            List<String> stopSequences,
-            Boolean cacheSystemMessages,
-            Boolean cacheTools,
-            String thinkingType,
-            Integer thinkingBudgetTokens,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses,
-            List<ChatModelListener> listeners) {
+    private AnthropicChatModel(AnthropicChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
-                .apiKey(apiKey)
-                .version(getOrDefault(version, "2023-06-01"))
-                .beta(beta)
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
+                .apiKey(builder.apiKey)
+                .version(getOrDefault(builder.version, "2023-06-01"))
+                .beta(builder.beta)
+                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .build();
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.temperature = temperature;
-        this.topP = topP;
-        this.topK = topK;
-        this.maxTokens = getOrDefault(maxTokens, 1024);
-        this.stopSequences = stopSequences;
-        this.cacheSystemMessages = getOrDefault(cacheSystemMessages, false);
-        this.cacheTools = getOrDefault(cacheTools, false);
-        this.thinkingType = thinkingType;
-        this.thinkingBudgetTokens = thinkingBudgetTokens;
-        this.maxRetries = getOrDefault(maxRetries, 2);
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.temperature = builder.temperature;
+        this.topP = builder.topP;
+        this.topK = builder.topK;
+        this.maxTokens = getOrDefault(builder.maxTokens, 1024);
+        this.stopSequences = builder.stopSequences;
+        this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
+        this.cacheTools = getOrDefault(builder.cacheTools, false);
+        this.thinkingType = builder.thinkingType;
+        this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
+        this.defaultRequestParameters = getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.DEFAULT_INSTANCE);
     }
 
     public static AnthropicChatModelBuilder builder() {
@@ -180,6 +143,7 @@ public class AnthropicChatModel implements ChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
+        private ChatRequestParameters defaultRequestParameters;
 
         public AnthropicChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -282,68 +246,42 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         public AnthropicChatModel build() {
-            return new AnthropicChatModel(
-                    baseUrl,
-                    apiKey,
-                    version,
-                    beta,
-                    modelName,
-                    temperature,
-                    topP,
-                    topK,
-                    maxTokens,
-                    stopSequences,
-                    cacheSystemMessages,
-                    cacheTools,
-                    thinkingType,
-                    thinkingBudgetTokens,
-                    timeout,
-                    maxRetries,
-                    logRequests,
-                    logResponses,
-                    listeners);
+            return new AnthropicChatModel(this);
+        }
+
+        public AnthropicChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
+            this.defaultRequestParameters = parameters;
+            return this;
         }
     }
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
-
-        Response<AiMessage> response = generate(chatRequest.messages(), chatRequest.parameters().toolSpecifications());
-
-        return ChatResponse.builder()
-                .aiMessage(response.content())
-                .metadata(ChatResponseMetadata.builder()
-                        .tokenUsage(response.tokenUsage())
-                        .finishReason(response.finishReason())
-                        .build())
-                .build();
+        return generate(chatRequest);
     }
 
-    private static void validate(ChatRequestParameters parameters) {
-        ChatRequestValidationUtils.validateParameters(parameters);
-        ChatRequestValidationUtils.validate(parameters.toolChoice());
-        ChatRequestValidationUtils.validate(parameters.responseFormat());
-    }
-
-    private Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-
+    private ChatResponse generate(ChatRequest chatRequest) {
+        List<ChatMessage> messages = chatRequest.messages();
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         List<AnthropicTextContent> systemPrompt =
                 toAnthropicSystemPrompt(messages, cacheSystemMessages ? EPHEMERAL : NO_CACHE);
 
+        List<ToolSpecification> toolSpecifications = chatRequest.parameters().toolSpecifications();
+
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
-                .model(modelName)
+                .model(getOrDefault(chatRequest.modelName(), modelName))
                 .messages(toAnthropicMessages(sanitizedMessages))
                 .system(systemPrompt)
-                .maxTokens(maxTokens)
-                .stopSequences(stopSequences)
+                .maxTokens(getOrDefault(chatRequest.maxOutputTokens(), maxTokens))
+                .stopSequences(getOrDefault(chatRequest.stopSequences(), stopSequences))
                 .stream(false)
-                .temperature(temperature)
-                .topP(topP)
-                .topK(topK)
+                .temperature(getOrDefault(chatRequest.temperature(), temperature))
+                .topP(getOrDefault(chatRequest.topP(), topP))
+                .topK(getOrDefault(chatRequest.topK(), topK))
                 .tools(toAnthropicTools(toolSpecifications, cacheTools ? EPHEMERAL : NO_CACHE))
                 .thinking(toThinking(thinkingType, thinkingBudgetTokens))
+                .responseFormat(chatRequest.parameters().responseFormat())
                 .build();
 
         ChatRequest listenerRequest = createListenerRequest(request, messages, toolSpecifications);
@@ -360,12 +298,9 @@ public class AnthropicChatModel implements ChatModel {
         try {
             AnthropicCreateMessageResponse response =
                     withRetryMappingExceptions(() -> client.createMessage(request), maxRetries);
-            Response<AiMessage> responseMessage = Response.from(
-                    toAiMessage(response.content), toTokenUsage(response.usage), toFinishReason(response.stopReason));
 
-            ChatResponse listenerResponse = createListenerResponse(response.id, response.model, responseMessage);
             ChatModelResponseContext responseContext =
-                    new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
+                    new ChatModelResponseContext(createChatResponse(response), listenerRequest, provider(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -375,8 +310,7 @@ public class AnthropicChatModel implements ChatModel {
                 }
             });
 
-            return Response.from(
-                    toAiMessage(response.content), toTokenUsage(response.usage), toFinishReason(response.stopReason));
+            return createChatResponse(response);
         } catch (RuntimeException e) {
             ChatModelErrorContext errorContext = createErrorContext(e, listenerRequest, provider(), attributes);
 
@@ -390,6 +324,20 @@ public class AnthropicChatModel implements ChatModel {
 
             throw e;
         }
+    }
+
+    private static ChatResponse createChatResponse(AnthropicCreateMessageResponse response) {
+        ChatResponseMetadata responseMetadata = ChatResponseMetadata.builder()
+                .id(response.id)
+                .modelName(response.model)
+                .tokenUsage(toTokenUsage(response.usage))
+                .finishReason(toFinishReason(response.stopReason))
+                .build();
+
+        return ChatResponse.builder()
+                .aiMessage(toAiMessage(response.content))
+                .metadata(responseMetadata)
+                .build();
     }
 
     static AnthropicThinking toThinking(String thinkingType, Integer thinkingBudgetTokens) {

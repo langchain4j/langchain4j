@@ -41,6 +41,7 @@ class InternalAnthropicHelper {
                         .topP(request.getTopP())
                         .maxOutputTokens(request.getMaxTokens())
                         .toolSpecifications(toolSpecifications)
+                        .responseFormat(request.getResponseFormat())
                         .build())
                 .build();
     }
@@ -59,5 +60,8 @@ class InternalAnthropicHelper {
                         .finishReason(response.finishReason())
                         .build())
                 .build();
+    }
+
+    public static void validate(ChatRequestParameters parameters) {
     }
 }
