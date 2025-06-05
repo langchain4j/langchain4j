@@ -25,27 +25,6 @@ public class OllamaModels {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
-    /**
-     * @deprecated please use {@link #OllamaModels(OllamaModelsBuilder)} instead
-     */
-    @Deprecated(forRemoval = true, since = "1.0.0-beta5")
-    public OllamaModels(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses) {
-        this.client = OllamaClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(baseUrl)
-                .timeout(timeout)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .build();
-        this.maxRetries = getOrDefault(maxRetries, 2);
-    }
-
     public static OllamaModelsBuilder builder() {
         return new OllamaModelsBuilder();
     }

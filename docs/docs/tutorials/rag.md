@@ -88,7 +88,7 @@ You don't have to learn about embeddings, choose a vector store, find the right 
 figure out how to parse and split documents, etc.
 Just point to your document(s), and LangChain4j will do its magic.
 
-If you need a customizable RAG, skip to the [next section](/tutorials/rag#rag-apis).
+If you need a customizable RAG, skip to the [next section](/tutorials/rag#core-rag-apis).
 
 If you are using Quarkus, there is an even easier way to do Easy RAG.
 Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/easy-rag.html).
