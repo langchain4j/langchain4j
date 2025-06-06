@@ -34,7 +34,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithRespo
 public abstract class AbstractSharedBedrockChatModel {
 
     private static final Logger log = LoggerFactory.getLogger(AbstractSharedBedrockChatModel.class);
-
     // Claude requires you to enclose the prompt as follows:
     // String enclosedPrompt = "Human: " + prompt + "\n\nAssistant:";
     protected static final String HUMAN_PROMPT = "Human:";

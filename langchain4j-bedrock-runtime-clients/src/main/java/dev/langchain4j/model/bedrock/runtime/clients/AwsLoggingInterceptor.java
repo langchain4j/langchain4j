@@ -1,4 +1,4 @@
-package dev.langchain4j.model.bedrock;
+package dev.langchain4j.model.bedrock.runtime.clients;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;

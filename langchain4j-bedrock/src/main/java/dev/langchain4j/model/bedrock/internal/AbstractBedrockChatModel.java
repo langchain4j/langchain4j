@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.bedrock.BedrockRuntimeClientFactory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -21,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -162,11 +164,10 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
      * @return bedrock client
      */
     private BedrockRuntimeClient initClient() {
-        return BedrockRuntimeClient.builder()
-                .region(region)
-                .credentialsProvider(credentialsProvider)
-                .overrideConfiguration(c -> c.apiCallTimeout(timeout))
-                .build();
+        BedrockRuntimeClientFactory factory = ServiceLoader.load(BedrockRuntimeClientFactory.class)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No BedrockRuntimeClientFactory implementation found"));
+        return factory.createClient(region, credentialsProvider, timeout, false, false);
     }
 
     @Override

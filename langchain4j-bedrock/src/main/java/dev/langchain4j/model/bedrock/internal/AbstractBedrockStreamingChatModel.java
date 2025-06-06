@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.bedrock.BedrockRuntimeAsyncClientFactory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -20,6 +21,7 @@ import dev.langchain4j.model.output.Response;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,12 +162,10 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
      * @return async bedrock client
      */
     private BedrockRuntimeAsyncClient initAsyncClient() {
-        BedrockRuntimeAsyncClient client = BedrockRuntimeAsyncClient.builder()
-                .region(region)
-                .credentialsProvider(credentialsProvider)
-                .overrideConfiguration(c -> c.apiCallTimeout(timeout))
-                .build();
-        return client;
+        BedrockRuntimeAsyncClientFactory factory = ServiceLoader.load(BedrockRuntimeAsyncClientFactory.class)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No BedrockRuntimeAsyncClientFactory implementation found"));
+        return factory.createAsyncClient(region, credentialsProvider, timeout, false, false);
     }
 
     @Override
