@@ -28,9 +28,7 @@ class OpenAiPdfModelIT {
     private static final String PDF_MIME_TYPE = "application/pdf";
 
     ChatModel model = OpenAiChatModel.builder()
-//            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
-//            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName("gpt-4o-mini")
             .logRequests(true)
             .logResponses(true)
