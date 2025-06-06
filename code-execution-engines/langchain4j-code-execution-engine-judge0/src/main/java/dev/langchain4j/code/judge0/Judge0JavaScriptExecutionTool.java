@@ -6,7 +6,7 @@ import dev.langchain4j.agent.tool.Tool;
 import java.time.Duration;
 
 import static dev.langchain4j.code.judge0.JavaScriptCodeFixer.fixIfNoLogToConsole;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * A tool that executes JS code using the Judge0 service, hosted by Rapid API.
@@ -38,9 +38,7 @@ public class Judge0JavaScriptExecutionTool {
      * @param timeout         Timeout for calling Judge0.
      */
     public Judge0JavaScriptExecutionTool(String apiKey, boolean fixCodeIfNeeded, Duration timeout) {
-        if (isNullOrBlank(apiKey)) {
-            throw new IllegalArgumentException("Please provide a valid Rapid API key");
-        }
+        ensureNotBlank(apiKey, "%s", "Please provide a valid Rapid API key");
         this.engine = new Judge0JavaScriptEngine(apiKey, JAVASCRIPT, timeout);
         this.fixCodeIfNeeded = fixCodeIfNeeded;
     }

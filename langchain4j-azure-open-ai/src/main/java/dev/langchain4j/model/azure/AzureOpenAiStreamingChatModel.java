@@ -660,7 +660,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
     private static void handle(ChatCompletions chatCompletions, StreamingResponseHandler<AiMessage> handler) {
 
         List<ChatChoice> choices = chatCompletions.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
         ChatResponseMessage delta = choices.get(0).getDelta();

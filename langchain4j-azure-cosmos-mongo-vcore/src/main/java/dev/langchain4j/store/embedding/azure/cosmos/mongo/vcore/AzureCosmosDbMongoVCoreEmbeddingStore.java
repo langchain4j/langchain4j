@@ -41,7 +41,6 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toEmbeddingMatch;
 import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toMongoDbDocument;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -111,12 +110,12 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             Integer m,
             Integer efConstruction,
             Integer efSearch) {
-        if (mongoClient == null && (connectionString == null || connectionString.isEmpty())) {
+        if (mongoClient == null && isNullOrEmpty(connectionString)) {
             throw new IllegalArgumentException("You need to pass either the mongoClient or " +
                     "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
         }
 
-        if (databaseName == null || databaseName.isEmpty() || collectionName == null || collectionName.isEmpty()) {
+        if (isNullOrEmpty(databaseName) || isNullOrEmpty(collectionName)) {
             throw new IllegalArgumentException("databaseName and collectionName needs to be provided.");
         }
         createIndex = getOrDefault(createIndex, false);
