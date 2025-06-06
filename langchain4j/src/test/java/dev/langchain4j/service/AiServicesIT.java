@@ -259,8 +259,7 @@ public class AiServicesIT {
     @Test
     void extract_single_enum_with_description() {
 
-        WeatherForecastAnalyzer weatherForecastAnalyzer =
-                AiServices.create(WeatherForecastAnalyzer.class, chatModel);
+        WeatherForecastAnalyzer weatherForecastAnalyzer = AiServices.create(WeatherForecastAnalyzer.class, chatModel);
 
         String weatherForecast =
                 "It will be cloudy and mostly rainy. No more rain early in the day but the sky remains overcast. Afternoon it is mostly cloudy. The sun will not be visible. The forecast has a moderate, 40% chance of Precipitation. Temperatures peaking at 17 °C.";
@@ -829,7 +828,13 @@ public class AiServicesIT {
 
         assertThatThrownBy(() -> chatWithModeration.chat(message))
                 .isExactlyInstanceOf(ModerationException.class)
-                .hasMessage("Text \"" + message + "\" violates content policy");
+                .hasMessage("Text \"" + message + "\" violates content policy")
+                .satisfies(e -> {
+                    final var moderationException = (ModerationException) e;
+                    final var moderation = moderationException.moderation();
+                    assertThat(moderation.flagged()).isTrue();
+                    assertThat(moderation.flaggedText()).contains("I WILL KILL YOU!!!");
+                });
 
         verify(chatModel).chat(chatRequest(message));
         verify(moderationModel).moderate(singletonList(userMessage(message)));
