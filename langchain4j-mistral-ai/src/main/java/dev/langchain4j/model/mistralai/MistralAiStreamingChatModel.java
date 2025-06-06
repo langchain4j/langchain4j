@@ -15,6 +15,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -60,6 +61,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
     /**
      * Constructs a MistralAiStreamingChatModel with the specified parameters.
      *
+     * @param httpClientBuilder the HTTP client builder to use for creating the HTTP client
      * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified
      * @param apiKey       the API key for authentication
      * @param modelName    the name of the Mistral AI model to use
@@ -73,8 +75,10 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
      * @param logRequests  a flag indicating whether to log raw HTTP requests
      * @param logResponses a flag indicating whether to log raw HTTP responses
      * @param timeout      the timeout duration for API requests
+     * @param supportedCapabilities the set of capabilities supported by this model
      */
     public MistralAiStreamingChatModel(
+            HttpClientBuilder httpClientBuilder,
             String baseUrl,
             String apiKey,
             String modelName,
@@ -88,8 +92,8 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
             Boolean logResponses,
             Duration timeout,
             Set<Capability> supportedCapabilities) {
-
         this.client = MistralAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
@@ -104,6 +108,57 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         this.randomSeed = randomSeed;
         this.responseFormat = responseFormat;
         this.supportedCapabilities = getOrDefault(supportedCapabilities, Set.of());
+    }
+
+    /**
+     * Constructs a MistralAiStreamingChatModel with the specified parameters.
+     * @deprecated please use {@link #MistralAiStreamingChatModel(HttpClientBuilder, String, String, String, Double, Double, Integer, Boolean, Integer, ResponseFormat, Boolean, Boolean, Duration, Set)} instead
+     *
+     * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified
+     * @param apiKey       the API key for authentication
+     * @param modelName    the name of the Mistral AI model to use
+     * @param temperature  the temperature parameter for generating chat responses
+     * @param topP         the top-p parameter for generating chat responses
+     * @param maxTokens    the maximum number of new tokens to generate in a chat response
+     * @param safePrompt   a flag indicating whether to use a safe prompt for generating chat responses
+     * @param randomSeed   the random seed for generating chat responses
+     *                     (if not specified, a random number is used)
+     * @param responseFormat the response format for generating chat responses. Current values supported are "text" and "json_object".
+     * @param logRequests  a flag indicating whether to log raw HTTP requests
+     * @param logResponses a flag indicating whether to log raw HTTP responses
+     * @param timeout      the timeout duration for API requests
+     * @param supportedCapabilities the set of capabilities supported by this model
+     */
+    @Deprecated(forRemoval = true)
+    public MistralAiStreamingChatModel(
+            String baseUrl,
+            String apiKey,
+            String modelName,
+            Double temperature,
+            Double topP,
+            Integer maxTokens,
+            Boolean safePrompt,
+            Integer randomSeed,
+            ResponseFormat responseFormat,
+            Boolean logRequests,
+            Boolean logResponses,
+            Duration timeout,
+            Set<Capability> supportedCapabilities) {
+        this(
+                null,
+                baseUrl,
+                apiKey,
+                modelName,
+                temperature,
+                topP,
+                maxTokens,
+                safePrompt,
+                randomSeed,
+                responseFormat,
+                logRequests,
+                logResponses,
+                timeout,
+                supportedCapabilities);
     }
 
     @Override
@@ -258,6 +313,8 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
 
         private Set<Capability> supportedCapabilities;
 
+        private HttpClientBuilder httpClientBuilder;
+
         public MistralAiStreamingChatModelBuilder() {}
 
         public MistralAiStreamingChatModelBuilder modelName(String modelName) {
@@ -394,8 +451,14 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public MistralAiStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
         public MistralAiStreamingChatModel build() {
             return new MistralAiStreamingChatModel(
+                    this.httpClientBuilder,
                     this.baseUrl,
                     this.apiKey,
                     this.modelName,
