@@ -99,6 +99,9 @@
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
 
+        <!-- observability -->
+        <module>langchain4j-micrometer</module>
+
     </modules>
 
     <properties>
