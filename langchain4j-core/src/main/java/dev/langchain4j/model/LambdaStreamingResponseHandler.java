@@ -24,7 +24,7 @@ import java.util.function.Consumer;
  * model.chat("Why is the sky blue?",
  *       onPartialResponseAndError(System.out::println, Throwable::printStackTrace));
  *
- * // Blocking (new methods)
+ * // Blocking
  * onPartialResponseBlocking(model, "Why is the sky blue?", System.out::print);
  * onPartialResponseAndErrorBlocking(model, "Why is the sky blue?",
  *      System.out::print, Throwable::printStackTrace);
