@@ -15,12 +15,6 @@
         Integration with LangChain4j adds web document loading through browser automation.
         https://www.selenium.dev/documentation/about/copyright</description>
 
-    <properties>
-        <selenium.webdriver.version>4.13.0</selenium.webdriver.version>
-        <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
-    </properties>
-
     <dependencies>
 
         <dependency>
@@ -39,7 +33,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-
 
         <!-- test dependencies -->
 
