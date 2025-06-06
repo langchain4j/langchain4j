@@ -65,6 +65,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     final MetadataHandler metadataHandler;
 
     /**
+     * Should create the extension vector in target database
+     */
+    protected boolean createExtensionVector;
+
+    /**
      * Constructor for PgVectorEmbeddingStore Class
      *
      * @param datasource            The datasource to use
@@ -74,6 +79,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
+     * @param createExtensionVector Should create the vector extension in target database
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      */
     protected PgVectorEmbeddingStore(DataSource datasource,
@@ -83,6 +89,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                      Integer indexListSize,
                                      Boolean createTable,
                                      Boolean dropTableFirst,
+                                     Boolean createExtensionVector,
                                      MetadataStorageConfig metadataStorageConfig) {
         this.datasource = ensureNotNull(datasource, "datasource");
         this.table = ensureNotBlank(table, "table");
@@ -91,7 +98,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         useIndex = getOrDefault(useIndex, false);
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
-
+        this.createExtensionVector = getOrDefault(createExtensionVector, true);
         initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
     }
 
@@ -110,6 +117,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
+     * @param createExtensionVector Should create the vector extension in target database
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      */
     @SuppressWarnings("unused")
@@ -125,10 +133,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Integer indexListSize,
             Boolean createTable,
             Boolean dropTableFirst,
+            Boolean createExtensionVector,
             MetadataStorageConfig metadataStorageConfig
     ) {
         this(createDataSource(host, port, user, password, database),
-                table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataStorageConfig);
+                table, dimension, useIndex, indexListSize, createTable, dropTableFirst, createExtensionVector, metadataStorageConfig);
     }
 
     public PgVectorEmbeddingStore() {
@@ -411,8 +420,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Find a way to do the following code in connection initialization.
         // Here we assume the datasource could handle a connection pool
         // and we should add the vector type on each connection
-        try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+        if (createExtensionVector) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+            }
         }
         PGvector.addVectorType(connection);
         return connection;
