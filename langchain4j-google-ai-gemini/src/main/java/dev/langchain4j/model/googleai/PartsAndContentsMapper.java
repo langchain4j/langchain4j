@@ -238,7 +238,12 @@ class PartsAndContentsMapper {
 
                         return GeminiContent.builder()
                             .role(GeminiRole.USER.toString())
-                            .parts(singletonList(fromContentToGPart(TextContent.from(toolResultMessage.text()))))
+                            .parts(List.of(GeminiPart.builder()
+                                    .functionResponse(GeminiFunctionResponse.builder()
+                                            .name(toolResultMessage.toolName())
+                                            .response(Map.of("response", toolResultMessage.text()))
+                                            .build())
+                                    .build()))
                             .build();
                     default:
                         return null;

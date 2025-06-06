@@ -24,29 +24,10 @@ class GoogleAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
         );
     }
 
-    @Override
-    protected boolean supportsMapParameters() {
-        return false;
-    }
-
     @Disabled("Gemini cannot do it properly")
     @Override
     @ParameterizedTest
     @MethodSource("models")
     protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel model) {
-    }
-
-    @Disabled("Gemini cannot do it properly")
-    @Override
-    @ParameterizedTest
-    @MethodSource("models")
-    protected void should_execute_tool_with_list_of_POJOs_parameter(ChatModel model) {
-    }
-
-    @Disabled("Gemini cannot do it properly")
-    @Override
-    @ParameterizedTest
-    @MethodSource("models")
-    protected void should_execute_tool_with_list_of_strings_parameter(ChatModel model) {
     }
 }
