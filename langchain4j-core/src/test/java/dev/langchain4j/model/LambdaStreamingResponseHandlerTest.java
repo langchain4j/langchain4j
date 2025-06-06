@@ -2,8 +2,8 @@ package dev.langchain4j.model;
 
 import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponse;
 import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseAndError;
-import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseBlocking;
 import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseAndErrorBlocking;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseBlocking;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
