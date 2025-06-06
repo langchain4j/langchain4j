@@ -3,7 +3,6 @@ package dev.langchain4j.model;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
@@ -45,8 +44,7 @@ public class LambdaStreamingResponseHandler {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-            }
+            public void onCompleteResponse(ChatResponse completeResponse) {}
 
             @Override
             public void onError(Throwable error) {
@@ -56,9 +54,7 @@ public class LambdaStreamingResponseHandler {
     }
 
     public static StreamingChatResponseHandler onPartialResponseAndError(
-            Consumer<String> onPartialResponseLambda,
-            Consumer<Throwable> onErrorLambda
-    ) {
+            Consumer<String> onPartialResponseLambda, Consumer<Throwable> onErrorLambda) {
         return new StreamingChatResponseHandler() {
 
             @Override
@@ -67,8 +63,7 @@ public class LambdaStreamingResponseHandler {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-            }
+            public void onCompleteResponse(ChatResponse completeResponse) {}
 
             @Override
             public void onError(Throwable error) {
@@ -87,9 +82,7 @@ public class LambdaStreamingResponseHandler {
      * @throws InterruptedException if the thread is interrupted while waiting for completion
      */
     public static void onPartialResponseBlocking(
-            StreamingChatModel model,
-            String message,
-            Consumer<String> onPartialResponse) throws InterruptedException {
+            StreamingChatModel model, String message, Consumer<String> onPartialResponse) throws InterruptedException {
 
         onPartialResponseAndErrorBlocking(model, message, onPartialResponse, Throwable::printStackTrace);
     }
@@ -105,10 +98,8 @@ public class LambdaStreamingResponseHandler {
      * @throws InterruptedException if the thread is interrupted while waiting for completion
      */
     public static void onPartialResponseAndErrorBlocking(
-            StreamingChatModel model,
-            String message,
-            Consumer<String> onPartialResponse,
-            Consumer<Throwable> onError) throws InterruptedException {
+            StreamingChatModel model, String message, Consumer<String> onPartialResponse, Consumer<Throwable> onError)
+            throws InterruptedException {
 
         CountDownLatch completionLatch = new CountDownLatch(1);
 

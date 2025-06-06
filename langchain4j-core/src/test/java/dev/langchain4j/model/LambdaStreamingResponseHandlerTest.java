@@ -1,18 +1,17 @@
 package dev.langchain4j.model;
 
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.*;
+
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static dev.langchain4j.model.LambdaStreamingResponseHandler.*;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 class LambdaStreamingResponseHandlerTest implements WithAssertions {
 
@@ -103,7 +102,9 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         final Throwable[] thrown = {null};
         AtomicBoolean completed = new AtomicBoolean(false);
 
-        onPartialResponseAndErrorBlocking(model, "Test message",
+        onPartialResponseAndErrorBlocking(
+                model,
+                "Test message",
                 token -> {
                     receivedTokens.add(token);
                     if ("successfully".equals(token)) {
@@ -162,12 +163,10 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         final Throwable[] thrown = {null};
         AtomicBoolean completed = new AtomicBoolean(false);
 
-        onPartialResponseAndErrorBlocking(model, "Test message",
-                receivedTokens::add,
-                t -> {
-                    thrown[0] = t;
-                    completed.set(true);
-                });
+        onPartialResponseAndErrorBlocking(model, "Test message", receivedTokens::add, t -> {
+            thrown[0] = t;
+            completed.set(true);
+        });
 
         // then
         assertThat(receivedTokens).containsExactly("Never ", "ending ");
@@ -192,17 +191,17 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
 
         // Start interruption in another thread after a short delay
         new Thread(() -> {
-            try {
-                Thread.sleep(100);
-                testThread.interrupt();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }).start();
+                    try {
+                        Thread.sleep(100);
+                        testThread.interrupt();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                })
+                .start();
 
-        assertThatThrownBy(() ->
-                onPartialResponseBlocking(model, "Test message", System.out::print)
-        ).isInstanceOf(InterruptedException.class);
+        assertThatThrownBy(() -> onPartialResponseBlocking(model, "Test message", System.out::print))
+                .isInstanceOf(InterruptedException.class);
     }
 
     static class DummyModel implements StreamingChatModel {
@@ -241,25 +240,26 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
             // Simulate async behavior with a separate thread
             new Thread(() -> {
-                try {
-                    for (Object obj : stringsAndError) {
-                        Thread.sleep(50); // Simulate network delay
-                        if (obj instanceof String message) {
-                            handler.onPartialResponse(message);
-                        } else if (obj instanceof Throwable problem) {
-                            handler.onError(problem);
-                            return; // Exit on error
+                        try {
+                            for (Object obj : stringsAndError) {
+                                Thread.sleep(50); // Simulate network delay
+                                if (obj instanceof String message) {
+                                    handler.onPartialResponse(message);
+                                } else if (obj instanceof Throwable problem) {
+                                    handler.onError(problem);
+                                    return; // Exit on error
+                                }
+                            }
+                            // Call onCompleteResponse if no error occurred
+                            if (stringsAndError.stream().noneMatch(obj -> obj instanceof Throwable)) {
+                                handler.onCompleteResponse(null); // Mock ChatResponse
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            handler.onError(e);
                         }
-                    }
-                    // Call onCompleteResponse if no error occurred
-                    if (stringsAndError.stream().noneMatch(obj -> obj instanceof Throwable)) {
-                        handler.onCompleteResponse(null); // Mock ChatResponse
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    handler.onError(e);
-                }
-            }).start();
+                    })
+                    .start();
         }
     }
 
@@ -275,19 +275,20 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
             // Simulate async behavior that never completes
             new Thread(() -> {
-                try {
-                    for (Object obj : stringsAndError) {
-                        Thread.sleep(50);
-                        if (obj instanceof String message) {
-                            handler.onPartialResponse(message);
+                        try {
+                            for (Object obj : stringsAndError) {
+                                Thread.sleep(50);
+                                if (obj instanceof String message) {
+                                    handler.onPartialResponse(message);
+                                }
+                            }
+                            // Never call onCompleteResponse - this simulates a hanging connection
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            handler.onError(e);
                         }
-                    }
-                    // Never call onCompleteResponse - this simulates a hanging connection
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    handler.onError(e);
-                }
-            }).start();
+                    })
+                    .start();
         }
     }
 }
