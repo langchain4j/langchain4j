@@ -1,7 +1,8 @@
 package dev.langchain4j.model.googleai;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -18,12 +19,12 @@ class GeminiService {
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
 
     private final HttpClient httpClient;
-    private final Gson gson;
+    private final ObjectMapper objectMapper;
     private final Logger logger;
 
     GeminiService(Logger logger, Duration timeout) {
         this.logger = logger;
-        this.gson = new GsonBuilder().setPrettyPrinting().create();
+        this.objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(timeout)
@@ -56,12 +57,12 @@ class GeminiService {
     }
 
     private <T> T sendRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
-        String jsonBody = gson.toJson(requestBody);
-        HttpRequest request = buildHttpRequest(url, apiKey, jsonBody);
-
-        logRequest(jsonBody);
-
         try {
+            String jsonBody = objectMapper.writeValueAsString(requestBody);
+            HttpRequest request = buildHttpRequest(url, apiKey, jsonBody);
+
+            logRequest(jsonBody);
+
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 300) {
@@ -70,7 +71,7 @@ class GeminiService {
 
             logResponse(response.body());
 
-            return gson.fromJson(response.body(), responseType);
+            return objectMapper.readValue(response.body(), responseType);
         } catch (IOException e) {
             throw new RuntimeException("An error occurred while sending the request", e);
         } catch (InterruptedException e) {
@@ -80,12 +81,12 @@ class GeminiService {
     }
 
     private <T> Stream<T> streamRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
-        String jsonBody = gson.toJson(requestBody);
-        HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
-
-        logRequest(jsonBody);
-
         try {
+            String jsonBody = objectMapper.writeValueAsString(requestBody);
+            HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
+
+            logRequest(jsonBody);
+
             HttpResponse<Stream<String>> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofLines());
 
             if (httpResponse.statusCode() >= 300) {
@@ -98,7 +99,13 @@ class GeminiService {
             Stream<T> responseStream = httpResponse.body()
                     .filter(line -> line.startsWith("data: "))
                     .map(line -> line.substring(6)) // Remove "data: " prefix
-                    .map(jsonString -> gson.fromJson(jsonString, responseType));
+                    .map(jsonString -> {
+                        try {
+                            return objectMapper.readValue(jsonString, responseType);
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
 
             if (logger != null) {
                 responseStream = responseStream.peek(response -> logger.debug("Partial response from Gemini:\n{}", response));

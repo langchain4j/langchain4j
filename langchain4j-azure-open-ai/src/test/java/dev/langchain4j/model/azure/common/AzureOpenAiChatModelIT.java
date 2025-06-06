@@ -17,7 +17,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-4o-mini")
-            .logRequestsAndResponses(true)
+            .logRequestsAndResponses(false) // images are huge in logs
             .build();
 
     static final AzureOpenAiChatModel AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA = AzureOpenAiChatModel.builder()
@@ -25,7 +25,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-4o-mini")
             .strictJsonSchema(true)
-            .logRequestsAndResponses(true)
+            .logRequestsAndResponses(false) // images are huge in logs
             .build();
 
     @Override

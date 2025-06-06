@@ -1,12 +1,18 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiPromptFeedback {
     private GeminiBlockReason blockReason;
     private List<GeminiSafetyRating> safetyRatings;
 
-    GeminiPromptFeedback(GeminiBlockReason blockReason, List<GeminiSafetyRating> safetyRatings) {
+    @JsonCreator
+    GeminiPromptFeedback(@JsonProperty("blockReason") GeminiBlockReason blockReason, @JsonProperty("safetyRatings") List<GeminiSafetyRating> safetyRatings) {
         this.blockReason = blockReason;
         this.safetyRatings = safetyRatings;
     }

@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.CUSTOM;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 
 /**
  * Represents a custom message.
@@ -22,7 +22,7 @@ public class CustomMessage implements ChatMessage {
      * @param attributes the message attributes.
      */
     public CustomMessage(Map<String, Object> attributes) {
-        this.attributes = copyIfNotNull(attributes);
+        this.attributes = copy(attributes);
     }
 
     /**

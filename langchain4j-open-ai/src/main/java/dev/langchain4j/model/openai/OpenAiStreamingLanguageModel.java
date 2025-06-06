@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.language.StreamingLanguageModel;
@@ -88,7 +89,9 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
                             chatResponse.metadata().finishReason()
                     ));
                 })
-                .onError(handler::onError)
+                .onError(throwable -> {
+                    handler.onError(ExceptionMapper.DEFAULT.mapException(throwable));
+                })
                 .execute();
     }
 

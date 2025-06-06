@@ -14,13 +14,13 @@ import static java.util.Collections.singletonList;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -197,7 +197,8 @@ public class MistralAiChatModel implements ChatModel {
 
         MistralAiChatCompletionRequest request = requestBuilder.build();
 
-        MistralAiChatCompletionResponse response = withRetryMappingExceptions(() -> client.chatCompletion(request), maxRetries);
+        MistralAiChatCompletionResponse response =
+                withRetryMappingExceptions(() -> client.chatCompletion(request), maxRetries);
 
         return Response.from(
                 aiMessageFrom(response),

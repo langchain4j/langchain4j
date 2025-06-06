@@ -3,9 +3,6 @@ package dev.langchain4j.model.bedrock;
 import dev.langchain4j.model.bedrock.internal.BedrockChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.List;
 
 /**
@@ -13,16 +10,36 @@ import java.util.List;
  * Please reach out (via GitHub issues) if you use it.
  */
 @Deprecated(forRemoval = true, since = "1.0.0-beta2")
-@Getter
-@Setter
 public class BedrockStabilityAIChatModelResponse implements BedrockChatModelResponse {
 
-    @Getter
-    @Setter
     public static class Artifact {
         private String base64;
         private int seed;
         private String finishReason;
+
+        public String getBase64() {
+            return base64;
+        }
+
+        public void setBase64(final String base64) {
+            this.base64 = base64;
+        }
+
+        public int getSeed() {
+            return seed;
+        }
+
+        public void setSeed(final int seed) {
+            this.seed = seed;
+        }
+
+        public String getFinishReason() {
+            return finishReason;
+        }
+
+        public void setFinishReason(final String finishReason) {
+            this.finishReason = finishReason;
+        }
     }
 
     private String result;
@@ -48,5 +65,21 @@ public class BedrockStabilityAIChatModelResponse implements BedrockChatModelResp
     @Override
     public TokenUsage getTokenUsage() {
         return null;
+    }
+
+    public String getResult() {
+        return result;
+    }
+
+    public void setResult(final String result) {
+        this.result = result;
+    }
+
+    public List<Artifact> getArtifacts() {
+        return artifacts;
+    }
+
+    public void setArtifacts(final List<Artifact> artifacts) {
+        this.artifacts = artifacts;
     }
 }

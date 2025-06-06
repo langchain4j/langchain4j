@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
@@ -18,7 +19,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 @Experimental
-public class GoogleAiEmbeddingModel implements EmbeddingModel {
+public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
+
     private static final int MAX_NUMBER_OF_SEGMENTS_PER_BATCH = 100;
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiEmbeddingModel.class);
 
@@ -138,8 +140,8 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
-    public int dimension() {
-        return getOrDefault(this.outputDimensionality, 768);
+    public Integer knownDimension() {
+        return outputDimensionality;
     }
 
     public enum TaskType {

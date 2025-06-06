@@ -1,5 +1,8 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiCountTokensResponse {
     Integer totalTokens;
 

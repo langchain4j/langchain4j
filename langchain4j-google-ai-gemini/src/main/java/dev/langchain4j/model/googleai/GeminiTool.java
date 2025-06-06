@@ -1,12 +1,18 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiTool {
     private List<GeminiFunctionDeclaration> functionDeclarations;
     private GeminiCodeExecution codeExecution;
 
-    GeminiTool(List<GeminiFunctionDeclaration> functionDeclarations, GeminiCodeExecution codeExecution) {
+    @JsonCreator
+    GeminiTool(@JsonProperty("functionDeclarations") List<GeminiFunctionDeclaration> functionDeclarations, @JsonProperty("codeExecution") GeminiCodeExecution codeExecution) {
         this.functionDeclarations = functionDeclarations;
         this.codeExecution = codeExecution;
     }

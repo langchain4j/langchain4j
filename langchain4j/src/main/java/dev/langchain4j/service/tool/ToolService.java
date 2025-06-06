@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
@@ -25,6 +26,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 @Internal
@@ -61,17 +63,19 @@ public class ToolService {
             }
 
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                if (method.isAnnotationPresent(Tool.class)) {
-                    ToolSpecification toolSpecification = toolSpecificationFrom(method);
-                    if (toolExecutors.containsKey(toolSpecification.name())) {
-                        throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + toolSpecification.name());
-                    }
-                    toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
-                    toolSpecifications.add(toolSpecificationFrom(method));
-                }
+                getAnnotatedMethod(method, Tool.class).ifPresent( toolMethod -> processToolMethod(objectWithTool, toolMethod) );
             }
         }
+    }
+
+    private void processToolMethod(Object objectWithTool, Method method) {
+        ToolSpecification toolSpecification = toolSpecificationFrom(method);
+        if (toolExecutors.containsKey(toolSpecification.name())) {
+            throw new IllegalConfigurationException(
+                    "Duplicated definition for tool: " + toolSpecification.name());
+        }
+        toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
+        toolSpecifications.add(toolSpecificationFrom(method));
     }
 
     public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {

@@ -48,12 +48,12 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType() {
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel chatModel) {
         return OpenAiOfficialChatResponseMetadata.class;
     }
 
     @Override
-    protected Class<? extends TokenUsage> tokenUsageType() {
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         return OpenAiOfficialTokenUsage.class;
     }
 }

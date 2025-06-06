@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import com.openai.models.ChatModel;
@@ -26,12 +26,12 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
     private OpenAiOfficialChatRequestParameters(Builder builder) {
         super(builder);
         this.maxCompletionTokens = builder.maxCompletionTokens;
-        this.logitBias = copyIfNotNull(builder.logitBias);
+        this.logitBias = copy(builder.logitBias);
         this.parallelToolCalls = builder.parallelToolCalls;
         this.seed = builder.seed;
         this.user = builder.user;
         this.store = builder.store;
-        this.metadata = copyIfNotNull(builder.metadata);
+        this.metadata = copy(builder.metadata);
         this.serviceTier = builder.serviceTier;
         this.reasoningEffort = builder.reasoningEffort;
     }
@@ -133,12 +133,12 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
             super.overrideWith(parameters);
             if (parameters instanceof OpenAiOfficialChatRequestParameters openAiParameters) {
                 maxCompletionTokens(getOrDefault(openAiParameters.maxCompletionTokens(), maxCompletionTokens));
-                logitBias(copyIfNotNull(getOrDefault(openAiParameters.logitBias(), logitBias)));
+                logitBias(getOrDefault(openAiParameters.logitBias(), logitBias));
                 parallelToolCalls(getOrDefault(openAiParameters.parallelToolCalls(), parallelToolCalls));
                 seed(getOrDefault(openAiParameters.seed(), seed));
                 user(getOrDefault(openAiParameters.user(), user));
                 store(getOrDefault(openAiParameters.store(), store));
-                metadata(copyIfNotNull(getOrDefault(openAiParameters.metadata(), metadata)));
+                metadata(getOrDefault(openAiParameters.metadata(), metadata));
                 serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
                 reasoningEffort(getOrDefault(openAiParameters.reasoningEffort(), reasoningEffort));
             }

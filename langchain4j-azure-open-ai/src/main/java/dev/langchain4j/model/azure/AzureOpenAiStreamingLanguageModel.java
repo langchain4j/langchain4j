@@ -1,11 +1,16 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.Choice;
 import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -13,16 +18,10 @@ import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -101,6 +100,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             String endpoint,
             String serviceVersion,
             String apiKey,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
@@ -139,6 +139,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 apiKey,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -149,6 +150,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             String endpoint,
             String serviceVersion,
             KeyCredential keyCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
@@ -187,6 +189,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 keyCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -197,6 +200,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             String endpoint,
             String serviceVersion,
             TokenCredential tokenCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
@@ -235,6 +239,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 tokenCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -329,6 +334,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private String apiKey;
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
+        private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private TokenCountEstimator tokenCountEstimator;
         private Integer maxTokens;
@@ -403,6 +409,17 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
          */
         public Builder tokenCredential(TokenCredential tokenCredential) {
             this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        /**
+         * Sets the {@code HttpClientProvider} to use for creating the HTTP client to communicate with the OpenAI api.
+         *
+         * @param httpClientProvider The {@code HttpClientProvider} to use
+         * @return builder
+         */
+        public Builder httpClientProvider(HttpClientProvider httpClientProvider) {
+            this.httpClientProvider = httpClientProvider;
             return this;
         }
 
@@ -520,6 +537,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                             endpoint,
                             serviceVersion,
                             tokenCredential,
+                            httpClientProvider,
                             deploymentName,
                             tokenCountEstimator,
                             maxTokens,
@@ -543,6 +561,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                             endpoint,
                             serviceVersion,
                             keyCredential,
+                            httpClientProvider,
                             deploymentName,
                             tokenCountEstimator,
                             maxTokens,
@@ -566,6 +585,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         endpoint,
                         serviceVersion,
                         apiKey,
+                        httpClientProvider,
                         deploymentName,
                         tokenCountEstimator,
                         maxTokens,

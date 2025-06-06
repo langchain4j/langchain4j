@@ -1,12 +1,21 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiCitationSource {
     private Integer startIndex;
     private Integer endIndex;
     private String uri;
     private String license;
 
-    GeminiCitationSource(Integer startIndex, Integer endIndex, String uri, String license) {
+    @JsonCreator
+    GeminiCitationSource(@JsonProperty("startIndex") Integer startIndex,
+                         @JsonProperty("endIndex") Integer endIndex,
+                         @JsonProperty("uri") String uri,
+                         @JsonProperty("license") String license) {
         this.startIndex = startIndex;
         this.endIndex = endIndex;
         this.uri = uri;

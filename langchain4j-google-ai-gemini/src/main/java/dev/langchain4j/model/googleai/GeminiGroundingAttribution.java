@@ -1,10 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiGroundingAttribution {
     private GeminiAttributionSourceId sourceId;
     private GeminiContent content;
 
-    GeminiGroundingAttribution(GeminiAttributionSourceId sourceId, GeminiContent content) {
+    @JsonCreator
+    GeminiGroundingAttribution(@JsonProperty("sourceId") GeminiAttributionSourceId sourceId, @JsonProperty("content") GeminiContent content) {
         this.sourceId = sourceId;
         this.content = content;
     }

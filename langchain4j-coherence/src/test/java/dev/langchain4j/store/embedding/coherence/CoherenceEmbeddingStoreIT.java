@@ -22,7 +22,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 /**
- * An extension of the LangChain4J {@link EmbeddingStoreIT} tests
+ * An extension of the LangChain4j {@link EmbeddingStoreIT} tests
  * that use Coherence as an {@link EmbeddingStore}.
  */
 class CoherenceEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {

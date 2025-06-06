@@ -63,7 +63,7 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         assertThat(answerResult.url()).isEqualTo(URI.create("https://tavily.com/"));
         assertThat(answerResult.snippet()).isNotBlank();
         assertThat(answerResult.content()).isNull();
-        assertThat(answerResult.metadata()).isNull();
+        assertThat(answerResult.metadata()).isEmpty();
 
         results.subList(1, results.size()).forEach(result -> {
             assertThat(result.title()).isNotBlank();

@@ -1,11 +1,17 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiError {
     private final Integer code;
     private final String message;
     private final String status;
 
-    GeminiError(Integer code, String message, String status) {
+    @JsonCreator
+    GeminiError(@JsonProperty("code") Integer code, @JsonProperty("message") String message, @JsonProperty("status") String status) {
         this.code = code;
         this.message = message;
         this.status = status;

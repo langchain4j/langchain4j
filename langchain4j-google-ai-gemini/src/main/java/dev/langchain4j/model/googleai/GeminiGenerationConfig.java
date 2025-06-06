@@ -1,7 +1,12 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiGenerationConfig {
     private List<String> stopSequences;
     private String responseMimeType;
@@ -12,7 +17,16 @@ class GeminiGenerationConfig {
     private Integer topK = 64;
     private Double topP = 0.95;
 
-    GeminiGenerationConfig(List<String> stopSequences, String responseMimeType, GeminiSchema responseSchema, Integer candidateCount, Integer maxOutputTokens, Double temperature, Integer topK, Double topP) {
+    @JsonCreator
+    GeminiGenerationConfig(
+            @JsonProperty("stopSequences") List<String> stopSequences,
+            @JsonProperty("responseMimeType") String responseMimeType,
+            @JsonProperty("responseSchema") GeminiSchema responseSchema,
+            @JsonProperty("candidateCount") Integer candidateCount,
+            @JsonProperty("maxOutputTokens") Integer maxOutputTokens,
+            @JsonProperty("temperature") Double temperature,
+            @JsonProperty("topK") Integer topK,
+            @JsonProperty("topP") Double topP) {
         this.stopSequences = stopSequences;
         this.responseMimeType = responseMimeType;
         this.responseSchema = responseSchema;

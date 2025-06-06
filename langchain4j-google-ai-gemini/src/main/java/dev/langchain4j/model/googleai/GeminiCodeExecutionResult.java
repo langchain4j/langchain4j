@@ -1,10 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiCodeExecutionResult {
     private GeminiOutcome outcome; //TODO how to deal with the non-OK outcomes?
     private String output;
 
-    GeminiCodeExecutionResult(GeminiOutcome outcome, String output) {
+    @JsonCreator
+    GeminiCodeExecutionResult(@JsonProperty("outcome") GeminiOutcome outcome, @JsonProperty("output") String output) {
         this.outcome = outcome;
         this.output = output;
     }

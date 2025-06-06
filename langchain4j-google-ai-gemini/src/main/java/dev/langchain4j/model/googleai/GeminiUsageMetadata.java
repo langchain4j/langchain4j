@@ -1,12 +1,21 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiUsageMetadata {
     private Integer promptTokenCount;
     private Integer cachedContentTokenCount;
     private Integer candidatesTokenCount;
     private Integer totalTokenCount;
 
-    GeminiUsageMetadata(Integer promptTokenCount, Integer cachedContentTokenCount, Integer candidatesTokenCount, Integer totalTokenCount) {
+    @JsonCreator
+    GeminiUsageMetadata(@JsonProperty("promptTokenCount") Integer promptTokenCount,
+                        @JsonProperty("cachedContentTokenCount") Integer cachedContentTokenCount,
+                        @JsonProperty("candidatesTokenCount") Integer candidatesTokenCount,
+                        @JsonProperty("totalTokenCount") Integer totalTokenCount) {
         this.promptTokenCount = promptTokenCount;
         this.cachedContentTokenCount = cachedContentTokenCount;
         this.candidatesTokenCount = candidatesTokenCount;

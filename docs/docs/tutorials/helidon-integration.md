@@ -14,7 +14,7 @@ Helidon's LangChain4j integration requires Java 21 and Helidon 4.2.
 
 ## Examples
 
-We have created several sample applications for you to explore. These samples demonstrate all aspects of using LangChain4J in Helidon applications.
+We have created several sample applications for you to explore. These samples demonstrate all aspects of using LangChain4j in Helidon applications.
 
 ### Coffee Shop Assistant
 The Coffee Shop Assistant is a demo application that showcases how to build an AI-powered assistant for a coffee shop. This assistant can answer questions about the menu, provide recommendations, and create orders. It utilizes an embedding store initialized from a JSON file.
@@ -34,6 +34,6 @@ Check it out:
 
 We also offer a Hands-on Lab with step-by-step instructions on how to build the Coffee Shop Assistant:
 
-[HOL: Building AI-Powered Applications with Helidon and LangChain4J](https://github.com/helidon-io/helidon-labs/tree/main/hols/langchain4j)
+[HOL: Building AI-Powered Applications with Helidon and LangChain4j](https://github.com/helidon-io/helidon-labs/tree/main/hols/langchain4j)
 
 

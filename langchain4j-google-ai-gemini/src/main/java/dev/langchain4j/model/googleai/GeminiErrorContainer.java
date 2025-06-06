@@ -1,9 +1,15 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiErrorContainer {
     private final GeminiError error;
 
-    GeminiErrorContainer(GeminiError error) {
+    @JsonCreator
+    GeminiErrorContainer(@JsonProperty("error") GeminiError error) {
         this.error = error;
     }
 

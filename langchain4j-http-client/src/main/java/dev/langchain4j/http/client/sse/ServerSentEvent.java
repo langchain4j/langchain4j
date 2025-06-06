@@ -1,8 +1,8 @@
 package dev.langchain4j.http.client.sse;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
+
+import java.util.Objects;
 
 public class ServerSentEvent {
 
@@ -27,8 +27,7 @@ public class ServerSentEvent {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (ServerSentEvent) obj;
-        return Objects.equals(this.event, that.event) &&
-                Objects.equals(this.data, that.data);
+        return Objects.equals(this.event, that.event) && Objects.equals(this.data, that.data);
     }
 
     @Override
@@ -38,9 +37,6 @@ public class ServerSentEvent {
 
     @Override
     public String toString() {
-        return "ServerSentEvent {" +
-                " event = " + quoted(event) +
-                ", data = " + quoted(data) +
-                " }";
+        return "ServerSentEvent {" + " event = " + quoted(event) + ", data = " + quoted(data) + " }";
     }
 }

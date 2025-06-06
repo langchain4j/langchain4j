@@ -67,7 +67,7 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         AiMessage.from("hello"),
-                        "{\"text\":\"hello\",\"type\":\"AI\"}"
+                        "{\"text\":\"hello\",\"toolExecutionRequests\":[],\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         AiMessage.from(ToolExecutionRequest.builder()
@@ -114,5 +114,14 @@ class ChatMessageSerializerTest {
 
         List<ChatMessage> deserializedMessages = messagesFromJson(json);
         assertThat(deserializedMessages).isEqualTo(messages);
+    }
+
+    @Test
+    void should_deserialize_AiMessage_without_toolExecutionRequests() {
+
+        ChatMessage deserialized = messageFromJson("{\"text\":\"hello\",\"type\":\"AI\"}");
+
+        assertThat(deserialized).isEqualTo(AiMessage.from("hello"));
+        assertThat(((AiMessage) deserialized).toolExecutionRequests()).isEmpty();
     }
 }

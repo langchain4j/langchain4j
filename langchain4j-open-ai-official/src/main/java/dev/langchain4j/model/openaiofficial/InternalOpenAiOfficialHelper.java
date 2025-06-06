@@ -391,10 +391,6 @@ class InternalOpenAiOfficialHelper {
     }
 
     static List<ChatCompletionTool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
-        if (toolSpecifications == null) {
-            return null;
-        }
-
         return toolSpecifications.stream()
                 .map((ToolSpecification toolSpecification) -> toTool(toolSpecification, strict))
                 .collect(toList());
@@ -439,7 +435,7 @@ class InternalOpenAiOfficialHelper {
             } else {
                 parametersBuilder.putAdditionalProperty("required", JsonValue.from(parameters.required()));
             }
-            if (parameters.definitions() != null) {
+            if (!parameters.definitions().isEmpty()) {
                 parametersBuilder.putAdditionalProperty(
                         "$defs", JsonValue.from(toMap(parameters.definitions(), strict)));
             }
@@ -656,7 +652,7 @@ class InternalOpenAiOfficialHelper {
             builder.maxCompletionTokens(parameters.maxCompletionTokens());
         }
 
-        if (parameters.logitBias() != null) {
+        if (!parameters.logitBias().isEmpty()) {
             builder.logitBias(ChatCompletionCreateParams.LogitBias.builder()
                     .putAllAdditionalProperties(parameters.logitBias().entrySet().stream()
                             .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonValue.from(entry.getValue()))))
@@ -679,7 +675,7 @@ class InternalOpenAiOfficialHelper {
             builder.store(parameters.store());
         }
 
-        if (parameters.metadata() != null) {
+        if (!parameters.metadata().isEmpty()) {
             builder.metadata(ChatCompletionCreateParams.Metadata.builder()
                     .putAllAdditionalProperties(parameters.metadata().entrySet().stream()
                             .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonValue.from(entry.getValue()))))
@@ -713,11 +709,11 @@ class InternalOpenAiOfficialHelper {
             builder.presencePenalty(parameters.presencePenalty());
         }
 
-        if (parameters.stopSequences() != null) {
+        if (!parameters.stopSequences().isEmpty()) {
             builder.stop(ChatCompletionCreateParams.Stop.ofStrings(parameters.stopSequences()));
         }
 
-        if (parameters.toolSpecifications() != null) {
+        if (!parameters.toolSpecifications().isEmpty()) {
             builder.tools(toTools(parameters.toolSpecifications(), strictTools));
         }
 

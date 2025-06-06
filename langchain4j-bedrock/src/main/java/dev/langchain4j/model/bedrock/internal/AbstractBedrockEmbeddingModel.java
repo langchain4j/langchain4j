@@ -13,9 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -27,18 +24,40 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 /**
  * Abstract bedrock embedding model
  */
-@SuperBuilder
-@Getter
 public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> implements EmbeddingModel {
+
+    private static final Region DEFAULT_REGION = Region.US_EAST_1;
+    private static final AwsCredentialsProvider DEFAULT_CREDENTIALS_PROVIDER =
+            DefaultCredentialsProvider.builder().build();
+    private static final Integer DEFAULT_MAX_RETRIES = 2;
 
     private volatile BedrockRuntimeClient client;
 
-    @Builder.Default
-    private final Region region = Region.US_EAST_1;
-    @Builder.Default
-    private final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.builder().build();
-    @Builder.Default
-    private final Integer maxRetries = 2;
+    private final Region region;
+    private final AwsCredentialsProvider credentialsProvider;
+    private final Integer maxRetries;
+
+    protected AbstractBedrockEmbeddingModel(AbstractBedrockEmbeddingModelBuilder<T, ?, ?> builder) {
+        this.client = builder.client;
+
+        if (builder.isRegionSet) {
+            this.region = builder.region;
+        } else {
+            this.region = DEFAULT_REGION;
+        }
+
+        if (builder.isCredentialsProviderSet) {
+            this.credentialsProvider = builder.credentialsProvider;
+        } else {
+            this.credentialsProvider = DEFAULT_CREDENTIALS_PROVIDER;
+        }
+
+        if (builder.isMaxRetriesSet) {
+            this.maxRetries = builder.maxRetries;
+        } else {
+            this.maxRetries = DEFAULT_MAX_RETRIES;
+        }
+    }
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
@@ -57,9 +76,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
             totalInputToken += response.getInputTextTokenCount();
         }
 
-        return Response.from(
-                embeddings,
-                new TokenUsage(totalInputToken));
+        return Response.from(embeddings, new TokenUsage(totalInputToken));
     }
 
     /**
@@ -103,8 +120,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
      */
     protected InvokeModelResponse invoke(final String body) {
 
-        InvokeModelRequest invokeModelRequest = InvokeModelRequest
-                .builder()
+        InvokeModelRequest invokeModelRequest = InvokeModelRequest.builder()
                 .modelId(getModelId())
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
@@ -135,5 +151,63 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
                 .region(region)
                 .credentialsProvider(credentialsProvider)
                 .build();
+    }
+
+    public Region getRegion() {
+        return region;
+    }
+
+    public AwsCredentialsProvider getCredentialsProvider() {
+        return credentialsProvider;
+    }
+
+    public Integer getMaxRetries() {
+        return maxRetries;
+    }
+
+    public abstract static class AbstractBedrockEmbeddingModelBuilder<
+            T extends BedrockEmbeddingResponse,
+            C extends AbstractBedrockEmbeddingModel<T>,
+            B extends AbstractBedrockEmbeddingModelBuilder<T, C, B>> {
+        private BedrockRuntimeClient client;
+        private Region region;
+        private boolean isRegionSet;
+        private AwsCredentialsProvider credentialsProvider;
+        private boolean isCredentialsProviderSet;
+        private Integer maxRetries;
+        private boolean isMaxRetriesSet;
+
+        public B client(BedrockRuntimeClient client) {
+            this.client = client;
+            return self();
+        }
+
+        public B region(Region region) {
+            this.region = region;
+            this.isRegionSet = true;
+            return self();
+        }
+
+        public B credentialsProvider(AwsCredentialsProvider credentialsProvider) {
+            this.credentialsProvider = credentialsProvider;
+            this.isCredentialsProviderSet = true;
+            return self();
+        }
+
+        public B maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            this.isMaxRetriesSet = true;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        public String toString() {
+            return "AbstractBedrockEmbeddingModel.AbstractBedrockEmbeddingModelBuilder(client=" + this.client
+                    + ", region$value=" + this.region + ", credentialsProvider$value=" + this.credentialsProvider
+                    + ", maxRetries$value=" + this.maxRetries + ")";
+        }
     }
 }

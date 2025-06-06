@@ -1,18 +1,17 @@
 package dev.langchain4j.model.input;
 
-import dev.langchain4j.spi.prompt.PromptTemplateFactory;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.singletonMap;
 
+import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.singletonMap;
 
 /**
  * Represents a template of a prompt that can be reused multiple times.
@@ -59,18 +58,7 @@ public class PromptTemplate {
      */
     PromptTemplate(String template, Clock clock) {
         this.templateString = ensureNotBlank(template, "template");
-        this.template = FACTORY.create(new PromptTemplateFactory.Input() {
-
-            @Override
-            public String getTemplate() {
-                return template;
-            }
-
-            @Override
-            public String getName() {
-                return "template";
-            }
-        });
+        this.template = FACTORY.create(() -> template);
         this.clock = ensureNotNull(clock, "clock");
     }
 

@@ -1,6 +1,6 @@
 package dev.langchain4j.rag.content.injector;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -69,7 +69,7 @@ public class DefaultContentInjector implements ContentInjector {
 
     public DefaultContentInjector(PromptTemplate promptTemplate, List<String> metadataKeysToInclude) {
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
-        this.metadataKeysToInclude = copyIfNotNull(metadataKeysToInclude);
+        this.metadataKeysToInclude = copy(metadataKeysToInclude);
     }
 
     public static DefaultContentInjectorBuilder builder() {
@@ -106,7 +106,7 @@ public class DefaultContentInjector implements ContentInjector {
 
         TextSegment segment = content.textSegment();
 
-        if (isNullOrEmpty(metadataKeysToInclude)) {
+        if (metadataKeysToInclude.isEmpty()) {
             return segment.text();
         }
 
@@ -137,6 +137,7 @@ public class DefaultContentInjector implements ContentInjector {
     }
 
     public static class DefaultContentInjectorBuilder {
+
         private PromptTemplate promptTemplate;
         private List<String> metadataKeysToInclude;
 

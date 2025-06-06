@@ -8,8 +8,10 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListen
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createListenerResponse;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupAsyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -25,6 +27,7 @@ import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.ai.openai.models.ChatResponseMessage;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -56,10 +59,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -109,8 +108,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
     private final List<AzureChatExtensionConfiguration> dataSources;
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
+
     @Deprecated
     private ChatCompletionsResponseFormat chatCompletionsResponseFormat;
+
     private final ResponseFormat responseFormat;
     private final Boolean strictJsonSchema;
     private final List<ChatModelListener> listeners;
@@ -131,8 +132,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated
-            ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             List<ChatModelListener> listeners,
@@ -171,6 +171,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             String endpoint,
             String serviceVersion,
             String apiKey,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
@@ -184,8 +185,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated
-            ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             Duration timeout,
@@ -225,6 +225,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     apiKey,
                     timeout,
                     maxRetries,
+                    httpClientProvider,
                     proxyOptions,
                     logRequestsAndResponses,
                     userAgentSuffix,
@@ -236,6 +237,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     apiKey,
                     timeout,
                     maxRetries,
+                    httpClientProvider,
                     proxyOptions,
                     logRequestsAndResponses,
                     userAgentSuffix,
@@ -247,6 +249,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             String endpoint,
             String serviceVersion,
             KeyCredential keyCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
@@ -260,8 +263,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated
-            ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             Duration timeout,
@@ -301,6 +303,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     keyCredential,
                     timeout,
                     maxRetries,
+                    httpClientProvider,
                     proxyOptions,
                     logRequestsAndResponses,
                     userAgentSuffix,
@@ -312,6 +315,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     keyCredential,
                     timeout,
                     maxRetries,
+                    httpClientProvider,
                     proxyOptions,
                     logRequestsAndResponses,
                     userAgentSuffix,
@@ -322,6 +326,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             String endpoint,
             String serviceVersion,
             TokenCredential tokenCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             TokenCountEstimator tokenCountEstimator,
             Integer maxTokens,
@@ -335,8 +340,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated
-            ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             Duration timeout,
@@ -376,6 +380,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     tokenCredential,
                     timeout,
                     maxRetries,
+                    httpClientProvider,
                     proxyOptions,
                     logRequestsAndResponses,
                     userAgentSuffix,
@@ -387,6 +392,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     tokenCredential,
                     timeout,
                     maxRetries,
+                    httpClientProvider,
                     proxyOptions,
                     logRequestsAndResponses,
                     userAgentSuffix,
@@ -407,8 +413,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             List<AzureChatExtensionConfiguration> dataSources,
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
-            @Deprecated
-            ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+            @Deprecated ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             List<ChatModelListener> listeners,
@@ -479,10 +484,15 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
                     throw new UnsupportedFeatureException(
-                            "%s.%s is currently supported only when there is a single tool".formatted(
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                            "%s.%s is currently supported only when there is a single tool"
+                                    .formatted(ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
-                generate(request.messages(), toolSpecifications, toolSpecifications.get(0), responseFormat, legacyHandler);
+                generate(
+                        request.messages(),
+                        toolSpecifications,
+                        toolSpecifications.get(0),
+                        responseFormat,
+                        legacyHandler);
             } else {
                 generate(request.messages(), toolSpecifications, null, responseFormat, legacyHandler);
             }
@@ -503,7 +513,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             chatCompletionsResponseFormat = this.chatCompletionsResponseFormat;
         }
 
-        ChatCompletionsOptions options = new ChatCompletionsOptions(InternalAzureOpenAiHelper.toOpenAiMessages(messages))
+        ChatCompletionsOptions options = new ChatCompletionsOptions(
+                        InternalAzureOpenAiHelper.toOpenAiMessages(messages))
                 .setModel(deploymentName)
                 .setMaxTokens(maxTokens)
                 .setTemperature(temperature)
@@ -532,8 +543,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -615,6 +625,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     responseId.set(chatCompletions.getId());
                 }
             });
+
             Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
             ChatResponse listenerResponse =
                     createListenerResponse(responseId.get(), options.getModel(), response);
@@ -683,6 +694,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private String apiKey;
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
+        private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private TokenCountEstimator tokenCountEstimator;
         private Integer maxTokens;
@@ -765,6 +777,17 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
          */
         public Builder tokenCredential(TokenCredential tokenCredential) {
             this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        /**
+         * Sets the {@code HttpClientProvider} to use for creating the HTTP client to communicate with the OpenAI api.
+         *
+         * @param httpClientProvider The {@code HttpClientProvider} to use
+         * @return builder
+         */
+        public Builder httpClientProvider(HttpClientProvider httpClientProvider) {
+            this.httpClientProvider = httpClientProvider;
             return this;
         }
 
@@ -941,6 +964,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                             endpoint,
                             serviceVersion,
                             tokenCredential,
+                            httpClientProvider,
                             deploymentName,
                             tokenCountEstimator,
                             maxTokens,
@@ -971,6 +995,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                             endpoint,
                             serviceVersion,
                             keyCredential,
+                            httpClientProvider,
                             deploymentName,
                             tokenCountEstimator,
                             maxTokens,
@@ -1001,6 +1026,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         endpoint,
                         serviceVersion,
                         apiKey,
+                        httpClientProvider,
                         deploymentName,
                         tokenCountEstimator,
                         maxTokens,

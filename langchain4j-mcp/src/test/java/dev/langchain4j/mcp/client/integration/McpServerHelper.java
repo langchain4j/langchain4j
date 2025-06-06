@@ -5,8 +5,16 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.mcp.McpToolProvider;
+import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderResult;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.slf4j.Logger;
@@ -17,12 +25,16 @@ public class McpServerHelper {
     private static final Logger log = LoggerFactory.getLogger(McpToolsHttpTransportIT.class);
 
     static Process startServerHttp(String scriptName) throws InterruptedException, TimeoutException, IOException {
+        return startServerHttp(scriptName, 8080);
+    }
+
+    static Process startServerHttp(String scriptName, int port) throws InterruptedException, TimeoutException, IOException {
         skipTestsIfJbangNotAvailable();
         String path = getPathToScript(scriptName);
-        String[] command = new String[] {getJBangCommand(), "--quiet", "--fresh", "run", path};
+        String[] command = new String[] {getJBangCommand(), "--quiet", "--fresh", "run", "-Dquarkus.http.port=" + port, path};
         log.info("Starting the MCP server using command: " + Arrays.toString(command));
         Process process = new ProcessBuilder().command(command).inheritIO().start();
-        waitForPort(8080, 120);
+        waitForPort(port, 120);
         log.info("MCP server has started");
         return process;
     }

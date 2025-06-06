@@ -1,10 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,18 +8,16 @@ import java.util.Map;
  * @deprecated please use {@link BedrockChatModel} instead
  */
 @Deprecated(forRemoval = true, since = "1.0.0-beta2")
-@Getter
-@SuperBuilder
-public class BedrockAnthropicCompletionChatModel extends AbstractBedrockChatModel<BedrockAnthropicCompletionChatModelResponse> {
-    
-    private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
+public class BedrockAnthropicCompletionChatModel
+        extends AbstractBedrockChatModel<BedrockAnthropicCompletionChatModelResponse> {
 
-    @Builder.Default
-    private final int topK = 250;
-    @Builder.Default
-    private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
-    @Builder.Default
-    private final String model = Types.AnthropicClaudeV2.getValue();
+    private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
+    private static final int DEFAULT_TOP_K = 250;
+    private static final String DEFAULT_MODEL = Types.AnthropicClaudeV2.getValue();
+
+    private final int topK;
+    private final String anthropicVersion;
+    private final String model;
 
     @Override
     protected String getModelId() {
@@ -53,7 +47,6 @@ public class BedrockAnthropicCompletionChatModel extends AbstractBedrockChatMode
     /**
      * Bedrock Anthropic model ids
      */
-    @Getter
     public enum Types {
         AnthropicClaudeInstantV1("anthropic.claude-instant-v1"),
         AnthropicClaudeV1("anthropic.claude-v1"),
@@ -65,6 +58,91 @@ public class BedrockAnthropicCompletionChatModel extends AbstractBedrockChatMode
 
         Types(String modelID) {
             this.value = modelID;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
+    protected BedrockAnthropicCompletionChatModel(BedrockAnthropicCompletionChatModelBuilder<?, ?> builder) {
+        super(builder);
+        if (builder.isTopKSet) {
+            this.topK = builder.topK;
+        } else {
+            this.topK = DEFAULT_TOP_K;
+        }
+
+        if (builder.isAnthropicVersionSet) {
+            this.anthropicVersion = builder.anthropicVersion;
+        } else {
+            this.anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
+        }
+
+        if (builder.isModelSet) {
+            this.model = builder.model;
+        } else {
+            this.model = DEFAULT_MODEL;
+        }
+    }
+
+    public static BedrockAnthropicCompletionChatModelBuilder<?, ?> builder() {
+        return new BedrockAnthropicCompletionChatModelBuilderImpl();
+    }
+
+    public abstract static class BedrockAnthropicCompletionChatModelBuilder<
+                    C extends BedrockAnthropicCompletionChatModel,
+                    B extends BedrockAnthropicCompletionChatModelBuilder<C, B>>
+            extends AbstractBedrockChatModel.AbstractBedrockChatModelBuilder<
+                    BedrockAnthropicCompletionChatModelResponse, C, B> {
+        private boolean isTopKSet;
+        private int topK;
+        private boolean isAnthropicVersionSet;
+        private String anthropicVersion;
+        private boolean isModelSet;
+        private String model;
+
+        @Override
+        public B topK(int topK) {
+            this.topK = topK;
+            this.isTopKSet = true;
+            return self();
+        }
+
+        @Override
+        public B anthropicVersion(String anthropicVersion) {
+            this.anthropicVersion = anthropicVersion;
+            this.isAnthropicVersionSet = true;
+            return self();
+        }
+
+        public B model(String model) {
+            this.model = model;
+            this.isModelSet = true;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        @Override
+        public String toString() {
+            return "BedrockAnthropicCompletionChatModel.BedrockAnthropicCompletionChatModelBuilder(super="
+                    + super.toString() + ", topK$value=" + this.topK + ", anthropicVersion$value="
+                    + this.anthropicVersion + ", model$value=" + this.model + ")";
+        }
+    }
+
+    private static final class BedrockAnthropicCompletionChatModelBuilderImpl
+            extends BedrockAnthropicCompletionChatModelBuilder<
+                    BedrockAnthropicCompletionChatModel, BedrockAnthropicCompletionChatModelBuilderImpl> {
+        protected BedrockAnthropicCompletionChatModelBuilderImpl self() {
+            return this;
+        }
+
+        public BedrockAnthropicCompletionChatModel build() {
+            return new BedrockAnthropicCompletionChatModel(this);
         }
     }
 }

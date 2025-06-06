@@ -19,7 +19,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .apiKey(getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
 
@@ -84,7 +84,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected Class<? extends TokenUsage> tokenUsageType() {
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
         return AnthropicTokenUsage.class;
     }
 }

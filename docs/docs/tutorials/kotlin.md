@@ -6,12 +6,19 @@ sidebar_position: 29
 
 [Kotlin](https://kotlinlang.org) is a statically-typed language targeting the JVM (and other platforms), enabling concise and elegant code with seamless [interoperability](https://kotlinlang.org/docs/reference/java-interop.html) with Java libraries.
 LangChain4j utilizes Kotlin [extensions](https://kotlinlang.org/docs/extensions.html) and [type-safe builders](https://kotlinlang.org/docs/type-safe-builders.html) to enhance Java APIs with Kotlin-specific conveniences. This allows users to extend existing Java classes with additional functionality tailored for Kotlin.
+    
+## Getting Started
 
-:::note
-LangChain4j does not require Kotlin libraries as runtime dependencies but allows users to leverage Kotlin's coroutine capabilities for non-blocking execution, enhancing performance and efficiency.
-:::
+Add `langchain4j-kotlin` module to your project dependencies:
+```xml
+ <dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-kotlin</artifactId>
+    <version>[LATEST_VERSION]</version>
+</dependency>
+```
 
-If you want to use data classes, make sure you have [Jackson module kotlin](https://github.com/FasterXML/jackson-module-kotlin) in your classpath. For Maven, add runtime dependency:
+If you want to use data classes, make sure you have [Jackson module kotlin](https://github.com/FasterXML/jackson-module-kotlin) in your classpath. For Maven, add a runtime dependency:
 
 ```xml
  <dependency>
@@ -100,7 +107,7 @@ runBlocking { // must run in a coroutine context
 }
 ```
 
-Check out [this test](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/test/kotlin/dev/langchain4j/model/chat/StreamingChatModelExtensionsKtTest.kt) as example.
+Check out [this test](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-kotlin/src/test/kotlin/dev/langchain4j/kotlin/model/chat/StreamingChatModelExtensionsKtTest.kt) as an example.
 
 ## Compiler Compatibility
 

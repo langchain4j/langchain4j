@@ -1,5 +1,10 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GoogleAiEmbeddingRequest {
     String model;
     GeminiContent content;
@@ -7,7 +12,13 @@ class GoogleAiEmbeddingRequest {
     String title;
     Integer outputDimensionality;
 
-    GoogleAiEmbeddingRequest(String model, GeminiContent content, GoogleAiEmbeddingModel.TaskType taskType, String title, Integer outputDimensionality) {
+    @JsonCreator
+    GoogleAiEmbeddingRequest(
+            @JsonProperty("model") String model,
+            @JsonProperty("content") GeminiContent content,
+            @JsonProperty("taskType") GoogleAiEmbeddingModel.TaskType taskType,
+            @JsonProperty("title") String title,
+            @JsonProperty("outputDimensionality") Integer outputDimensionality) {
         this.model = model;
         this.content = content;
         this.taskType = taskType;

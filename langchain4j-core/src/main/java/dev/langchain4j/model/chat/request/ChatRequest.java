@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
@@ -17,7 +18,7 @@ public class ChatRequest {
     private final ChatRequestParameters parameters;
 
     protected ChatRequest(Builder builder) {
-        this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
+        this.messages = copy(ensureNotEmpty(builder.messages, "messages"));
 
         DefaultChatRequestParameters.Builder<?> parametersBuilder = ChatRequestParameters.builder();
 

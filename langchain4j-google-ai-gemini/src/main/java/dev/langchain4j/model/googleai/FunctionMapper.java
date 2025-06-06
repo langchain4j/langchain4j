@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
@@ -12,7 +13,7 @@ import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchem
 
 class FunctionMapper {
 
-    private static final Gson GSON = new Gson();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static GeminiTool fromToolSepcsToGTool(List<ToolSpecification> specifications, boolean allowCodeExecution) {
 
@@ -60,10 +61,16 @@ class FunctionMapper {
 
     static List<ToolExecutionRequest> fromToolExecReqToGFunCall(List<GeminiFunctionCall> functionCalls) {
         return functionCalls.stream()
-            .map(functionCall -> ToolExecutionRequest.builder()
-                .name(functionCall.getName())
-                .arguments(GSON.toJson(functionCall.getArgs()))
-                .build())
+            .map(functionCall -> {
+                try {
+                    return ToolExecutionRequest.builder()
+                        .name(functionCall.getName())
+                        .arguments(MAPPER.writeValueAsString(functionCall.getArgs()))
+                        .build();
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            })
             .collect(Collectors.toList());
     }
 }

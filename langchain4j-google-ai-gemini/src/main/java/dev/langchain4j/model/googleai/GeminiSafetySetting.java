@@ -1,10 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class GeminiSafetySetting {
     private GeminiHarmCategory category;
     private GeminiHarmBlockThreshold threshold;
 
-    public GeminiSafetySetting(GeminiHarmCategory category, GeminiHarmBlockThreshold threshold) {
+    @JsonCreator
+    public GeminiSafetySetting(@JsonProperty("category") GeminiHarmCategory category, @JsonProperty("threshold") GeminiHarmBlockThreshold threshold) {
         this.category = category;
         this.threshold = threshold;
     }

@@ -1,5 +1,23 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.data.document.Metadata.metadata;
+import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
@@ -8,12 +26,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
@@ -33,13 +49,6 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -47,25 +56,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.data.document.Metadata.metadata;
-import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
-import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
-import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class AiServicesWithRagIT {
@@ -140,14 +136,9 @@ class AiServicesWithRagIT {
         // then
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
 
-        verify(contentRetriever).retrieve(Query.from(
-                query,
-                Metadata.from(
-                        UserMessage.from(query),
-                        "default",
-                        asList(userMessage, aiMessage)
-                )
-        ));
+        verify(contentRetriever)
+                .retrieve(Query.from(
+                        query, Metadata.from(UserMessage.from(query), "default", asList(userMessage, aiMessage))));
         verifyNoMoreInteractions(contentRetriever);
     }
 
@@ -183,10 +174,8 @@ class AiServicesWithRagIT {
         // then
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
 
-        verify(contentRetriever).retrieve(Query.from(
-                query,
-                Metadata.from(UserMessage.from(query), memoryId, emptyList()))
-        );
+        verify(contentRetriever)
+                .retrieve(Query.from(query, Metadata.from(UserMessage.from(query), memoryId, emptyList())));
         verifyNoMoreInteractions(contentRetriever);
     }
 
@@ -355,8 +344,7 @@ class AiServicesWithRagIT {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> assistant.answer(query))
-                .hasRootCauseExactlyInstanceOf(NumberFormatException.class);
+        assertThatThrownBy(() -> assistant.answer(query)).hasRootCauseExactlyInstanceOf(NumberFormatException.class);
 
         verifyNoInteractions(contentRetriever);
     }
@@ -415,7 +403,8 @@ class AiServicesWithRagIT {
         when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.9, 0.7)));
         ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
                 .scoringModel(scoringModel)
-                .querySelector((queryToContents) -> queryToContents.keySet().iterator().next())
+                .querySelector(
+                        (queryToContents) -> queryToContents.keySet().iterator().next())
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -447,8 +436,8 @@ class AiServicesWithRagIT {
         TextSegment user1Info = TextSegment.from("My favorite color is green", metadata("userId", "1"));
         TextSegment user2Info = TextSegment.from("My favorite color is red", metadata("userId", "2"));
 
-        Function<Query, Filter> dynamicMetadataFilter =
-                (query) -> metadataKey("userId").isEqualTo(query.metadata().chatMemoryId().toString());
+        Function<Query, Filter> dynamicMetadataFilter = (query) ->
+                metadataKey("userId").isEqualTo(query.metadata().chatMemoryId().toString());
 
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
         embeddingStore.add(embeddingModel.embed(user1Info).content(), user1Info);
@@ -542,18 +531,18 @@ class AiServicesWithRagIT {
 
         assertThat(result.sources()).hasSize(1);
         Content content = result.sources().get(0);
-        assertThat(content.textSegment().text()).isEqualToIgnoringWhitespace(
-                "4. Cancellation Policy" +
-                        "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period." +
-                        "4.2 If the booking period is less than 17 days, cancellations are not permitted."
-        );
+        assertThat(content.textSegment().text())
+                .isEqualToIgnoringWhitespace("4. Cancellation Policy"
+                        + "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period."
+                        + "4.2 If the booking period is less than 17 days, cancellations are not permitted.");
         assertThat(content.textSegment().metadata().getString("index")).isEqualTo("3");
-        assertThat(content.textSegment().metadata().getString("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
+        assertThat(content.textSegment().metadata().getString("file_name"))
+                .isEqualTo("miles-of-smiles-terms-of-use.txt");
     }
 
-    private void ingest(String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
-        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
-        DocumentSplitter splitter = DocumentSplitters.recursive(100, 0, tokenCountEstimator);
+    private void ingest(
+            String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
+        DocumentSplitter splitter = DocumentSplitters.recursive(100, 0);
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(splitter)
                 .embeddingModel(embeddingModel)
@@ -566,18 +555,16 @@ class AiServicesWithRagIT {
 
     static Stream<Arguments> models() {
         return Stream.of(
-                Arguments.of(
-                        OpenAiChatModel.builder()
-                                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                                .apiKey(System.getenv("OPENAI_API_KEY"))
-                                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                                .modelName(GPT_4_O_MINI)
-                                .logRequests(true)
-                                .logResponses(true)
-                                .build()
-                )
+                Arguments.of(OpenAiChatModel.builder()
+                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                        .apiKey(System.getenv("OPENAI_API_KEY"))
+                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .modelName(GPT_4_O_MINI)
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build())
                 // TODO add more models
-        );
+                );
     }
 
     private Path toPath(String fileName) {

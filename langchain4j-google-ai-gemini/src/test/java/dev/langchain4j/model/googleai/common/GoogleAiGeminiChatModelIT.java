@@ -21,7 +21,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     static final GoogleAiGeminiChatModel GOOGLE_AI_GEMINI_CHAT_MODEL = GoogleAiGeminiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-1.5-flash-8b")
-            .logRequestsAndResponses(true)
+            .logRequestsAndResponses(false) // images are huge in logs
             .build();
 
     @Override

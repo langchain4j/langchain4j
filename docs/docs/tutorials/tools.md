@@ -10,6 +10,13 @@ Some LLMs, in addition to generating text, can also trigger actions.
 All LLMs supporting tools can be found [here](/integrations/language-models) (see the "Tools" column).
 :::
 
+:::note
+Not all LLMs support tools equally well.
+The ability to understand, select, and correctly use tools depends heavily on the specific model and its capabilities.
+Some models may not support tools at all, while others might require careful prompt engineering 
+or additional system instructions.
+:::
+
 There is a concept known as "tools," or "function calling".
 It allows the LLM to call, when necessary, one or more available tools, usually defined by the developer.
 A tool can be anything: a web search, a call to an external API, or the execution of a specific piece of code, etc.
@@ -261,7 +268,7 @@ This means that the LLM will have to produce a value for such a parameter.
 A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
-void getTemperature(String location, @P(required = false) Unit unit) {
+void getTemperature(String location, @P(value = "Unit of temperature", required = false) Unit unit) {
     ...
 }
 ```
@@ -292,6 +299,85 @@ If the method has a `void` return type, "Success" string is sent to the LLM if t
 If the method has a `String` return type, the returned value is sent to the LLM as is, without any conversions.
 
 For other return types, the returned value is converted into a JSON string before being sent to the LLM.
+
+### AI services as tools for other AI services
+
+AI services can also be used as tools for other AI services. This can be useful in many agentic use cases, where one AI service can ask the help of another, more specialized, AI service to perform a specific task. For instance, having defined the following AI services:
+
+```java
+    interface RouterAgent {
+
+        @dev.langchain4j.service.UserMessage("""
+            Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
+            then forward the request as it is to the corresponding expert provided as a tool.
+            Finally return the answer that you received from the expert without any modification.
+
+            The user request is: '{{it}}'.
+            """)
+        String askToExpert(String request);
+    }
+
+    interface MedicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a medical expert.
+            Analyze the following user request under a medical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A medical expert")
+        String medicalRequest(String request);
+    }
+
+    interface LegalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a legal expert.
+            Analyze the following user request under a legal point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A legal expert")
+        String legalRequest(String request);
+    }
+
+    interface TechnicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a technical expert.
+            Analyze the following user request under a technical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A technical expert")
+        String technicalRequest(String request);
+    }
+```
+
+The `RouterAgent` can be configured to use as tools the 3 other AI services, experts in specific fields, routing the user request to one of them.
+
+```java
+MedicalExpert medicalExpert = AiServices.builder(MedicalExpert.class)
+        .chatModel(model)
+        .build();
+LegalExpert legalExpert = AiServices.builder(LegalExpert.class)
+        .chatModel(model)
+        .build();
+TechnicalExpert technicalExpert = AiServices.builder(TechnicalExpert.class)
+        .chatModel(model)
+        .build();
+
+RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
+        .chatModel(model)
+        .tools(medicalExpert, legalExpert, technicalExpert)
+        .build();
+
+routerAgent.askToExpert("I broke my leg what should I do");
+```
+
+:::note
+Using AI services as tools for other AI services is a powerful feature that enables to build complex agentic systems. However, this approach also comes with a few relevant drawbacks that are important to be aware of:
+- This implementation requires the LLM to copy-paste the user request without modifications as a tool call and this could be an error-prone operation.
+- The LLM calling the other LLM as a tool has to reprocess its response, as it happens for any other tool invocation, and this could be a wasteful computation in terms of both time and consumed tokens.
+- The agent-tool, being a totally separated AI service, has no access to the chat memory of the agent calling it, so it cannot use the chat memory to provide a more informed answer.
+:::
 
 ### Exception Handling
 If a method annotated with `@Tool` throws an `Exception`,

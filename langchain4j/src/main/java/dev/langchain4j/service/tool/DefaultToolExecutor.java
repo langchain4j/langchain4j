@@ -3,8 +3,6 @@ package dev.langchain4j.service.tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.internal.Json;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -20,8 +18,6 @@ import java.util.UUID;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
-
-    private static final Logger log = LoggerFactory.getLogger(DefaultToolExecutor.class);
 
     private final Object object;
     private final Method originalMethod;
@@ -70,31 +66,22 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-        log.debug("About to execute {} for memoryId {}", toolExecutionRequest, memoryId);
 
         Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
         Object[] arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
         try {
-            String result = execute(arguments);
-            log.debug("Tool execution result: {}", result);
-            return result;
+            return execute(arguments);
         } catch (IllegalAccessException e) {
             try {
                 methodToInvoke.setAccessible(true);
-                String result = execute(arguments);
-                log.debug("Tool execution result: {}", result);
-                return result;
+                return execute(arguments);
             } catch (IllegalAccessException e2) {
                 throw new RuntimeException(e2);
             } catch (InvocationTargetException e2) {
-                Throwable cause = e2.getCause();
-                log.error("Error while executing tool", cause);
-                return cause.getMessage();
+                return e2.getCause().getMessage();
             }
         } catch (InvocationTargetException e) {
-            Throwable cause = e.getCause();
-            log.error("Error while executing tool", cause);
-            return cause.getMessage();
+            return  e.getCause().getMessage();
         }
     }
 

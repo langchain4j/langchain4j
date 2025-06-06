@@ -9,6 +9,7 @@ import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.model.azure.spi.AzureOpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
@@ -100,6 +101,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
             String endpoint,
             String serviceVersion,
             String apiKey,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             Integer maxTokens,
             Double temperature,
@@ -138,6 +140,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                 apiKey,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -148,6 +151,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
             String endpoint,
             String serviceVersion,
             KeyCredential keyCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             Integer maxTokens,
             Double temperature,
@@ -186,6 +190,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                 keyCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -196,6 +201,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
             String endpoint,
             String serviceVersion,
             TokenCredential tokenCredential,
+            HttpClientProvider httpClientProvider,
             String deploymentName,
             Integer maxTokens,
             Double temperature,
@@ -234,6 +240,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                 tokenCredential,
                 timeout,
                 maxRetries,
+                httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
                 userAgentSuffix,
@@ -289,8 +296,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
         return Response.from(
                 completions.getChoices().get(0).getText(),
                 tokenUsageFrom(completions.getUsage()),
-                finishReasonFrom(completions.getChoices().get(0).getFinishReason())
-        );
+                finishReasonFrom(completions.getChoices().get(0).getFinishReason()));
     }
 
     public static Builder builder() {
@@ -308,6 +314,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
         private String apiKey;
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
+        private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private Integer maxTokens;
         private Double temperature;
@@ -381,6 +388,17 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
          */
         public Builder tokenCredential(TokenCredential tokenCredential) {
             this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        /**
+         * Sets the {@code HttpClientProvider} to use for creating the HTTP client to communicate with the OpenAI api.
+         *
+         * @param httpClientProvider The {@code HttpClientProvider} to use
+         * @return builder
+         */
+        public Builder httpClientProvider(HttpClientProvider httpClientProvider) {
+            this.httpClientProvider = httpClientProvider;
             return this;
         }
 
@@ -498,6 +516,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                             endpoint,
                             serviceVersion,
                             tokenCredential,
+                            httpClientProvider,
                             deploymentName,
                             maxTokens,
                             temperature,
@@ -521,6 +540,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                             endpoint,
                             serviceVersion,
                             keyCredential,
+                            httpClientProvider,
                             deploymentName,
                             maxTokens,
                             temperature,
@@ -544,6 +564,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                         endpoint,
                         serviceVersion,
                         apiKey,
+                        httpClientProvider,
                         deploymentName,
                         maxTokens,
                         temperature,

@@ -5,25 +5,21 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
+import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
-
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
@@ -32,15 +28,14 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
  * @deprecated please use {@link BedrockChatModel} instead
  */
 @Deprecated(forRemoval = true, since = "1.0.0-beta2")
-@Slf4j
-@Getter
-@SuperBuilder
 public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockMistralAiChatModelResponse> {
 
-    @Builder.Default
-    private final int topK = 200;
-    @Builder.Default
-    private final String model = Types.Mistral7bInstructV0_2.getValue();
+    private static final Logger log = LoggerFactory.getLogger(BedrockMistralAiChatModel.class);
+    private static final int DEFAULT_TOP_K = 200;
+    private static final String DEFAULT_MODEL = Types.Mistral7bInstructV0_2.getValue();
+
+    private final int topK;
+    private final String model;
 
     @Override
     protected String getModelId() {
@@ -68,8 +63,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
         final Map<String, Object> requestParameters = getRequestParameters(prompt);
         final String body = Json.toJson(requestParameters);
 
-        InvokeModelRequest invokeModelRequest = InvokeModelRequest
-                .builder()
+        InvokeModelRequest invokeModelRequest = InvokeModelRequest.builder()
                 .modelId(getModelId())
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
@@ -85,24 +79,17 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
             }
         });
 
-        InvokeModelResponse invokeModelResponse = withRetryMappingExceptions(() -> getClient().invokeModel(invokeModelRequest), getMaxRetries());
+        InvokeModelResponse invokeModelResponse =
+                withRetryMappingExceptions(() -> getClient().invokeModel(invokeModelRequest), getMaxRetries());
         final String response = invokeModelResponse.body().asUtf8String().trim();
         final BedrockMistralAiChatModelResponse result = Json.fromJson(response, getResponseClassType());
 
         try {
             Response<AiMessage> responseMessage = toAiMessage(result);
 
-            ChatResponse listenerResponse = createListenerResponse(
-                    null,
-                    null,
-                    responseMessage
-            );
-            ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    listenerResponse,
-                    listenerRequest,
-                    provider(),
-                    attributes
-            );
+            ChatResponse listenerResponse = createListenerResponse(null, null, responseMessage);
+            ChatModelResponseContext responseContext =
+                    new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -114,12 +101,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
 
             return responseMessage;
         } catch (RuntimeException e) {
-            listenerErrorResponse(
-                    e,
-                    listenerRequest,
-                    provider(),
-                    attributes
-            );
+            listenerErrorResponse(e, listenerRequest, provider(), attributes);
             throw e;
         }
     }
@@ -150,7 +132,6 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
     /**
      * Bedrock Mistral model ids
      */
-    @Getter
     public enum Types {
         Mistral7bInstructV0_2("mistral.mistral-7b-instruct-v0:2"),
         MistralMixtral8x7bInstructV0_1("mistral.mixtral-8x7b-instruct-v0:1");
@@ -159,6 +140,81 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
 
         Types(String modelID) {
             this.value = modelID;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
+    @Override
+    public int getTopK() {
+        return topK;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    protected BedrockMistralAiChatModel(BedrockMistralAiChatModelBuilder<?, ?> builder) {
+        super(builder);
+        if (builder.isTopKSet) {
+            this.topK = builder.topK;
+        } else {
+            this.topK = DEFAULT_TOP_K;
+        }
+
+        if (builder.isModelSet) {
+            this.model = builder.model;
+        } else {
+            this.model = DEFAULT_MODEL;
+        }
+    }
+
+    public static BedrockMistralAiChatModelBuilder<?, ?> builder() {
+        return new BedrockMistralAiChatModelBuilderImpl();
+    }
+
+    public abstract static class BedrockMistralAiChatModelBuilder<
+                    C extends BedrockMistralAiChatModel, B extends BedrockMistralAiChatModelBuilder<C, B>>
+            extends AbstractBedrockChatModel.AbstractBedrockChatModelBuilder<BedrockMistralAiChatModelResponse, C, B> {
+        private boolean isTopKSet;
+        private int topK;
+        private boolean isModelSet;
+        private String model;
+
+        @Override
+        public B topK(int topK) {
+            this.topK = topK;
+            this.isTopKSet = true;
+            return self();
+        }
+
+        public B model(String model) {
+            this.model = model;
+            this.isModelSet = true;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        @Override
+        public String toString() {
+            return "BedrockMistralAiChatModel.BedrockMistralAiChatModelBuilder(super=" + super.toString()
+                    + ", topK$value=" + this.topK + ", model$value=" + this.model + ")";
+        }
+    }
+
+    private static final class BedrockMistralAiChatModelBuilderImpl
+            extends BedrockMistralAiChatModelBuilder<BedrockMistralAiChatModel, BedrockMistralAiChatModelBuilderImpl> {
+        protected BedrockMistralAiChatModelBuilderImpl self() {
+            return this;
+        }
+
+        public BedrockMistralAiChatModel build() {
+            return new BedrockMistralAiChatModel(this);
         }
     }
 }
