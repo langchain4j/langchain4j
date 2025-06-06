@@ -233,7 +233,7 @@ It stores meta information about the `Document`, such as its name, source, last 
 or any other relevant details.
 
 The `Metadata` is stored as a key-value map, where the key is of the `String` type,
-and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`.
+and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`, `UUID`.
 
 `Metadata` is useful for several reasons:
 - When including the content of the `Document` in a prompt to the LLM,
