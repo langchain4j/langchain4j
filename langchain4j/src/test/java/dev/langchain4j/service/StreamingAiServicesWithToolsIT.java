@@ -310,6 +310,52 @@ class StreamingAiServicesWithToolsIT {
     }
 
     @Test
+    void should_invoke_tool_before_execution_handler() throws Exception {
+
+        // given
+        WeatherService weatherService = spy(new WeatherService());
+
+        StreamingChatModel spyModel = spy(models().findFirst().get());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(weatherService)
+                .build();
+
+        String userMessage = "What is the temperature in Munich and London, in Celsius?";
+
+        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        // when
+        assistant.chat(userMessage)
+                .onPartialResponse(ignored -> {})
+                .onToolBeforeExecution(toolExecutionRequests::add)
+                .onCompleteResponse(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
+        ChatResponse response = future.get(60, SECONDS);
+
+        // then
+        assertThat(response.aiMessage().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
+
+        // then
+        verify(weatherService).currentTemperature("Munich", CELSIUS);
+        verify(weatherService).currentTemperature("London", CELSIUS);
+        verifyNoMoreInteractions(weatherService);
+
+        // then
+        assertThat(toolExecutionRequests).hasSize(2);
+
+        assertThat(toolExecutionRequests.get(0).name()).isEqualTo("currentTemperature");
+        assertThat(toolExecutionRequests.get(0).arguments()).isEqualToIgnoringWhitespace("{\"arg0\":\"Munich\", \"arg1\": \"CELSIUS\"}");
+
+        assertThat(toolExecutionRequests.get(1).name()).isEqualTo("currentTemperature");
+        assertThat(toolExecutionRequests.get(1).arguments()).isEqualToIgnoringWhitespace("{\"arg0\":\"London\", \"arg1\":\"CELSIUS\"}");
+    }
+
+    @Test
     void should_invoke_tool_execution_handler() throws Exception {
 
         // given
