@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,13 +187,20 @@ public class ClassPathDocumentLoader {
                 try (var fs = FileSystems.newFileSystem(uri, Map.of("create", "true"))) {
                     return loadDocuments(
                             classPathSource,
+                            directoryOnClasspath,
                             fs.getPath(directoryOnClasspath),
                             pathMatcher,
                             documentParser,
                             pathStreamFunction);
                 }
             } else {
-                return loadDocuments(classPathSource, Path.of(uri), pathMatcher, documentParser, pathStreamFunction);
+                return loadDocuments(
+                        classPathSource,
+                        directoryOnClasspath,
+                        Path.of(uri),
+                        pathMatcher,
+                        documentParser,
+                        pathStreamFunction);
             }
         } catch (URISyntaxException | IOException e) {
             throw new RuntimeException(e);
@@ -201,6 +209,7 @@ public class ClassPathDocumentLoader {
 
     private static List<Document> loadDocuments(
             ClassPathSource rootDirectoryClassPathSource,
+            String directoryOnClasspath,
             Path path,
             PathMatcher pathMatcher,
             DocumentParser documentParser,
@@ -210,13 +219,15 @@ public class ClassPathDocumentLoader {
         }
 
         try (var pathStream = pathStreamFunction.apply(path)) {
-            return loadDocuments(pathStream, rootDirectoryClassPathSource, path, pathMatcher, documentParser);
+            return loadDocuments(
+                    pathStream, rootDirectoryClassPathSource, directoryOnClasspath, path, pathMatcher, documentParser);
         }
     }
 
     private static List<Document> loadDocuments(
             Stream<Path> pathStream,
             ClassPathSource rootDirectoryClassPathSource,
+            String directoryOnClasspath,
             Path pathMatcherRoot,
             PathMatcher pathMatcher,
             DocumentParser documentParser) {
@@ -228,7 +239,7 @@ public class ClassPathDocumentLoader {
                         Path.of(pathMatcherRoot.relativize(p).toString().replace('/', File.separatorChar))))
                 .map(p -> {
                     try {
-                        var relativePath = getRelativePath(rootDirectoryClassPathSource, p);
+                        var relativePath = getRelativePath(directoryOnClasspath, rootDirectoryClassPathSource, p);
 
                         return loadDocument(
                                 ClassPathSource.from(relativePath, rootDirectoryClassPathSource.classLoader()),
@@ -247,17 +258,32 @@ public class ClassPathDocumentLoader {
                 .toList();
     }
 
-    private static String getRelativePath(ClassPathSource rootDirectoryClassPathSource, Path subPath) {
+    private static String getRelativePath(
+            String directoryOnClasspath, ClassPathSource rootDirectoryClassPathSource, Path subPath) {
         if (rootDirectoryClassPathSource.isInsideArchive()) {
             return subPath.toString();
         }
 
         try {
-            var rootClasspathURI =
-                    rootDirectoryClassPathSource.classLoader().getResource(".").toURI();
-            var rootClasspathPath = Path.of(rootClasspathURI);
-            var relativeClasspathPath = rootClasspathPath.relativize(subPath);
+            var rootClasspathPath = Path.of(rootDirectoryClassPathSource.url().toURI());
+            var isClasspathRoot = ".".equals(directoryOnClasspath) || "/".equals(directoryOnClasspath);
 
+            if (!isClasspathRoot) {
+                var withoutLeadingAndTrailingSpaces =
+                        directoryOnClasspath.strip().replaceAll("^/+", "").replaceAll("/+$", "");
+                var numDirs = withoutLeadingAndTrailingSpaces
+                                .chars()
+                                .filter(c -> c == '/')
+                                .count()
+                        + 1;
+
+                rootClasspathPath = IntStream.range(0, (int) numDirs)
+                        .mapToObj(index -> "..")
+                        .reduce(rootClasspathPath, Path::resolve, (a, b) -> b)
+                        .normalize();
+            }
+
+            var relativeClasspathPath = rootClasspathPath.relativize(subPath);
             return relativeClasspathPath.toString().replace(File.separatorChar, '/');
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
