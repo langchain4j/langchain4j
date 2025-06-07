@@ -1,5 +1,9 @@
 package dev.langchain4j.http.client;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -7,22 +11,20 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 public class HttpRequest {
 
     private final HttpMethod method;
     private final String url;
     private final Map<String, List<String>> headers;
     private final String body;
+    private final HttpVersion version;
 
     public HttpRequest(Builder builder) {
         this.method = ensureNotNull(builder.method, "method");
         this.url = ensureNotBlank(builder.url, "url");
         this.headers = copy(builder.headers);
         this.body = builder.body;
+        this.version = builder.version;
     }
 
     public HttpMethod method() {
@@ -41,6 +43,10 @@ public class HttpRequest {
         return body;
     }
 
+    public HttpVersion version() {
+        return version;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -51,8 +57,10 @@ public class HttpRequest {
         private String url;
         private Map<String, List<String>> headers;
         private String body;
+        private HttpVersion version;
 
-        private Builder() {}
+        private Builder() {
+        }
 
         public Builder method(HttpMethod method) {
             this.method = method;
@@ -107,6 +115,11 @@ public class HttpRequest {
 
         public Builder body(String body) {
             this.body = body;
+            return this;
+        }
+
+        public Builder version(HttpVersion version) {
+            this.version = version;
             return this;
         }
 
