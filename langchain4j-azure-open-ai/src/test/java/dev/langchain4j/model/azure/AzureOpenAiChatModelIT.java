@@ -1,6 +1,5 @@
 package dev.langchain4j.model.azure;
 
-import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -43,6 +42,7 @@ import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -144,7 +144,7 @@ class AzureOpenAiChatModelIT {
 
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -314,32 +314,6 @@ class AzureOpenAiChatModelIT {
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .responseFormat(ResponseFormat.JSON)
-                .logRequestsAndResponses(true)
-                .build();
-
-        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
-
-        ChatResponse response = model.chat(systemMessage, userMessage);
-
-        assertThat(response.aiMessage().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
-        assertThat(response.finishReason()).isEqualTo(STOP);
-    }
-
-    /**
-     * @deprecated Should be removed when `AzureOpenAiChatModel.responseFormat(ChatCompletionsResponseFormat chatCompletionsResponseFormat)` is removed.
-     */
-    @ParameterizedTest(name = "Deployment name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
-    @Deprecated(forRemoval = true)
-    void should_support_deprecated_json_format(String deploymentName) {
-        ChatModel model = AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName(deploymentName)
-                .responseFormat(new ChatCompletionsJsonResponseFormat())
                 .logRequestsAndResponses(true)
                 .build();
 
