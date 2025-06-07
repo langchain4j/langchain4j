@@ -1,11 +1,12 @@
 package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -23,7 +24,6 @@ import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinitionFunction;
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormatJsonSchema;
-import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsTextResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsToolCall;
@@ -67,16 +67,13 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -178,7 +175,6 @@ class InternalAzureOpenAiHelper {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
-        maxRetries = getOrDefault(maxRetries, 2);
         maxRetries = getOrDefault(maxRetries, 2);
         ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
         exponentialBackoffOptions.setMaxRetries(maxRetries);
@@ -435,36 +431,6 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    static ChatRequest createListenerRequest(
-            ChatCompletionsOptions options, List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .modelName(options.getModel())
-                        .temperature(options.getTemperature())
-                        .topP(options.getTopP())
-                        .maxOutputTokens(options.getMaxTokens())
-                        .toolSpecifications(toolSpecifications)
-                        .build())
-                .build();
-    }
-
-    static ChatResponse createListenerResponse(String responseId, String responseModel, Response<AiMessage> response) {
-        if (response == null) {
-            return null;
-        }
-
-        return ChatResponse.builder()
-                .aiMessage(response.content())
-                .metadata(ChatResponseMetadata.builder()
-                        .id(responseId)
-                        .modelName(responseModel)
-                        .tokenUsage(response.tokenUsage())
-                        .finishReason(response.finishReason())
-                        .build())
-                .build();
-    }
-
     static ChatCompletionsResponseFormat toAzureOpenAiResponseFormat(ResponseFormat responseFormat, boolean strict) {
         if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return new ChatCompletionsTextResponseFormat();
@@ -489,5 +455,17 @@ class InternalAzureOpenAiHelper {
             return new ChatCompletionsJsonSchemaResponseFormat(schema);
         }
     }
-}
 
+    public static void validate(ChatRequestParameters parameters) {
+        if (parameters.toolChoice() == REQUIRED) {
+            if (parameters.toolSpecifications().size() != 1) {
+                throw new UnsupportedFeatureException(String.format(
+                        "%s.%s is currently supported only when there is a single tool",
+                        ToolChoice.class.getSimpleName(), REQUIRED.name()));
+            }
+        }
+        if (parameters.topK() != null) {
+            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
+        }
+    }
+}
