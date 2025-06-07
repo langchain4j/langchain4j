@@ -25,6 +25,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
@@ -94,6 +95,7 @@ public class AnthropicChatModel implements ChatModel {
     /**
      * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.
      *
+     * @param httpClientBuilder   The the HTTP client builder to use for creating the HTTP client Default *
      * @param baseUrl             The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
      * @param apiKey              The API key for authentication with the Anthropic API.
      * @param version             The value of the "anthropic-version" HTTP header. Default: "2023-06-01"
@@ -113,6 +115,7 @@ public class AnthropicChatModel implements ChatModel {
      * @param listeners           A list of {@link ChatModelListener} instances to be notified.
      */
     private AnthropicChatModel(
+            HttpClientBuilder httpClientBuilder,
             String baseUrl,
             String apiKey,
             String version,
@@ -133,6 +136,7 @@ public class AnthropicChatModel implements ChatModel {
             Boolean logResponses,
             List<ChatModelListener> listeners) {
         this.client = AnthropicClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
                 .version(getOrDefault(version, "2023-06-01"))
@@ -161,6 +165,7 @@ public class AnthropicChatModel implements ChatModel {
 
     public static class AnthropicChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String version;
@@ -180,6 +185,11 @@ public class AnthropicChatModel implements ChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
+
+        public AnthropicChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public AnthropicChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -283,6 +293,7 @@ public class AnthropicChatModel implements ChatModel {
 
         public AnthropicChatModel build() {
             return new AnthropicChatModel(
+                    httpClientBuilder,
                     baseUrl,
                     apiKey,
                     version,
