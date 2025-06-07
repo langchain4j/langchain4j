@@ -422,7 +422,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
         this.tokenCountEstimator = getOrDefault(tokenCountEstimator, () -> new AzureOpenAiTokenCountEstimator("gpt-3.5-turbo"));
         this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = temperature;
         this.topP = topP;
         this.logitBias = logitBias;
         this.user = user;

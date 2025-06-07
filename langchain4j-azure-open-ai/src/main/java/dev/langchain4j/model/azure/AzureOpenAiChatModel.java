@@ -352,7 +352,7 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
         this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = temperature;
         this.topP = topP;
         this.logitBias = logitBias;
         this.user = user;
