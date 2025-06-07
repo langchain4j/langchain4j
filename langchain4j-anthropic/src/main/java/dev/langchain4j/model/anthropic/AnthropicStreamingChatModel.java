@@ -297,7 +297,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     }
 
     @Override
-    public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatRequestValidationUtils.validateParameters(parameters);
         ChatRequestValidationUtils.validate(parameters.responseFormat());

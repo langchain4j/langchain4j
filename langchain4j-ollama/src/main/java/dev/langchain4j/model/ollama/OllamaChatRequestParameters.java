@@ -10,6 +10,8 @@ import java.util.Objects;
 
 public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
 
+    public static final OllamaChatRequestParameters DEFAULT_INSTANCE = OllamaChatRequestParameters.builder().build();
+
     private final Integer mirostat;
     private final Double mirostatEta;
     private final Double mirostatTau;

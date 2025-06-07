@@ -13,6 +13,8 @@ import static java.util.Arrays.asList;
 
 public class DefaultChatRequestParameters implements ChatRequestParameters {
 
+    public static final ChatRequestParameters DEFAULT_INSTANCE = DefaultChatRequestParameters.builder().build();
+
     private final String modelName;
     private final Double temperature;
     private final Double topP;

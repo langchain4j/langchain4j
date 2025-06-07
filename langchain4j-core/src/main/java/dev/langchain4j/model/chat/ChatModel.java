@@ -6,6 +6,7 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 import java.util.List;
@@ -33,10 +34,7 @@ public interface ChatModel {
      */
     default ChatResponse chat(ChatRequest chatRequest) {
 
-        ChatRequest finalChatRequest = ChatRequest.builder()
-                .messages(chatRequest.messages())
-                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
-                .build();
+        ChatRequest finalChatRequest = generateFinalChatRequest(chatRequest);
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
@@ -52,12 +50,19 @@ public interface ChatModel {
         }
     }
 
+    default ChatRequest generateFinalChatRequest(ChatRequest chatRequest) {
+        return ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
+    }
+
     default ChatResponse doChat(ChatRequest chatRequest) {
         throw new RuntimeException("Not implemented");
     }
 
     default ChatRequestParameters defaultRequestParameters() {
-        return ChatRequestParameters.builder().build();
+        return DefaultChatRequestParameters.DEFAULT_INSTANCE;
     }
 
     default List<ChatModelListener> listeners() {
