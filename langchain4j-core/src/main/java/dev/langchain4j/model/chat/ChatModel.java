@@ -34,10 +34,7 @@ public interface ChatModel {
      */
     default ChatResponse chat(ChatRequest chatRequest) {
 
-        ChatRequest finalChatRequest = ChatRequest.builder()
-                .messages(chatRequest.messages())
-                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
-                .build();
+        ChatRequest finalChatRequest = generateFinalChatRequest(chatRequest);
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
@@ -51,6 +48,13 @@ public interface ChatModel {
             onError(error, finalChatRequest, provider(), attributes, listeners);
             throw error;
         }
+    }
+
+    default ChatRequest generateFinalChatRequest(ChatRequest chatRequest) {
+        return ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
     }
 
     default ChatResponse doChat(ChatRequest chatRequest) {

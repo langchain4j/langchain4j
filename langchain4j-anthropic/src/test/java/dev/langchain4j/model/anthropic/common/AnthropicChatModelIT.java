@@ -6,6 +6,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
@@ -47,7 +48,32 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
+    }
+
+    @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         return AnthropicTokenUsage.class;
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormat() {
+        // Anthropic does not support response format yet
+        return false;
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithSchema() {
+        // Anthropic does not support response format yet
+        return false;
+    }
+
+    @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        // Anthropic does not support images as URLs, only as Base64-encoded strings
+        return false;
     }
 }

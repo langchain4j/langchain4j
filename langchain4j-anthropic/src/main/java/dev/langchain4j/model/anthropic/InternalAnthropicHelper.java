@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
@@ -63,5 +64,8 @@ class InternalAnthropicHelper {
     }
 
     public static void validate(ChatRequestParameters parameters) {
+        if (parameters.responseFormat() != null) {
+            throw new UnsupportedFeatureException("JSON response format is not supported by Anthropic");
+        }
     }
 }
