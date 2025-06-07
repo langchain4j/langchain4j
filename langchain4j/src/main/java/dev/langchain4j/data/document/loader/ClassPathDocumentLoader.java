@@ -51,6 +51,24 @@ public class ClassPathDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a file.
      */
     public static Document loadDocument(String pathOnClasspath) {
+        return loadDocument(pathOnClasspath, getDefaultClassloader());
+    }
+
+    /**
+     * Loads a {@link Document} from the specified file path using a given class loader.
+     * <br>
+     * The file is parsed using the default {@link DocumentParser}.
+     * The default {@code DocumentParser} is loaded through SPI (see {@link dev.langchain4j.spi.data.document.parser.DocumentParserFactory DocumentParserFactoru}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
+     * <br>
+     * Returned {@code Document} contains all the textual information from the file.
+     *
+     * @param pathOnClasspath The path on the classpath to the file.
+     * @param classLoader The classloader to use when loading classes
+     * @return document
+     * @throws IllegalArgumentException If specified path is not a file.
+     */
+    public static Document loadDocument(String pathOnClasspath, ClassLoader classLoader) {
         return loadDocument(pathOnClasspath, DEFAULT_DOCUMENT_PARSER);
     }
 
@@ -67,7 +85,25 @@ public class ClassPathDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a file.
      */
     public static Document loadDocument(String pathOnClasspath, DocumentParser documentParser) {
-        var classPathSource = ClassPathSource.from(pathOnClasspath);
+        return loadDocument(pathOnClasspath, documentParser, getDefaultClassloader());
+    }
+
+    /**
+     * Loads a {@link Document} from the specified file path using a given class loader.
+     * <br>
+     * The file is parsed using the specified {@link DocumentParser}.
+     * <br>
+     * Returned {@code Document} contains all the textual information from the file.
+     *
+     * @param pathOnClasspath The path on the classpath to the file.
+     * @param documentParser The parser to be used for parsing text from the file.
+     * @param classLoader The class loader to use when loading classes
+     * @return document
+     * @throws IllegalArgumentException If specified path is not a file.
+     */
+    public static Document loadDocument(
+            String pathOnClasspath, DocumentParser documentParser, ClassLoader classLoader) {
+        var classPathSource = ClassPathSource.from(pathOnClasspath, classLoader);
 
         try {
             var uri = classPathSource.url().toURI();
@@ -93,7 +129,7 @@ public class ClassPathDocumentLoader {
     }
 
     /**
-     * Loads {@link Document}s from the specified directory. Does not use recursion.
+     * Loads {@link Document}s from the specified directory using a given class loader. Does not use recursion.
      * <br>
      * The files are parsed using the default {@link DocumentParser}.
      * The default {@code DocumentParser} is loaded through SPI (see {@link dev.langchain4j.spi.data.document.parser.DocumentParserFactory DocumentParserFactoru}).
@@ -106,7 +142,25 @@ public class ClassPathDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a directory.
      */
     public static List<Document> loadDocuments(String directoryOnClasspath) {
-        return loadDocuments(directoryOnClasspath, DEFAULT_DOCUMENT_PARSER);
+        return loadDocuments(directoryOnClasspath, getDefaultClassloader());
+    }
+
+    /**
+     * Loads {@link Document}s from the specified directory. Does not use recursion.
+     * <br>
+     * The files are parsed using the default {@link DocumentParser}.
+     * The default {@code DocumentParser} is loaded through SPI (see {@link dev.langchain4j.spi.data.document.parser.DocumentParserFactory DocumentParserFactoru}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
+     * <br>
+     * Skips any {@code Document}s that fail to load.
+     *
+     * @param directoryOnClasspath The path to the directory on the classpath with files.
+     * @param classLoader The class loader to use when looking things up
+     * @return list of documents
+     * @throws IllegalArgumentException If specified path is not a directory.
+     */
+    public static List<Document> loadDocuments(String directoryOnClasspath, ClassLoader classLoader) {
+        return loadDocuments(directoryOnClasspath, DEFAULT_DOCUMENT_PARSER, classLoader);
     }
 
     /**
@@ -122,7 +176,25 @@ public class ClassPathDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a directory.
      */
     public static List<Document> loadDocuments(String directoryOnClasspath, DocumentParser documentParser) {
-        return loadDocuments(directoryOnClasspath, path -> true, documentParser);
+        return loadDocuments(directoryOnClasspath, documentParser, getDefaultClassloader());
+    }
+
+    /**
+     * Loads {@link Document}s from the specified directory using a given class loader. Does not use recursion.
+     * <br>
+     * The files are parsed using the specified {@link DocumentParser}.
+     * <br>
+     * Skips any {@code Document}s that fail to load.
+     *
+     * @param directoryOnClasspath  The path to the directory on the classpath with files.
+     * @param documentParser The parser to be used for parsing text from each file.
+     * @param classLoader The class loader to use when looking things up
+     * @return list of documents
+     * @throws IllegalArgumentException If specified path is not a directory.
+     */
+    public static List<Document> loadDocuments(
+            String directoryOnClasspath, DocumentParser documentParser, ClassLoader classLoader) {
+        return loadDocuments(directoryOnClasspath, path -> true, documentParser, classLoader);
     }
 
     /**
@@ -145,7 +217,32 @@ public class ClassPathDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a directory.
      */
     public static List<Document> loadDocuments(String directoryOnClasspath, PathMatcher pathMatcher) {
-        return loadDocuments(directoryOnClasspath, pathMatcher, DEFAULT_DOCUMENT_PARSER);
+        return loadDocuments(directoryOnClasspath, pathMatcher, getDefaultClassloader());
+    }
+
+    /**
+     * Loads matching {@link Document}s from the specified directory using a given class loader. Does not use recursion.
+     * <br>
+     * The files are parsed using the default {@link DocumentParser}.
+     * The default {@code DocumentParser} is loaded through SPI (see {@link dev.langchain4j.spi.data.document.parser.DocumentParserFactory DocumentParserFactoru}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
+     * <br>
+     * Skips any {@code Document}s that fail to load.
+     *
+     * @param directoryOnClasspath The path to the directory on the classpath with files.
+     * @param pathMatcher   Only files whose paths match the provided {@link PathMatcher} will be loaded.
+     *                      For example, using {@code FileSystems.getDefault().getPathMatcher("glob:*.txt")}
+     *                      will load all files from {@code directoryPath} with a {@code txt} extension.
+     *                      When traversing the directory, each file path is converted from absolute to relative
+     *                      (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
+     *                      Thus, {@code pathMatcher} should use relative patterns.
+     * @param classLoader The class loader to use
+     * @return list of documents
+     * @throws IllegalArgumentException If specified path is not a directory.
+     */
+    public static List<Document> loadDocuments(
+            String directoryOnClasspath, PathMatcher pathMatcher, ClassLoader classLoader) {
+        return loadDocuments(directoryOnClasspath, pathMatcher, DEFAULT_DOCUMENT_PARSER, classLoader);
     }
 
     /**
@@ -168,16 +265,52 @@ public class ClassPathDocumentLoader {
      */
     public static List<Document> loadDocuments(
             String directoryOnClasspath, PathMatcher pathMatcher, DocumentParser documentParser) {
+        return loadDocuments(directoryOnClasspath, pathMatcher, documentParser, getDefaultClassloader());
+    }
+
+    /**
+     * Loads matching {@link Document}s from the specified directory using a given class loader. Does not use recursion.
+     * <br>
+     * The files are parsed using the specified {@link DocumentParser}.
+     * <br>
+     * Skips any {@code Document}s that fail to load.
+     *
+     * @param directoryOnClasspath The path to the directory on the classpath with files.
+     * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
+     *                       For example, using {@code FileSystems.getDefault().getPathMatcher("glob:*.txt")}
+     *                       will load all files from {@code directoryPath} with a {@code txt} extension.
+     *                       When traversing the directory, each file path is converted from absolute to relative
+     *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
+     *                       Thus, {@code pathMatcher} should use relative patterns.
+     * @param documentParser The parser to be used for parsing text from each file.
+     * @param classLoader The class loader to use when looking things up
+     * @return list of documents
+     * @throws IllegalArgumentException If specified path is not a directory.
+     */
+    public static List<Document> loadDocuments(
+            String directoryOnClasspath,
+            PathMatcher pathMatcher,
+            DocumentParser documentParser,
+            ClassLoader classLoader) {
         return loadDocuments(
-                directoryOnClasspath, pathMatcher, documentParser, ClassPathDocumentLoader::getFilesInDirectory);
+                directoryOnClasspath,
+                pathMatcher,
+                documentParser,
+                classLoader,
+                ClassPathDocumentLoader::getFilesInDirectory);
+    }
+
+    private static ClassLoader getDefaultClassloader() {
+        return Thread.currentThread().getContextClassLoader();
     }
 
     private static List<Document> loadDocuments(
             String directoryOnClasspath,
             PathMatcher pathMatcher,
             DocumentParser documentParser,
+            ClassLoader classLoader,
             Function<Path, Stream<Path>> pathStreamFunction) {
-        var classPathSource = ClassPathSource.from(directoryOnClasspath);
+        var classPathSource = ClassPathSource.from(directoryOnClasspath, classLoader);
 
         try {
             var uri = classPathSource.url().toURI();
@@ -278,7 +411,25 @@ public class ClassPathDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a directory.
      */
     public static List<Document> loadDocumentsRecursively(String directoryOnClasspath) {
-        return loadDocumentsRecursively(directoryOnClasspath, DEFAULT_DOCUMENT_PARSER);
+        return loadDocumentsRecursively(directoryOnClasspath, getDefaultClassloader());
+    }
+
+    /**
+     * Recursively loads {@link Document}s from the specified directory and its subdirectories using a specified classloader.
+     * <br>
+     * The files are parsed using the default {@link DocumentParser}.
+     * The default {@code DocumentParser} is loaded through SPI (see {@link dev.langchain4j.spi.data.document.parser.DocumentParserFactory DocumentParserFactoru}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
+     * <br>
+     * Skips any {@code Document}s that fail to load.
+     *
+     * @param directoryOnClasspath The path to the directory on the classpath with files.
+     * @param classLoader The class loader to use when looking things up
+     * @return list of documents
+     * @throws IllegalArgumentException If specified path is not a directory.
+     */
+    public static List<Document> loadDocumentsRecursively(String directoryOnClasspath, ClassLoader classLoader) {
+        return loadDocumentsRecursively(directoryOnClasspath, DEFAULT_DOCUMENT_PARSER, classLoader);
     }
 
     /**
@@ -294,7 +445,25 @@ public class ClassPathDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a directory.
      */
     public static List<Document> loadDocumentsRecursively(String directoryOnClasspath, DocumentParser documentParser) {
-        return loadDocumentsRecursively(directoryOnClasspath, path -> true, documentParser);
+        return loadDocumentsRecursively(directoryOnClasspath, documentParser, getDefaultClassloader());
+    }
+
+    /**
+     * Recursively loads {@link Document}s from the specified directory and its subdirectories using a given class loader.
+     * <br>
+     * The files are parsed using the specified {@link DocumentParser}.
+     * <br>
+     * Skips any {@code Document}s that fail to load.
+     *
+     * @param directoryOnClasspath The path to the directory on the classpath with files.
+     * @param documentParser The parser to be used for parsing text from each file.
+     * @param classLoader The class loader to use
+     * @return list of documents
+     * @throws IllegalArgumentException If specified path is not a directory.
+     */
+    public static List<Document> loadDocumentsRecursively(
+            String directoryOnClasspath, DocumentParser documentParser, ClassLoader classLoader) {
+        return loadDocumentsRecursively(directoryOnClasspath, path -> true, documentParser, classLoader);
     }
 
     /**
@@ -320,7 +489,35 @@ public class ClassPathDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a directory.
      */
     public static List<Document> loadDocumentsRecursively(String directoryOnClasspath, PathMatcher pathMatcher) {
-        return loadDocumentsRecursively(directoryOnClasspath, pathMatcher, DEFAULT_DOCUMENT_PARSER);
+        return loadDocumentsRecursively(directoryOnClasspath, pathMatcher, getDefaultClassloader());
+    }
+
+    /**
+     * Recursively loads matching {@link Document}s from the specified directory and its subdirectories using a given class loader.
+     * <br>
+     * The files are parsed using the default {@link DocumentParser}.
+     * The default {@code DocumentParser} is loaded through SPI (see {@link dev.langchain4j.spi.data.document.parser.DocumentParserFactory DocumentParserFactoru}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
+     * <br>
+     * Skips any {@code Document}s that fail to load.
+     *
+     * @param directoryOnClasspath The path to the directory on the classpath with files.
+     * @param pathMatcher   Only files whose paths match the provided {@link PathMatcher} will be loaded.
+     *                      For example, using {@code FileSystems.getDefault().getPathMatcher("glob:**.txt")} will
+     *                      load all files from {@code directoryPath} and its subdirectories with a {@code txt} extension.
+     *                      When traversing the directory tree, each file path is converted from absolute to relative
+     *                      (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
+     *                      Thus, {@code pathMatcher} should use relative patterns.
+     *                      Please be aware that {@code *.txt} pattern (with a single asterisk) will match files
+     *                      only in the {@code directoryPath}, but it will not match files from the subdirectories
+     *                      of {@code directoryPath}.
+     * @param classLoader The class loader to use
+     * @return list of documents
+     * @throws IllegalArgumentException If specified path is not a directory.
+     */
+    public static List<Document> loadDocumentsRecursively(
+            String directoryOnClasspath, PathMatcher pathMatcher, ClassLoader classLoader) {
+        return loadDocumentsRecursively(directoryOnClasspath, pathMatcher, DEFAULT_DOCUMENT_PARSER, classLoader);
     }
 
     /**
@@ -346,10 +543,41 @@ public class ClassPathDocumentLoader {
      */
     public static List<Document> loadDocumentsRecursively(
             String directoryOnClasspath, PathMatcher pathMatcher, DocumentParser documentParser) {
+        return loadDocumentsRecursively(directoryOnClasspath, pathMatcher, documentParser, getDefaultClassloader());
+    }
+
+    /**
+     * Recursively loads matching {@link Document}s from the specified directory and its subdirectories using a given class loader.
+     * <br>
+     * The files are parsed using the specified {@link DocumentParser}.
+     * <br>
+     * Skips any {@code Document}s that fail to load.
+     *
+     * @param directoryOnClasspath The path to the directory on the classpath with files.
+     * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
+     *                       For example, using {@code FileSystems.getDefault().getPathMatcher("glob:**.txt")} will
+     *                       load all files from {@code directoryPath} and its subdirectories with a {@code txt} extension.
+     *                       When traversing the directory tree, each file path is converted from absolute to relative
+     *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
+     *                       Thus, {@code pathMatcher} should use relative patterns.
+     *                       Please be aware that {@code *.txt} pattern (with a single asterisk) will match files
+     *                       only in the {@code directoryPath}, but it will not match files from the subdirectories
+     *                       of {@code directoryPath}.
+     * @param documentParser The parser to be used for parsing text from each file.
+     * @param classLoader The class loader to use when looking things up
+     * @return list of documents
+     * @throws IllegalArgumentException If specified path is not a directory.
+     */
+    public static List<Document> loadDocumentsRecursively(
+            String directoryOnClasspath,
+            PathMatcher pathMatcher,
+            DocumentParser documentParser,
+            ClassLoader classLoader) {
         return loadDocuments(
                 directoryOnClasspath,
                 pathMatcher,
                 documentParser,
+                classLoader,
                 ClassPathDocumentLoader::getFilesInDirectoryRecursively);
     }
 
