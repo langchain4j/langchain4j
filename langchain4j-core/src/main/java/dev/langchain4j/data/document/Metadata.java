@@ -442,6 +442,30 @@ public class Metadata {
     public static Metadata from(Map<String, ?> metadata) {
         return new Metadata(metadata);
     }
+    
+    /**
+     * Constructs a Metadata object from multiple key-value pairs.
+     *
+     * @param keyValuePairs alternating keys (String) and values (Object)
+     * @return a Metadata object
+     * @throws IllegalArgumentException if the number of arguments is not even
+     */
+    public static Metadata from(Object... keyValuePairs) {
+        if (keyValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("Expected even number of arguments (key-value pairs).");
+        }
+
+        Map<String, Object> metadata = new HashMap<>();
+        for (int i = 0; i < keyValuePairs.length; i += 2) {
+            if (!(keyValuePairs[i] instanceof String)) {
+                throw new IllegalArgumentException("Key must be a String at index " + i);
+            }
+            String key = (String) keyValuePairs[i];
+            Object value = keyValuePairs[i + 1];
+            metadata.put(key, value);
+        }
+        return new Metadata(metadata);
+    }
 
     /**
      * Constructs a Metadata object from a single key-value pair.
