@@ -473,7 +473,7 @@ Currently supported embedding stores can be found [here](/integrations/embedding
 - `EmbeddingStore.addAll(List<String> ids, List<Embedding>, List<TextSegment>)` adds a list of given `Embedding`s with associated IDs and `TextSegment`s to the store
 - `EmbeddingStore.search(EmbeddingSearchRequest)` searches for the most similar `Embedding`s
 - `EmbeddingStore.remove(String id)` removes a single `Embedding` from the store by ID
-- `EmbeddingStore.removeAll(Collection<String> ids)`  removes all embeddings from the store whose IDs are present in the given collection.
+- `EmbeddingStore.removeAll(Collection<String> ids)` removes all embeddings from the store whose IDs are present in the given collection.
 - `EmbeddingStore.removeAll(Filter)` removes all `Embedding`s that match the specified `Filter` from the store
 - `EmbeddingStore.removeAll()` removes all `Embedding`s from the store
 </details>
