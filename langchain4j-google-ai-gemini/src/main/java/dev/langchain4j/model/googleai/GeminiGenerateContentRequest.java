@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ class GeminiGenerateContentRequest {
     private GeminiContent systemInstruction;
     private GeminiGenerationConfig generationConfig;
     private String cachedContent;
+    private GeminiThinkingConfig thinkingConfig;
 
     @JsonCreator
     GeminiGenerateContentRequest(
@@ -26,7 +28,8 @@ class GeminiGenerateContentRequest {
             @JsonProperty("safetySettings") List<GeminiSafetySetting> safetySettings,
             @JsonProperty("systemInstruction") GeminiContent systemInstruction,
             @JsonProperty("generationConfig") GeminiGenerationConfig generationConfig,
-            @JsonProperty("cachedContent") String cachedContent) {
+            @JsonProperty("cachedContent") String cachedContent,
+            @JsonProperty("thinkingConfig") GeminiThinkingConfig thinkingConfig) {
         this.model = model;
         this.contents = contents;
         this.tools = tools;
@@ -35,6 +38,7 @@ class GeminiGenerateContentRequest {
         this.systemInstruction = systemInstruction;
         this.generationConfig = generationConfig;
         this.cachedContent = cachedContent;
+        this.thinkingConfig = thinkingConfig;
     }
 
     public static GeminiGenerateContentRequestBuilder builder() {
@@ -72,7 +76,13 @@ class GeminiGenerateContentRequest {
     public String getCachedContent() {
         return this.cachedContent;
     }
+    public GeminiThinkingConfig getThinkingConfig() {
+    return thinkingConfig;
+   }
 
+    public void setThinkingConfig(GeminiThinkingConfig thinkingConfig) {
+    this.thinkingConfig = thinkingConfig;
+    }
     public void setModel(String model) {
         this.model = model;
     }
@@ -139,6 +149,10 @@ class GeminiGenerateContentRequest {
         final Object other$cachedContent = other.getCachedContent();
         if (this$cachedContent == null ? other$cachedContent != null : !this$cachedContent.equals(other$cachedContent))
             return false;
+            final Object this$thinkingConfig = this.getThinkingConfig();
+        final Object other$thinkingConfig = other.getThinkingConfig();
+        if (this$thinkingConfig == null ? other$thinkingConfig != null : !this$thinkingConfig.equals(other$thinkingConfig))
+            return false;
         return true;
     }
 
@@ -165,6 +179,8 @@ class GeminiGenerateContentRequest {
         result = result * PRIME + ($generationConfig == null ? 43 : $generationConfig.hashCode());
         final Object $cachedContent = this.getCachedContent();
         result = result * PRIME + ($cachedContent == null ? 43 : $cachedContent.hashCode());
+        final Object $thinkingConfig = this.getThinkingConfig();
+        result = result * PRIME + ($thinkingConfig == null ? 43 : $thinkingConfig.hashCode());
         return result;
     }
 
@@ -181,7 +197,7 @@ class GeminiGenerateContentRequest {
         private GeminiContent systemInstruction;
         private GeminiGenerationConfig generationConfig;
         private String cachedContent;
-
+        private GeminiThinkingConfig thinkingConfig;
         GeminiGenerateContentRequestBuilder() {
         }
 
@@ -224,13 +240,17 @@ class GeminiGenerateContentRequest {
             this.cachedContent = cachedContent;
             return this;
         }
-
+        public GeminiGenerateContentRequestBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
+        this.thinkingConfig = thinkingConfig;
+        return this;
+        }
         public GeminiGenerateContentRequest build() {
-            return new GeminiGenerateContentRequest(this.model, this.contents, this.tools, this.toolConfig, this.safetySettings, this.systemInstruction, this.generationConfig, this.cachedContent);
+            return new GeminiGenerateContentRequest(this.model, this.contents, this.tools, this.toolConfig, this.safetySettings, this.systemInstruction, this.generationConfig, this.cachedContent,
+            this.thinkingConfig);
         }
 
         public String toString() {
-            return "GeminiGenerateContentRequest.GeminiGenerateContentRequestBuilder(model=" + this.model + ", contents=" + this.contents + ", tools=" + this.tools + ", toolConfig=" + this.toolConfig + ", safetySettings=" + this.safetySettings + ", systemInstruction=" + this.systemInstruction + ", generationConfig=" + this.generationConfig + ", cachedContent=" + this.cachedContent + ")";
+            return "GeminiGenerateContentRequest.GeminiGenerateContentRequestBuilder(model=" + this.model + ", contents=" + this.contents + ", tools=" + this.tools + ", toolConfig=" + this.toolConfig + ", safetySettings=" + this.safetySettings + ", systemInstruction=" + this.systemInstruction + ", generationConfig=" + this.generationConfig + ", cachedContent=" + this.cachedContent  + ", thinkingConfig=" + this.getThinkingConfig()")";
         }
     }
 }
