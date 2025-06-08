@@ -48,12 +48,13 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
             List<GeminiSafetySetting> safetySettings,
-            List<ChatModelListener> listeners
+            List<ChatModelListener> listeners,
+            GeminiThinkingConfig thinkingConfig
     ) {
         super(apiKey, modelName, temperature, topK, topP, maxOutputTokens, timeout,
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
-                listeners, maxRetries);
+                listeners, maxRetries,thinkingConfig);
     }
 
     public static GoogleAiGeminiChatModelBuilder builder() {
@@ -190,6 +191,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
 
+        private GeminiThinkingConfig thinkingConfig;
+
         GoogleAiGeminiChatModelBuilder() {
         }
 
@@ -285,8 +288,15 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return this;
         }
 
+        public GoogleAiGeminiChatModelBuilder thinkingConfig(Float thinkingBudget) {
+            if (thinkingBudget != null) {
+                this.thinkingConfig = new GeminiThinkingConfig(thinkingBudget);
+            }
+            return this;
+        }
+
         public GoogleAiGeminiChatModel build() {
-            return new GoogleAiGeminiChatModel(this.apiKey, this.modelName, this.maxRetries, this.temperature, this.topK, this.topP, this.maxOutputTokens, this.timeout, this.responseFormat, this.stopSequences, this.toolConfig, this.allowCodeExecution, this.includeCodeExecutionOutput, this.logRequestsAndResponses, this.safetySettings, this.listeners);
+            return new GoogleAiGeminiChatModel(this.apiKey, this.modelName, this.maxRetries, this.temperature, this.topK, this.topP, this.maxOutputTokens, this.timeout, this.responseFormat, this.stopSequences, this.toolConfig, this.allowCodeExecution, this.includeCodeExecutionOutput, this.logRequestsAndResponses, this.safetySettings, this.listeners, this.thinkingConfig);
         }
     }
 }
