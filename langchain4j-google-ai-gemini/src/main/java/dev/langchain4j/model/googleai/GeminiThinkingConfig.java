@@ -1,12 +1,6 @@
 package dev.langchain4j.model.googleai;
 
-
-/*
- * @author : rabin
- */
-
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Objects;
 
 public class GeminiThinkingConfig {
     private Boolean includeThoughts;
@@ -33,15 +27,22 @@ public class GeminiThinkingConfig {
         this.thinkingBudget = thinkingBudget;
     }
 
-    public Map<String, Object> toJson() {
-        Map<String, Object> json = new HashMap<>();
-        if (includeThoughts != null) {
-            json.put("includeThoughts", includeThoughts);
-        }
-        if (thinkingBudget != null) {
-            json.put("thinkingBudget", thinkingBudget);
-        }
-        return json;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof GeminiThinkingConfig)) return false;
+        GeminiThinkingConfig other = (GeminiThinkingConfig) o;
+        return Objects.equals(includeThoughts, other.includeThoughts) &&
+                Objects.equals(thinkingBudget, other.thinkingBudget);
+    }
+
+    @Override
+    public int hashCode() {
+        final int PRIME = 59;
+        int result = 1;
+        result = result * PRIME + (includeThoughts == null ? 43 : includeThoughts.hashCode());
+        result = result * PRIME + (thinkingBudget == null ? 43 : thinkingBudget.hashCode());
+        return result;
     }
 
     public static Builder builder() {

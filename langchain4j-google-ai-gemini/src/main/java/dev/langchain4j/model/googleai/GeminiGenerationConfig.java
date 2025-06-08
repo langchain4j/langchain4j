@@ -77,15 +77,9 @@ class GeminiGenerationConfig {
     public Double getTopP() {
         return this.topP;
     }
-
-    // add get and set methods of thinking config
     public GeminiThinkingConfig getThinkingConfig() {
         return thinkingConfig;
     }
-    public void setThinkingConfig(GeminiThinkingConfig thinkingConfig) {
-        this.thinkingConfig = thinkingConfig;
-    }
-
     public void setStopSequences(List<String> stopSequences) {
         this.stopSequences = stopSequences;
     }
@@ -116,6 +110,10 @@ class GeminiGenerationConfig {
 
     public void setTopP(Double topP) {
         this.topP = topP;
+    }
+
+    public void setThinkingConfig(GeminiThinkingConfig thinkingConfig) {
+        this.thinkingConfig = thinkingConfig;
     }
 
     public boolean equals(final Object o) {
@@ -153,6 +151,10 @@ class GeminiGenerationConfig {
         final Object this$topP = this.getTopP();
         final Object other$topP = other.getTopP();
         if (this$topP == null ? other$topP != null : !this$topP.equals(other$topP)) return false;
+
+        final Object this$thinkingConfig = this.getThinkingConfig();
+        final Object other$thinkingConfig = other.getThinkingConfig();
+        if (this$thinkingConfig == null ? other$thinkingConfig != null : !this$thinkingConfig.equals(other$thinkingConfig)) return false;
         return true;
     }
 
@@ -179,7 +181,10 @@ class GeminiGenerationConfig {
         result = result * PRIME + ($topK == null ? 43 : $topK.hashCode());
         final Object $topP = this.getTopP();
         result = result * PRIME + ($topP == null ? 43 : $topP.hashCode());
+        final Object $thinkingConfig = this.getThinkingConfig();
+        result = result * PRIME + ($thinkingConfig == null ? 43 : $thinkingConfig.hashCode());
         return result;
+
     }
 
     public String toString() {

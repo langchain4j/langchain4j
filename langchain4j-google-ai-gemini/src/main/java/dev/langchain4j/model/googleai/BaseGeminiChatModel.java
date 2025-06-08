@@ -50,7 +50,7 @@ abstract class BaseGeminiChatModel {
     protected final List<GeminiSafetySetting> safetySettings;
     protected final List<ChatModelListener> listeners;
     protected final Integer maxRetries;
-    private final GeminiThinkingConfig thinkingConfig;  // add thinkingConfig
+    protected final GeminiThinkingConfig thinkingConfig;
 
 
     protected BaseGeminiChatModel(

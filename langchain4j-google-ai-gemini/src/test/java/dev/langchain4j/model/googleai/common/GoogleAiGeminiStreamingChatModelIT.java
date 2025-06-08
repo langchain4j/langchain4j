@@ -126,4 +126,6 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @EnabledIf("supportsTools")
     protected void should_execute_a_tool_then_answer(StreamingChatModel model) {
     }
+
+
 }

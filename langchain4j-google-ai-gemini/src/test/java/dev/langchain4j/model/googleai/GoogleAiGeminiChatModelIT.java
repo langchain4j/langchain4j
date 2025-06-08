@@ -61,8 +61,6 @@ import org.junitpioneer.jupiter.RetryingTest;
 class GoogleAiGeminiChatModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    String apiKey = System.getProperty("GOOGLE_AI_GEMINI_API_KEY");
-
 
     private static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
@@ -742,6 +740,22 @@ class GoogleAiGeminiChatModelIT {
 
         verifyNoMoreInteractions(spyTransactions);
     }
+
+    @Test
+    void should_calculate_area_of_rectangle() {
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-preview-04-17")
+                .temperature(0.0)
+                .build();
+
+        String prompt = "What is the area of a rectangle with length 5 and width 4?";
+        ChatResponse response = gemini.chat(UserMessage.from(prompt));
+
+        String reply = response.aiMessage().text();
+        assertThat(reply).contains("20").containsIgnoringCase("square");
+    }
+
 
     @AfterEach
     void afterEach() throws InterruptedException {
