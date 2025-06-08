@@ -17,6 +17,9 @@ class GeminiGenerationConfig {
     private Integer topK = 64;
     private Double topP = 0.95;
 
+    private GeminiThinkingConfig thinkingConfig;
+
+
     @JsonCreator
     GeminiGenerationConfig(
             @JsonProperty("stopSequences") List<String> stopSequences,
@@ -26,7 +29,8 @@ class GeminiGenerationConfig {
             @JsonProperty("maxOutputTokens") Integer maxOutputTokens,
             @JsonProperty("temperature") Double temperature,
             @JsonProperty("topK") Integer topK,
-            @JsonProperty("topP") Double topP) {
+            @JsonProperty("topP") Double topP,
+            @JsonProperty("thinkingConfig") GeminiThinkingConfig thinkingConfig) {
         this.stopSequences = stopSequences;
         this.responseMimeType = responseMimeType;
         this.responseSchema = responseSchema;
@@ -35,6 +39,7 @@ class GeminiGenerationConfig {
         this.temperature = temperature;
         this.topK = topK;
         this.topP = topP;
+        this.thinkingConfig = thinkingConfig;
     }
 
     public static GeminiGenerationConfigBuilder builder() {
@@ -71,6 +76,14 @@ class GeminiGenerationConfig {
 
     public Double getTopP() {
         return this.topP;
+    }
+
+    // add get and set methods of thinking config
+    public GeminiThinkingConfig getThinkingConfig() {
+        return thinkingConfig;
+    }
+    public void setThinkingConfig(GeminiThinkingConfig thinkingConfig) {
+        this.thinkingConfig = thinkingConfig;
     }
 
     public void setStopSequences(List<String> stopSequences) {
@@ -170,7 +183,7 @@ class GeminiGenerationConfig {
     }
 
     public String toString() {
-        return "GeminiGenerationConfig(stopSequences=" + this.getStopSequences() + ", responseMimeType=" + this.getResponseMimeType() + ", responseSchema=" + this.getResponseSchema() + ", candidateCount=" + this.getCandidateCount() + ", maxOutputTokens=" + this.getMaxOutputTokens() + ", temperature=" + this.getTemperature() + ", topK=" + this.getTopK() + ", topP=" + this.getTopP() + ")";
+        return "GeminiGenerationConfig(stopSequences=" + this.getStopSequences() + ", responseMimeType=" + this.getResponseMimeType() + ", responseSchema=" + this.getResponseSchema() + ", candidateCount=" + this.getCandidateCount() + ", maxOutputTokens=" + this.getMaxOutputTokens() + ", temperature=" + this.getTemperature() + ", topK=" + this.getTopK() + ", topP=" + this.getTopP() + ", thinkingConfig="+ this.getThinkingConfig() + ")";
     }
 
     public static class GeminiGenerationConfigBuilder {
@@ -182,6 +195,8 @@ class GeminiGenerationConfig {
         private Double temperature;
         private Integer topK;
         private Double topP;
+
+        private GeminiThinkingConfig thinkingConfig;
 
         GeminiGenerationConfigBuilder() {
         }
@@ -226,12 +241,17 @@ class GeminiGenerationConfig {
             return this;
         }
 
+        public GeminiGenerationConfigBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
+            this.thinkingConfig = thinkingConfig;
+            return this;
+        }
+
         public GeminiGenerationConfig build() {
-            return new GeminiGenerationConfig(this.stopSequences, this.responseMimeType, this.responseSchema, this.candidateCount, this.maxOutputTokens, this.temperature, this.topK, this.topP);
+            return new GeminiGenerationConfig(this.stopSequences, this.responseMimeType, this.responseSchema, this.candidateCount, this.maxOutputTokens, this.temperature, this.topK, this.topP, this.thinkingConfig);
         }
 
         public String toString() {
-            return "GeminiGenerationConfig.GeminiGenerationConfigBuilder(stopSequences=" + this.stopSequences + ", responseMimeType=" + this.responseMimeType + ", responseSchema=" + this.responseSchema + ", candidateCount=" + this.candidateCount + ", maxOutputTokens=" + this.maxOutputTokens + ", temperature=" + this.temperature + ", topK=" + this.topK + ", topP=" + this.topP + ")";
+            return "GeminiGenerationConfig.GeminiGenerationConfigBuilder(stopSequences=" + this.stopSequences + ", responseMimeType=" + this.responseMimeType + ", responseSchema=" + this.responseSchema + ", candidateCount=" + this.candidateCount + ", maxOutputTokens=" + this.maxOutputTokens + ", temperature=" + this.temperature + ", topK=" + this.topK + ", topP=" + this.topP + ", thinkingConfig=" + this.thinkingConfig + ")";
         }
     }
 }
