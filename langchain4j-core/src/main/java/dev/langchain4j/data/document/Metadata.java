@@ -442,7 +442,7 @@ public class Metadata {
     public static Metadata from(Map<String, ?> metadata) {
         return new Metadata(metadata);
     }
-    
+
     /**
      * Constructs a Metadata object from multiple key-value pairs.
      *
