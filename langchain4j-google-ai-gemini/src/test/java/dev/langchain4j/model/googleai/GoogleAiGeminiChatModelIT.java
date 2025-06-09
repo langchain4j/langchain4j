@@ -586,8 +586,7 @@ class GoogleAiGeminiChatModelIT {
                 @JsonProperty("red") int red,
                 @JsonProperty("green") int green,
                 @JsonProperty("blue") int blue,
-                @JsonProperty("muted") boolean muted
-        ) {
+                @JsonProperty("muted") boolean muted) {
             this.name = name;
             this.red = red;
             this.green = green;
@@ -739,6 +738,21 @@ class GoogleAiGeminiChatModelIT {
         verify(spyTransactions).getTransactionAmount("T002");
 
         verifyNoMoreInteractions(spyTransactions);
+    }
+
+    @Test
+    void should_calculate_area_of_rectangle() {
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-preview-04-17")
+                .temperature(0.0)
+                .build();
+
+        String prompt = "What is the area of a rectangle with length 5 and width 4?";
+        ChatResponse response = gemini.chat(UserMessage.from(prompt));
+
+        String reply = response.aiMessage().text();
+        assertThat(reply).contains("20").containsIgnoringCase("square");
     }
 
     @AfterEach
