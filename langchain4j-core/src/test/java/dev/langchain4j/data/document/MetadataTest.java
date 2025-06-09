@@ -263,7 +263,7 @@ class MetadataTest implements WithAssertions {
                         + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
                         + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
 
-        assertThatThrownBy(() -> Metadata.from("key", new Object()))
+        assertThatThrownBy(() -> Metadata.from("key1", "value1", "key", new Object()))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
