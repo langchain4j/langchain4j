@@ -586,8 +586,7 @@ class GoogleAiGeminiChatModelIT {
                 @JsonProperty("red") int red,
                 @JsonProperty("green") int green,
                 @JsonProperty("blue") int blue,
-                @JsonProperty("muted") boolean muted
-        ) {
+                @JsonProperty("muted") boolean muted) {
             this.name = name;
             this.red = red;
             this.green = green;
@@ -755,7 +754,6 @@ class GoogleAiGeminiChatModelIT {
         String reply = response.aiMessage().text();
         assertThat(reply).contains("20").containsIgnoringCase("square");
     }
-
 
     @AfterEach
     void afterEach() throws InterruptedException {

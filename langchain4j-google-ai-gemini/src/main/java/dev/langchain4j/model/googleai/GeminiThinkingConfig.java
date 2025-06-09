@@ -4,7 +4,7 @@ import java.util.Objects;
 
 public class GeminiThinkingConfig {
     private Boolean includeThoughts;
-    private  Integer thinkingBudget;
+    private Integer thinkingBudget;
 
     private GeminiThinkingConfig(Builder builder) {
         this.includeThoughts = builder.includeThoughts;
@@ -32,8 +32,8 @@ public class GeminiThinkingConfig {
         if (this == o) return true;
         if (!(o instanceof GeminiThinkingConfig)) return false;
         GeminiThinkingConfig other = (GeminiThinkingConfig) o;
-        return Objects.equals(includeThoughts, other.includeThoughts) &&
-                Objects.equals(thinkingBudget, other.thinkingBudget);
+        return Objects.equals(includeThoughts, other.includeThoughts)
+                && Objects.equals(thinkingBudget, other.thinkingBudget);
     }
 
     @Override
@@ -68,5 +68,4 @@ public class GeminiThinkingConfig {
             return new GeminiThinkingConfig(this);
         }
     }
-
 }
