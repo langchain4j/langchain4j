@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.spi.ServiceHelper;
@@ -40,6 +41,7 @@ public abstract class MistralAiClient {
         public Duration timeout;
         public Boolean logRequests;
         public Boolean logResponses;
+        public HttpClientBuilder httpClientBuilder;
 
         public abstract T build();
 
@@ -53,7 +55,8 @@ public abstract class MistralAiClient {
 
         public B apiKey(String apiKey) {
             if (apiKey == null || apiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException("MistralAI API Key must be defined. It can be generated here: https://console.mistral.ai/user/api-keys");
+                throw new IllegalArgumentException(
+                        "MistralAI API Key must be defined. It can be generated here: https://console.mistral.ai/user/api-keys");
             }
             this.apiKey = apiKey;
             return (B) this;
@@ -88,6 +91,11 @@ public abstract class MistralAiClient {
                 logResponses = false;
             }
             this.logResponses = logResponses;
+            return (B) this;
+        }
+
+        public B httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
             return (B) this;
         }
     }
