@@ -26,11 +26,6 @@ abstract class OllamaBaseChatModel {
     protected Set<Capability> supportedCapabilities;
 
     void init(Builder<? extends OllamaBaseChatModel, ? extends Builder<?, ?>> builder) {
-
-        if (builder.format != null && builder.responseFormat != null) {
-            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
-        }
-
         this.client = OllamaClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
@@ -51,7 +46,6 @@ abstract class OllamaBaseChatModel {
             ollamaParameters = OllamaChatRequestParameters.builder().build();
         }
 
-        ResponseFormat responseFormat = "json".equals(builder.format) ? ResponseFormat.JSON : builder.responseFormat; // TODO
         this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
@@ -61,7 +55,7 @@ abstract class OllamaBaseChatModel {
                 .maxOutputTokens(getOrDefault(builder.numPredict, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
-                .responseFormat(getOrDefault(responseFormat, commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 // Ollama-specific parameters
                 .mirostat(getOrDefault(builder.mirostat, ollamaParameters.mirostat()))
                 .mirostatEta(getOrDefault(builder.mirostatEta, ollamaParameters.mirostatEta()))
@@ -103,7 +97,6 @@ abstract class OllamaBaseChatModel {
         protected Integer numPredict;
         protected List<String> stop;
         protected Double minP;
-        protected String format;
         protected ResponseFormat responseFormat;
         protected Duration timeout;
         protected Map<String, String> customHeaders;
@@ -204,19 +197,6 @@ abstract class OllamaBaseChatModel {
 
         public B minP(Double minP) {
             this.minP = minP;
-            return self();
-        }
-
-        /**
-         * @deprecated Please use {@link #responseFormat(ResponseFormat)} instead.
-         * For example: {@code responseFormat(ResponseFormat.JSON)}.
-         * <br>
-         * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
-         * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
-         */
-        @Deprecated(forRemoval = true, since = "1.0.0-beta5")
-        public B format(String format) {
-            this.format = format;
             return self();
         }
 

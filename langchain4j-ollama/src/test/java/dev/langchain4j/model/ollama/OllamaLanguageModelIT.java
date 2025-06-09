@@ -61,7 +61,7 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
         LanguageModel model = OllamaLanguageModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
-                .format("json")
+                .responseFormat(JSON)
                 .temperature(0.0)
                 .build();
 
@@ -72,14 +72,5 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // then
         assertThat(response.content()).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
-    }
-
-    @Test
-    void should_throw_exception_when_format_and_response_format_are_used() {
-        assertThatThrownBy(() -> OllamaLanguageModel.builder()
-                .format("json")
-                .responseFormat(ResponseFormat.JSON)
-                .build())
-                .isInstanceOf(IllegalStateException.class);
     }
 }

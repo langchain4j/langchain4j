@@ -88,6 +88,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             Boolean logResponses,
             List<ChatModelListener> listeners,
             final Map<String, String> customHeaders) {
+        ensureNotBlank(modelName, "modelName");
+
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
@@ -121,7 +123,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         }
 
         if (useGoogleSearch != null && useGoogleSearch) {
-            googleSearch = ResponseGrounding.googleSearchTool();
+            googleSearch = ResponseGrounding.googleSearchTool(modelName);
         } else {
             googleSearch = null;
         }
@@ -181,7 +183,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                 .setCustomHeaders(headers)
                 .build();
 
-        this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI)
+        this.generativeModel = new GenerativeModel(modelName, vertexAI)
                 .withGenerationConfig(generationConfig);
 
         if (logRequests != null) {
