@@ -12,8 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static dev.langchain4j.model.openai.internal.chat.ContentType.IMAGE_URL;
-import static dev.langchain4j.model.openai.internal.chat.ContentType.TEXT;
+import static dev.langchain4j.model.openai.internal.chat.ContentType.*;
 import static dev.langchain4j.model.openai.internal.chat.Role.USER;
 import static java.util.Collections.unmodifiableList;
 
@@ -141,11 +140,23 @@ public final class UserMessage implements Message {
             initializeContent();
             this.content.add(
                 Content.builder()
-                    .type(ContentType.AUDIO)
+                    .type(AUDIO)
                     .inputAudio(inputAudio)
                 .build()
             );
             
+            return this;
+        }
+
+        public Builder addPdfFile(PdfFile pdfFile) {
+            initializeContent();
+            this.content.add(
+                    Content.builder()
+                            .type(FILE)
+                            .file(pdfFile)
+                            .build()
+            );
+
             return this;
         }
 
