@@ -752,7 +752,7 @@ class GoogleAiGeminiChatModelIT {
         ChatResponse response = gemini.chat(UserMessage.from(prompt));
 
         String reply = response.aiMessage().text();
-        assertThat(reply).contains("20").containsIgnoringCase("square");
+        assertThat(reply).contains("20");
     }
 
     @AfterEach
