@@ -6,7 +6,7 @@ import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import java.util.function.Supplier;
 
 /**
- * A factory for building {@link dev.langchain4j.model.openai.OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder} instances.
+ * A factory for building {@link OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder} instances.
  */
 @Internal
 public interface OpenAiEmbeddingModelBuilderFactory extends Supplier<OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder> {

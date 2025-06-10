@@ -1,7 +1,19 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -12,29 +24,13 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
-import dev.langchain4j.model.openai.internal.chat.Delta;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
-
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.ModelProvider.OPEN_AI;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
@@ -90,7 +86,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(
+                        fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
@@ -119,11 +116,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema)
-                        .stream(true)
-                        .streamOptions(StreamOptions.builder()
-                                .includeUsage(true)
-                                .build())
+                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).stream(true)
+                        .streamOptions(
+                                StreamOptions.builder().includeUsage(true).build())
                         .build();
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
@@ -143,31 +138,33 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .execute();
     }
 
-    private static void handle(ChatCompletionResponse partialResponse,
-                               StreamingChatResponseHandler handler) {
+    private static void handle(ChatCompletionResponse partialResponse, StreamingChatResponseHandler handler) {
         if (partialResponse == null) {
             return;
         }
+        String content = Json.toJson(partialResponse);
+        handler.onPartialResponse(content);
+        return;
 
-        List<ChatCompletionChoice> choices = partialResponse.choices();
-        if (choices == null || choices.isEmpty()) {
-            return;
-        }
-
-        ChatCompletionChoice chatCompletionChoice = choices.get(0);
-        if (chatCompletionChoice == null) {
-            return;
-        }
-
-        Delta delta = chatCompletionChoice.delta();
-        if (delta == null) {
-            return;
-        }
-
-        String content = delta.content();
-        if (!isNullOrEmpty(content)) {
-            handler.onPartialResponse(content);
-        }
+        //        List<ChatCompletionChoice> choices = partialResponse.choices();
+        //        if (choices == null || choices.isEmpty()) {
+        //            return;
+        //        }
+        //
+        //        ChatCompletionChoice chatCompletionChoice = choices.get(0);
+        //        if (chatCompletionChoice == null) {
+        //            return;
+        //        }
+        //
+        //        Delta delta = chatCompletionChoice.delta();
+        //        if (delta == null) {
+        //            return;
+        //        }
+        //
+        //        String content = delta.content();
+        //        if (!isNullOrEmpty(content)) {
+        //            handler.onPartialResponse(content);
+        //        }
     }
 
     @Override
@@ -181,7 +178,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     public static OpenAiStreamingChatModelBuilder builder() {
-        for (OpenAiStreamingChatModelBuilderFactory factory : loadFactories(OpenAiStreamingChatModelBuilderFactory.class)) {
+        for (OpenAiStreamingChatModelBuilderFactory factory :
+                loadFactories(OpenAiStreamingChatModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OpenAiStreamingChatModelBuilder();
