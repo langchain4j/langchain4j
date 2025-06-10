@@ -14,6 +14,7 @@ import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
@@ -227,6 +228,11 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean assertTimesOnPartialResponseWasCalled() {
         return false; // Ollama responds with a single SSE event for some reason (perhaps due to tools)
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return null; // TODO implement
     }
 
     @Override

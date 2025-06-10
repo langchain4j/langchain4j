@@ -4,6 +4,7 @@ import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRA
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import java.util.List;
 
@@ -70,5 +71,10 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // TODO implement
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return null; // TODO implement
     }
 }

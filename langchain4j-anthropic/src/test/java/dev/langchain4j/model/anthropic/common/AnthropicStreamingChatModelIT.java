@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import java.util.List;
 
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -86,5 +87,10 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         // Anthropic only supports one required tool at a time
         return false;
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return null; // TODO implement
     }
 }

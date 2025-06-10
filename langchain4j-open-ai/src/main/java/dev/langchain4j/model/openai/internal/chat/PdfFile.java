@@ -10,54 +10,55 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import java.util.Objects;
 
-@JsonDeserialize(builder = ImageUrl.Builder.class)
+@JsonDeserialize(builder = PdfFile.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ImageUrl {
+public class PdfFile {
 
-    @JsonProperty
-    private final String url;
-    @JsonProperty
-    private final ImageDetail detail;
+    @JsonProperty("file_data")
+    private final String fileData;
 
-    public ImageUrl(Builder builder) {
-        this.url = builder.url;
-        this.detail = builder.detail;
+    @JsonProperty("filename")
+    private final String filename;
+
+    public PdfFile(Builder builder) {
+        this.fileData = builder.fileData;
+        this.filename = builder.filename;
     }
 
-    public String getUrl() {
-        return url;
+    public String getFileData() {
+        return fileData;
     }
 
-    public ImageDetail getDetail() {
-        return detail;
+    public String getFilename() {
+        return filename;
     }
 
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ImageUrl
-                && equalTo((ImageUrl) another);
+        return another instanceof PdfFile
+                && equalTo((PdfFile) another);
     }
 
-    private boolean equalTo(ImageUrl another) {
-        return Objects.equals(url, another.url)
-                && Objects.equals(detail, another.detail);
+    private boolean equalTo(PdfFile another) {
+        return Objects.equals(fileData, another.fileData)
+                && Objects.equals(filename, another.filename);
     }
 
     @Override
     public int hashCode() {
         int h = 5381;
-        h += (h << 5) + Objects.hashCode(url);
-        h += (h << 5) + Objects.hashCode(detail);
+        h += (h << 5) + Objects.hashCode(fileData);
+        h += (h << 5) + Objects.hashCode(filename);
         return h;
     }
 
     @Override
     public String toString() {
-        return "ImageUrl{" +
-                "url=" + url +
-                ", detail=" + detail +
+        return "PdfFile{" +
+                "fileData=" + (fileData != null ? "[PDF DATA]" : "null") +
+                ", filename=" + filename +
                 "}";
     }
 
@@ -70,21 +71,21 @@ public class ImageUrl {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static final class Builder {
 
-        private String url;
-        private ImageDetail detail;
+        private String fileData;
+        private String filename;
 
-        public Builder url(String url) {
-            this.url = url;
+        public Builder fileData(String fileData) {
+            this.fileData = fileData;
             return this;
         }
 
-        public Builder detail(ImageDetail detail) {
-            this.detail = detail;
+        public Builder filename(String filename) {
+            this.filename = filename;
             return this;
         }
 
-        public ImageUrl build() {
-            return new ImageUrl(this);
+        public PdfFile build() {
+            return new PdfFile(this);
         }
     }
 }
