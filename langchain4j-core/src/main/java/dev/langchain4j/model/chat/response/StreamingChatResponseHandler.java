@@ -39,7 +39,7 @@ public interface StreamingChatResponseHandler {
     /**
      * Invoked each time the model generates a partial thinking response (thinking token) in a textual response.
      * 
-     * @param thinking
+     * @param partialThinkingResponse
      */
 	void onPartialThinkingResponse(String partialThinkingResponse);
 }
