@@ -232,7 +232,15 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
-        return null; // TODO implement
+        return OllamaStreamingChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollamaWithTools))
+                .modelName(MODEL_WITH_TOOLS)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .timeout(ofSeconds(180))
+                .listeners(List.of(listener))
+                .build();
     }
 
     @Override
