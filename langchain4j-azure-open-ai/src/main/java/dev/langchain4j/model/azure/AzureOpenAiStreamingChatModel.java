@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -231,7 +232,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         responseModelName.set(chatCompletion.getModel());
                     }
                 },
-                error -> handler.onError(InternalAzureOpenAiExceptionMapper.INSTANCE.mapException(error)),
+                error -> {
+                    RuntimeException mappedError = InternalAzureOpenAiExceptionMapper.INSTANCE.mapException(error);
+                    withLoggingExceptions(() -> handler.onError(mappedError));
+                },
                 () -> {
                     Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
 
@@ -244,7 +248,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                                     .finishReason(response.finishReason())
                                     .build())
                             .build();
-                    handler.onCompleteResponse(chatResponse);
+
+                    try {
+                        handler.onCompleteResponse(chatResponse);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
                 });
     }
 
@@ -261,7 +270,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.getContent();
         if (!isNullOrEmpty(content)) {
-            handler.onPartialResponse(content);
+            try {
+                handler.onPartialResponse(content);
+            } catch (Exception e) {
+                withLoggingExceptions(() -> handler.onError(e));
+            }
         }
     }
 

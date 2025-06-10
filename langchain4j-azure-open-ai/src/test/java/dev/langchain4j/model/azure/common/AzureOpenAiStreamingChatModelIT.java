@@ -93,7 +93,14 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
-        return null; // TODO implement
+        return AzureOpenAiStreamingChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName("gpt-4o-mini")
+                .logRequestsAndResponses(false) // images are huge in logs
+                .timeout(ofSeconds(120))
+                .listeners(List.of(listener))
+                .build();
     }
 
     @AfterEach
