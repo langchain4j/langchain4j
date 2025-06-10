@@ -3,6 +3,7 @@ package dev.langchain4j.model.azure.common;
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
@@ -88,6 +89,11 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean assertTokenUsage() {
         return false; // testing AzureOpenAiStreamingChatModel without TokenCountEstimator
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return null; // TODO implement
     }
 
     @AfterEach
