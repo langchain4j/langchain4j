@@ -41,5 +41,6 @@ public interface StreamingChatResponseHandler {
      * 
      * @param partialThinkingResponse
      */
-	void onPartialThinkingResponse(String partialThinkingResponse);
+    default void onPartialThinkingResponse(String partialThinkingResponse) {
+    }
 }
