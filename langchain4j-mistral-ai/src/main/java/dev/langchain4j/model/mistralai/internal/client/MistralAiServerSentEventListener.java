@@ -16,22 +16,25 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+
 import java.util.List;
 import java.util.function.BiFunction;
 
 class MistralAiServerSentEventListener<T> implements ServerSentEventListener {
-    final StringBuffer contentBuilder;
+
+    private final StringBuffer contentBuilder;
     private final StreamingResponseHandler<T> handler;
     private final BiFunction<String, List<ToolExecutionRequest>, T> toResponse;
-    List<ToolExecutionRequest> toolExecutionRequests;
-    TokenUsage tokenUsage;
-    FinishReason finishReason;
+
+    private List<ToolExecutionRequest> toolExecutionRequests;
+    private TokenUsage tokenUsage;
+    private FinishReason finishReason;
 
     public MistralAiServerSentEventListener(
             StreamingResponseHandler<T> handler, BiFunction<String, List<ToolExecutionRequest>, T> toResponse) {
+        this.contentBuilder = new StringBuffer();
         this.handler = handler;
         this.toResponse = toResponse;
-        contentBuilder = new StringBuffer();
     }
 
     @Override
@@ -68,12 +71,8 @@ class MistralAiServerSentEventListener<T> implements ServerSentEventListener {
                 if (finishReasonString != null) {
                     this.finishReason = finishReasonFrom(finishReasonString);
                 }
-            } catch (RuntimeException e) {
-                handler.onError(e);
-                throw e;
             } catch (Exception e) {
                 handler.onError(e);
-                throw new RuntimeException(e);
             }
         }
     }

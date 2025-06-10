@@ -213,18 +213,12 @@ public class AnthropicMapper {
         if (anthropicStopReason == null) {
             return null;
         }
-        switch (anthropicStopReason) {
-            case "end_turn":
-                return STOP;
-            case "max_tokens":
-                return LENGTH;
-            case "stop_sequence":
-                return OTHER; // TODO
-            case "tool_use":
-                return TOOL_EXECUTION;
-            default:
-                return null; // TODO
-        }
+        return switch (anthropicStopReason) {
+            case "end_turn", "stop_sequence" -> STOP;
+            case "max_tokens" -> LENGTH;
+            case "tool_use" -> TOOL_EXECUTION;
+            default -> OTHER;
+        };
     }
 
     public static List<AnthropicTool> toAnthropicTools(
