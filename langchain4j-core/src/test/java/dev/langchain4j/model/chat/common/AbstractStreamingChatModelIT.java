@@ -38,6 +38,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         // given
         AtomicInteger onPartialResponseCalled = new AtomicInteger(0);
+        AtomicInteger onPartialThinkingResponseCalled = new AtomicInteger(0);
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
         List<Throwable> errors = new ArrayList<>();
         CompletableFuture<Void> futureErrors = new CompletableFuture<>();
@@ -49,6 +50,75 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             @Override
             public void onPartialResponse(String partialResponse) {
                 onPartialResponseCalled.incrementAndGet();
+                throw userCodeException;
+            }
+
+            @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {
+                onPartialThinkingResponseCalled.incrementAndGet();
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+                futureErrors.complete(null);
+            }
+        };
+
+        ChatModelListener listener = mock(ChatModelListener.class);
+        StreamingChatModel model = createModelWith(listener);
+        if (model == null) {
+            return;
+        }
+
+        // when
+        model.chat("What is the capital of Germany?", handler);
+
+        // then
+        ChatResponse response = futureResponse.get(30, SECONDS);
+        assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
+
+        assertThat(onPartialResponseCalled.get()).isGreaterThan(1);
+
+        futureErrors.get(30, SECONDS);
+        assertThat(errors).hasSize(onPartialResponseCalled.get());
+        for (Throwable error : errors) {
+            assertThat(error).isEqualTo(userCodeException);
+        }
+
+        verify(listener).onRequest(any());
+        verify(listener, times(onPartialResponseCalled.get())).onError(any());
+        verify(listener).onResponse(any());
+        verifyNoMoreInteractions(listener);
+    }
+
+    @Test
+    void should_propagate_user_exceptions_thrown_from_onPartialThinkingResponse() throws Exception {
+
+        // given
+        AtomicInteger onPartialResponseCalled = new AtomicInteger(0);
+        AtomicInteger onPartialThinkingResponseCalled = new AtomicInteger(0);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+        List<Throwable> errors = new ArrayList<>();
+        CompletableFuture<Void> futureErrors = new CompletableFuture<>();
+
+        RuntimeException userCodeException = new RuntimeException("something wrong happened in user code");
+
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                onPartialResponseCalled.incrementAndGet();
+            }
+
+            @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {
+                onPartialThinkingResponseCalled.incrementAndGet();
                 throw userCodeException;
             }
 
@@ -108,6 +178,10 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
+            public void onPartialThinkingResponse(String thinking) {
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 futureResponse.complete(completeResponse);
                 throw userCodeException;
@@ -160,6 +234,10 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
+            public void onPartialThinkingResponse(String thinking) {
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 futureResponse.complete(completeResponse);
                 throw userCodeException; // to make sure onError will be called
@@ -201,7 +279,9 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
+        StringBuffer concatenatedPartialThinkingResponsesBuilder = new StringBuffer();
         AtomicInteger timesOnPartialResponseWasCalled = new AtomicInteger();
+        AtomicInteger timesOnPartialThinkingResponseWasCalled = new AtomicInteger();
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
 
@@ -211,6 +291,13 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             public void onPartialResponse(String partialResponse) {
                 concatenatedPartialResponsesBuilder.append(partialResponse);
                 timesOnPartialResponseWasCalled.incrementAndGet();
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
+            public void onPartialThinkingResponse(String partialThinking) {
+                concatenatedPartialThinkingResponsesBuilder.append(partialThinking);
+                timesOnPartialThinkingResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
             }
 
@@ -234,6 +321,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             StreamingMetadata metadata = new StreamingMetadata(
                     concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
                     timesOnPartialResponseWasCalled.get(),
+                    timesOnPartialThinkingResponseWasCalled.get(),
                     timesOnCompleteResponseWasCalled.get(),
                     threads
             );

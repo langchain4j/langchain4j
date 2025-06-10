@@ -50,6 +50,11 @@ public interface StreamingChatModel {
             }
 
             @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {
+                handler.onPartialThinkingResponse(partialThinkingResponse);
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
                 handler.onCompleteResponse(completeResponse);

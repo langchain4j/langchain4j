@@ -114,6 +114,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
                         completed.set(true);
                     }
                 },
+                null,
                 t -> thrown[0] = t);
 
         // then
@@ -166,7 +167,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         final Throwable[] thrown = {null};
         AtomicBoolean completed = new AtomicBoolean(false);
 
-        onPartialResponseAndErrorBlocking(model, "Test message", receivedTokens::add, t -> {
+        onPartialResponseAndErrorBlocking(model, "Test message", receivedTokens::add, null, t -> {
             thrown[0] = t;
             completed.set(true);
         });

@@ -214,6 +214,11 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
             }
 
             @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {
+                future.completeExceptionally(new Exception("onPartialThinkingResponse() should never be called"));
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 future.completeExceptionally(new Exception("onCompleteResponse() should never be called"));
             }
@@ -284,6 +289,9 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
             public void onPartialResponse(String partialResponse) {
                 onPartialResponseCounter.incrementAndGet();
             }
+
+            @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {

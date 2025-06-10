@@ -257,6 +257,11 @@ public abstract class AbstractStreamingChatModelListenerIT {
             }
 
             @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {
+                fail("onPartialThinkingResponse() must not be called");
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 fail("onCompleteResponse() must not be called");
             }

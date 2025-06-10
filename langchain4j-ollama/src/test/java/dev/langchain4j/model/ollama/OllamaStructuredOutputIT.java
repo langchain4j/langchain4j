@@ -5,7 +5,11 @@ import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastruc
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import org.junit.jupiter.api.Test;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -24,9 +28,6 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import org.junit.jupiter.api.Test;
 
 class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageModelInfrastructure {
 
@@ -123,6 +124,9 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
 
             @Override
             public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {

@@ -14,6 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class TestStreamingChatResponseHandler implements StreamingChatResponseHandler {
 
     private final StringBuffer responseBuilder = new StringBuffer();
+    private final StringBuffer thinkingResponseBuilder = new StringBuffer();
+
     private final CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
     @Override
@@ -27,7 +29,15 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
         if (!aiMessage.hasToolExecutionRequests()) {
             assertThat(aiMessage.text()).isEqualTo(responseBuilder.toString());
         }
+        if (aiMessage.thinking()!=null) {
+            assertThat(aiMessage.thinking()).isEqualTo(thinkingResponseBuilder.toString());
+        }
         futureResponse.complete(completeResponse);
+    }
+
+    @Override
+    public void onPartialThinkingResponse(String partialThinkingResponse) {
+        thinkingResponseBuilder.append(partialThinkingResponse);
     }
 
     @Override

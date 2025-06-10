@@ -139,7 +139,7 @@ class InternalOllamaHelper {
                 new TokenUsage(ollamaChatResponse.getPromptEvalCount(), ollamaChatResponse.getEvalCount()));
     }
 
-    static OllamaChatRequest toOllamaChatRequest(ChatRequest chatRequest, boolean stream, Boolean think) {
+    static OllamaChatRequest toOllamaChatRequest(ChatRequest chatRequest, boolean stream) {
         OllamaChatRequestParameters requestParameters = (OllamaChatRequestParameters) chatRequest.parameters();
         return OllamaChatRequest.builder()
                 .model(requestParameters.modelName())
@@ -162,7 +162,7 @@ class InternalOllamaHelper {
                         .build())
                 .format(toOllamaResponseFormat(requestParameters.responseFormat()))
                 .stream(stream)
-                .think(think)
+                .think(requestParameters.think())
                 .tools(toOllamaTools(chatRequest.toolSpecifications()))
                 .keepAlive(requestParameters.keepAlive())
                 .build();

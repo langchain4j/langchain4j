@@ -133,7 +133,7 @@ class OllamaClient {
     public void streamingChat(ChatRequest request, StreamingChatResponseHandler handler) {
         ensureNotEmpty(request.messages(), "messages");
 
-        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true, true);
+        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true);
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -156,6 +156,15 @@ class OllamaClient {
                 if (!isNullOrEmpty(content)) {
                     try {
                         handler.onPartialResponse(content);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
+                }
+
+                String thinking = ollamaChatResponse.getMessage().getThinking();
+                if (!isNullOrEmpty(thinking)) {
+                    try {
+                        handler.onPartialThinkingResponse(thinking);
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
                     }

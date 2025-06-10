@@ -44,6 +44,9 @@ public class LambdaStreamingResponseHandler {
             }
 
             @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {}
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {}
 
             @Override
@@ -61,6 +64,9 @@ public class LambdaStreamingResponseHandler {
             public void onPartialResponse(String partialResponse) {
                 onPartialResponseLambda.accept(partialResponse);
             }
+
+            @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {}
@@ -84,7 +90,7 @@ public class LambdaStreamingResponseHandler {
     public static void onPartialResponseBlocking(
             StreamingChatModel model, String message, Consumer<String> onPartialResponse) throws InterruptedException {
 
-        onPartialResponseAndErrorBlocking(model, message, onPartialResponse, Throwable::printStackTrace);
+        onPartialResponseAndErrorBlocking(model, message, onPartialResponse, null, Throwable::printStackTrace);
     }
 
     /**
@@ -98,7 +104,7 @@ public class LambdaStreamingResponseHandler {
      * @throws InterruptedException if the thread is interrupted while waiting for completion
      */
     public static void onPartialResponseAndErrorBlocking(
-            StreamingChatModel model, String message, Consumer<String> onPartialResponse, Consumer<Throwable> onError)
+            StreamingChatModel model, String message, Consumer<String> onPartialResponse, Consumer<String> onPartialThinkingResponse, Consumer<Throwable> onError)
             throws InterruptedException {
 
         CountDownLatch completionLatch = new CountDownLatch(1);
@@ -107,6 +113,13 @@ public class LambdaStreamingResponseHandler {
             @Override
             public void onPartialResponse(String partialResponse) {
                 onPartialResponse.accept(partialResponse);
+            }
+
+            @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {
+                if (onPartialThinkingResponse != null) {
+                  onPartialThinkingResponse.accept(partialThinkingResponse);
+                }
             }
 
             @Override

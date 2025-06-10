@@ -21,6 +21,7 @@ import static java.util.Arrays.asList;
 public class AiMessage implements ChatMessage {
 
     private final String text;
+    private String thinking;
     private final List<ToolExecutionRequest> toolExecutionRequests;
 
     /**
@@ -34,6 +35,18 @@ public class AiMessage implements ChatMessage {
     }
 
     /**
+     * Create a new {@link AiMessage} with the given text and thinking content.
+     *
+     * @param text the text of the message.
+     * @param thinking the thinking text of the message.
+     */
+    public AiMessage(String text, String thinking) {
+        this.text = ensureNotNull(text, "text");
+        this.thinking = ensureNotNull(thinking, "thinking");
+        this.toolExecutionRequests = List.of();
+    }
+
+    /**
      * Create a new {@link AiMessage} with the given tool execution requests.
      *
      * @param toolExecutionRequests the tool execution requests of the message.
@@ -41,6 +54,19 @@ public class AiMessage implements ChatMessage {
     public AiMessage(List<ToolExecutionRequest> toolExecutionRequests) {
         this.text = null;
         this.toolExecutionRequests = ensureNotEmpty(toolExecutionRequests, "toolExecutionRequests");
+    }
+
+    /**
+     * Create a new {@link AiMessage} with the given text and tool execution requests.
+     *
+     * @param text                  the text of the message.
+     * @param thinking              the thinking text of the message.
+     * @param toolExecutionRequests the tool execution requests of the message.
+     */
+    public AiMessage(String text, String thinking, List<ToolExecutionRequest> toolExecutionRequests) {
+        this.text = text;
+        this.thinking = thinking;
+        this.toolExecutionRequests = copy(toolExecutionRequests);
     }
 
     /**
@@ -61,6 +87,15 @@ public class AiMessage implements ChatMessage {
      */
     public String text() {
         return text;
+    }
+
+    /**
+     * Get the thinking content of the message.
+     *
+     * @return the thinking content of the message.
+     */
+    public String thinking() {
+        return thinking;
     }
 
     /**
@@ -104,6 +139,7 @@ public class AiMessage implements ChatMessage {
     public String toString() {
         return "AiMessage {" +
                 " text = " + quoted(text) +
+                " thinking = " + quoted(thinking) +
                 " toolExecutionRequests = " + toolExecutionRequests +
                 " }";
     }
@@ -115,10 +151,16 @@ public class AiMessage implements ChatMessage {
     public static class Builder {
 
         private String text;
+        private String thinking;
         private List<ToolExecutionRequest> toolExecutionRequests;
 
         public Builder text(String text) {
             this.text = text;
+            return this;
+        }
+
+        public Builder thinking(String thinking) {
+            this.thinking = thinking;
             return this;
         }
 
@@ -128,7 +170,7 @@ public class AiMessage implements ChatMessage {
         }
 
         public AiMessage build() {
-            return new AiMessage(text, toolExecutionRequests);
+            return new AiMessage(text, thinking, toolExecutionRequests);
         }
     }
 
@@ -140,6 +182,17 @@ public class AiMessage implements ChatMessage {
      */
     public static AiMessage from(String text) {
         return new AiMessage(text);
+    }
+
+    /**
+     * Create a new {@link AiMessage} with the given text.
+     *
+     * @param text the text of the message.
+     * @param thinking the thinking content of the message.
+     * @return the new {@link AiMessage}.
+     */
+    public static AiMessage from(String text, String thinking) {
+        return new AiMessage(text, thinking);
     }
 
     /**
@@ -171,6 +224,18 @@ public class AiMessage implements ChatMessage {
      */
     public static AiMessage from(String text, List<ToolExecutionRequest> toolExecutionRequests) {
         return new AiMessage(text, toolExecutionRequests);
+    }
+
+    /**
+     * Create a new {@link AiMessage} with the given text and tool execution requests.
+     *
+     * @param text                  the text of the message.
+     * @param thinking              the thinking content of the message.
+     * @param toolExecutionRequests the tool execution requests of the message.
+     * @return the new {@link AiMessage}.
+     */
+    public static AiMessage from(String text, String thinking, List<ToolExecutionRequest> toolExecutionRequests) {
+        return new AiMessage(text, thinking, toolExecutionRequests);
     }
 
     /**

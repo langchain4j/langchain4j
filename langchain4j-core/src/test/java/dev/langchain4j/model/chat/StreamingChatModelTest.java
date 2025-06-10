@@ -41,6 +41,10 @@ class StreamingChatModelTest implements WithAssertions {
         }
 
         @Override
+        public void onPartialThinkingResponse(String partialThinkingResponse) {
+        }
+
+        @Override
         public void onCompleteResponse(ChatResponse completeResponse) {
             responses.add(completeResponse);
         }

@@ -4,6 +4,7 @@ import java.util.Set;
 
 public record StreamingMetadata(String concatenatedPartialResponses,
                                 int timesOnPartialResponseWasCalled,
+                                int timesOnThinkingPartialResponseWasCalled,
                                 int timesOnCompleteResponseWasCalled,
                                 Set<Thread> threads
 ) {

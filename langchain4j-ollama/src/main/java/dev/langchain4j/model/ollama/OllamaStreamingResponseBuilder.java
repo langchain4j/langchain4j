@@ -72,8 +72,9 @@ class OllamaStreamingResponseBuilder {
         if (text.isEmpty()) {
             return null;
         } else {
+            String thinking = thinkingBuilder.toString();
             return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(text))
+                    .aiMessage(AiMessage.from(text, thinking))
                     .metadata(chatResponseMetadataFrom(modelName, toFinishReason(ollamaChatResponse), tokenUsage))
                     .build();
         }

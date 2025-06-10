@@ -42,9 +42,10 @@ class OllamaThinkChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(answer).contains("Berlin");
 
         AiMessage aiMessage = response.aiMessage();
+        System.out.println(aiMessage.thinking());
         assertThat(aiMessage.text()).isEqualTo(answer);
+        assertThat(aiMessage.thinking()).contains("Berlin").containsAnyOf("think","recall", "remember");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
-
         ChatResponseMetadata metadata = response.metadata();
 
         assertThat(metadata.modelName()).isEqualTo(MODEL_NAME);
@@ -84,6 +85,7 @@ class OllamaThinkChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isEqualTo(answer);
+        assertThat(aiMessage.thinking()).isEmpty();
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         ChatResponseMetadata metadata = response.metadata();
