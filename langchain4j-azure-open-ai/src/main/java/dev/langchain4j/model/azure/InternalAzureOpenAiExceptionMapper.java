@@ -7,9 +7,9 @@ import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.internal.ExceptionMapper;
 
 @Internal
-class AzureOpenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
+class InternalAzureOpenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
 
-    static final AzureOpenAiExceptionMapper INSTANCE = new AzureOpenAiExceptionMapper();
+    static final InternalAzureOpenAiExceptionMapper INSTANCE = new InternalAzureOpenAiExceptionMapper();
 
     @Override
     public RuntimeException mapException(Throwable t) {

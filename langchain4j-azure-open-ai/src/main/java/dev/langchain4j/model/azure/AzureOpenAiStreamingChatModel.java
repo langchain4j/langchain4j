@@ -231,7 +231,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                         responseModelName.set(chatCompletion.getModel());
                     }
                 },
-                error -> handler.onError(AzureOpenAiExceptionMapper.INSTANCE.mapException(error)),
+                error -> handler.onError(InternalAzureOpenAiExceptionMapper.INSTANCE.mapException(error)),
                 () -> {
                     Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
 
