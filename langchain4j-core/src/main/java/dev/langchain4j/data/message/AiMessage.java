@@ -42,7 +42,7 @@ public class AiMessage implements ChatMessage {
      */
     public AiMessage(String text, String thinking) {
         this.text = ensureNotNull(text, "text");
-        this.thinking = ensureNotNull(thinking, "thinking");
+        this.thinking = thinking;
         this.toolExecutionRequests = List.of();
     }
 
