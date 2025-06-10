@@ -207,7 +207,7 @@ public class OpenAiUtils {
                 .type(ContentType.FILE)
                 .file(PdfFile.builder()
                         .fileData(fileData)
-                        .filename("pdf_file")  // for now this is just filled in, should we modify the PdfFileContent to facilitate it?
+                        .filename("pdf_file")
                         .build())
                 .build();
     }
