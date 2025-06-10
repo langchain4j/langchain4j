@@ -15,7 +15,6 @@ import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
-import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import java.time.Duration;
@@ -48,7 +47,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
                         getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), Duration.ofSeconds(60)))
                 .build();
 
-        if (builder.logRequests != null || builder.logResponses != null) {
+        if (builder.logRequests != null && builder.logRequests
+                || builder.logResponses != null && builder.logResponses) {
             this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
         } else {
             this.httpClient = httpClient;
@@ -95,7 +95,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                         return AiMessage.from(content);
                     }
                 });
-        httpClient.execute(httpRequest, new DefaultServerSentEventParser(), listener);
+        httpClient.execute(httpRequest, listener);
     }
 
     @Override
@@ -127,7 +127,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
         MistralAiServerSentEventListener<String> listener =
                 new MistralAiServerSentEventListener<>(handler, (content, toolExecutionRequests) -> content);
-        httpClient.execute(httpRequest, new DefaultServerSentEventParser(), listener);
+        httpClient.execute(httpRequest, listener);
     }
 
     @Override

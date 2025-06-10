@@ -1,5 +1,13 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
+import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
+import static java.time.Duration.ofSeconds;
+import static java.util.Collections.emptyList;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -17,20 +25,11 @@ import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
-import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
-import static java.time.Duration.ofSeconds;
-import static java.util.Collections.emptyList;
+import org.slf4j.Logger;
 
 @Experimental
 abstract class BaseGeminiChatModel {
@@ -50,6 +49,7 @@ abstract class BaseGeminiChatModel {
     protected final List<GeminiSafetySetting> safetySettings;
     protected final List<ChatModelListener> listeners;
     protected final Integer maxRetries;
+    protected final GeminiThinkingConfig thinkingConfig;
 
     protected BaseGeminiChatModel(
             String apiKey,
@@ -67,8 +67,8 @@ abstract class BaseGeminiChatModel {
             Boolean logRequestsAndResponses,
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners,
-            Integer maxRetries
-    ) {
+            Integer maxRetries,
+            GeminiThinkingConfig thinkingConfig) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
@@ -84,17 +84,15 @@ abstract class BaseGeminiChatModel {
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.geminiService = new GeminiService(
-                getOrDefault(logRequestsAndResponses, false) ? log : null,
-                getOrDefault(timeout, ofSeconds(60))
-        );
+                getOrDefault(logRequestsAndResponses, false) ? log : null, getOrDefault(timeout, ofSeconds(60)));
+        this.thinkingConfig = thinkingConfig;
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(
             List<ChatMessage> messages,
             List<ToolSpecification> toolSpecifications,
             ResponseFormat responseFormat,
-            ChatRequestParameters requestParameters
-    ) {
+            ChatRequestParameters requestParameters) {
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(messages, systemInstruction);
 
@@ -126,8 +124,7 @@ abstract class BaseGeminiChatModel {
             String modelName,
             List<ChatMessage> messages,
             List<ToolSpecification> toolSpecifications,
-            ChatRequestParameters requestParameters
-    ) {
+            ChatRequestParameters requestParameters) {
         return ChatRequest.builder()
                 .messages(messages)
                 .parameters(ChatRequestParameters.builder()
@@ -145,10 +142,10 @@ abstract class BaseGeminiChatModel {
             return "text/plain";
         }
 
-        if (ResponseFormatType.JSON.equals(responseFormat.type()) &&
-                responseFormat.jsonSchema() != null &&
-                responseFormat.jsonSchema().rootElement() != null &&
-                responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
+        if (ResponseFormatType.JSON.equals(responseFormat.type())
+                && responseFormat.jsonSchema() != null
+                && responseFormat.jsonSchema().rootElement() != null
+                && responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
             return "text/x.enum";
         }
 
@@ -165,10 +162,11 @@ abstract class BaseGeminiChatModel {
         });
     }
 
-    protected void notifyListenersOnResponse(Response<AiMessage> response,
-                                             ChatRequest listenerRequest,
-                                             ModelProvider modelProvider,
-                                             Map<Object, Object> attributes) {
+    protected void notifyListenersOnResponse(
+            Response<AiMessage> response,
+            ChatRequest listenerRequest,
+            ModelProvider modelProvider,
+            Map<Object, Object> attributes) {
         ChatResponse LISTENERResponse = ChatResponse.builder()
                 .aiMessage(response.content())
                 .metadata(ChatResponseMetadata.builder()
@@ -178,8 +176,8 @@ abstract class BaseGeminiChatModel {
                         .finishReason(response.finishReason())
                         .build())
                 .build();
-        ChatModelResponseContext context = new ChatModelResponseContext(
-                LISTENERResponse, listenerRequest, modelProvider, attributes);
+        ChatModelResponseContext context =
+                new ChatModelResponseContext(LISTENERResponse, listenerRequest, modelProvider, attributes);
         listeners.forEach((listener) -> {
             try {
                 listener.onResponse(context);
@@ -189,14 +187,15 @@ abstract class BaseGeminiChatModel {
         });
     }
 
-    protected void notifyListenersOnError(Exception exception,
-                                          ChatRequest listenerRequest,
-                                          ModelProvider modelProvider,
-                                          Map<Object, Object> attributes) {
+    protected void notifyListenersOnError(
+            Exception exception,
+            ChatRequest listenerRequest,
+            ModelProvider modelProvider,
+            Map<Object, Object> attributes) {
         listeners.forEach((listener) -> {
             try {
-                ChatModelErrorContext context = new ChatModelErrorContext(
-                        exception, listenerRequest, modelProvider, attributes);
+                ChatModelErrorContext context =
+                        new ChatModelErrorContext(exception, listenerRequest, modelProvider, attributes);
                 listener.onError(context);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener (onError)", e);
@@ -204,4 +203,3 @@ abstract class BaseGeminiChatModel {
         });
     }
 }
-
