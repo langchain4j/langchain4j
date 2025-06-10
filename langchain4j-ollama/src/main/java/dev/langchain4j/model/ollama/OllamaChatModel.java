@@ -37,7 +37,7 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
     public ChatResponse doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
 
-        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(chatRequest, false);
+        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(chatRequest, false, null);
         OllamaChatResponse ollamaChatResponse =
                 withRetryMappingExceptions(() -> client.chat(ollamaChatRequest), maxRetries);
 

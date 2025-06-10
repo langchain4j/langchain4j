@@ -29,6 +29,7 @@ public class OllamaLanguageModel implements LanguageModel {
     private final Options options;
     private final ResponseFormat responseFormat;
     private final Integer maxRetries;
+    private final Boolean think;
 
     public OllamaLanguageModel(OllamaLanguageModelBuilder builder) {
         this.client = OllamaClient.builder()
@@ -52,6 +53,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .build();
         this.responseFormat = builder.responseFormat;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.think = builder.think;
     }
 
     public static OllamaLanguageModelBuilder builder() {
@@ -69,6 +71,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .prompt(prompt)
                 .options(options)
                 .format(toOllamaResponseFormat(responseFormat))
+                .think(think)
                 .stream(false)
                 .build();
 
@@ -96,6 +99,7 @@ public class OllamaLanguageModel implements LanguageModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Boolean think;
         private Map<String, String> customHeaders;
 
         public OllamaLanguageModelBuilder() {
@@ -186,6 +190,11 @@ public class OllamaLanguageModel implements LanguageModel {
 
         public OllamaLanguageModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        public OllamaLanguageModelBuilder think(Boolean think) {
+            this.think = think;
             return this;
         }
 

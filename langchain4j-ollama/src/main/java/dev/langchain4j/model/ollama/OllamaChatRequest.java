@@ -22,6 +22,7 @@ class OllamaChatRequest {
     private String format;
 
     private Boolean stream;
+    private Boolean think;
     private List<Tool> tools;
     private Integer keepAlive;
 
@@ -32,6 +33,7 @@ class OllamaChatRequest {
         this.messages = builder.messages;
         this.options = builder.options;
         this.stream = builder.stream;
+        this.think  = builder.think;
         this.tools = builder.tools;
         this.format = builder.format;
         this.keepAlive = builder.keepAlive;
@@ -78,7 +80,15 @@ class OllamaChatRequest {
     }
 
     public void setStream(Boolean stream) {
-        this.stream = stream;
+    	this.stream = stream;
+    }
+
+    public Boolean getThink() {
+        return think;
+    }
+
+    public void setThink(Boolean think) {
+        this.think = think;
     }
 
     public List<Tool> getTools() {
@@ -104,6 +114,7 @@ class OllamaChatRequest {
         private Options options;
         private String format;
         private Boolean stream;
+        private Boolean think;
         private List<Tool> tools;
         private Integer keepAlive;
 
@@ -129,6 +140,11 @@ class OllamaChatRequest {
 
         Builder stream(Boolean stream) {
             this.stream = stream;
+            return this;
+        }
+
+        Builder think(Boolean think) {
+            this.think = think;
             return this;
         }
 

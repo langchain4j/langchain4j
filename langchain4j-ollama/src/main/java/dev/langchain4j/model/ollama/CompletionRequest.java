@@ -22,16 +22,18 @@ class CompletionRequest {
     private String format;
 
     private Boolean stream;
+    private Boolean think;
 
     CompletionRequest() {}
 
-    CompletionRequest(String model, String system, String prompt, Options options, String format, Boolean stream) {
+    CompletionRequest(String model, String system, String prompt, Options options, String format, Boolean stream, Boolean think) {
         this.model = model;
         this.system = system;
         this.prompt = prompt;
         this.options = options;
         this.format = format;
         this.stream = stream;
+        this.think = think;
     }
 
     static Builder builder() {
@@ -82,6 +84,10 @@ class CompletionRequest {
         return stream;
     }
 
+    public Boolean getThink() {
+        return think;
+    }
+
     public void setStream(Boolean stream) {
         this.stream = stream;
     }
@@ -94,6 +100,7 @@ class CompletionRequest {
         private Options options;
         private String format;
         private Boolean stream;
+        private Boolean think;
 
         Builder model(String model) {
             this.model = model;
@@ -125,8 +132,13 @@ class CompletionRequest {
             return this;
         }
 
+        Builder think(Boolean think) {
+            this.think = think;
+            return this;
+        }
+
         CompletionRequest build() {
-            return new CompletionRequest(model, system, prompt, options, format, stream);
+            return new CompletionRequest(model, system, prompt, options, format, stream, think);
         }
     }
 }

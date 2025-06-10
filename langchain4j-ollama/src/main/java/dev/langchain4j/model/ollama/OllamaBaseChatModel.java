@@ -67,6 +67,7 @@ abstract class OllamaBaseChatModel {
                 .repeatPenalty(getOrDefault(builder.repeatPenalty, ollamaParameters.repeatPenalty()))
                 .seed(getOrDefault(builder.seed, ollamaParameters.seed()))
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
+                .think(getOrDefault(builder.think, ollamaParameters.think()))
                 .keepAlive(ollamaParameters.keepAlive())
                 .build();
 
@@ -101,6 +102,7 @@ abstract class OllamaBaseChatModel {
         protected Double minP;
         protected ResponseFormat responseFormat;
         protected Duration timeout;
+        protected Boolean think;
         protected Map<String, String> customHeaders;
         protected Boolean logRequests;
         protected Boolean logResponses;
@@ -209,6 +211,11 @@ abstract class OllamaBaseChatModel {
 
         public B timeout(Duration timeout) {
             this.timeout = timeout;
+            return self();
+        }
+
+        public B think(Boolean think) {
+            this.think = think;
             return self();
         }
 

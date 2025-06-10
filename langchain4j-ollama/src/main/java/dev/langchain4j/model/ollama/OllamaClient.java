@@ -133,7 +133,7 @@ class OllamaClient {
     public void streamingChat(ChatRequest request, StreamingChatResponseHandler handler) {
         ensureNotEmpty(request.messages(), "messages");
 
-        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true);
+        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true, true);
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
