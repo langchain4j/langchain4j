@@ -129,7 +129,7 @@ class InternalOllamaHelper {
         return ollamaChatResponse.getMessage().getToolCalls() != null
                 ? AiMessage.from(
                         toToolExecutionRequests(ollamaChatResponse.getMessage().getToolCalls()))
-                : AiMessage.from(ollamaChatResponse.getMessage().getContent());
+                : AiMessage.from(ollamaChatResponse.getMessage().getContent(), ollamaChatResponse.getMessage().getThinking());
     }
 
     static ChatResponseMetadata chatResponseMetadataFrom(OllamaChatResponse ollamaChatResponse) {
