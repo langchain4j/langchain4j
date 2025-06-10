@@ -126,6 +126,15 @@
     "allPublicFields": true
   },
   {
+    "name": "dev.langchain4j.model.openai.internal.chat.PdfFile",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "dev.langchain4j.model.openai.internal.chat.Message",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -505,6 +514,15 @@
   },
   {
     "name": "dev.langchain4j.model.openai.internal.chat.JsonSchema$Builder",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.chat.PdfFile$Builder",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,
