@@ -21,6 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 class OllamaStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
+    private final StringBuffer thinkingBuilder = new StringBuffer();
     private volatile String modelName;
     private volatile TokenUsage tokenUsage;
     private final List<ToolExecutionRequest> toolExecutionRequests = new CopyOnWriteArrayList<>();
@@ -51,6 +52,11 @@ class OllamaStreamingResponseBuilder {
         String content = message.getContent();
         if (content != null) {
             contentBuilder.append(content);
+        }
+
+        String thinking = message.getThinking();
+        if (thinking!= null) {
+            thinkingBuilder.append(thinking);
         }
     }
 

@@ -19,6 +19,7 @@ class Message {
 
     private Role role;
     private String content;
+    private String thinking;
     private List<String> images;
     private List<ToolCall> toolCalls;
     private Map<String, Object> additionalFields;
@@ -26,9 +27,10 @@ class Message {
     Message() {
     }
 
-    public Message(Role role, String content, List<String> images, List<ToolCall> toolCalls, Map<String, Object> additionalFields) {
+    public Message(Role role, String content, String thinking, List<String> images, List<ToolCall> toolCalls, Map<String, Object> additionalFields) {
         this.role = role;
         this.content = content;
+        this.thinking = thinking;
         this.images = images;
         this.toolCalls = toolCalls;
         this.additionalFields = additionalFields;
@@ -52,6 +54,14 @@ class Message {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getThinking() {
+        return thinking;
+    }
+
+    public void setThinking(String thinking) {
+        this.thinking = thinking;
     }
 
     public List<String> getImages() {
@@ -84,6 +94,7 @@ class Message {
 
         private Role role;
         private String content;
+        private String thinking;
         private List<String> images;
         private List<ToolCall> toolCalls;
         private Map<String, Object> additionalFields;
@@ -95,6 +106,11 @@ class Message {
 
         Builder content(String content) {
             this.content = content;
+            return this;
+        }
+
+        Builder thinking(String thinking) {
+            this.thinking = thinking;
             return this;
         }
 
@@ -114,7 +130,7 @@ class Message {
         }
 
         Message build() {
-            return new Message(role, content, images, toolCalls, additionalFields);
+            return new Message(role, content, thinking, images, toolCalls, additionalFields);
         }
     }
 }
