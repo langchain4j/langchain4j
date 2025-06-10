@@ -85,7 +85,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        // Anthropic only supports one required tool at a time
+        // TODO implement
         return false;
     }
 
