@@ -195,6 +195,7 @@ public class OllamaStreamingChatExample {
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
+            .think(false)
             .modelName(TINY_DOLPHIN_MODEL)
             .build();
 
@@ -206,6 +207,11 @@ public class OllamaStreamingChatExample {
         @Override
         public void onPartialResponse(String partialResponse) {
             System.out.print(partialResponse);
+        }
+
+        @Override
+        public void onPartialThinkingResponse(String partialThinkingResponse) {
+            System.err.print(partialThinkingResponse);
         }
 
         @Override
@@ -248,6 +254,11 @@ class OllamaStreamingChatLocalModelTest {
           }
 
           @Override
+          public void onPartialThinkingResponse(String partialThinkingResponse) {
+              System.err.print(partialThinkingResponse);
+          }
+
+          @Override
           public void onCompleteResponse(ChatResponse completeResponse) {
               futureResponse.complete(completeResponse);
           }
@@ -272,6 +283,7 @@ params with the builder pattern:
 |------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|------------------------|
 | `baseUrl`        | The base URL of Ollama server.                                                                                                                                                    | `String`         | http://localhost:11434 |
 | `modelName`      | The name of the model to use from Ollama server.                                                                                                                                  | `String`         |                        |
+| `think`          | Whether to enable or disable thinking capabilities of the model.                                                                                                                  | `Boolean`        |                        |
 | `temperature`    | Controls the randomness of the generated responses. Higher values (e.g., 1.0) result in more diverse output, while lower values (e.g., 0.2) produce more deterministic responses. | `Double`         |                        |
 | `topK`           | Specifies the number of highest probability tokens to consider for each step during generation.                                                                                   | `Integer`        |                        |
 | `topP`           | Controls the diversity of the generated responses by setting a threshold for the cumulative probability of top tokens.                                                            | `Double`         |                        |
