@@ -133,7 +133,7 @@ public class AzureOpenAiChatModel implements ChatModel {
             validate(builder.defaultRequestParameters);
             parameters = builder.defaultRequestParameters;
         } else {
-            parameters = DefaultChatRequestParameters.builder().build();
+            parameters = DefaultChatRequestParameters.EMPTY;
         }
 
         this.defaultRequestParameters = ChatRequestParameters.builder()

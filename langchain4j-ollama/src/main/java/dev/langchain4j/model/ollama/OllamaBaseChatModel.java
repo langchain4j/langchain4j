@@ -40,7 +40,7 @@ abstract class OllamaBaseChatModel {
             validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
-            commonParameters = DefaultChatRequestParameters.DEFAULT_INSTANCE;
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
         OllamaChatRequestParameters ollamaParameters =
