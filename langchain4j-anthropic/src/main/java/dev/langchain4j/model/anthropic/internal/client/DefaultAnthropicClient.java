@@ -14,6 +14,9 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import okhttp3.OkHttpClient;
@@ -130,7 +133,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     @Override
-    public void createMessage(AnthropicCreateMessageRequest request, StreamingResponseHandler<AiMessage> handler) {
+    public void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler) {
 
         EventSourceListener eventSourceListener = new EventSourceListener() {
 
@@ -223,16 +226,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             private void handleUsage(AnthropicUsage usage) {
                 if (usage.inputTokens != null) {
-                    this.inputTokenCount.addAndGet(usage.inputTokens);
+                    this.inputTokenCount.set(usage.inputTokens);
                 }
                 if (usage.outputTokens != null) {
-                    this.outputTokenCount.addAndGet(usage.outputTokens);
+                    this.outputTokenCount.set(usage.outputTokens);
                 }
                 if (usage.cacheCreationInputTokens != null) {
-                    this.cacheCreationInputTokens.addAndGet(usage.cacheCreationInputTokens);
+                    this.cacheCreationInputTokens.set(usage.cacheCreationInputTokens);
                 }
                 if (usage.cacheReadInputTokens != null) {
-                    this.cacheReadInputTokens.addAndGet(usage.cacheReadInputTokens);
+                    this.cacheReadInputTokens.set(usage.cacheReadInputTokens);
                 }
             }
 
@@ -247,7 +250,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
                         currentContentBuilder().append(text);
-                        handler.onNext(text);
+                        handler.onPartialResponse(text);
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     toolExecutionRequestBuilderMap.putIfAbsent(
@@ -266,7 +269,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String text = data.delta.text;
                     if (isNotNullOrEmpty(text)) {
                         currentContentBuilder().append(text);
-                        handler.onNext(text);
+                        handler.onPartialResponse(text);
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     String partialJson = data.delta.partialJson;
@@ -298,11 +301,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private void handleMessageStop() {
-                Response<AiMessage> response = build();
-                handler.onComplete(response);
+                ChatResponse response = build();
+                handler.onCompleteResponse(response);
             }
 
-            private Response<AiMessage> build() {
+            private ChatResponse build() {
 
                 String text = contents.stream()
                         .filter(content -> !content.isEmpty())
@@ -317,15 +320,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 FinishReason finishReason = toFinishReason(stopReason);
 
-                Map<String, Object> metadata = createMetadata();
+                ChatResponseMetadata metadata = createMetadata(tokenUsage, finishReason);
 
                 if (toolExecutionRequestBuilderMap.isEmpty()) {
-                    return Response.from(
-                            AiMessage.from(text),
-                            tokenUsage,
-                            finishReason,
-                            metadata
-                    );
+                    return ChatResponse.builder()
+                            .aiMessage(AiMessage.from(text))
+                            .metadata(metadata)
+                            .build();
                 } else {
                     List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderMap
                             .values().stream()
@@ -336,24 +337,28 @@ public class DefaultAnthropicClient extends AnthropicClient {
                             ? AiMessage.from(toolExecutionRequests)
                             : AiMessage.from(text, toolExecutionRequests);
 
-                    return Response.from(
-                            aiMessage,
-                            tokenUsage,
-                            finishReason,
-                            metadata
-                    );
+                    return ChatResponse.builder()
+                            .aiMessage(aiMessage)
+                            .metadata(metadata)
+                            .build();
                 }
             }
 
-            private Map<String, Object> createMetadata() {
-                Map<String, Object> metadata = new HashMap<>();
+            private ChatResponseMetadata createMetadata(AnthropicTokenUsage tokenUsage, FinishReason finishReason) {
+                var metadataBuilder = ChatResponseMetadata.builder();
                 if (responseId.get() != null) {
-                    metadata.put("id", responseId.get());
+                    metadataBuilder.id(responseId.get());
                 }
                 if (responseModel.get() != null) {
-                    metadata.put("model", responseModel.get());
+                    metadataBuilder.modelName(responseModel.get());
                 }
-                return metadata;
+                if (tokenUsage != null) {
+                    metadataBuilder.tokenUsage(tokenUsage);
+                }
+                if (finishReason != null) {
+                    metadataBuilder.finishReason(finishReason);
+                }
+                return metadataBuilder.build();
             }
 
             private void handleError(String dataString) {

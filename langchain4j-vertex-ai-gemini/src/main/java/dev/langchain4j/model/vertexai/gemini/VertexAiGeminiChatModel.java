@@ -279,16 +279,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .build();
     }
 
-    private Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, new ArrayList<>(), null);
-    }
-
     private Response<AiMessage> generate(List<ChatMessage> messages, ResponseFormat responseFormat) {
         return generate(messages, new ArrayList<>(), responseFormat);
-    }
-
-    private Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null);
     }
 
     private Response<AiMessage> generate(
