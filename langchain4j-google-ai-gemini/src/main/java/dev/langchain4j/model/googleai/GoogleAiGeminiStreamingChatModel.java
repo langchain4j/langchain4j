@@ -40,6 +40,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.temperature,
                 builder.topK,
                 builder.topP,
+                builder.frequencyPenalty,
+                builder.presencePenalty,
                 builder.maxOutputTokens,
                 builder.timeout,
                 builder.responseFormat,
@@ -71,7 +73,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             List<ChatModelListener> listeners,
             Integer maxRetries
     ) {
-        super(apiKey, modelName, temperature, topK, topP, maxOutputTokens, timeout,
+        super(apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
                 listeners, maxRetries, null);
@@ -89,16 +91,13 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
-        ChatRequestParameters parameters = chatRequest.parameters();
-        validate(parameters);
-
         GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
 
         GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(includeCodeExecutionOutput);
 
         try {
             Stream<GeminiGenerateContentResponse> contentStream = withRetryMappingExceptions(() ->
-                    geminiService.generateContentStream(parameters.modelName(), apiKey, request), maxRetries);
+                    geminiService.generateContentStream(chatRequest.modelName(), apiKey, request), maxRetries);
 
             contentStream.forEach(partialResponse -> {
                 Optional<String> text = responseBuilder.append(partialResponse);
@@ -130,6 +129,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private Double temperature;
         private Integer topK;
         private Double topP;
+        private Double frequencyPenalty;
+        private Double presencePenalty;
         private Integer maxOutputTokens;
         private Duration timeout;
         private ResponseFormat responseFormat;
@@ -184,6 +185,16 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder topP(Double topP) {
             this.topP = topP;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
             return this;
         }
 

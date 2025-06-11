@@ -24,7 +24,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
@@ -41,6 +40,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.temperature,
                 builder.topK,
                 builder.topP,
+                builder.frequencyPenalty,
+                builder.presencePenalty,
                 builder.maxOutputTokens,
                 builder.timeout,
                 builder.responseFormat,
@@ -72,7 +73,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners
     ) {
-        super(apiKey, modelName, temperature, topK, topP, maxOutputTokens, timeout,
+        super(apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
                 listeners, maxRetries, null);
@@ -91,7 +92,6 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     public ChatResponse doChat(ChatRequest chatRequest) {
 
         ChatRequestParameters parameters = chatRequest.parameters();
-        validate(parameters);
 
         GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
 
@@ -172,6 +172,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Double temperature;
         private Integer topK;
         private Double topP;
+        private Double frequencyPenalty;
+        private Double presencePenalty;
         private Integer maxOutputTokens;
         private Duration timeout;
         private ResponseFormat responseFormat;
@@ -230,6 +232,16 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder topP(Double topP) {
             this.topP = topP;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
             return this;
         }
 

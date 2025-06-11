@@ -1,7 +1,6 @@
 package dev.langchain4j.model.googleai;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -48,6 +47,8 @@ abstract class BaseGeminiChatModel {
             Double temperature,
             Integer topK,
             Double topP,
+            Double frequencyPenalty,
+            Double presencePenalty,
             Integer maxOutputTokens,
             Duration timeout,
             ResponseFormat responseFormat,
@@ -75,32 +76,24 @@ abstract class BaseGeminiChatModel {
 
         ChatRequestParameters parameters;
         if (defaultRequestParameters != null) {
-            validate(defaultRequestParameters);
             parameters = defaultRequestParameters;
         } else {
             parameters = DefaultChatRequestParameters.builder().build();
         }
 
         this.defaultRequestParameters = ChatRequestParameters.builder()
-                .modelName(ensureNotBlank(getOrDefault(modelName, parameters.modelName()), "modelName")) // TODO all other providers
+                .modelName(getOrDefault(modelName, parameters.modelName()))
                 .temperature(getOrDefault(temperature, parameters.temperature()))
                 .topP(getOrDefault(topP, parameters.topP()))
                 .topK(getOrDefault(topK, parameters.topK()))
+                .frequencyPenalty(getOrDefault(frequencyPenalty, parameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(presencePenalty, parameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(maxOutputTokens, parameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(stopSequences, parameters.stopSequences()))
                 .toolSpecifications(parameters.toolSpecifications())
                 .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), parameters.toolChoice()))
                 .responseFormat(getOrDefault(responseFormat, parameters.responseFormat()))
                 .build();
-    }
-
-    static void validate(ChatRequestParameters parameters) {
-        if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by Google AI Gemini");
-        }
-        if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by Google AI Gemini");
-        }
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
@@ -128,6 +121,8 @@ abstract class BaseGeminiChatModel {
                         .temperature(parameters.temperature())
                         .topK(parameters.topK())
                         .topP(parameters.topP())
+                        .presencePenalty(parameters.presencePenalty())
+                        .frequencyPenalty(parameters.frequencyPenalty())
                         .build())
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSepcsToGTool(chatRequest.toolSpecifications(), this.allowCodeExecution))
@@ -141,9 +136,9 @@ abstract class BaseGeminiChatModel {
         }
 
         GeminiMode geminiMode = Optional.ofNullable(functionCallingConfig)
-                .map(it -> it.getMode()).orElse(null);
+                .map(GeminiFunctionCallingConfig::getMode).orElse(null);
         List<String> allowedFunctionNames = Optional.ofNullable(functionCallingConfig)
-                .map(it -> it.getAllowedFunctionNames())
+                .map(GeminiFunctionCallingConfig::getAllowedFunctionNames)
                 .orElse(null);
 
         if (toolChoice != null) {
