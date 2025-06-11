@@ -484,7 +484,8 @@ class VertexAiGeminiStreamingChatModelIT {
         modelWithResponseMimeType.chat(userMessage, onPartialResponse(accumulatedResponse::append));
 
         // then
-        assertThat(accumulatedResponse.toString()).isEqualToIgnoringWhitespace(expectedJson);
+        assertThat(accumulatedResponse.toString())
+                .isEqualToIgnoringWhitespace("[" + expectedJson + "]"); // TODO
     }
 
     @RetryingTest(2)

@@ -1011,7 +1011,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         Base64.Encoder encoder = Base64.getEncoder();
 
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see on these images?"),
+                TextContent.from("What do you see on these images? Describe both images."),
                 ImageContent.from(encoder.encodeToString(readBytes(catImageUrl())), "image/png"),
                 ImageContent.from(encoder.encodeToString(readBytes(diceImageUrl())), "image/png"));
 
@@ -1089,7 +1089,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see on these images?"),
+                TextContent.from("What do you see on these images? Describe both images."),
                 ImageContent.from(catImageUrl()),
                 ImageContent.from(diceImageUrl()));
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
