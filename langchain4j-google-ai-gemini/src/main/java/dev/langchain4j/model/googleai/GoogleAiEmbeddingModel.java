@@ -3,10 +3,9 @@ package dev.langchain4j.model.googleai;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -22,10 +21,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final int MAX_NUMBER_OF_SEGMENTS_PER_BATCH = 100;
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiEmbeddingModel.class);
 
     private final GeminiService geminiService;
-
     private final String modelName;
     private final String apiKey;
     private final Integer maxRetries;
@@ -33,6 +30,24 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String titleMetadataKey;
     private final Integer outputDimensionality;
 
+    public GoogleAiEmbeddingModel(GoogleAiEmbeddingModelBuilder builder) {
+        this.geminiService = new GeminiService(
+                builder.httpClientBuilder,
+                getOrDefault(builder.logRequestsAndResponses, false),
+                builder.timeout
+        );
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.taskType = builder.taskType;
+        this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
+        this.outputDimensionality = builder.outputDimensionality;
+    }
+
+    /**
+     * @deprecated please use {@link #GoogleAiEmbeddingModel(GoogleAiEmbeddingModelBuilder)} instead
+     */
+    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public GoogleAiEmbeddingModel(
             String modelName,
             String apiKey,
@@ -43,7 +58,6 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             Duration timeout,
             Boolean logRequestsAndResponses
     ) {
-
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
 
@@ -54,11 +68,11 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         this.outputDimensionality = outputDimensionality;
 
-        Duration timeout1 = getOrDefault(timeout, Duration.ofSeconds(60));
-
-        boolean logRequestsAndResponses1 = logRequestsAndResponses != null && logRequestsAndResponses;
-
-        this.geminiService = new GeminiService(logRequestsAndResponses1 ? log : null, timeout1);
+        this.geminiService = new GeminiService(
+                null,
+                getOrDefault(logRequestsAndResponses, false),
+                timeout
+        );
     }
 
     public static GoogleAiEmbeddingModelBuilder builder() {
@@ -155,6 +169,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     public static class GoogleAiEmbeddingModelBuilder {
+
+        private HttpClientBuilder httpClientBuilder;
         private String modelName;
         private String apiKey;
         private Integer maxRetries;
@@ -165,6 +181,11 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logRequestsAndResponses;
 
         GoogleAiEmbeddingModelBuilder() {
+        }
+
+        public GoogleAiEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public GoogleAiEmbeddingModelBuilder modelName(String modelName) {
@@ -208,11 +229,7 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public GoogleAiEmbeddingModel build() {
-            return new GoogleAiEmbeddingModel(this.modelName, this.apiKey, this.maxRetries, this.taskType, this.titleMetadataKey, this.outputDimensionality, this.timeout, this.logRequestsAndResponses);
-        }
-
-        public String toString() {
-            return "GoogleAiEmbeddingModel.GoogleAiEmbeddingModelBuilder(modelName=" + this.modelName + ", apiKey=" + this.apiKey + ", maxRetries=" + this.maxRetries + ", taskType=" + this.taskType + ", titleMetadataKey=" + this.titleMetadataKey + ", outputDimensionality=" + this.outputDimensionality + ", timeout=" + this.timeout + ", logRequestsAndResponses=" + this.logRequestsAndResponses + ")";
+            return new GoogleAiEmbeddingModel(this);
         }
     }
 }

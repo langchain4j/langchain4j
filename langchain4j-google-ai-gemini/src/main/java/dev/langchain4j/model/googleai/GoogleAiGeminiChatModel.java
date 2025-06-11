@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -35,6 +36,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     public GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder builder) {
         super(
+                builder.httpClientBuilder,
                 builder.apiKey,
                 builder.modelName,
                 builder.temperature,
@@ -74,7 +76,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners
     ) {
-        super(apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
+        super(null, apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
                 listeners, maxRetries, null, null);
@@ -166,6 +168,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     public static class GoogleAiGeminiChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
         private String modelName;
@@ -188,6 +191,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private List<ChatModelListener> listeners;
 
         GoogleAiGeminiChatModelBuilder() {
+        }
+
+        public GoogleAiGeminiChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public GoogleAiGeminiChatModelBuilder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
