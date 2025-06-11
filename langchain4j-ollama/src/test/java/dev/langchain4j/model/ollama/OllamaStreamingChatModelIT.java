@@ -20,6 +20,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.ModelNotFoundException;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -28,6 +29,9 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+
+import java.net.http.HttpTimeoutException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -303,5 +307,49 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         assertThat(secondAiMessage.text()).contains("32");
         assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
         assertThat(onPartialResponseCounter.get()).isPositive();
+    }
+
+    @Test
+    void should_handle_timeout() throws Exception {
+
+        // given
+        Duration timeout = Duration.ofSeconds(1);
+
+        StreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+                .timeout(timeout)
+                .build();
+
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+        StreamingChatResponseHandler handler = new ErrorHandler(futureError);
+
+        // when
+        model.chat("hi", handler);
+
+        // then
+        Throwable error = futureError.get(5, SECONDS);
+
+        assertThat(error)
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
+                .hasRootCauseExactlyInstanceOf(java.net.http.HttpTimeoutException.class);
+    }
+
+    private record ErrorHandler(CompletableFuture<Throwable> futureError) implements StreamingChatResponseHandler {
+
+        @Override
+        public void onPartialResponse(String partialResponse) {
+            futureError.completeExceptionally(new RuntimeException("onPartialResponse must not be called"));
+        }
+
+        @Override
+        public void onCompleteResponse(ChatResponse completeResponse) {
+            futureError.completeExceptionally(new RuntimeException("onCompleteResponse must not be called"));
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            futureError.complete(error);
+        }
     }
 }
