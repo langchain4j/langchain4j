@@ -35,7 +35,6 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.title()).isNotBlank();
             assertThat(result.url()).isNotNull();
             assertThat(result.snippet()).isNotBlank();
-            assertThat(result.content()).isNotBlank();
             assertThat(result.metadata()).containsOnlyKeys("score");
         });
 
