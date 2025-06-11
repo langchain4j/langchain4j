@@ -742,10 +742,19 @@ class GoogleAiGeminiChatModelIT {
 
     @Test
     void should_calculate_area_of_rectangle() {
+
+        // given
+        GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
+                .includeThoughts(true)
+                .thinkingBudget(20)
+                .build();
+
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash-preview-04-17")
                 .temperature(0.0)
+                .logRequestsAndResponses(true)
+                .thinkingConfig(thinkingConfig)
                 .build();
 
         String prompt = "What is the area of a rectangle with length 5 and width 4?";

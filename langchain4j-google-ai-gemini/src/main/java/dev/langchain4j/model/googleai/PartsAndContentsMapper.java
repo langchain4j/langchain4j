@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
@@ -19,11 +20,15 @@ import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.readBytes;
 import static java.util.Collections.singletonList;
 
 class PartsAndContentsMapper {
@@ -40,28 +45,38 @@ class PartsAndContentsMapper {
             return GeminiPart.builder()
                 .text(textContent.text())
                 .build();
-        } else if (content.type().equals(ContentType.IMAGE)) {
-            ImageContent imageContent = (ImageContent) content;
+        } else if (content instanceof ImageContent imageContent) {
+            Image image = imageContent.image();
 
-            URI uri = imageContent.image().url();
-            if (uri != null) {
+            if (!isNullOrBlank(image.base64Data())) {
                 return GeminiPart.builder()
-                    .fileData(GeminiFileData.builder()
-                        .fileUri(uri.toString())
-                        .mimeType(mimeTypeDetector.probeContentType(uri))
-                        .build())
-                    .build();
+                        .inlineData(GeminiBlob.builder()
+                                .mimeType(image.mimeType())
+                                .data(image.base64Data())
+                                .build())
+                        .build();
+            } else if (image.url() != null) {
+                URI url = image.url();
+                if (url.getScheme() != null && url.getScheme().startsWith("http")) {
+                    byte[] imageBytes = readBytes(url.toString());
+                    String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+                    return GeminiPart.builder()
+                            .inlineData(GeminiBlob.builder()
+                                    .mimeType(getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)))
+                                    .data(base64Data)
+                                    .build())
+                            .build();
+                } else {
+                    return GeminiPart.builder()
+                            .fileData(GeminiFileData.builder()
+                                    .fileUri(url.toString())
+                                    .mimeType(getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)))
+                                    .build())
+                            .build();
+                }
             } else {
-                return GeminiPart.builder()
-                    .inlineData(GeminiBlob.builder()
-                        .mimeType(imageContent.image().mimeType())
-                        .data(imageContent.image().base64Data())
-                        .build())
-                    .build();
+                throw new IllegalArgumentException("Image should contain either base64 data or url");
             }
-//            Base64.getEncoder().encode(readBytes(imageContent.image().url()));
-
-
         } else if (content.type().equals(ContentType.AUDIO)) {
             AudioContent audioContent = (AudioContent) content;
 
@@ -238,7 +253,12 @@ class PartsAndContentsMapper {
 
                         return GeminiContent.builder()
                             .role(GeminiRole.USER.toString())
-                            .parts(singletonList(fromContentToGPart(TextContent.from(toolResultMessage.text()))))
+                            .parts(List.of(GeminiPart.builder()
+                                    .functionResponse(GeminiFunctionResponse.builder()
+                                            .name(toolResultMessage.toolName())
+                                            .response(Map.of("response", toolResultMessage.text()))
+                                            .build())
+                                    .build()))
                             .build();
                     default:
                         return null;
