@@ -57,11 +57,6 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // TODO check if supported
-    }
-
-    @Override
     protected boolean assertThreads() {
         return false; // TODO fix
     }
