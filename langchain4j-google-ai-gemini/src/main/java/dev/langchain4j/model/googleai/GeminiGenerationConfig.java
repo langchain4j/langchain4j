@@ -31,6 +31,8 @@ class GeminiGenerationConfig {
     private final Double presencePenalty;
     @JsonProperty
     private final Double frequencyPenalty;
+    @JsonProperty
+    private final GeminiThinkingConfig thinkingConfig;
 
     GeminiGenerationConfig(GeminiGenerationConfigBuilder builder) {
         this.stopSequences = builder.stopSequences;
@@ -43,6 +45,7 @@ class GeminiGenerationConfig {
         this.topP = builder.topP;
         this.presencePenalty = builder.presencePenalty;
         this.frequencyPenalty = builder.frequencyPenalty;
+        this.thinkingConfig = builder.thinkingConfig;
     }
 
     static GeminiGenerationConfigBuilder builder() {
@@ -61,6 +64,7 @@ class GeminiGenerationConfig {
         private Double topP;
         private Double presencePenalty;
         private Double frequencyPenalty;
+        private GeminiThinkingConfig thinkingConfig;
 
         GeminiGenerationConfigBuilder() {
         }
@@ -112,6 +116,11 @@ class GeminiGenerationConfig {
 
         GeminiGenerationConfigBuilder frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
+            this.thinkingConfig = thinkingConfig;
             return this;
         }
 

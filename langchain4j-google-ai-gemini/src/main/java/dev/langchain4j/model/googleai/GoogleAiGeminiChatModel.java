@@ -76,7 +76,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         super(apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
-                listeners, maxRetries, null);
+                listeners, maxRetries, null, null);
     }
 
     public static GoogleAiGeminiChatModelBuilder builder() {
@@ -183,6 +183,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
         private List<GeminiSafetySetting> safetySettings;
+        private GeminiThinkingConfig thinkingConfig;
         private List<ChatModelListener> listeners;
 
         GoogleAiGeminiChatModelBuilder() {
@@ -287,6 +288,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder safetySettings(List<GeminiSafetySetting> safetySettings) {
             this.safetySettings = safetySettings;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
+            this.thinkingConfig = thinkingConfig;
             return this;
         }
 

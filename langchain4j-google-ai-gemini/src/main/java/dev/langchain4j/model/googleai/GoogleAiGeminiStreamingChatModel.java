@@ -76,7 +76,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         super(apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
-                listeners, maxRetries, null);
+                listeners, maxRetries, null, null);
     }
 
     public static GoogleAiGeminiStreamingChatModelBuilder builder() {
@@ -142,8 +142,14 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
         private Integer maxRetries;
+        private GeminiThinkingConfig thinkingConfig; // initialized new field
 
-        GoogleAiGeminiStreamingChatModelBuilder() {
+        GoogleAiGeminiStreamingChatModelBuilder() {}
+
+        public GoogleAiGeminiStreamingChatModelBuilder thinkingConfig(
+                GeminiThinkingConfig thinkingConfig) { // New builder method
+            this.thinkingConfig = thinkingConfig;
+            return this;
         }
 
         public GoogleAiGeminiStreamingChatModelBuilder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {

@@ -9,6 +9,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -18,6 +19,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -25,6 +27,9 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+
+import java.net.http.HttpTimeoutException;
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.jupiter.api.Disabled;
@@ -268,5 +273,24 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when-then
         assertDoesNotThrow(() -> toolModel.chat(chatRequest));
+    }
+
+    @Test
+    void should_handle_timeout() {
+
+        // given
+        Duration timeout = Duration.ofMillis(100);
+
+        ChatModel model = OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+                .maxRetries(0)
+                .timeout(timeout)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model.chat("hi"))
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
+                .hasRootCauseExactlyInstanceOf(java.net.http.HttpTimeoutException.class);
     }
 }

@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -242,6 +243,11 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
             assertThat(toolExecutionRequest.name()).isEqualTo("mermaidTimelineDiagram");
             assertThat(toolExecutionRequest.arguments()).isNotEmpty();
         }
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return null; // TODO implement
     }
 
     @AfterEach
