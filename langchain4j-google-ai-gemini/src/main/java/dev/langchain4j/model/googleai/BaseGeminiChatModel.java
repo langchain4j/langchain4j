@@ -126,6 +126,7 @@ abstract class BaseGeminiChatModel {
                         .topP(parameters.topP())
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
+                        .thinkingConfig(this.thinkingConfig)
                         .build())
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSepcsToGTool(chatRequest.toolSpecifications(), this.allowCodeExecution))

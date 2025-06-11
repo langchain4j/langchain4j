@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 
@@ -63,5 +64,10 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean assertThreads() {
         return false; // TODO fix
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return null; // TODO implement
     }
 }

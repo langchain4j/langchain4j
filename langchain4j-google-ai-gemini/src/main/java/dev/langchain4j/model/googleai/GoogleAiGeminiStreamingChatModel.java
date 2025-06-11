@@ -53,6 +53,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.safetySettings,
                 builder.listeners,
                 builder.maxRetries,
+                builder.thinkingConfig,
                 builder.defaultRequestParameters
         );
     }

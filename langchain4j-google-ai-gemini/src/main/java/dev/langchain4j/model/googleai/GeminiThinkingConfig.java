@@ -1,48 +1,22 @@
 package dev.langchain4j.model.googleai;
 
-import java.util.Objects;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class GeminiThinkingConfig {
+
+    @JsonProperty
     private Boolean includeThoughts;
+    @JsonProperty
     private Integer thinkingBudget;
 
     private GeminiThinkingConfig(Builder builder) {
         this.includeThoughts = builder.includeThoughts;
         this.thinkingBudget = builder.thinkingBudget;
-    }
-
-    public Boolean getIncludeThoughts() {
-        return includeThoughts;
-    }
-
-    public Integer getThinkingBudget() {
-        return thinkingBudget;
-    }
-
-    public void setEnableThinking(Boolean includeThoughts) {
-        this.includeThoughts = includeThoughts;
-    }
-
-    public void setThinkingBudget(final Integer thinkingBudget) {
-        this.thinkingBudget = thinkingBudget;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof GeminiThinkingConfig)) return false;
-        GeminiThinkingConfig other = (GeminiThinkingConfig) o;
-        return Objects.equals(includeThoughts, other.includeThoughts)
-                && Objects.equals(thinkingBudget, other.thinkingBudget);
-    }
-
-    @Override
-    public int hashCode() {
-        final int PRIME = 59;
-        int result = 1;
-        result = result * PRIME + (includeThoughts == null ? 43 : includeThoughts.hashCode());
-        result = result * PRIME + (thinkingBudget == null ? 43 : thinkingBudget.hashCode());
-        return result;
     }
 
     public static Builder builder() {

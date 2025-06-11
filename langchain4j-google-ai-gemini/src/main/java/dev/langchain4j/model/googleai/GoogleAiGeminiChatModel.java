@@ -53,6 +53,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.safetySettings,
                 builder.listeners,
                 builder.maxRetries,
+                builder.thinkingConfig,
                 builder.defaultRequestParameters
         );
     }
