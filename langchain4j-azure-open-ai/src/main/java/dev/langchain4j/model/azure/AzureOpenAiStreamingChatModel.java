@@ -154,6 +154,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .presencePenalty(getOrDefault(builder.presencePenalty, parameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(builder.maxTokens, parameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(builder.stop, parameters.stopSequences()))
+                .toolSpecifications(parameters.toolSpecifications())
+                .toolChoice(parameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, parameters.responseFormat()))
                 .build();
 
@@ -169,7 +171,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
-
 
     @Override
     public ChatRequestParameters defaultRequestParameters() {

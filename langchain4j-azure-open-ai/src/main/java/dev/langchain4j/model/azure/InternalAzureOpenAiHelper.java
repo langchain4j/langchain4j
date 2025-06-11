@@ -422,7 +422,7 @@ class InternalAzureOpenAiHelper {
         } else if (openAiFinishReason == CompletionsFinishReason.FUNCTION_CALL) {
             return TOOL_EXECUTION;
         } else if (openAiFinishReason == CompletionsFinishReason.TOOL_CALLS) {
-                return TOOL_EXECUTION;
+            return TOOL_EXECUTION;
         } else {
             return null;
         }
