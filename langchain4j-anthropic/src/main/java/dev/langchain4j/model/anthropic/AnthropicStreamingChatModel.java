@@ -84,7 +84,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .build();
 
-        ChatRequestParameters commonParameters = DefaultChatRequestParameters.DEFAULT_INSTANCE;
+        ChatRequestParameters commonParameters = DefaultChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
                 .modelName(ensureNotBlank(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName"))

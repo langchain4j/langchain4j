@@ -118,7 +118,7 @@ abstract class OpenAiOfficialBaseChatModel {
             validate(defaultRequestParameters);
             commonParameters = defaultRequestParameters;
         } else {
-            commonParameters = DefaultChatRequestParameters.builder().build();
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
         OpenAiOfficialChatRequestParameters openAiParameters;
