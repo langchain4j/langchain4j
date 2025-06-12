@@ -1,33 +1,21 @@
 package dev.langchain4j.model.googleai;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 
 @Experimental
@@ -35,6 +23,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
     public GoogleAiGeminiStreamingChatModel(GoogleAiGeminiStreamingChatModelBuilder builder) {
         super(
+                builder.httpClientBuilder,
                 builder.apiKey,
                 builder.modelName,
                 builder.temperature,
@@ -52,7 +41,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.logRequestsAndResponses,
                 builder.safetySettings,
                 builder.listeners,
-                builder.maxRetries,
+                null,
                 builder.thinkingConfig,
                 builder.defaultRequestParameters
         );
@@ -74,7 +63,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             List<ChatModelListener> listeners,
             Integer maxRetries
     ) {
-        super(apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
+        super(null, apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
                 listeners, maxRetries, null, null);
@@ -90,26 +79,9 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     }
 
     @Override
-    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-
-        GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
-
-        GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(includeCodeExecutionOutput);
-
-        try {
-            Stream<GeminiGenerateContentResponse> contentStream = withRetryMappingExceptions(() ->
-                    geminiService.generateContentStream(chatRequest.modelName(), apiKey, request), maxRetries);
-
-            contentStream.forEach(partialResponse -> {
-                Optional<String> text = responseBuilder.append(partialResponse);
-                text.ifPresent(handler::onPartialResponse);
-            });
-
-            ChatResponse completeResponse = responseBuilder.build();
-            handler.onCompleteResponse(completeResponse);
-        } catch (RuntimeException exception) {
-            handler.onError(exception);
-        }
+    public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
+        GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request);
+        geminiService.generateContentStream(request.modelName(), apiKey, geminiRequest, includeCodeExecutionOutput, handler);
     }
 
     @Override
@@ -124,6 +96,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
     public static class GoogleAiGeminiStreamingChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
         private String modelName;
@@ -142,14 +115,12 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private Boolean logRequestsAndResponses;
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
-        private Integer maxRetries;
-        private GeminiThinkingConfig thinkingConfig; // initialized new field
+        private GeminiThinkingConfig thinkingConfig;
 
         GoogleAiGeminiStreamingChatModelBuilder() {}
 
-        public GoogleAiGeminiStreamingChatModelBuilder thinkingConfig(
-                GeminiThinkingConfig thinkingConfig) { // New builder method
-            this.thinkingConfig = thinkingConfig;
+        public GoogleAiGeminiStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 
@@ -255,8 +226,16 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
+        /**
+         * @deprecated retries are not supported for streaming model
+         */
+        @Deprecated(forRemoval = true, since = "1.1.0-beta7")
         public GoogleAiGeminiStreamingChatModelBuilder maxRetries(Integer maxRetries) {
-            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
+            this.thinkingConfig = thinkingConfig;
             return this;
         }
 

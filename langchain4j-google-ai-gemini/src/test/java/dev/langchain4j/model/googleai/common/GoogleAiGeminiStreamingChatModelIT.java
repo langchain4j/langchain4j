@@ -53,16 +53,16 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return false; // TODO fix
-    }
-
-    @Override
-    protected boolean assertThreads() {
-        return false; // TODO fix
+        return false; // Gemini does not support tools and response format simultaneously
     }
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
-        return null; // TODO implement
+        return GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-1.5-flash")
+                .logRequestsAndResponses(true)
+                .listeners(List.of(listener))
+                .build();
     }
 }

@@ -5,8 +5,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.TokenCountEstimator;
-import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.LinkedList;
@@ -20,27 +20,20 @@ import static java.util.Collections.singletonList;
 
 public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(GoogleAiGeminiTokenCountEstimator.class);
-
     private final GeminiService geminiService;
     private final String modelName;
     private final String apiKey;
     private final Integer maxRetries;
 
-    GoogleAiGeminiTokenCountEstimator(
-            String modelName,
-            String apiKey,
-            Boolean logRequestsAndResponses,
-            Duration timeout,
-            Integer maxRetries
-    ) {
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.maxRetries = getOrDefault(maxRetries, 2);
+    public GoogleAiGeminiTokenCountEstimator(Builder builder) {
         this.geminiService = new GeminiService(
-                getOrDefault(logRequestsAndResponses, false) ? log : null,
-                timeout != null ? timeout : Duration.ofSeconds(60)
+                builder.httpClientBuilder,
+                getOrDefault(builder.logRequestsAndResponses, false),
+                builder.timeout
         );
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     public static Builder builder() {
@@ -107,6 +100,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
     public static class Builder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String modelName;
         private String apiKey;
         private Boolean logRequestsAndResponses;
@@ -114,6 +108,11 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         private Integer maxRetries;
 
         Builder() {
+        }
+
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public Builder modelName(String modelName) {
@@ -142,11 +141,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         }
 
         public GoogleAiGeminiTokenCountEstimator build() {
-            return new GoogleAiGeminiTokenCountEstimator(this.modelName, this.apiKey, this.logRequestsAndResponses, this.timeout, this.maxRetries);
-        }
-
-        public String toString() {
-            return "GoogleAiGeminiTokenCountEstimator.Builder(modelName=" + this.modelName + ", apiKey=" + this.apiKey + ", logRequestsAndResponses=" + this.logRequestsAndResponses + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ")";
+            return new GoogleAiGeminiTokenCountEstimator(this);
         }
     }
 }
