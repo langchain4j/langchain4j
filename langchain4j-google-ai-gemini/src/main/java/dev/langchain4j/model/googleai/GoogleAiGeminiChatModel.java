@@ -1,6 +1,5 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -31,7 +30,6 @@ import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReaso
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
-@Experimental
 public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatModel {
 
     public GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder builder) {
@@ -106,7 +104,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     private ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
         if (geminiResponse == null) {
-            throw new RuntimeException("Gemini response was null");
+            throw new RuntimeException("Gemini response was null"); // TODO
         }
 
         GeminiCandidate firstCandidate = geminiResponse.getCandidates().get(0);

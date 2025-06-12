@@ -1,6 +1,5 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -23,7 +22,6 @@ import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 
-@Experimental
 abstract class BaseGeminiChatModel {
 
     protected final GeminiService geminiService;

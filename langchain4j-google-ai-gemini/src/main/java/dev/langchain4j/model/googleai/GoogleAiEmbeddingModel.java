@@ -1,6 +1,5 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -17,7 +16,6 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-@Experimental
 public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final int MAX_NUMBER_OF_SEGMENTS_PER_BATCH = 100;
@@ -83,12 +81,13 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     public Response<Embedding> embed(TextSegment textSegment) {
         GoogleAiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
 
-        GoogleAiEmbeddingResponse geminiResponse = withRetryMappingExceptions(() -> this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
+        GoogleAiEmbeddingResponse geminiResponse = withRetryMappingExceptions(() ->
+                this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
 
         if (geminiResponse != null) {
             return Response.from(Embedding.from(geminiResponse.getEmbedding().getValues()));
         } else {
-            throw new RuntimeException("Gemini embedding response was null (embed)");
+            throw new RuntimeException("Gemini embedding response was null (embed)"); // TODO
         }
     }
 
@@ -116,14 +115,15 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             GoogleAiBatchEmbeddingRequest batchEmbeddingRequest = new GoogleAiBatchEmbeddingRequest();
             batchEmbeddingRequest.setRequests(embeddingRequests.subList(startIndex, lastIndex));
 
-            GoogleAiBatchEmbeddingResponse geminiResponse = withRetryMappingExceptions(() -> this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
+            GoogleAiBatchEmbeddingResponse geminiResponse = withRetryMappingExceptions(() ->
+                    this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
 
             if (geminiResponse != null) {
                 allEmbeddings.addAll(geminiResponse.getEmbeddings().stream()
                         .map(values -> Embedding.from(values.getValues()))
                         .collect(Collectors.toList()));
             } else {
-                throw new RuntimeException("Gemini embedding response was null (embedAll)");
+                throw new RuntimeException("Gemini embedding response was null (embedAll)"); // TODO
             }
         }
 

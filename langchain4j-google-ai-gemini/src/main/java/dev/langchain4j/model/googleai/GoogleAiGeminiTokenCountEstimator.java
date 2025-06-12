@@ -12,7 +12,7 @@ import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
@@ -94,7 +94,8 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
     }
 
     private int estimateTokenCount(GeminiCountTokensRequest countTokensRequest) {
-        GeminiCountTokensResponse countTokensResponse = withRetry(() -> this.geminiService.countTokens(this.modelName, this.apiKey, countTokensRequest), this.maxRetries);
+        GeminiCountTokensResponse countTokensResponse = withRetryMappingExceptions(() ->
+                this.geminiService.countTokens(this.modelName, this.apiKey, countTokensRequest), this.maxRetries);
         return countTokensResponse.getTotalTokens();
     }
 

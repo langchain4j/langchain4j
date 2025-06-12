@@ -9,6 +9,7 @@ import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HA
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -741,7 +742,7 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Test
-    void should_calculate_area_of_rectangle() {
+    void should_use_thinking_config() {
 
         // given
         GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
@@ -762,6 +763,26 @@ class GoogleAiGeminiChatModelIT {
 
         String reply = response.aiMessage().text();
         assertThat(reply).contains("20");
+    }
+
+    @Test
+    void should_handle_timeout() {
+
+        // given
+        Duration timeout = Duration.ofMillis(10);
+
+        GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-1.5-flash")
+                .logRequestsAndResponses(true)
+                .maxRetries(0)
+                .timeout(timeout)
+                .build();
+
+        // when
+        assertThatThrownBy(() -> model.chat("hello, how are you?"))
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
+                .hasCauseExactlyInstanceOf(java.net.http.HttpConnectTimeoutException.class);
     }
 
     @AfterEach

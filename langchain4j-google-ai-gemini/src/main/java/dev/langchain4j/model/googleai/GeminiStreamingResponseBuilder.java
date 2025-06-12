@@ -145,6 +145,6 @@ class GeminiStreamingResponseBuilder {
             return new AiMessage(functionCalls);
         }
 
-        throw new RuntimeException("Gemini has responded neither with text nor with a function call.");
+        throw new RuntimeException("Gemini has responded neither with text nor with a function call."); // TODO
     }
 }
