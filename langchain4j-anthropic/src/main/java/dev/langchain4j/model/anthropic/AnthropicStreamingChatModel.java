@@ -25,6 +25,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
@@ -95,6 +96,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
      *
+     * @param httpClientBuilder   The the HTTP client builder to use for creating the HTTP client Default *
      * @param baseUrl             The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
      * @param apiKey              The API key for authentication with the Anthropic API.
      * @param version             The value of the "anthropic-version" HTTP header. Default: "2023-06-01"
@@ -113,6 +115,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
      * @param listeners           A list of {@link ChatModelListener} instances to be notified.
      */
     private AnthropicStreamingChatModel(
+            HttpClientBuilder httpClientBuilder,
             String baseUrl,
             String apiKey,
             String version,
@@ -132,6 +135,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             Boolean logResponses,
             List<ChatModelListener> listeners) {
         this.client = AnthropicClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
                 .version(getOrDefault(version, "2023-06-01"))
@@ -159,6 +163,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
     public static class AnthropicStreamingChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String version;
@@ -177,6 +182,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
+
+        public AnthropicStreamingChatModel.AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public AnthropicStreamingChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -275,6 +285,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
         public AnthropicStreamingChatModel build() {
             return new AnthropicStreamingChatModel(
+                    httpClientBuilder,
                     baseUrl,
                     apiKey,
                     version,
