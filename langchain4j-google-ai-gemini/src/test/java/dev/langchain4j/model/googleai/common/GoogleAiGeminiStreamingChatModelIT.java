@@ -46,7 +46,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder() // TODO return Gemini-specific params
+        return ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
@@ -60,7 +60,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.0-flash-lite")
                 .logRequestsAndResponses(true)
                 .listeners(List.of(listener))
                 .build();

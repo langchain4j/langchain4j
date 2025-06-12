@@ -49,7 +49,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder() // TODO return Gemini-specific params
+        return ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }

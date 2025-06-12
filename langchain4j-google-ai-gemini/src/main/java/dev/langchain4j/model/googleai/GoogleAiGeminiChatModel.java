@@ -1,6 +1,5 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -25,14 +24,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Arrays.asList;
 
-@Experimental
 public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatModel {
+
+    private final Set<Capability> supportedCapabilities;
 
     public GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder builder) {
         super(
@@ -58,6 +60,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.thinkingConfig,
                 builder.defaultRequestParameters
         );
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
 
     /**
@@ -80,6 +83,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
                 listeners, maxRetries, null, null);
+        this.supportedCapabilities = Set.of();
     }
 
     public static GoogleAiGeminiChatModelBuilder builder() {
@@ -94,21 +98,15 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
 
-        ChatRequestParameters parameters = chatRequest.parameters();
-
         GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
 
         GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(() ->
-                        geminiService.generateContent(parameters.modelName(), apiKey, request), maxRetries);
+                        geminiService.generateContent(chatRequest.modelName(), apiKey, request), maxRetries);
 
         return processResponse(geminiResponse);
     }
 
     private ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
-        if (geminiResponse == null) {
-            throw new RuntimeException("Gemini response was null");
-        }
-
         GeminiCandidate firstCandidate = geminiResponse.getCandidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 
@@ -146,12 +144,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        Set<Capability> capabilities = new HashSet<>();
+        Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
         // when response format is not null, it's JSON, either application/json or text/x.enum
         ResponseFormat responseFormat = this.defaultRequestParameters.responseFormat();
         if (responseFormat != null && ResponseFormatType.JSON.equals(responseFormat.type())) {
-            capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA); // TODO or allow always? all models support?
-            // TODO check docu
+            capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
     }
@@ -189,6 +186,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private List<GeminiSafetySetting> safetySettings;
         private GeminiThinkingConfig thinkingConfig;
         private List<ChatModelListener> listeners;
+        private Set<Capability> supportedCapabilities;
 
         GoogleAiGeminiChatModelBuilder() {
         }
@@ -308,6 +306,15 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         public GoogleAiGeminiChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
         public GoogleAiGeminiChatModel build() {
