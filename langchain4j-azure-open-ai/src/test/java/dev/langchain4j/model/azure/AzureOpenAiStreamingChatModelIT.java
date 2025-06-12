@@ -460,7 +460,7 @@ class AzureOpenAiStreamingChatModelIT {
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName("gpt-4o")
                 .logRequestsAndResponses(true)
-                .maxRetries(1)
+                .maxRetries(0)
                 .timeout(timeout)
                 .build();
 
@@ -488,7 +488,7 @@ class AzureOpenAiStreamingChatModelIT {
         Throwable error = futureError.get(5, SECONDS);
 
         assertThat(error)
-                .isExactlyInstanceOf(TimeoutException.class)
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
                 .hasCauseExactlyInstanceOf(io.netty.channel.ConnectTimeoutException.class);
     }
 

@@ -479,13 +479,13 @@ class AzureOpenAiChatModelIT {
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName("gpt-4o")
                 .logRequestsAndResponses(true)
-                .maxRetries(1)
+                .maxRetries(0)
                 .timeout(timeout)
                 .build();
 
         // when
         assertThatThrownBy(() -> model.chat("hello, how are you?"))
-                .isExactlyInstanceOf(TimeoutException.class)
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
                 .hasCauseExactlyInstanceOf(io.netty.channel.ConnectTimeoutException.class);
     }
 

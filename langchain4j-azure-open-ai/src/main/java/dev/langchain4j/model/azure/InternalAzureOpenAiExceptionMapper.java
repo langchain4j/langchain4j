@@ -15,16 +15,17 @@ class InternalAzureOpenAiExceptionMapper extends ExceptionMapper.DefaultExceptio
 
     @Override
     public RuntimeException mapException(Throwable t) {
-        if (t instanceof HttpResponseException httpResponseException) {
+        if (t instanceof com.azure.core.exception.HttpResponseException httpResponseException) {
             HttpResponse httpResponse = httpResponseException.getResponse();
             if (httpResponse != null) {
                 return mapHttpStatusCode(httpResponseException, httpResponse.getStatusCode());
             }
         }
 
-        if (t instanceof ConnectTimeoutException) {
+        if (t instanceof io.netty.channel.ConnectTimeoutException) {
             return new TimeoutException(t);
-        } else if (t.getCause() instanceof ConnectTimeoutException) {
+        } else if (t.getCause() instanceof io.netty.channel.ConnectTimeoutException
+                || t.getCause() instanceof java.util.concurrent.TimeoutException) {
             return new TimeoutException(t.getCause());
         }
 
