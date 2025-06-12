@@ -33,7 +33,9 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamRespon
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
  */
 public class BedrockStreamingChatModel extends AbstractBedrockChatModel implements StreamingChatModel {
+
     private static final Logger log = LoggerFactory.getLogger(BedrockStreamingChatModel.class);
+
     private final BedrockRuntimeAsyncClient client;
 
     public BedrockStreamingChatModel(String modelId) {

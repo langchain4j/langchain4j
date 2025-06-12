@@ -1,7 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.bedrock.internal.AbstractBedrockEmbeddingModel;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
