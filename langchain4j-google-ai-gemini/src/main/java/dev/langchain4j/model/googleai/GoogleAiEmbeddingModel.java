@@ -82,13 +82,9 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         GoogleAiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
 
         GoogleAiEmbeddingResponse geminiResponse = withRetryMappingExceptions(() ->
-                this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
+                geminiService.embed(modelName, apiKey, embeddingRequest), maxRetries);
 
-        if (geminiResponse != null) {
-            return Response.from(Embedding.from(geminiResponse.getEmbedding().getValues()));
-        } else {
-            throw new RuntimeException("Gemini embedding response was null (embed)"); // TODO
-        }
+        return Response.from(Embedding.from(geminiResponse.getEmbedding().getValues()));
     }
 
     @Override
@@ -116,15 +112,11 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             batchEmbeddingRequest.setRequests(embeddingRequests.subList(startIndex, lastIndex));
 
             GoogleAiBatchEmbeddingResponse geminiResponse = withRetryMappingExceptions(() ->
-                    this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
+                    geminiService.batchEmbed(modelName, apiKey, batchEmbeddingRequest));
 
-            if (geminiResponse != null) {
-                allEmbeddings.addAll(geminiResponse.getEmbeddings().stream()
-                        .map(values -> Embedding.from(values.getValues()))
-                        .collect(Collectors.toList()));
-            } else {
-                throw new RuntimeException("Gemini embedding response was null (embedAll)"); // TODO
-            }
+            allEmbeddings.addAll(geminiResponse.getEmbeddings().stream()
+                    .map(values -> Embedding.from(values.getValues()))
+                    .toList());
         }
 
         return Response.from(allEmbeddings);

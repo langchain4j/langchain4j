@@ -210,7 +210,7 @@ interface WeatherForecastAssistant {
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
-    .responseFormat(ResponseFormat.JSON) // this is required to enable structured outputs feature
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // this is required to enable structured outputs feature
     .build();
 
 WeatherForecastAssistant forecastAssistant =

@@ -7,7 +7,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
@@ -16,6 +15,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
 
 import java.net.URI;
@@ -39,9 +39,7 @@ class PartsAndContentsMapper {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static GeminiPart fromContentToGPart(Content content) {
-        if (content.type().equals(ContentType.TEXT)) {
-            TextContent textContent = (TextContent) content;
-
+        if (content instanceof TextContent textContent) {
             return GeminiPart.builder()
                 .text(textContent.text())
                 .build();
@@ -77,9 +75,7 @@ class PartsAndContentsMapper {
             } else {
                 throw new IllegalArgumentException("Image should contain either base64 data or url");
             }
-        } else if (content.type().equals(ContentType.AUDIO)) {
-            AudioContent audioContent = (AudioContent) content;
-
+        } else if (content instanceof AudioContent audioContent) {
             URI uri = audioContent.audio().url();
             if (uri != null) {
                 return GeminiPart.builder()
@@ -96,9 +92,7 @@ class PartsAndContentsMapper {
                         .build())
                     .build();
             }
-        } else if (content.type().equals(ContentType.VIDEO)) {
-                VideoContent videoContent = (VideoContent) content;
-
+        } else if (content instanceof VideoContent videoContent) {
                 URI uri = videoContent.video().url();
                 if (uri != null) {
                     return GeminiPart.builder()
@@ -135,8 +129,7 @@ class PartsAndContentsMapper {
                     .build();
             }
         } else {
-            //TODO return null? throw error?
-            return GeminiPart.builder().text("Error: Unknown content type").build();
+            throw new UnsupportedFeatureException("Unsupported content type: " + content.type());
         }
     }
 
