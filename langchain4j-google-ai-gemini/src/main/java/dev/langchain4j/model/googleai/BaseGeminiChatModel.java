@@ -77,7 +77,7 @@ abstract class BaseGeminiChatModel {
         if (defaultRequestParameters != null) {
             parameters = defaultRequestParameters;
         } else {
-            parameters = DefaultChatRequestParameters.builder().build();
+            parameters = DefaultChatRequestParameters.EMPTY;
         }
 
         this.defaultRequestParameters = ChatRequestParameters.builder()

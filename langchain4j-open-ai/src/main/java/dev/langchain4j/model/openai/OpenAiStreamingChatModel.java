@@ -76,7 +76,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         if (builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
             openAiParameters = openAiChatRequestParameters;
         } else {
-            openAiParameters = OpenAiChatRequestParameters.builder().build();
+            openAiParameters = OpenAiChatRequestParameters.EMPTY;
         }
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
