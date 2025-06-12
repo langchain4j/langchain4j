@@ -5,11 +5,16 @@ import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpen
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
 import java.util.List;
 
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -49,10 +54,25 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     }
 
     @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return null; // TODO implement
+    }
+
+    @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         return OpenAiOfficialChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel streamingChatModel) {
+        return OpenAiOfficialChatResponseMetadata.class;
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
+        return OpenAiOfficialTokenUsage.class;
     }
 
     @Disabled("TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")

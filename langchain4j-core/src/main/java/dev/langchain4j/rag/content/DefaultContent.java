@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -21,7 +22,7 @@ public class DefaultContent implements Content {
 
     public DefaultContent(TextSegment textSegment, Map<ContentMetadata, Object> metadata) {
         this.textSegment = ensureNotNull(textSegment, "textSegment");
-        this.metadata = ensureNotNull(metadata, "metadata");
+        this.metadata = copy(metadata);
     }
 
     public DefaultContent(String text) {

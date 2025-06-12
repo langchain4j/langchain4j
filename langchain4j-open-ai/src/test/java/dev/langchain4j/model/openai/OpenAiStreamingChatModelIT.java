@@ -276,7 +276,7 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(secondResponse.tokenUsage());
 
@@ -366,7 +366,7 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(secondResponse.tokenUsage());
 
@@ -469,7 +469,7 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(secondResponse.tokenUsage());
 
@@ -605,6 +605,8 @@ class OpenAiStreamingChatModelIT {
                     "GPT_4_32K_0613", // don't have access
                     "O1", // don't have access
                     "O1_2024_12_17", // don't have access
+                    "O3", // don't have access
+                    "O3_2025_04_16", // don't have access
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 

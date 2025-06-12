@@ -5,15 +5,14 @@ import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
@@ -23,9 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
@@ -35,22 +33,26 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
  * Bedrock chat model using the Bedrock InvokeAPI.
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-invoke.html">https://docs.aws.amazon.com/bedrock/latest/userguide/inference-invoke.html</a>
  */
-@Slf4j
-@Getter
-@SuperBuilder
 public abstract class AbstractBedrockChatModel<T extends BedrockChatModelResponse>
         extends AbstractSharedBedrockChatModel implements ChatModel {
 
+    private static final Logger log = LoggerFactory.getLogger(AbstractBedrockChatModel.class);
+
     private volatile BedrockRuntimeClient client;
+
+    protected AbstractBedrockChatModel(AbstractBedrockChatModelBuilder<T, ?, ?> b) {
+        super(b);
+        this.client = b.client;
+    }
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.toolSpecifications());
-        ChatRequestValidator.validate(parameters.toolChoice());
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolSpecifications());
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         Response<AiMessage> response = generate(chatRequest.messages());
 
@@ -72,11 +74,9 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatRequest listenerRequest =
-                createListenerRequest(invokeModelRequest, messages, Collections.emptyList());
+        ChatRequest listenerRequest = createListenerRequest(invokeModelRequest, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -177,5 +177,27 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
     @Override
     public ModelProvider provider() {
         return AMAZON_BEDROCK;
+    }
+
+    public abstract static class AbstractBedrockChatModelBuilder<
+                    T extends BedrockChatModelResponse,
+                    C extends AbstractBedrockChatModel<T>,
+                    B extends AbstractBedrockChatModelBuilder<T, C, B>>
+            extends AbstractSharedBedrockChatModel.AbstractSharedBedrockChatModelBuilder<C, B> {
+        private BedrockRuntimeClient client;
+
+        public B client(BedrockRuntimeClient client) {
+            this.client = client;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        public String toString() {
+            return "AbstractBedrockChatModel.AbstractBedrockChatModelBuilder(super=" + super.toString() + ", client="
+                    + this.client + ")";
+        }
     }
 }

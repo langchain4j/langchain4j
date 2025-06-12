@@ -21,7 +21,7 @@ class AzureOpenAiEmbeddingModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("text-embedding-3-small")
-            .logRequestsAndResponses(true)
+            .logRequestsAndResponses(false) // embeddings are huge in logs
             .build();
 
     @Test
@@ -75,7 +75,7 @@ class AzureOpenAiEmbeddingModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(modelNameString)
-                .logRequestsAndResponses(true)
+                .logRequestsAndResponses(false) // embeddings are huge in logs
                 .build();
 
         // when
@@ -96,7 +96,7 @@ class AzureOpenAiEmbeddingModelIT {
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName("text-embedding-3-large")
                 .dimensions(dimensions)
-                .logRequestsAndResponses(true)
+                .logRequestsAndResponses(false) // embeddings are huge in logs
                 .build();
 
         // when

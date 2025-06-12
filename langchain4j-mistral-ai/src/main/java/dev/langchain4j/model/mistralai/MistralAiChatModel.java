@@ -14,14 +14,14 @@ import static java.util.Collections.singletonList;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -62,6 +62,7 @@ public class MistralAiChatModel implements ChatModel {
     /**
      * Constructs a MistralAiChatModel with the specified parameters.
      *
+     * @param httpClientBuilder the HTTP client builder to use for creating the HTTP client
      * @param baseUrl the base URL of the Mistral AI API. It uses the default value if not specified
      * @param apiKey the API key for authentication
      * @param modelName the name of the Mistral AI model to use
@@ -79,7 +80,67 @@ public class MistralAiChatModel implements ChatModel {
      * @param logRequests a flag indicating whether to log API requests
      * @param logResponses a flag indicating whether to log API responses
      * @param maxRetries the maximum number of retries for API requests. It uses the default value 3 if not specified
+     * @param supportedCapabilities the set of capabilities supported by this model
      */
+    public MistralAiChatModel(
+            HttpClientBuilder httpClientBuilder,
+            String baseUrl,
+            String apiKey,
+            String modelName,
+            Double temperature,
+            Double topP,
+            Integer maxTokens,
+            Boolean safePrompt,
+            Integer randomSeed,
+            ResponseFormat responseFormat,
+            Duration timeout,
+            Boolean logRequests,
+            Boolean logResponses,
+            Integer maxRetries,
+            Set<Capability> supportedCapabilities) {
+        this.client = MistralAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
+                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
+                .apiKey(apiKey)
+                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses, false))
+                .build();
+        this.modelName = ensureNotBlank(modelName, "modelName");
+        this.temperature = temperature;
+        this.topP = topP;
+        this.maxTokens = maxTokens;
+        this.safePrompt = safePrompt;
+        this.randomSeed = randomSeed;
+        this.responseFormat = responseFormat;
+        this.maxRetries = getOrDefault(maxRetries, 2);
+        this.supportedCapabilities = getOrDefault(supportedCapabilities, Set.of());
+    }
+
+    /**
+     * Constructs a MistralAiChatModel with the specified parameters.
+     * @deprecated Please use {@link #MistralAiChatModel(HttpClientBuilder, String, String, String, Double, Double, Integer, Boolean, Integer, ResponseFormat, Duration, Boolean, Boolean, Integer, Set)} instead.
+     *
+     * @param baseUrl the base URL of the Mistral AI API. It uses the default value if not specified
+     * @param apiKey the API key for authentication
+     * @param modelName the name of the Mistral AI model to use
+     * @param temperature the temperature parameter for generating chat responses
+     * @param topP the top-p parameter for generating chat responses
+     * @param maxTokens the maximum number of new tokens to generate in a chat response
+     * @param safePrompt a flag indicating whether to use a safe prompt for generating chat responses
+     * @param randomSeed the random seed for generating chat responses
+     * @param responseFormat the response format for generating chat responses.
+     * <p>
+     * Current values supported are "text" and "json_object".
+     * @param timeout the timeout duration for API requests
+     * <p>
+     * The default value is 60 seconds
+     * @param logRequests a flag indicating whether to log API requests
+     * @param logResponses a flag indicating whether to log API responses
+     * @param maxRetries the maximum number of retries for API requests. It uses the default value 3 if not specified
+     * @param supportedCapabilities the set of capabilities supported by this model
+     */
+    @Deprecated(forRemoval = true)
     public MistralAiChatModel(
             String baseUrl,
             String apiKey,
@@ -95,23 +156,22 @@ public class MistralAiChatModel implements ChatModel {
             Boolean logResponses,
             Integer maxRetries,
             Set<Capability> supportedCapabilities) {
-
-        this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-                .apiKey(apiKey)
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
-                .build();
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.temperature = temperature;
-        this.topP = topP;
-        this.maxTokens = maxTokens;
-        this.safePrompt = safePrompt;
-        this.randomSeed = randomSeed;
-        this.responseFormat = responseFormat;
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.supportedCapabilities = getOrDefault(supportedCapabilities, Set.of());
+        this(
+                null,
+                baseUrl,
+                apiKey,
+                modelName,
+                temperature,
+                topP,
+                maxTokens,
+                safePrompt,
+                randomSeed,
+                responseFormat,
+                timeout,
+                logRequests,
+                logResponses,
+                maxRetries,
+                supportedCapabilities);
     }
 
     @Override
@@ -121,9 +181,9 @@ public class MistralAiChatModel implements ChatModel {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-        ChatRequestValidator.validateMessages(chatRequest.messages());
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
+        ChatRequestValidationUtils.validateParameters(parameters);
         ResponseFormat responseFormat = parameters.responseFormat();
 
         Response<AiMessage> response;
@@ -198,7 +258,8 @@ public class MistralAiChatModel implements ChatModel {
 
         MistralAiChatCompletionRequest request = requestBuilder.build();
 
-        MistralAiChatCompletionResponse response = withRetryMappingExceptions(() -> client.chatCompletion(request), maxRetries);
+        MistralAiChatCompletionResponse response =
+                withRetryMappingExceptions(() -> client.chatCompletion(request), maxRetries);
 
         return Response.from(
                 aiMessageFrom(response),
@@ -247,6 +308,8 @@ public class MistralAiChatModel implements ChatModel {
         private Integer maxRetries;
 
         private Set<Capability> supportedCapabilities;
+
+        private HttpClientBuilder httpClientBuilder;
 
         public MistralAiChatModelBuilder() {}
 
@@ -395,8 +458,14 @@ public class MistralAiChatModel implements ChatModel {
             return this;
         }
 
+        public MistralAiChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
         public MistralAiChatModel build() {
             return new MistralAiChatModel(
+                    this.httpClientBuilder,
                     this.baseUrl,
                     this.apiKey,
                     this.modelName,

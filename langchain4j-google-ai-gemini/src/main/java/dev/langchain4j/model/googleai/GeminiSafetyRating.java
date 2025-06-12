@@ -1,11 +1,19 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiSafetyRating {
     private GeminiHarmCategory category;
     private GeminiHarmBlockThreshold threshold;
     private Boolean blocked;
 
-    GeminiSafetyRating(GeminiHarmCategory category, GeminiHarmBlockThreshold threshold, Boolean blocked) {
+    @JsonCreator
+    GeminiSafetyRating(@JsonProperty("category") GeminiHarmCategory category,
+                       @JsonProperty("threshold") GeminiHarmBlockThreshold threshold,
+                       @JsonProperty("blocked") Boolean blocked) {
         this.category = category;
         this.threshold = threshold;
         this.blocked = blocked;

@@ -4,8 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 
 /**
- * TODO review all javadoc in this class
- * Represents a handler for streaming a response from a {@link StreamingChatModel}.
+ * Represents a handler for a {@link StreamingChatModel} response.
  *
  * @see StreamingChatModel
  */

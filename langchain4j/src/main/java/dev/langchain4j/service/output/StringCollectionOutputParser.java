@@ -1,5 +1,6 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -11,6 +12,7 @@ import java.util.function.Supplier;
 
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
+@Internal
 abstract class StringCollectionOutputParser<CT extends Collection<String>> implements OutputParser<CT> {
 
     @Override

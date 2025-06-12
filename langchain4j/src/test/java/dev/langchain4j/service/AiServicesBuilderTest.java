@@ -1,16 +1,15 @@
 package dev.langchain4j.service;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.mockito.Mockito.mock;
-
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 /**
  * Verify that the AIServices builder doesn't allow setting more than out of
@@ -44,21 +43,23 @@ class AiServicesBuilderTest {
         });
     }
 
-    static class HelloWorld {
-
-        @Tool("Say hello")
-        void add(String name) {
-            System.out.printf("Hello %s!", name);
-        }
-    }
-
-    interface Assistant {
-
-        Response<AiMessage> chat(String userMessage);
-    }
-
     @Test
     void should_raise_an_error_when_tools_are_classes() {
+
+        // given
+        interface Assistant {
+
+            String chat(String userMessage);
+        }
+
+        class HelloWorld {
+
+            @Tool("Say hello")
+            void add(String name) {
+                System.out.printf("Hello %s!", name);
+            }
+        }
+
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
@@ -66,5 +67,22 @@ class AiServicesBuilderTest {
                         .chatModel(chatModel)
                         .tools(HelloWorld.class)
                         .build());
+    }
+
+    @Test
+    void should_fail_when_return_type_is_void() {
+
+        // given
+        interface Assistant {
+
+            void chat(String userMessage);
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        // when - then
+        assertThatThrownBy(() -> AiServices.create(Assistant.class, chatModel))
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("'void' is not a supported return type of an AI Service method");
     }
 }

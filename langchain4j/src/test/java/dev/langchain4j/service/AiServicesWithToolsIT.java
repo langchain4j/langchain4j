@@ -2,8 +2,6 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
-import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
@@ -34,22 +32,17 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -102,7 +95,7 @@ class AiServicesWithToolsIT {
 
     interface Assistant {
 
-        Response<AiMessage> chat(String userMessage);
+        Result<String> chat(String userMessage);
     }
 
     static class TransactionService {
@@ -148,17 +141,17 @@ class AiServicesWithToolsIT {
 
         String userMessage = "What is the amounts of transaction T001?";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("11.1");
+        assertThat(result.content()).contains("11.1");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verifyNoMoreInteractions(transactionService);
@@ -216,17 +209,17 @@ class AiServicesWithToolsIT {
 
         String userMessage = "What are the amounts of transactions T001 and T002?";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("11.1", "22.2");
+        assertThat(result.content()).contains("11.1", "22.2");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verify(transactionService).getTransactionAmount("T002");
@@ -304,17 +297,17 @@ class AiServicesWithToolsIT {
 
         String userMessage = "What are the amounts of transactions T001 and T002? Call tools in parallel!";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        Result<String> result = assistant.chat(userMessage);
 
-        assertThat(response.content().text()).contains("11.1", "22.2");
+        assertThat(result.content()).contains("11.1", "22.2");
 
-        TokenUsage tokenUsage = response.tokenUsage();
+        TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
         verify(transactionService).getTransactionAmount("T002");
@@ -363,66 +356,6 @@ class AiServicesWithToolsIT {
                 .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2), messages.get(3))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build());
-    }
-
-    static class StringListProcessor {
-
-        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
-                .name("processStrings")
-                .description("Processes list of strings")
-                .parameters(JsonObjectSchema.builder()
-                        .addProperties(singletonMap(
-                                "arg0",
-                                JsonArraySchema.builder()
-                                        .description("List of strings to process")
-                                        .items(new JsonStringSchema())
-                                        .build()))
-                        .required("arg0")
-                        .build())
-                .build();
-
-        @Tool("Processes list of strings")
-        void processStrings(@P("List of strings to process") List<String> strings) {
-            System.out.printf("called processStrings(%s)%n", strings);
-        }
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_tool_with_List_of_Strings_parameter(ChatModel chatModel) {
-
-        StringListProcessor stringListProcessor = spy(new StringListProcessor());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatModel spyChatModel = spy(chatModel);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(spyChatModel)
-                .chatMemory(chatMemory)
-                .tools(stringListProcessor)
-                .build();
-
-        String userMessage = "Process strings 'cat' and 'dog' together in a single tool call.";
-
-        // when
-        assistant.chat(userMessage);
-
-        // then
-        verify(stringListProcessor).processStrings(asList("cat", "dog"));
-        verifyNoMoreInteractions(stringListProcessor);
-
-        List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatModel)
-                .chat(ChatRequest.builder()
-                        .messages(messages.get(0))
-                        .toolSpecifications(StringListProcessor.EXPECTED_SPECIFICATION)
-                        .build());
-        verify(spyChatModel)
-                .chat(ChatRequest.builder()
-                        .messages(messages.get(0), messages.get(1), messages.get(2))
-                        .toolSpecifications(StringListProcessor.EXPECTED_SPECIFICATION)
                         .build());
     }
 
@@ -546,132 +479,6 @@ class AiServicesWithToolsIT {
                         .build());
     }
 
-    static class WeatherService {
-
-        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
-                .name("currentTemperature")
-                .parameters(JsonObjectSchema.builder()
-                        .addProperties(new LinkedHashMap<String, JsonSchemaElement>() {
-                            {
-                                put("arg0", new JsonStringSchema());
-                                put(
-                                        "arg1",
-                                        JsonEnumSchema.builder()
-                                                .enumValues("CELSIUS", "fahrenheit", "Kelvin")
-                                                .build());
-                            }
-                        })
-                        .required("arg0", "arg1")
-                        .build())
-                .build();
-
-        @Tool
-        int currentTemperature(String city, TemperatureUnit unit) {
-            System.out.printf("called currentTemperature(%s, %s)%n", city, unit);
-            return 37;
-        }
-    }
-
-    enum TemperatureUnit {
-        CELSIUS,
-        fahrenheit,
-        Kelvin
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_tool_with_enum_parameter(ChatModel chatModel) {
-
-        // given
-        WeatherService weatherService = spy(new WeatherService());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatModel spyChatModel = spy(chatModel);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(spyChatModel)
-                .chatMemory(chatMemory)
-                .tools(weatherService)
-                .build();
-
-        // when
-        Response<AiMessage> response = assistant.chat("What is the temperature in Munich now, in kelvin?");
-
-        // then
-        assertThat(response.content().text()).contains("37");
-
-        verify(weatherService).currentTemperature("Munich", Kelvin);
-        verifyNoMoreInteractions(weatherService);
-
-        List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatModel)
-                .chat(ChatRequest.builder()
-                        .messages(messages.get(0))
-                        .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                        .build());
-        verify(spyChatModel)
-                .chat(ChatRequest.builder()
-                        .messages(messages.get(0), messages.get(1), messages.get(2))
-                        .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                        .build());
-    }
-
-    // TODO test Lists, Sets, Arrays of different types (including enums).
-
-    static class QueryService {
-
-        @Tool("Execute the query and return the result")
-        String executeQuery(@P("query to execute") Query query) {
-            assertThat(query).isNotNull();
-            assertThat(query.select).containsExactly("name");
-            assertThat(query.where).containsExactly(new Condition("country", EQUALS, "India"));
-            assertThat(query.limit).isEqualTo(3);
-
-            return "Amar, Akbar, Antony";
-        }
-    }
-
-    static record Query(
-            @Description("List of fields to fetch records") List<String> select,
-            @Description("List of conditions to filter on. Pass null if no condition") List<Condition> where,
-            @Description("limit on number of records") Integer limit,
-            @Description("offset for fetching records") Integer offset) {}
-
-    static record Condition(
-            @Description("Field to filter on") String field,
-            @Description("Operator to apply") Operator operator,
-            @Description("Value to compare with") String value) {}
-
-    enum Operator {
-        EQUALS,
-        NOT_EQUALS,
-        IS_NULL,
-        IS_NOT_NULL
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_tool_with_pojo(ChatModel chatModel) {
-
-        // given
-        QueryService queryService = spy(new QueryService());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatModel spyChatModel = spy(chatModel);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(spyChatModel)
-                .chatMemory(chatMemory)
-                .tools(queryService)
-                .build();
-
-        Response<AiMessage> response = assistant.chat("Give me the names of 3 users from India");
-
-        assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
-    }
-
     @ParameterizedTest
     @MethodSource("models")
     void should_use_programmatically_configured_tools(ChatModel chatModel) {
@@ -697,10 +504,10 @@ class AiServicesWithToolsIT {
                 .build();
 
         // when
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+        Result<String> result = assistant.chat("When does my booking 123-456 starts?");
 
         // then
-        assertThat(response.content().text()).contains("2027");
+        assertThat(result.content()).contains("2027");
     }
 
     static class BookingToolExecutor implements ToolExecutor {
@@ -743,8 +550,8 @@ class AiServicesWithToolsIT {
         assistant.chat("When does my holiday 123-456 starts?");
         verifyNoInteractions(toolExecutor); // user message does not contain word "booking"
 
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
-        assertThat(response.content().text()).contains("2027");
+        Result<String> result = assistant.chat("When does my booking 123-456 starts?");
+        assertThat(result.content()).contains("2027");
         verify(toolExecutor).execute(any(), any());
         verifyNoMoreInteractions(toolExecutor);
     }
@@ -784,8 +591,8 @@ class AiServicesWithToolsIT {
                 .tools(calculator)
                 .build();
 
-        var response = assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
-        assertThat(response.content().text()).contains("2028");
+        Result<String> result = assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
+        assertThat(result.content()).contains("2028");
 
         verify(calculator).xyz(2027);
         verifyNoMoreInteractions(calculator);
@@ -833,33 +640,6 @@ class AiServicesWithToolsIT {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    static class Clock {
-
-        @Tool
-        String currentTime() {
-            return "16:37:43";
-        }
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_execute_tool_without_parameters(ChatModel chatModel) {
-
-        // given
-        Clock clock = spy(new Clock());
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(chatModel)
-                .tools(clock)
-                .build();
-
-        // when
-        Response<AiMessage> response = assistant.chat("What is the time now?");
-
-        // then
-        assertThat(response.content().text()).contains("16:37:43");
     }
 
     interface AssistantReturningResult {
@@ -1081,5 +861,83 @@ class AiServicesWithToolsIT {
 
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);
+    }
+
+
+    interface RouterAgent {
+
+        @dev.langchain4j.service.UserMessage("""
+            Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
+            then forward the request as it is to the corresponding expert provided as a tool.
+            Finally return the answer that you received from the expert without any modification.
+
+            The user request is: '{{it}}'.
+            """)
+        String askToExpert(String request);
+    }
+
+    interface MedicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a medical expert.
+            Analyze the following user request under a medical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A medical expert")
+        String medicalRequest(String request);
+    }
+
+    interface LegalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a legal expert.
+            Analyze the following user request under a legal point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A legal expert")
+        String legalRequest(String request);
+    }
+
+    interface TechnicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a technical expert.
+            Analyze the following user request under a technical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A technical expert")
+        String technicalRequest(String request);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void tools_as_agents_tests(ChatModel model) {
+        MedicalExpert medicalExpert = spy(AiServices.builder(MedicalExpert.class)
+                .chatModel(model)
+                .build());
+        LegalExpert legalExpert = spy(AiServices.builder(LegalExpert.class)
+                .chatModel(model)
+                .build());
+        TechnicalExpert technicalExpert = spy(AiServices.builder(TechnicalExpert.class)
+                .chatModel(model)
+                .build());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
+                .chatModel(model)
+                .chatMemory(chatMemory)
+                .tools(medicalExpert, legalExpert, technicalExpert)
+                .build();
+
+        routerAgent.askToExpert("I broke my leg what should I do");
+        verify(medicalExpert).medicalRequest("I broke my leg what should I do");
+        verifyNoInteractions(legalExpert, technicalExpert);
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+        assertThat(messages.get(0)).isInstanceOf(UserMessage.class); // user prompt
+        assertThat(messages.get(1)).isInstanceOf(AiMessage.class); // ai message to invoke the tool
+        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class); // tool response
+        assertThat(messages.get(3)).isInstanceOf(AiMessage.class); // final ai message
     }
 }

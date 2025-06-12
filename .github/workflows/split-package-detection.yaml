@@ -23,7 +23,7 @@ jobs:
           java-version: '21'
 
       - name: Build with Maven
-        run: mvn package -Dspotless.check.skip=true -Dmaven.javadoc.skip=true -DskipTests -DskipITs
+        run: mvn package -Dmaven.javadoc.skip=true -DskipTests -DskipITs
 
       - name: Make script executable
         run: chmod +x ./check-split-packages.sh

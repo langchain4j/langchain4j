@@ -16,7 +16,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
 
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 
 /**
  * A Jlama model. Very basic information. Allows the model to be loaded with different options.

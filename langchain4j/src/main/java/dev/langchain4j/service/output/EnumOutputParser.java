@@ -1,5 +1,6 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -14,6 +15,7 @@ import static dev.langchain4j.service.output.ParsingUtils.outputParsingException
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 import static java.util.Arrays.stream;
 
+@Internal
 class EnumOutputParser<E extends Enum<E>> implements OutputParser<E> {
 
     private final Class<E> enumClass;

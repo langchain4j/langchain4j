@@ -46,7 +46,7 @@ public class BedrockCohereEmbeddingModel implements EmbeddingModel {
         this.model = ensureNotBlank(builder.model, "model");
         this.inputType = ensureNotBlank(builder.inputType, "inputType");
         this.truncate = builder.truncate;
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     private BedrockRuntimeClient initClient(Builder builder) {

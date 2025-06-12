@@ -39,6 +39,18 @@ public class ChatResponseMetadata {
         return finishReason;
     }
 
+    public Builder<?> toBuilder() {
+        return toBuilder(builder());
+    }
+
+    protected Builder<?> toBuilder(Builder<?> builder) {
+        return builder
+                .id(id)
+                .modelName(modelName)
+                .tokenUsage(tokenUsage)
+                .finishReason(finishReason);
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -69,7 +81,7 @@ public class ChatResponseMetadata {
         return new Builder<>();
     }
 
-    public static class Builder<T extends ChatResponseMetadata.Builder<T>> {
+    public static class Builder<T extends Builder<T>> {
 
         private String id;
         private String modelName;

@@ -31,12 +31,12 @@ class OllamaApiIT {
                         .content(recordedRequest.getRequestUrl().toString())
                         .build();
 
-                ChatResponse chatResponse =
-                        ChatResponse.builder().message(message).build();
+                OllamaChatResponse ollamaChatResponse =
+                        OllamaChatResponse.builder().message(message).build();
 
                 String jsonBody;
                 try {
-                    jsonBody = OBJECT_MAPPER.writeValueAsString(chatResponse);
+                    jsonBody = OBJECT_MAPPER.writeValueAsString(ollamaChatResponse);
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
@@ -62,9 +62,10 @@ class OllamaApiIT {
                 .timeout(Duration.ofSeconds(5))
                 .build();
 
-        ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
+        OllamaChatResponse ollamaChatResponse =
+                ollamaClient.chat(OllamaChatRequest.builder().build());
 
-        assertThat(chatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/api/chat");
+        assertThat(ollamaChatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/api/chat");
     }
 
     @Test
@@ -76,9 +77,10 @@ class OllamaApiIT {
                 .timeout(Duration.ofSeconds(5))
                 .build();
 
-        ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
+        OllamaChatResponse ollamaChatResponse =
+                ollamaClient.chat(OllamaChatRequest.builder().build());
 
-        assertThat(chatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/api/chat");
+        assertThat(ollamaChatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/api/chat");
     }
 
     @Test
@@ -90,9 +92,11 @@ class OllamaApiIT {
                 .timeout(Duration.ofSeconds(5))
                 .build();
 
-        ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
+        OllamaChatResponse ollamaChatResponse =
+                ollamaClient.chat(OllamaChatRequest.builder().build());
 
-        assertThat(chatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/additional/api/chat");
+        assertThat(ollamaChatResponse.getMessage().getContent())
+                .endsWith(mockWebServer.getPort() + "/additional/api/chat");
     }
 
     @Test
@@ -104,8 +108,10 @@ class OllamaApiIT {
                 .timeout(Duration.ofSeconds(5))
                 .build();
 
-        ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
+        OllamaChatResponse ollamaChatResponse =
+                ollamaClient.chat(OllamaChatRequest.builder().build());
 
-        assertThat(chatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/additional/api/chat");
+        assertThat(ollamaChatResponse.getMessage().getContent())
+                .endsWith(mockWebServer.getPort() + "/additional/api/chat");
     }
 }

@@ -13,7 +13,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -82,6 +82,12 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .safetySettings(List<GeminiSafetySetting> or Map<GeminiHarmCategory, GeminiHarmBlockThreshold>)
     .build();
 ```
+### Thinking Configuration
+
+The `GeminiThinkingConfig` class supports:
+
+- `includeThoughts`: Boolean indicating whether to include thoughts in the response (optional).
+- `thinkingBudget`: Integer specifying the thinking budget in milliseconds (optional, set to `null` to disable thinking).
 
 ## GoogleAiGeminiStreamingChatModel
 The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.
@@ -204,7 +210,7 @@ interface WeatherForecastAssistant {
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
-    .responseFormat(ResponseFormat.JSON) // this is required to enable structured outputs feature
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // this is required to enable structured outputs feature
     .build();
 
 WeatherForecastAssistant forecastAssistant =
@@ -392,15 +398,10 @@ Gemini is a multimodal model, which means it outputs text, but in input, it acce
 * videos (`VideoContent`)
 * audio files (`AudioContent`)
 * PDF files (`PdfFileContent`)
-* text documents (`TextFileContent`)
 
-The example below shows how to mix a text prompt, with an image, and a Markdown document:
+The example below shows how to mix a text prompt with an image:
 
 ```java
-// README.md markdown file from LangChain4j's project Github repos
-String base64Text = b64encoder.encodeToString(readBytes(
-  "https://github.com/langchain4j/langchain4j/blob/main/README.md"));
-
 // PNG of the cute colorful parrot mascot of the LangChain4j project
 String base64Img = b64encoder.encodeToString(readBytes(
   "https://avatars.githubusercontent.com/u/132277850?v=4"));
@@ -412,7 +413,6 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
 
 ChatResponse response = gemini.chat(
     UserMessage.from(
-        TextFileContent.from(base64Text, "text/x-markdown"),
         ImageContent.from(base64Img, "image/png"),
         TextContent.from("""
             Do you think this logo fits well

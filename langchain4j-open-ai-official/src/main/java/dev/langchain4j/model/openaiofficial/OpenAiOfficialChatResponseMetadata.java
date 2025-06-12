@@ -36,6 +36,14 @@ public class OpenAiOfficialChatResponseMetadata extends ChatResponseMetadata {
     }
 
     @Override
+    public Builder toBuilder() {
+        return ((Builder) super.toBuilder(builder()))
+                .created(created)
+                .serviceTier(serviceTier)
+                .systemFingerprint(systemFingerprint);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

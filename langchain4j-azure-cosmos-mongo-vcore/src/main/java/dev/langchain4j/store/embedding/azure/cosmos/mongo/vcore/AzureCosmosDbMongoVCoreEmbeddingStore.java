@@ -124,7 +124,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         applicationName = getOrDefault(applicationName, "LangChain4j");
         this.kind = VectorIndexType.fromString(kind);
         this.numLists = getOrDefault(numLists, 1);
-        // TODO: update this value as a user input once LangChain4J only
+        // TODO: update this value as a user input once LangChain4j only
         //  supports other similarity types other than Cosine.
         this.dimensions = getOrDefault(dimensions, 1536);
         this.m = getOrDefault(m, 16);

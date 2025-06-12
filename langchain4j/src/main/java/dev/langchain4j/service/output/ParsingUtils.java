@@ -1,5 +1,6 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
 
 import java.lang.reflect.Type;
@@ -12,6 +13,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
 
+@Internal
 class ParsingUtils {
 
     static <T> T parseAsStringOrJson(String text, Function<String, T> parser, Class<T> type) {

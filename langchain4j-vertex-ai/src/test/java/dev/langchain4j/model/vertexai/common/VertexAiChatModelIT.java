@@ -4,9 +4,11 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.vertexai.VertexAiChatModel;
+import org.junit.jupiter.api.Disabled;
 
 import java.util.List;
 
+@Disabled("TODO: configure custom model")
 class VertexAiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
@@ -19,7 +21,7 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
                         .project(System.getenv("GCP_PROJECT_ID"))
                         .location(System.getenv("GCP_LOCATION"))
                         .publisher("google")
-                        .modelName("chat-bison@001")
+                        .modelName("llama-3.3-70b-instruct-maas")
                         .build()
         );
     }

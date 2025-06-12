@@ -3,10 +3,17 @@ package dev.langchain4j.model.anthropic.common;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static java.lang.System.getenv;
 
+import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import java.util.List;
+
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
@@ -16,7 +23,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .apiKey(getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
 
@@ -25,58 +32,65 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return List.of(ANTHROPIC_STREAMING_CHAT_MODEL);
     }
 
+
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
+    protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
+        var anthropicChatModelBuilder = AnthropicStreamingChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .maxTokens(parameters.maxOutputTokens())
+                .logRequests(true)
+                .logResponses(true);
+        if (parameters.modelName() == null) {
+            anthropicChatModelBuilder.modelName(CLAUDE_3_5_HAIKU_20241022);
+        } else {
+            anthropicChatModelBuilder.modelName(parameters.modelName());
+        }
+        return anthropicChatModelBuilder.build();
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
+    protected String customModelName() {
+        return "claude-3-5-sonnet-20241022";
     }
 
     @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false; // TODO implement
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
+        return AnthropicTokenUsage.class;
     }
 
     @Override
     protected boolean supportsJsonResponseFormat() {
+        // Anthropic does not support response format yet
         return false;
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
+        // Anthropic does not support response format yet
         return false;
     }
 
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
+        // Anthropic does not support images as URLs, only as Base64-encoded strings
         return false;
     }
 
     @Override
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+        // TODO implement
         return false;
     }
 
     @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return null; // TODO implement
     }
 }

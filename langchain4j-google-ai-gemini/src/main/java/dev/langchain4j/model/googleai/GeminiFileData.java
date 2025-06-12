@@ -1,10 +1,16 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiFileData {
     private String mimeType;
     private String fileUri;
 
-    GeminiFileData(String mimeType, String fileUri) {
+    @JsonCreator
+    GeminiFileData(@JsonProperty("mimeType") String mimeType, @JsonProperty("fileUri") String fileUri) {
         this.mimeType = mimeType;
         this.fileUri = fileUri;
     }

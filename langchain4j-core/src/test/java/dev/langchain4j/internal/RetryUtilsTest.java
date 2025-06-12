@@ -12,14 +12,15 @@ import java.util.concurrent.Callable;
 import org.junit.jupiter.api.Test;
 
 class RetryUtilsTest {
+
     @Test
     void jitter() {
-        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(1)).isEqualTo(500.0);
-        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(2)).isEqualTo(750.0);
-        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(3)).isEqualTo(1125.0);
+        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(0)).isEqualTo(500.0);
+        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(1)).isEqualTo(750.0);
+        assertThat(RetryUtils.DEFAULT_RETRY_POLICY.rawDelayMs(2)).isEqualTo(1125.0);
 
         for (int i = 0; i < 100; i++) {
-            assertThat(RetryUtils.DEFAULT_RETRY_POLICY.jitterDelayMillis(3))
+            assertThat(RetryUtils.DEFAULT_RETRY_POLICY.jitterDelayMillis(2))
                     .isBetween(1125, (int) (1125.0 + 1125.0 * 0.2));
         }
     }
@@ -56,7 +57,7 @@ class RetryUtilsTest {
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenReturn("Success");
 
-        String result = RetryUtils.retryPolicyBuilder().delayMillis(100).build().withRetry(mockAction, 3);
+        String result = RetryUtils.retryPolicyBuilder().delayMillis(100).build().withRetry(mockAction, 2);
 
         assertThat(result).isEqualTo("Success");
         verify(mockAction).call();
@@ -67,11 +68,17 @@ class RetryUtilsTest {
     void retryThenSuccess() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
-        when(mockAction.call()).thenThrow(new RuntimeException()).thenReturn("Success");
+        when(mockAction.call())
+                .thenThrow(new RuntimeException())
+                .thenReturn("Success");
+
+        RetryUtils.RetryPolicy retryPolicy = RetryUtils.retryPolicyBuilder()
+                .delayMillis(100)
+                .build();
 
         long startTime = System.currentTimeMillis();
 
-        String result = RetryUtils.retryPolicyBuilder().delayMillis(100).build().withRetry(mockAction, 3);
+        String result = retryPolicy.withRetry(mockAction, Integer.MAX_VALUE);
 
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
@@ -92,7 +99,7 @@ class RetryUtilsTest {
         RetryUtils.RetryPolicy policy =
                 RetryUtils.retryPolicyBuilder().delayMillis(100).build();
 
-        assertThatThrownBy(() -> policy.withRetry(mockAction, 3)).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> policy.withRetry(mockAction, 2)).isInstanceOf(RuntimeException.class);
         verify(mockAction, times(3)).call();
         verifyNoMoreInteractions(mockAction);
     }

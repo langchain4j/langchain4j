@@ -1,10 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,8 +8,6 @@ import java.util.Map;
  * @deprecated please use {@link BedrockChatModel} instead
  */
 @Deprecated(forRemoval = true, since = "1.0.0-beta2")
-@Getter
-@SuperBuilder
 public class BedrockCohereChatModel extends AbstractBedrockChatModel<BedrockCohereChatModelResponse> {
 
     public enum ReturnLikelihood {
@@ -22,12 +16,12 @@ public class BedrockCohereChatModel extends AbstractBedrockChatModel<BedrockCohe
         ALL
     }
 
-    @Builder.Default
+    private static final int DEFAULT_TOP_K = 0;
+    private static final String DEFAULT_MODEL = Types.CommandTextV14.getValue();
+
     private static ReturnLikelihood returnLikelihood = ReturnLikelihood.NONE;
-    @Builder.Default
-    private final int topK = 0;
-    @Builder.Default
-    private final String model = Types.CommandTextV14.getValue();
+    private final int topK;
+    private final String model;
 
     @Override
     protected Map<String, Object> getRequestParameters(String prompt) {
@@ -57,7 +51,6 @@ public class BedrockCohereChatModel extends AbstractBedrockChatModel<BedrockCohe
     /**
      * Bedrock Cohere model ids
      */
-    @Getter
     public enum Types {
         CommandTextV14("cohere.command-text-v14");
 
@@ -67,5 +60,82 @@ public class BedrockCohereChatModel extends AbstractBedrockChatModel<BedrockCohe
             this.value = modelID;
         }
 
+        public String getValue() {
+            return value;
+        }
+    }
+
+    public static ReturnLikelihood getReturnLikelihood() {
+        return returnLikelihood;
+    }
+
+    @Override
+    public int getTopK() {
+        return topK;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    protected BedrockCohereChatModel(BedrockCohereChatModelBuilder<?, ?> buider) {
+        super(buider);
+        if (buider.isTopKSet) {
+            this.topK = buider.topK;
+        } else {
+            this.topK = DEFAULT_TOP_K;
+        }
+        if (buider.isModelSet) {
+            this.model = buider.model;
+        } else {
+            this.model = DEFAULT_MODEL;
+        }
+    }
+
+    public static BedrockCohereChatModelBuilder<?, ?> builder() {
+        return new BedrockCohereChatModelBuilderImpl();
+    }
+
+    public abstract static class BedrockCohereChatModelBuilder<
+                    C extends BedrockCohereChatModel, B extends BedrockCohereChatModelBuilder<C, B>>
+            extends AbstractBedrockChatModel.AbstractBedrockChatModelBuilder<BedrockCohereChatModelResponse, C, B> {
+        private boolean isTopKSet;
+        private int topK;
+        private boolean isModelSet;
+        private String model;
+
+        @Override
+        public B topK(int topK) {
+            this.topK = topK;
+            this.isTopKSet = true;
+            return self();
+        }
+
+        public B model(String model) {
+            this.model = model;
+            this.isModelSet = true;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        @Override
+        public String toString() {
+            return "BedrockCohereChatModel.BedrockCohereChatModelBuilder(super=" + super.toString() + ", topK$value="
+                    + this.topK + ", model$value=" + this.model + ")";
+        }
+    }
+
+    private static final class BedrockCohereChatModelBuilderImpl
+            extends BedrockCohereChatModelBuilder<BedrockCohereChatModel, BedrockCohereChatModelBuilderImpl> {
+        protected BedrockCohereChatModelBuilderImpl self() {
+            return this;
+        }
+
+        public BedrockCohereChatModel build() {
+            return new BedrockCohereChatModel(this);
+        }
     }
 }

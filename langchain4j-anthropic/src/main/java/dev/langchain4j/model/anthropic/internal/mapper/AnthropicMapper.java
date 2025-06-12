@@ -9,7 +9,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlock
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -201,36 +201,28 @@ public class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new AnthropicTokenUsage(
-                anthropicUsage.inputTokens,
-                anthropicUsage.outputTokens,
-                anthropicUsage.cacheCreationInputTokens,
-                anthropicUsage.cacheReadInputTokens);
+        return AnthropicTokenUsage.builder()
+                .inputTokenCount(anthropicUsage.inputTokens)
+                .outputTokenCount(anthropicUsage.outputTokens)
+                .cacheCreationInputTokens(anthropicUsage.cacheCreationInputTokens)
+                .cacheReadInputTokens(anthropicUsage.cacheReadInputTokens)
+                .build();
     }
 
     public static FinishReason toFinishReason(String anthropicStopReason) {
         if (anthropicStopReason == null) {
             return null;
         }
-        switch (anthropicStopReason) {
-            case "end_turn":
-                return STOP;
-            case "max_tokens":
-                return LENGTH;
-            case "stop_sequence":
-                return OTHER; // TODO
-            case "tool_use":
-                return TOOL_EXECUTION;
-            default:
-                return null; // TODO
-        }
+        return switch (anthropicStopReason) {
+            case "end_turn", "stop_sequence" -> STOP;
+            case "max_tokens" -> LENGTH;
+            case "tool_use" -> TOOL_EXECUTION;
+            default -> OTHER;
+        };
     }
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
-        if (toolSpecifications == null) {
-            return null;
-        }
         return toolSpecifications.stream()
                 .map(toolSpecification -> toAnthropicTool(toolSpecification, cacheToolsPrompt))
                 .collect(toList());

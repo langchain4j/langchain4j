@@ -1,8 +1,13 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiContent {
     private List<GeminiPart> parts;
     private String role;
@@ -12,7 +17,8 @@ class GeminiContent {
         this.role = role;
     }
 
-    public GeminiContent(List<GeminiPart> parts, String role) {
+    @JsonCreator
+    public GeminiContent(@JsonProperty("parts") List<GeminiPart> parts, @JsonProperty("role") String role) {
         this.parts = parts;
         this.role = role;
     }

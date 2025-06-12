@@ -879,7 +879,7 @@ public class AiServicesIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(result.sources()).isNull();
+        assertThat(result.sources()).isEmpty();
 
         verify(chatModel).chat(chatRequest(userMessage));
     }
@@ -911,7 +911,7 @@ public class AiServicesIT {
         assertThat(booking.bookingId).isNotBlank();
 
         assertThat(result.tokenUsage()).isNotNull();
-        assertThat(result.sources()).isNull();
+        assertThat(result.sources()).isEmpty();
 
         verify(chatModel)
                 .chat(chatRequest("Give me an example of a booking\n"

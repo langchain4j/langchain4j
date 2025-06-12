@@ -33,7 +33,7 @@ The `langchain4j-azure-open-ai` library is availlable on Maven Central.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ A Spring Boot starter is available to configure the `langchain4j-azure-open-ai` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-beta3</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -66,9 +66,8 @@ ChatModel model = AzureOpenAiChatModel.builder()
         .build();
 ```
 
-This will create an instance of `AzureOpenAiChatModel` with default model parameters (e.g. `0.7` temperature, etc.)
-and an API key stored in the `AZURE_OPENAI_KEY` environment variable.
-Default model parameters can be customized by providing values in the builder.
+This will create an instance of `AzureOpenAiChatModel` with the specified endpoint, API key and depoyment name.
+Other parameters can be customized by providing values in the builder.
 
 ### Spring Boot
 

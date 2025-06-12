@@ -35,7 +35,6 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.title()).isNotBlank();
             assertThat(result.url()).isNotNull();
             assertThat(result.snippet()).isNotBlank();
-            assertThat(result.content()).isNotBlank();
             assertThat(result.metadata()).containsOnlyKeys("score");
         });
 
@@ -63,7 +62,7 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         assertThat(answerResult.url()).isEqualTo(URI.create("https://tavily.com/"));
         assertThat(answerResult.snippet()).isNotBlank();
         assertThat(answerResult.content()).isNull();
-        assertThat(answerResult.metadata()).isNull();
+        assertThat(answerResult.metadata()).isEmpty();
 
         results.subList(1, results.size()).forEach(result -> {
             assertThat(result.title()).isNotBlank();

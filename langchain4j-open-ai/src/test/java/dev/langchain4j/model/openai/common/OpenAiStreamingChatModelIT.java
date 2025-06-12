@@ -2,9 +2,14 @@ package dev.langchain4j.model.openai.common;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
+import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
 
@@ -61,6 +66,23 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         return OpenAiChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
+                .build();
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel streamingChatModel) {
+        return OpenAiChatResponseMetadata.class;
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
+        return OpenAiTokenUsage.class;
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return defaultStreamingModelBuilder()
+                .listeners(List.of(listener))
                 .build();
     }
 

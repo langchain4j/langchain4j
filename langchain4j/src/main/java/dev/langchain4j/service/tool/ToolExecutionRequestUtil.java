@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.internal.Json;
 
@@ -14,12 +15,11 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 /**
  * Utility class for {@link ToolExecutionRequest}.
  */
+@Internal
 class ToolExecutionRequestUtil {
 
     private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
-
     private static final Pattern LEADING_TRAILING_QUOTE_PATTERN = Pattern.compile("^\"|\"$");
-
     private static final Pattern ESCAPED_QUOTE_PATTERN = Pattern.compile("\\\\\"");
 
     private ToolExecutionRequestUtil() {
@@ -54,8 +54,12 @@ class ToolExecutionRequestUtil {
             return Map.of();
         }
 
-        String normalizeArguments = normalizeJsonString(arguments);
-        return Json.fromJson(removeTrailingComma(normalizeArguments), MAP_TYPE);
+        try {
+            return Json.fromJson(arguments, MAP_TYPE);
+        } catch (Exception ignored) {
+            String normalizedArguments = removeTrailingComma(normalizeJsonString(arguments));
+            return Json.fromJson(normalizedArguments, MAP_TYPE);
+        }
     }
 
     /**

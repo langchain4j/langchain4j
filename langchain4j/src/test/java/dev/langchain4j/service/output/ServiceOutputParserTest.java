@@ -3,6 +3,7 @@ package dev.langchain4j.service.output;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.IllegalConfigurationException;
@@ -93,7 +94,7 @@ class ServiceOutputParserTest {
         DefaultOutputParserFactory defaultOutputParserFactory = new DefaultOutputParserFactory();
         OutputParserFactory defaultOutputParserFactorySpy = spy(defaultOutputParserFactory);
 
-        Response<AiMessage> responseStub = Response.from(aiMessage);
+        ChatResponse chatResponseStub = ChatResponse.builder().aiMessage(aiMessage).build();
         sut = new ServiceOutputParser(defaultOutputParserFactorySpy);
 
         AtomicReference<OutputParser<?>> capturedParserReference = new AtomicReference<>();
@@ -107,7 +108,7 @@ class ServiceOutputParserTest {
                 .get(any(), any());
 
         // When
-        sut.parse(responseStub, rawReturnType);
+        sut.parse(chatResponseStub, rawReturnType);
 
         // Then
         Object capturedOutputParser = capturedParserReference.get();
@@ -208,11 +209,11 @@ class ServiceOutputParserTest {
     void makeSureJsonBlockIsExtractedBeforeParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
-        Response<AiMessage> responseStub = Response.from(aiMessage);
+        ChatResponse chatResponseStub = ChatResponse.builder().aiMessage(aiMessage).build();
         sut = new ServiceOutputParser();
 
         // When
-        Object result = sut.parse(responseStub, KeyProperty.class);
+        Object result = sut.parse(chatResponseStub, KeyProperty.class);
 
         // Then
         assertThat(result).isInstanceOf(KeyProperty.class);
@@ -232,11 +233,11 @@ class ServiceOutputParserTest {
     void makeSureNestedJsonBlockIsExtractedBeforeParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
-        Response<AiMessage> responseStub = Response.from(aiMessage);
+        ChatResponse chatResponseStub = ChatResponse.builder().aiMessage(aiMessage).build();
         sut = new ServiceOutputParser();
 
         // When
-        Object result = sut.parse(responseStub, KeyPropertyWrapper.class);
+        Object result = sut.parse(chatResponseStub, KeyPropertyWrapper.class);
 
         // Then
         assertThat(result).isInstanceOf(KeyPropertyWrapper.class);
@@ -250,11 +251,11 @@ class ServiceOutputParserTest {
     void illegalJsonBlockNotExtractedAndFailsParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
-        Response<AiMessage> responseStub = Response.from(aiMessage);
+        ChatResponse chatResponseStub = ChatResponse.builder().aiMessage(aiMessage).build();
         sut = new ServiceOutputParser();
 
         // When / Then
-        assertThatThrownBy(() -> sut.parse(responseStub, KeyProperty.class))
+        assertThatThrownBy(() -> sut.parse(chatResponseStub, KeyProperty.class))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasRootCauseInstanceOf(JsonProcessingException.class);
     }

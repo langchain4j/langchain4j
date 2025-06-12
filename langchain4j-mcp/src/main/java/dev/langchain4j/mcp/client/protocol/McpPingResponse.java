@@ -13,4 +13,8 @@ public class McpPingResponse extends McpClientMessage {
     public McpPingResponse(final Long id) {
         super(id);
     }
+
+    public Map<String, Object> getResult() {
+        return result;
+    }
 }

@@ -92,7 +92,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
      *                          This is a mandatory parameter.
      * @param maxRetries        The maximum number of retries to perform if the database cannot execute the generated SQL query.
      *                          An error message will be sent back to the LLM to try correcting the query.
-     *                          This is an optional parameter. Default: 1.
+     *                          This is an optional parameter. Default: 0.
      */
     @Experimental
     public SqlDatabaseContentRetriever(DataSource dataSource,
@@ -106,7 +106,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         this.databaseStructure = getOrDefault(databaseStructure, () -> generateDDL(dataSource));
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.chatModel = ensureNotNull(chatModel, "chatModel");
-        this.maxRetries = getOrDefault(maxRetries, 1);
+        this.maxRetries = getOrDefault(maxRetries, 0);
     }
 
     // TODO (for v2)

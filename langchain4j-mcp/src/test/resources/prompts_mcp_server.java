@@ -1,7 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //DEPS io.quarkus:quarkus-bom:${quarkus.version:3.20.0}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.0.1
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.0.1
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.1.0
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.1.0
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +15,7 @@ import io.quarkiverse.mcp.server.Prompt;
 import io.quarkiverse.mcp.server.PromptArg;
 import io.quarkiverse.mcp.server.PromptMessage;
 import io.quarkiverse.mcp.server.ResourceContents;
+import io.quarkiverse.mcp.server.Role;
 import io.quarkiverse.mcp.server.TextContent;
 
 public class prompts_mcp_server {
@@ -46,7 +47,7 @@ public class prompts_mcp_server {
     PromptMessage embeddedBinaryResource() {
         ResourceContents blob = new BlobResourceContents("file:///embedded-blob", "aaaaa", "application/octet-stream");
         Content content = new EmbeddedResource(blob);
-        return new PromptMessage("user", content);
+        return new PromptMessage(Role.USER, content);
     }
 
 }

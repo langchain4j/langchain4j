@@ -62,9 +62,5 @@ public class ConversationalChain implements Chain<String, String> {
         public ConversationalChain build() {
             return new ConversationalChain(this.chatModel, this.chatMemory);
         }
-
-        public String toString() {
-            return "ConversationalChain.ConversationalChainBuilder(chatModel=" + this.chatModel + ", chatMemory=" + this.chatMemory + ")";
-        }
     }
 }

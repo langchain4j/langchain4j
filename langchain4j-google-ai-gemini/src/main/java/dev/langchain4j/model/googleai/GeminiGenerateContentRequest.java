@@ -1,7 +1,12 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiGenerateContentRequest {
     private String model;
     private List<GeminiContent> contents;
@@ -12,7 +17,16 @@ class GeminiGenerateContentRequest {
     private GeminiGenerationConfig generationConfig;
     private String cachedContent;
 
-    GeminiGenerateContentRequest(String model, List<GeminiContent> contents, GeminiTool tools, GeminiToolConfig toolConfig, List<GeminiSafetySetting> safetySettings, GeminiContent systemInstruction, GeminiGenerationConfig generationConfig, String cachedContent) {
+    @JsonCreator
+    GeminiGenerateContentRequest(
+            @JsonProperty("model") String model,
+            @JsonProperty("contents") List<GeminiContent> contents,
+            @JsonProperty("tools") GeminiTool tools,
+            @JsonProperty("toolConfig") GeminiToolConfig toolConfig,
+            @JsonProperty("safetySettings") List<GeminiSafetySetting> safetySettings,
+            @JsonProperty("systemInstruction") GeminiContent systemInstruction,
+            @JsonProperty("generationConfig") GeminiGenerationConfig generationConfig,
+            @JsonProperty("cachedContent") String cachedContent) {
         this.model = model;
         this.contents = contents;
         this.tools = tools;

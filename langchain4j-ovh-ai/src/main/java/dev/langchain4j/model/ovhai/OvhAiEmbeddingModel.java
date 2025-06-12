@@ -30,7 +30,7 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
      * @param baseUrl      The base URL of the OVHcloud API.
      * @param apiKey       The API key for authentication with the OVHcloud API.
      * @param timeout      The timeout for API requests. Default: 60 seconds
-     * @param maxRetries   The maximum number of retries for API requests. Default: 3
+     * @param maxRetries   The maximum number of retries for API requests. Default: 2
      * @param logRequests  Whether to log the content of API requests using SLF4J. Default: false
      * @param logResponses Whether to log the content of API responses using SLF4J. Default: false
      */
@@ -50,7 +50,7 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
                         .logRequests(getOrDefault(logRequests, false))
                         .logResponses(getOrDefault(logResponses, false))
                         .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     /**

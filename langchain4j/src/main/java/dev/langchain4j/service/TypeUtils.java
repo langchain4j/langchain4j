@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.Internal;
+
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -12,6 +14,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
+@Internal
 public class TypeUtils {
 
     public static Class<?> getRawClass(Type type) {

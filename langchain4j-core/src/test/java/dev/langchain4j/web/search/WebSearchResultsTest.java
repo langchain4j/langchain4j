@@ -24,7 +24,7 @@ class WebSearchResultsTest {
 
         assertThat(webSearchResults)
                 .hasToString(
-                        "WebSearchResults{searchMetadata=null, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}, results=[WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='null', metadata=null}]}");
+                        "WebSearchResults{searchMetadata={}, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, metadata={}}, results=[WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='null', metadata={}}]}");
     }
 
     @Test

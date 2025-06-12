@@ -1,13 +1,13 @@
 package dev.langchain4j.model.azure;
 
-import com.azure.core.exception.ClientAuthenticationException;
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
 import static java.util.Collections.singletonList;
 
-class AzureOpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+class AzureOpenAiStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {
@@ -18,6 +18,7 @@ class AzureOpenAiStreamingChatModelListenerIT extends StreamingChatModelListener
                 .temperature(temperature())
                 .topP(topP())
                 .maxTokens(maxTokens())
+                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(modelName()))
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();
@@ -41,6 +42,6 @@ class AzureOpenAiStreamingChatModelListenerIT extends StreamingChatModelListener
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return ClientAuthenticationException.class;
+        return AuthenticationException.class;
     }
 }

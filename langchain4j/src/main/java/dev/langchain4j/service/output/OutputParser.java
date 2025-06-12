@@ -1,5 +1,6 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.Optional;
@@ -9,6 +10,7 @@ import java.util.Optional;
  *
  * @param <T> the type of the output.
  */
+@Internal
 interface OutputParser<T> {
 
     /**

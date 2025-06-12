@@ -1,10 +1,17 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiAttributionSourceId {
     private GeminiGroundingPassageId groundingPassage;
     private GeminiSemanticRetrieverChunk semanticRetrieverChunk;
 
-    GeminiAttributionSourceId(GeminiGroundingPassageId groundingPassage, GeminiSemanticRetrieverChunk semanticRetrieverChunk) {
+    @JsonCreator
+    GeminiAttributionSourceId(@JsonProperty("groundingPassage") GeminiGroundingPassageId groundingPassage,
+                              @JsonProperty("semanticRetrieverChunk") GeminiSemanticRetrieverChunk semanticRetrieverChunk) {
         this.groundingPassage = groundingPassage;
         this.semanticRetrieverChunk = semanticRetrieverChunk;
     }

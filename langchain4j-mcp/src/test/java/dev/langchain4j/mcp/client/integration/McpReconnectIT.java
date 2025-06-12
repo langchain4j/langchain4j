@@ -52,6 +52,9 @@ public class McpReconnectIT {
 
     @AfterAll
     static void tearDown() throws IOException, InterruptedException {
+        if (mcpClient != null) {
+            mcpClient.close();
+        }
         if (process != null) {
             process.destroyForcibly();
         }

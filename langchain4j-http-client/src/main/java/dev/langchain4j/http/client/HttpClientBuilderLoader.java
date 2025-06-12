@@ -1,9 +1,9 @@
 package dev.langchain4j.http.client;
 
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import java.util.Collection;
 import java.util.List;
-
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class HttpClientBuilderLoader {
 
@@ -14,8 +14,10 @@ public class HttpClientBuilderLoader {
             List<String> factoryNames = factories.stream()
                     .map(factory -> factory.getClass().getName())
                     .toList();
-            throw new IllegalStateException(String.format("Conflict: multiple HTTP clients have been found " +
-                    "in the classpath: %s. Please explicitly specify the one you wish to use.", factoryNames));
+            throw new IllegalStateException(String.format(
+                    "Conflict: multiple HTTP clients have been found "
+                            + "in the classpath: %s. Please explicitly specify the one you wish to use.",
+                    factoryNames));
         }
 
         for (HttpClientBuilderFactory factory : factories) {

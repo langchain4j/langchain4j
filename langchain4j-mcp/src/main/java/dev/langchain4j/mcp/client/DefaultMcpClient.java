@@ -30,6 +30,7 @@ import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -47,9 +48,11 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicLong idGenerator = new AtomicLong(0);
     private final McpTransport transport;
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final String key;
     private final String clientName;
     private final String clientVersion;
     private final String protocolVersion;
+    private final Duration initializationTimeout;
     private final Duration toolExecutionTimeout;
     private final Duration resourcesTimeout;
     private final Duration promptsTimeout;
@@ -69,9 +72,11 @@ public class DefaultMcpClient implements McpClient {
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
+        key = getOrDefault(builder.key, () -> UUID.randomUUID().toString());
         clientName = getOrDefault(builder.clientName, "langchain4j");
         clientVersion = getOrDefault(builder.clientVersion, "1.0");
         protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
+        initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
         toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
         resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
         promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
@@ -108,7 +113,8 @@ public class DefaultMcpClient implements McpClient {
         InitializeParams params = createInitializeParams();
         request.setParams(params);
         try {
-            JsonNode capabilities = transport.initialize(request).get();
+            JsonNode capabilities =
+                    transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
             log.debug("MCP server capabilities: {}", capabilities.get("result"));
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -133,6 +139,11 @@ public class DefaultMcpClient implements McpClient {
         params.setCapabilities(capabilities);
 
         return params;
+    }
+
+    @Override
+    public String key() {
+        return key;
     }
 
     @Override
@@ -354,9 +365,11 @@ public class DefaultMcpClient implements McpClient {
 
         private String toolExecutionTimeoutErrorMessage;
         private McpTransport transport;
+        private String key;
         private String clientName;
         private String clientVersion;
         private String protocolVersion;
+        private Duration initializationTimeout;
         private Duration toolExecutionTimeout;
         private Duration resourcesTimeout;
         private Duration pingTimeout;
@@ -366,6 +379,15 @@ public class DefaultMcpClient implements McpClient {
 
         public Builder transport(McpTransport transport) {
             this.transport = transport;
+            return this;
+        }
+
+        /**
+         * Sets a unique identifier for the client. If none is provided, a
+         * UUID will be automatically generated.
+         */
+        public Builder key(String key) {
+            this.key = key;
             return this;
         }
 
@@ -397,6 +419,15 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder protocolVersion(String protocolVersion) {
             this.protocolVersion = protocolVersion;
+            return this;
+        }
+
+        /**
+         * Sets the timeout for initializing the client.
+         * The default value is 30 seconds.
+         */
+        public Builder initializationTimeout(Duration initializationTimeout) {
+            this.initializationTimeout = initializationTimeout;
             return this;
         }
 

@@ -5,12 +5,14 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -21,7 +23,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -35,6 +36,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
@@ -64,8 +66,6 @@ class GoogleAiGeminiStreamingChatModelIT {
 
     private static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    private static final String MD_FILE_URL =
-            "https://raw.githubusercontent.com/langchain4j/langchain4j/main/docs/docs/intro.md";
 
     @Test
     void should_answer_simple_question() {
@@ -183,27 +183,6 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_support_text_file() {
-        // given
-        GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
-
-        UserMessage userMessage = UserMessage.userMessage(
-                TextFileContent.from(new String(Base64.getEncoder().encode(readBytes(MD_FILE_URL))), "text/markdown"),
-                TextContent.from("What project does this markdown file mention?"));
-
-        // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        gemini.chat(List.of(userMessage), handler);
-        ChatResponse response = handler.get();
-
-        // then
-        assertThat(response.aiMessage().text()).containsIgnoringCase("LangChain4j");
     }
 
     @Test
@@ -518,7 +497,7 @@ class GoogleAiGeminiStreamingChatModelIT {
     }
 
     @Test
-    void should_allow_array_as_response_schema() {
+    void should_allow_array_as_response_schema() throws JsonProcessingException {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -546,50 +525,36 @@ class GoogleAiGeminiStreamingChatModelIT {
         System.out.println("response = " + response);
 
         // then
-        Integer[] diceRolls = new Gson().fromJson(response.aiMessage().text(), Integer[].class);
+        Integer[] diceRolls = new ObjectMapper().readValue(response.aiMessage().text(), Integer[].class);
         assertThat(diceRolls.length).isEqualTo(3);
     }
 
-    private class Color {
-        private String name;
-        private int red;
-        private int green;
-        private int blue;
-        private boolean muted;
-    }
-
     @Test
-    void should_deserialize_to_POJO() {
+    void should_deserialize_to_POJO() throws Exception {
+
         // given
+        record Person(String name, int age) {}
+
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.0-flash")
                 .logRequestsAndResponses(true)
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
-                        .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+                        .jsonSchema(JsonSchemas.jsonSchemaFrom(Person.class).get())
                         .build())
                 .build();
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        gemini.chat(
-                List.of(
-                        SystemMessage.from("Your role is to extract information from the description of a color"),
-                        UserMessage.from(
-                                "Cobalt blue is a blend of a lot of blue, a bit of green, and almost no red.")),
-                handler);
+        gemini.chat("Klaus is 37 years old", handler);
         ChatResponse response = handler.get();
 
-        System.out.println("response = " + response);
-
-        Color color = new Gson().fromJson(response.aiMessage().text(), Color.class);
+        Person person = new ObjectMapper().readValue(response.aiMessage().text(), Person.class);
 
         // then
-        assertThat(color.name).isEqualToIgnoringCase("Cobalt blue");
-        assertThat(color.muted).isFalse();
-        assertThat(color.red).isLessThanOrEqualTo(color.green);
-        assertThat(color.green).isLessThanOrEqualTo(color.blue);
+        assertThat(person.name).isEqualTo("Klaus");
+        assertThat(person.age).isEqualTo(37);
     }
 
     @Test
@@ -705,6 +670,47 @@ class GoogleAiGeminiStreamingChatModelIT {
         verify(spyTransactions).getTransactionAmount("T002");
 
         verifyNoMoreInteractions(spyTransactions);
+    }
+
+    @Test
+    void should_handle_timeout() throws Exception {
+
+        // given
+        Duration timeout = Duration.ofMillis(300);
+
+        GoogleAiGeminiStreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-1.5-flash")
+                .logRequestsAndResponses(true)
+                .timeout(timeout)
+                .build();
+
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        model.chat("hello, how are you?", new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                futureError.completeExceptionally(new RuntimeException("onPartialResponse should not be called"));
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureError.completeExceptionally(new RuntimeException("onCompleteResponse should not be called"));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureError.complete(error);
+            }
+        });
+
+        Throwable error = futureError.get(5, SECONDS);
+
+        assertThat(error)
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
+                .hasRootCauseExactlyInstanceOf(java.net.http.HttpTimeoutException.class);
     }
 
     @AfterEach

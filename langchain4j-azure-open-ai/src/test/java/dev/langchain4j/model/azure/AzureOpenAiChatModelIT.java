@@ -1,6 +1,5 @@
 package dev.langchain4j.model.azure;
 
-import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -15,6 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -33,6 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,11 +41,13 @@ import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecut
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonSchemaElementFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AzureOpenAiChatModelIT {
 
@@ -144,7 +147,7 @@ class AzureOpenAiChatModelIT {
 
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNull();
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -293,7 +296,7 @@ class AzureOpenAiChatModelIT {
 
         // then
         assertThat(aiMessage2.text()).contains("4", "16", "512");
-        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
@@ -314,32 +317,6 @@ class AzureOpenAiChatModelIT {
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .responseFormat(ResponseFormat.JSON)
-                .logRequestsAndResponses(true)
-                .build();
-
-        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
-
-        ChatResponse response = model.chat(systemMessage, userMessage);
-
-        assertThat(response.aiMessage().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
-        assertThat(response.finishReason()).isEqualTo(STOP);
-    }
-
-    /**
-     * @deprecated Should be removed when `AzureOpenAiChatModel.responseFormat(ChatCompletionsResponseFormat chatCompletionsResponseFormat)` is removed.
-     */
-    @ParameterizedTest(name = "Deployment name {0}")
-    @CsvSource({
-            "gpt-4o"
-    })
-    @Deprecated(forRemoval = true)
-    void should_support_deprecated_json_format(String deploymentName) {
-        ChatModel model = AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName(deploymentName)
-                .responseFormat(new ChatCompletionsJsonResponseFormat())
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -489,6 +466,27 @@ class AzureOpenAiChatModelIT {
                         new Circle(5),
                         new Rectangle(10, 20)
                 );
+    }
+
+    @Test
+    void should_handle_timeout() {
+
+        // given
+        Duration timeout = Duration.ofMillis(10);
+
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName("gpt-4o")
+                .logRequestsAndResponses(true)
+                .maxRetries(0)
+                .timeout(timeout)
+                .build();
+
+        // when
+        assertThatThrownBy(() -> model.chat("hello, how are you?"))
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
+                .hasCauseExactlyInstanceOf(io.netty.channel.ConnectTimeoutException.class);
     }
 
     @AfterEach

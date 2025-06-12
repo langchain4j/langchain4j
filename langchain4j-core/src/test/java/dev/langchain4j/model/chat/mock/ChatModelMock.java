@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.synchronizedList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -25,6 +26,7 @@ import java.util.function.Function;
  * Always returns a static response and records all invocations for verification at the end of a test.
  * This implementation is experimental and subject to change in the future. It may utilize Mockito internally.
  */
+@Experimental
 public class ChatModelMock implements ChatModel {
 
     private final String staticResponse;
@@ -32,7 +34,7 @@ public class ChatModelMock implements ChatModel {
     private final Function<ChatRequest, AiMessage> aiMessageGenerator;
     private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
 
-    private static final RetryUtils.RetryPolicy DEFAULT_NO_RETRY_POLICY = retryPolicyBuilder().maxAttempts(1).build();
+    private static final RetryUtils.RetryPolicy DEFAULT_NO_RETRY_POLICY = retryPolicyBuilder().maxRetries(0).build();
     private RetryUtils.RetryPolicy retryPolicy = DEFAULT_NO_RETRY_POLICY;
 
     public ChatModelMock(String staticResponse) {

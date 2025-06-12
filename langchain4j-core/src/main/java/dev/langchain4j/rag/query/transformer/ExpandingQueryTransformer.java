@@ -123,9 +123,5 @@ public class ExpandingQueryTransformer implements QueryTransformer {
         public ExpandingQueryTransformer build() {
             return new ExpandingQueryTransformer(this.chatModel, this.promptTemplate, this.n);
         }
-
-        public String toString() {
-            return "ExpandingQueryTransformer.ExpandingQueryTransformerBuilder(chatModel=" + this.chatModel + ", promptTemplate=" + this.promptTemplate + ", n=" + this.n + ")";
-        }
     }
 }

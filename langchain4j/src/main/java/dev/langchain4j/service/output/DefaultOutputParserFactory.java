@@ -1,5 +1,7 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -11,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@Internal
 class DefaultOutputParserFactory implements OutputParserFactory {
 
     private static final Map<Class<?>, OutputParser<?>> OUTPUT_PARSERS = new HashMap<>();

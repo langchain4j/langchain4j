@@ -116,7 +116,7 @@ class OpenAiListenableChatModelIT { // TODO extract to ListenableChatModelIT
 
         ChatModel model = OpenAiChatModel.builder()
                 .apiKey(incorrectApiKey)
-                .maxRetries(1)
+                .maxRetries(0)
                 .listeners(List.of(listener))
                 .build();
 

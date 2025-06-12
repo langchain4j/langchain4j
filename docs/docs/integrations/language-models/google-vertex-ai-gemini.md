@@ -68,14 +68,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-gemini</artifactId>
-  <version>1.0.0-beta3</version>
+  <version>1.0.1-beta6</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:1.0.0-beta3'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:1.0.1-beta6'
 ```
 
 ### Try out an example code:
@@ -93,7 +93,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
+import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModel;
 
 public class GeminiProVisionWithImageInput {
 
@@ -193,7 +193,7 @@ ChatModel model = VertexAiGeminiChatModel.builder()
     .topP(0.95)                 // topP (between 0 and 1) — cumulative probability of the most probable tokens
     .topK(3)                    // topK (positive integer) — pick a token among the most probable ones
     .seed(1234)                 // seed for the random number generator
-    .maxRetries(3)              // maximum number of retries
+    .maxRetries(2)              // maximum number of retries
     .responseMimeType("application/json") // to get JSON structured outputs
     .responseSchema(/*...*/)    // structured output following the provided schema
     .safetySettings(/*...*/)    // specify safety settings to filter inappropriate content

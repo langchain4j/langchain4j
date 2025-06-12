@@ -1,7 +1,12 @@
 package dev.langchain4j.model.googleai;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class GeminiCandidate {
     private GeminiContent content;
     private GeminiFinishReason finishReason;
@@ -11,7 +16,15 @@ class GeminiCandidate {
     private List<GeminiGroundingAttribution> groundingAttributions;
     private Integer index;
 
-    GeminiCandidate(GeminiContent content, GeminiFinishReason finishReason, List<GeminiSafetySetting> safetySettings, GeminiCitationMetadata citationMetadata, Integer tokenCount, List<GeminiGroundingAttribution> groundingAttributions, Integer index) {
+    @JsonCreator
+    GeminiCandidate(
+            @JsonProperty("content") GeminiContent content,
+            @JsonProperty("finishReason") GeminiFinishReason finishReason,
+            @JsonProperty("safetySettings") List<GeminiSafetySetting> safetySettings,
+            @JsonProperty("citationMetadata") GeminiCitationMetadata citationMetadata,
+            @JsonProperty("tokenCount") Integer tokenCount,
+            @JsonProperty("groundingAttributions") List<GeminiGroundingAttribution> groundingAttributions,
+            @JsonProperty("index") Integer index) {
         this.content = content;
         this.finishReason = finishReason;
         this.safetySettings = safetySettings;

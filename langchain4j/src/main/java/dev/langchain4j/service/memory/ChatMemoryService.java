@@ -1,5 +1,6 @@
 package dev.langchain4j.service.memory;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 
@@ -9,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+@Internal
 public class ChatMemoryService {
 
     public static final String DEFAULT = "default";

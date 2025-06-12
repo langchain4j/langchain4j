@@ -365,11 +365,10 @@ class AiServicesUserMessageConfigTest {
         if (message instanceof dev.langchain4j.data.message.UserMessage) {
             return AiMessage.class;
         } else if (message instanceof AiMessage aiMessage) {
-            if (aiMessage.toolExecutionRequests() == null
-                    || aiMessage.toolExecutionRequests().isEmpty()) {
-                return dev.langchain4j.data.message.UserMessage.class;
-            } else {
+            if (aiMessage.hasToolExecutionRequests()) {
                 return ToolExecutionResultMessage.class;
+            } else {
+                return dev.langchain4j.data.message.UserMessage.class;
             }
         } else if (message instanceof ToolExecutionResultMessage) {
             return AiMessage.class;

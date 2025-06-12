@@ -1,6 +1,6 @@
 package dev.langchain4j.model.huggingface;
 
-import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
+import static dev.langchain4j.model.huggingface.HuggingFaceModelName.MICROSOFT_PHI3_MINI_4K_INSTRUCT;
 import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,7 +18,7 @@ class HuggingFaceLanguageModelIT {
 
         HuggingFaceLanguageModel model = HuggingFaceLanguageModel.builder()
                 .accessToken(System.getenv("HF_API_KEY"))
-                .modelId(TII_UAE_FALCON_7B_INSTRUCT)
+                .modelId(MICROSOFT_PHI3_MINI_4K_INSTRUCT)
                 .timeout(ofSeconds(15))
                 .temperature(0.7)
                 .maxNewTokens(20)
@@ -36,7 +36,7 @@ class HuggingFaceLanguageModelIT {
         HuggingFaceLanguageModel model = HuggingFaceLanguageModel.builder()
                 .baseUrl("https://api-inference.huggingface.co/")
                 .accessToken(System.getenv("HF_API_KEY"))
-                .modelId(TII_UAE_FALCON_7B_INSTRUCT)
+                .modelId(MICROSOFT_PHI3_MINI_4K_INSTRUCT)
                 .timeout(ofSeconds(15))
                 .temperature(0.7)
                 .maxNewTokens(20)
