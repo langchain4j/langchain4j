@@ -26,11 +26,6 @@ abstract class OllamaBaseChatModel {
     protected Set<Capability> supportedCapabilities;
 
     void init(Builder<? extends OllamaBaseChatModel, ? extends Builder<?, ?>> builder) {
-
-        if (builder.format != null && builder.responseFormat != null) {
-            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
-        }
-
         this.client = OllamaClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
@@ -40,18 +35,19 @@ abstract class OllamaBaseChatModel {
                 .logResponses(builder.logResponses)
                 .build();
 
-        ChatRequestParameters commonParameters = getOrDefault(builder.defaultRequestParameters,
-                () -> DefaultChatRequestParameters.builder().build());
-        validate(commonParameters);
-
-        OllamaChatRequestParameters ollamaParameters;
-        if (builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters) {
-            ollamaParameters = ollamaChatRequestParameters;
+        ChatRequestParameters commonParameters;
+        if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
+            commonParameters = builder.defaultRequestParameters;
         } else {
-            ollamaParameters = OllamaChatRequestParameters.builder().build();
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        ResponseFormat responseFormat = "json".equals(builder.format) ? ResponseFormat.JSON : builder.responseFormat; // TODO
+        OllamaChatRequestParameters ollamaParameters =
+                builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters ?
+                        ollamaChatRequestParameters :
+                        OllamaChatRequestParameters.EMPTY;
+
         this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
@@ -61,7 +57,7 @@ abstract class OllamaBaseChatModel {
                 .maxOutputTokens(getOrDefault(builder.numPredict, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
-                .responseFormat(getOrDefault(responseFormat, commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 // Ollama-specific parameters
                 .mirostat(getOrDefault(builder.mirostat, ollamaParameters.mirostat()))
                 .mirostatEta(getOrDefault(builder.mirostatEta, ollamaParameters.mirostatEta()))
@@ -103,7 +99,6 @@ abstract class OllamaBaseChatModel {
         protected Integer numPredict;
         protected List<String> stop;
         protected Double minP;
-        protected String format;
         protected ResponseFormat responseFormat;
         protected Duration timeout;
         protected Map<String, String> customHeaders;
@@ -204,19 +199,6 @@ abstract class OllamaBaseChatModel {
 
         public B minP(Double minP) {
             this.minP = minP;
-            return self();
-        }
-
-        /**
-         * @deprecated Please use {@link #responseFormat(ResponseFormat)} instead.
-         * For example: {@code responseFormat(ResponseFormat.JSON)}.
-         * <br>
-         * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
-         * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
-         */
-        @Deprecated(forRemoval = true, since = "1.0.0-beta5")
-        public B format(String format) {
-            this.format = format;
             return self();
         }
 

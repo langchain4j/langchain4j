@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.models.*;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.TokenCountEstimator;
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -20,22 +20,23 @@ import static java.util.stream.Collectors.toList;
  * and there is no guarantee that this thread will be the same as the one that initiated the request,
  * in fact it almost certainly won't be.
  */
-class AzureOpenAiStreamingResponseBuilder {
-
-    private final StringBuffer contentBuilder = new StringBuffer();
-    private final StringBuffer toolNameBuilder = new StringBuffer();
-    private final StringBuffer toolArgumentsBuilder = new StringBuffer();
-    private String toolExecutionsIndex = "call_undefined";
-    private final Map<String, ToolExecutionRequestBuilder> toolExecutionRequestBuilderHashMap = new HashMap<>();
-    private volatile CompletionsFinishReason finishReason;
+@Internal
+class InternalAzureOpenAiStreamingResponseBuilder {
 
     private final Integer inputTokenCount;
 
-    public AzureOpenAiStreamingResponseBuilder(Integer inputTokenCount) {
+    private final StringBuffer contentBuilder = new StringBuffer();
+
+    private String toolExecutionsIndex = "call_undefined";
+    private final Map<String, ToolExecutionRequestBuilder> toolExecutionRequestBuilderHashMap = new HashMap<>();
+
+    private volatile CompletionsFinishReason finishReason;
+
+    InternalAzureOpenAiStreamingResponseBuilder(Integer inputTokenCount) {
         this.inputTokenCount = inputTokenCount;
     }
 
-    public void append(ChatCompletions completions) {
+    void append(ChatCompletions completions) {
         if (completions == null) {
             return;
         }
@@ -80,8 +81,7 @@ class AzureOpenAiStreamingResponseBuilder {
                         throw new IllegalStateException("Function without an id defined in the tool call");
                     }
                 }
-                if (toolCall instanceof ChatCompletionsFunctionToolCall) {
-                    ChatCompletionsFunctionToolCall functionCall = (ChatCompletionsFunctionToolCall) toolCall;
+                if (toolCall instanceof ChatCompletionsFunctionToolCall functionCall) {
                     if (functionCall.getFunction().getName() != null) {
                         toolExecutionRequestBuilder.nameBuilder.append(functionCall.getFunction().getName());
                     }
@@ -93,7 +93,7 @@ class AzureOpenAiStreamingResponseBuilder {
         }
     }
 
-    public void append(Completions completions) {
+    void append(Completions completions) {
         if (completions == null) {
             return;
         }
@@ -119,61 +119,34 @@ class AzureOpenAiStreamingResponseBuilder {
         }
     }
 
-    public Response<AiMessage> build(TokenCountEstimator tokenCountEstimator) {
+    Response<AiMessage> build(TokenCountEstimator tokenCountEstimator) {
 
         String content = contentBuilder.toString();
-        TokenUsage tokenUsage =
-                content.isEmpty() ? new TokenUsage(inputTokenCount, 0) : tokenUsage(content, tokenCountEstimator);
 
-        String toolName = toolNameBuilder.toString();
-        if (!toolName.isEmpty()) {
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(toolName)
-                    .arguments(toolArgumentsBuilder.toString())
-                    .build();
-            return Response.from(
-                    !content.isEmpty() ?
-                        AiMessage.from(content, singletonList(toolExecutionRequest)) :
-                        AiMessage.from(toolExecutionRequest),
-                    tokenUsage,
-                    finishReasonFrom(finishReason)
-            );
-        }
-
+        List<ToolExecutionRequest> toolExecutionRequests = null;
         if (!toolExecutionRequestBuilderHashMap.isEmpty()) {
-            List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderHashMap.values().stream()
+            toolExecutionRequests = toolExecutionRequestBuilderHashMap.values().stream()
                     .map(it -> ToolExecutionRequest.builder()
                             .id(it.idBuilder.toString())
                             .name(it.nameBuilder.toString())
                             .arguments(it.argumentsBuilder.toString())
                             .build())
                     .collect(toList());
-            return Response.from(
-                    !content.isEmpty() ?
-                        AiMessage.from(content, toolExecutionRequests) :
-                        AiMessage.from(toolExecutionRequests),
-                    tokenUsage,
-                    finishReasonFrom(finishReason)
-            );
-        }
-        
-        if (!content.isEmpty()) {
-            return Response.from(
-                    AiMessage.from(content),
-                    tokenUsage(content, tokenCountEstimator),
-                    finishReasonFrom(finishReason)
-            );
-        }
-        
-        return null;
-    }
 
-    private TokenUsage tokenUsage(String content, TokenCountEstimator tokenCountEstimator) {
-        if (tokenCountEstimator == null) {
-            return null;
         }
-        int outputTokenCount = tokenCountEstimator.estimateTokenCountInText(content);
-        return new TokenUsage(inputTokenCount, outputTokenCount);
+
+        AiMessage aiMessage = AiMessage.builder()
+                .text(content.isEmpty() ? null : content)
+                .toolExecutionRequests(toolExecutionRequests)
+                .build();
+
+        TokenUsage tokenUsage = null;
+        if (tokenCountEstimator != null) {
+            int outputTokenCount = tokenCountEstimator.estimateTokenCountInMessage(aiMessage);
+            tokenUsage = new TokenUsage(inputTokenCount, outputTokenCount);
+        }
+
+        return Response.from(aiMessage, tokenUsage, finishReasonFrom(finishReason));
     }
 
     private static class ToolExecutionRequestBuilder {
