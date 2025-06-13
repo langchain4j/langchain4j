@@ -12,6 +12,15 @@
     <artifactId>langchain4j-google-ai-gemini</artifactId>
     <name>LangChain4j :: Integration :: Google AI Gemini</name>
 
+    <developers>
+        <developer>
+            <id>glaforge</id>
+            <name>Guillaume Laforge</name>
+            <email>glaforge@gmail.com</email>
+            <url>https://github.com/glaforge</url>
+        </developer>
+    </developers>
+
     <properties>
         <skipGeminiITs>false</skipGeminiITs>
         <maven.compiler.parameters>true</maven.compiler.parameters>
