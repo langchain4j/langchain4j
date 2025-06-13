@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -33,6 +34,7 @@ public class AiServiceTokenStream implements TokenStream {
 
     private Consumer<String> partialResponseHandler;
     private Consumer<List<Content>> contentsHandler;
+    private Consumer<ToolExecutionRequest> toolBeforeExecutionHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<ChatResponse> completeResponseHandler;
     private Consumer<Throwable> errorHandler;
@@ -40,6 +42,7 @@ public class AiServiceTokenStream implements TokenStream {
     private int onPartialResponseInvoked;
     private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
+    private int onToolBeforeExecutionInvoked;
     private int onToolExecutedInvoked;
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
@@ -70,6 +73,13 @@ public class AiServiceTokenStream implements TokenStream {
     public TokenStream onRetrieved(Consumer<List<Content>> contentsHandler) {
         this.contentsHandler = contentsHandler;
         this.onRetrievedInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onToolBeforeExecution(Consumer<ToolExecutionRequest> toolBeforeExecutionHandler) {
+        this.toolBeforeExecutionHandler = toolBeforeExecutionHandler;
+        this.onToolBeforeExecutionInvoked++;
         return this;
     }
 
@@ -114,6 +124,7 @@ public class AiServiceTokenStream implements TokenStream {
                 context,
                 memoryId,
                 partialResponseHandler,
+                toolBeforeExecutionHandler,
                 toolExecutionHandler,
                 completeResponseHandler,
                 errorHandler,
@@ -139,6 +150,11 @@ public class AiServiceTokenStream implements TokenStream {
         if (onRetrievedInvoked > 1) {
             throw new IllegalConfigurationException("onRetrieved can be invoked on TokenStream at most 1 time");
         }
+
+        if (onToolBeforeExecutionInvoked > 1) {
+            throw new IllegalConfigurationException("onToolBeforeExecution can be invoked on TokenStream at most 1 time");
+        }
+
         if (onToolExecutedInvoked > 1) {
             throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");
         }
