@@ -102,4 +102,22 @@ public interface ChatExecutor {
             return new DefaultChatExecutor(this);
         }
     }
+
+    /**
+     * Exception thrown when an attempt is made to execute a chat request without a valid chat model.
+     * This typically occurs within the {@code ChatExecutor} when no {@code ChatModel} is provided or configured.
+     * <p>
+     *     This is intended for output guardrails, but can be caught in other places when streaming needs to be converted
+     *     to synchronous.
+     * </p>
+     */
+    class NoChatModelFoundException extends RuntimeException {
+        public NoChatModelFoundException(String message) {
+            super(message);
+        }
+
+        public NoChatModelFoundException() {
+            this("Can not invoke ChatExecutor without a ChatModel");
+        }
+    }
 }

@@ -23,11 +23,10 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 final class DefaultChatExecutor implements ChatExecutor {
     private final ChatRequest chatRequest;
-    private final ChatModel chatModel;
+    private ChatModel chatModel;
 
     protected DefaultChatExecutor(Builder builder) {
         this.chatRequest = ensureNotNull(builder.chatRequest, "chatRequest");
-        this.chatModel = ensureNotNull(builder.chatModel, "chatModel");
     }
 
     @Override
@@ -43,6 +42,10 @@ final class DefaultChatExecutor implements ChatExecutor {
     }
 
     private ChatResponse execute(ChatRequest chatRequest) {
+        if (this.chatModel == null) {
+            throw new NoChatModelFoundException();
+        }
+
         return this.chatModel.chat(chatRequest);
     }
 }

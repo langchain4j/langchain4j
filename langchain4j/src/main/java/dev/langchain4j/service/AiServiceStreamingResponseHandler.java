@@ -13,6 +13,7 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatExecutor;
+import dev.langchain4j.model.chat.ChatExecutor.NoChatModelFoundException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -170,8 +171,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 .requestParams(newCommonParams)
                                 .build();
 
-                        finalChatResponse =
-                                context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
+                        try {
+                            finalChatResponse =
+                                    context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
+                        } catch (NoChatModelFoundException ex) {
+                            LOG.error(
+                                    "Can't apply output guardrail to streaming response because no ChatModel was found. Did you set/create a ChatModel on the AiService builder?",
+                                    ex);
+                            throw ex;
+                        }
                     }
 
                     // If we have output guardrails, we should process all of the partial responses first before
