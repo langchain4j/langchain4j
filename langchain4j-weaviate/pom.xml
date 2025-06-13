@@ -35,12 +35,38 @@
                     <groupId>commons-codec</groupId>
                     <artifactId>commons-codec</artifactId>
                 </exclusion>
+                <!-- Fix for SNYK-JAVA-NETMINIDEV-8689573 vulnerability -->
+                <exclusion>
+                    <groupId>com.nimbusds</groupId>
+                    <artifactId>oauth2-oidc-sdk</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
+
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
             <version>1.16.0</version>
+        </dependency>
+
+        <!-- Add safe version of oauth2-oidc-sdk -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>oauth2-oidc-sdk</artifactId>
+            <version>11.10.1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>net.minidev</groupId>
+                    <artifactId>json-smart</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Add safe version of json-smart -->
+        <dependency>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+            <version>2.5.2</version>
         </dependency>
 
         <dependency>
