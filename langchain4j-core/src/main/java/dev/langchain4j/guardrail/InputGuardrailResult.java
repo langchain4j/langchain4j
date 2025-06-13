@@ -8,8 +8,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The result of the validation of an {@link InputGuardrail}
@@ -18,11 +16,10 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
     private static final InputGuardrailResult SUCCESS = new InputGuardrailResult();
 
     private final Result result;
-    private final @Nullable String successfulText;
-    private final List<@NonNull Failure> failures;
+    private final String successfulText;
+    private final List<Failure> failures;
 
-    private InputGuardrailResult(
-            Result result, @Nullable String successfulText, @Nullable List<@NonNull Failure> failures) {
+    private InputGuardrailResult(Result result, String successfulText, List<Failure> failures) {
         this.result = ensureNotNull(result, "result");
         this.successfulText = successfulText;
         this.failures = Optional.ofNullable(failures).orElseGet(List::of);
@@ -32,7 +29,7 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
         this(Result.SUCCESS, null, Collections.emptyList());
     }
 
-    InputGuardrailResult(@Nullable List<@NonNull Failure> failures, boolean fatal) {
+    InputGuardrailResult(List<Failure> failures, boolean fatal) {
         this(fatal ? Result.FATAL : Result.FAILURE, null, failures);
     }
 
@@ -75,7 +72,7 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
 
     @Override
     @SuppressWarnings("unchecked")
-    public <F extends GuardrailResult.Failure> List<@NonNull F> failures() {
+    public <F extends GuardrailResult.Failure> List<F> failures() {
         return (List<F>) failures;
     }
 
@@ -115,10 +112,10 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
      */
     public static final class Failure implements GuardrailResult.Failure {
         private final String message;
-        private final @Nullable Throwable cause;
-        private final @Nullable Class<? extends Guardrail> guardrailClass;
+        private final Throwable cause;
+        private final Class<? extends Guardrail> guardrailClass;
 
-        Failure(String message, @Nullable Throwable cause, @Nullable Class<? extends Guardrail> guardrailClass) {
+        Failure(String message, Throwable cause, Class<? extends Guardrail> guardrailClass) {
             this.message = ensureNotNull(message, "message");
             this.cause = cause;
             this.guardrailClass = guardrailClass;
@@ -128,7 +125,7 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
             this(message, null, null);
         }
 
-        Failure(String message, @Nullable Throwable cause) {
+        Failure(String message, Throwable cause) {
             this(message, cause, null);
         }
 
@@ -150,13 +147,11 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
         }
 
         @Override
-        @Nullable
         public Throwable cause() {
             return cause;
         }
 
         @Override
-        @Nullable
         public Class<? extends Guardrail> guardrailClass() {
             return guardrailClass;
         }

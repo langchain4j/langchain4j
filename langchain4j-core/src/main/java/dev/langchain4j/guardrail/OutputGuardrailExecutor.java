@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The {@link GuardrailExecutor} for {@link OutputGuardrail}s.
@@ -31,8 +29,7 @@ public non-sealed class OutputGuardrailExecutor
             %s
             """;
 
-    protected OutputGuardrailExecutor(
-            OutputGuardrailsConfig config, @Nullable List<@NonNull OutputGuardrail> guardrails) {
+    protected OutputGuardrailExecutor(OutputGuardrailsConfig config, List<OutputGuardrail> guardrails) {
         super(config, guardrails);
     }
 
@@ -105,7 +102,7 @@ public non-sealed class OutputGuardrailExecutor
      * @return A {@link OutputGuardrailResult} containing the failures
      */
     @Override
-    protected OutputGuardrailResult createFailure(List<@NonNull Failure> failures) {
+    protected OutputGuardrailResult createFailure(List<Failure> failures) {
         return OutputGuardrailResult.failure(failures);
     }
 
@@ -119,7 +116,7 @@ public non-sealed class OutputGuardrailExecutor
     }
 
     @Override
-    protected OutputGuardrailException createGuardrailException(String message, @Nullable Throwable cause) {
+    protected OutputGuardrailException createGuardrailException(String message, Throwable cause) {
         return new OutputGuardrailException(message, cause);
     }
 

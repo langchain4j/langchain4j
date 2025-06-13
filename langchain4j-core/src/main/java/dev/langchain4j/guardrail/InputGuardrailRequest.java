@@ -6,7 +6,6 @@ import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Represents the parameter passed to {@link InputGuardrail#validate(InputGuardrailRequest)}.
@@ -40,14 +39,14 @@ public final class InputGuardrailRequest implements GuardrailRequest<InputGuardr
     }
 
     @Override
-    public InputGuardrailRequest withText(@Nullable String text) {
+    public InputGuardrailRequest withText(String text) {
         return new Builder()
                 .userMessage(rewriteUserMessage(text))
                 .commonParams(this.commonParams)
                 .build();
     }
 
-    public UserMessage rewriteUserMessage(@Nullable String text) {
+    public UserMessage rewriteUserMessage(String text) {
         if (Objects.isNull(this.userMessage) || Objects.isNull(text)) {
             return this.userMessage;
         }

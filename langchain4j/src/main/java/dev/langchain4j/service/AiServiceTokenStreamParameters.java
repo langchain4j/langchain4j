@@ -12,7 +12,6 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
 import java.util.Map;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.
@@ -26,11 +25,7 @@ public class AiServiceTokenStreamParameters {
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
-
-    @Nullable
     private final GuardrailRequestParams commonGuardrailParams;
-
-    @Nullable
     private final Object methodKey;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
@@ -94,7 +89,6 @@ public class AiServiceTokenStreamParameters {
      * @return the {@link GuardrailRequestParams} containing chat memory, user message template,
      * and additional variables required for guardrail processing, or null if not set.
      */
-    @Nullable
     public GuardrailRequestParams commonGuardrailParams() {
         return commonGuardrailParams;
     }
@@ -104,7 +98,6 @@ public class AiServiceTokenStreamParameters {
      *
      * @return the method key as an Object
      */
-    @Nullable
     public Object methodKey() {
         return methodKey;
     }

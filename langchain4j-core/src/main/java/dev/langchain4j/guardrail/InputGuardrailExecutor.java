@@ -3,8 +3,6 @@ package dev.langchain4j.guardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import java.util.List;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The {@link GuardrailExecutor} for {@link InputGuardrail}s.
@@ -13,7 +11,7 @@ public non-sealed class InputGuardrailExecutor
         extends AbstractGuardrailExecutor<
                 InputGuardrailsConfig, InputGuardrailRequest, InputGuardrailResult, InputGuardrail, Failure> {
 
-    protected InputGuardrailExecutor(InputGuardrailsConfig config, @Nullable List<InputGuardrail> guardrails) {
+    protected InputGuardrailExecutor(InputGuardrailsConfig config, List<InputGuardrail> guardrails) {
         super(config, guardrails);
     }
 
@@ -23,7 +21,7 @@ public non-sealed class InputGuardrailExecutor
      * @return A {@link InputGuardrailResult} containing the failures
      */
     @Override
-    protected InputGuardrailResult createFailure(List<@NonNull Failure> failures) {
+    protected InputGuardrailResult createFailure(List<Failure> failures) {
         return new InputGuardrailResult(failures, false);
     }
 
@@ -37,7 +35,7 @@ public non-sealed class InputGuardrailExecutor
     }
 
     @Override
-    protected InputGuardrailException createGuardrailException(String message, @Nullable Throwable cause) {
+    protected InputGuardrailException createGuardrailException(String message, Throwable cause) {
         return new InputGuardrailException(message, cause);
     }
 

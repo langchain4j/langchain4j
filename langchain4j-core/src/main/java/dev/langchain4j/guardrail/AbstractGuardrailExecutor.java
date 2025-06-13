@@ -8,8 +8,6 @@ import dev.langchain4j.guardrail.config.GuardrailsConfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Abstract base class for {@link GuardrailExecutor}s.
@@ -36,7 +34,7 @@ public abstract sealed class AbstractGuardrailExecutor<
     private final C config;
     private final List<G> guardrails;
 
-    protected AbstractGuardrailExecutor(C config, @Nullable List<@NonNull G> guardrails) {
+    protected AbstractGuardrailExecutor(C config, List<G> guardrails) {
         ensureNotNull(config, "config");
         this.config = config;
         this.guardrails = Optional.ofNullable(guardrails).orElseGet(List::of);
@@ -47,7 +45,7 @@ public abstract sealed class AbstractGuardrailExecutor<
      * @param failures The failures
      * @return A {@link GuardrailResult} containing the failures
      */
-    protected abstract R createFailure(List<@NonNull F> failures);
+    protected abstract R createFailure(List<F> failures);
 
     /**
      * Creates a success result.
@@ -62,7 +60,7 @@ public abstract sealed class AbstractGuardrailExecutor<
      * @param cause   The underlying cause of the exception, or null if no cause is available.
      * @return A new instance of {@link GuardrailException} constructed with the provided message and cause.
      */
-    protected abstract GuardrailException createGuardrailException(String message, @Nullable Throwable cause);
+    protected abstract GuardrailException createGuardrailException(String message, Throwable cause);
 
     @Override
     public C config() {
@@ -210,7 +208,7 @@ public abstract sealed class AbstractGuardrailExecutor<
          *
          * @return A list containing the configured guardrails.
          */
-        protected List<@NonNull G> guardrails() {
+        protected List<G> guardrails() {
             return this.guardrails;
         }
 
@@ -221,7 +219,7 @@ public abstract sealed class AbstractGuardrailExecutor<
          *               This can be null if no specific configuration is required.
          * @return The updated instance of the builder, allowing for method chaining.
          */
-        public B config(@Nullable C config) {
+        public B config(C config) {
             this.config = config;
             return (B) this;
         }
@@ -235,7 +233,7 @@ public abstract sealed class AbstractGuardrailExecutor<
          *                   in which case the current list of guardrails will be cleared.
          * @return The updated instance of the builder, allowing for method chaining.
          */
-        public B guardrails(@Nullable List<@NonNull G> guardrails) {
+        public B guardrails(List<G> guardrails) {
             this.guardrails.clear();
 
             if (guardrails != null) {
@@ -255,7 +253,7 @@ public abstract sealed class AbstractGuardrailExecutor<
          *                   Null values are accepted and will not clear existing guardrails.
          * @return The updated instance of the builder, allowing for method chaining.
          */
-        public B guardrails(@Nullable G... guardrails) {
+        public B guardrails(G... guardrails) {
             Optional.ofNullable(guardrails).map(List::of).ifPresent(this::guardrails);
 
             return (B) this;

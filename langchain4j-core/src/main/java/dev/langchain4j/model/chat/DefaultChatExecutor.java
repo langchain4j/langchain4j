@@ -6,8 +6,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.NullMarked;
 
 /**
  * A concrete implementation of the {@link ChatExecutor} interface that executes
@@ -20,7 +18,6 @@ import org.jspecify.annotations.NullMarked;
  * Instances of this class are immutable and are typically instantiated using
  * the {@link Builder}.
  */
-@NullMarked
 final class DefaultChatExecutor implements ChatExecutor {
     private final ChatRequest chatRequest;
     private final ChatModel chatModel;
@@ -36,7 +33,7 @@ final class DefaultChatExecutor implements ChatExecutor {
     }
 
     @Override
-    public ChatResponse execute(List<@NonNull ChatMessage> chatMessages) {
+    public ChatResponse execute(List<ChatMessage> chatMessages) {
         var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
 
         return execute(newChatRequest);

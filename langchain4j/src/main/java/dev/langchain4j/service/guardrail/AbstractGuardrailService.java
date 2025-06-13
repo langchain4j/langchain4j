@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Responsible for managing and applying input and output guardrails to methods
@@ -30,13 +29,13 @@ import org.jspecify.annotations.Nullable;
 @Internal
 public abstract class AbstractGuardrailService implements GuardrailService {
     private final Class<?> aiServiceClass;
-    private final Map<Object, @Nullable InputGuardrailExecutor> inputGuardrails = new HashMap<>();
-    private final Map<Object, @Nullable OutputGuardrailExecutor> outputGuardrails = new HashMap<>();
+    private final Map<Object, InputGuardrailExecutor> inputGuardrails = new HashMap<>();
+    private final Map<Object, OutputGuardrailExecutor> outputGuardrails = new HashMap<>();
 
     protected AbstractGuardrailService(
             Class<?> aiServiceClass,
-            Map<Object, @Nullable InputGuardrailExecutor> inputGuardrails,
-            Map<Object, @Nullable OutputGuardrailExecutor> outputGuardrails) {
+            Map<Object, InputGuardrailExecutor> inputGuardrails,
+            Map<Object, OutputGuardrailExecutor> outputGuardrails) {
         this.aiServiceClass = ensureNotNull(aiServiceClass, "aiServiceClass");
         Optional.ofNullable(inputGuardrails).ifPresent(this.inputGuardrails::putAll);
         Optional.ofNullable(outputGuardrails).ifPresent(this.outputGuardrails::putAll);
@@ -48,8 +47,7 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     }
 
     @Override
-    public <MethodKey> InputGuardrailResult executeInputGuardrails(
-            @Nullable MethodKey method, InputGuardrailRequest params) {
+    public <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest params) {
         return Optional.ofNullable(method)
                 .map(this.inputGuardrails::get)
                 .map(executor -> executor.execute(params))
@@ -57,8 +55,7 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     }
 
     @Override
-    public <MethodKey> OutputGuardrailResult executeOutputGuardrails(
-            @Nullable MethodKey method, OutputGuardrailRequest params) {
+    public <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest params) {
         return Optional.ofNullable(method)
                 .map(this.outputGuardrails::get)
                 .map(executor -> executor.execute(params))
@@ -66,12 +63,12 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     }
 
     @Override
-    public <MethodKey> boolean hasInputGuardrails(@Nullable MethodKey method) {
+    public <MethodKey> boolean hasInputGuardrails(MethodKey method) {
         return !getInputGuardrails(method).isEmpty();
     }
 
     @Override
-    public <MethodKey> boolean hasOutputGuardrails(@Nullable MethodKey method) {
+    public <MethodKey> boolean hasOutputGuardrails(MethodKey method) {
         return !getOutputGuardrails(method).isEmpty();
     }
 
@@ -93,14 +90,14 @@ public abstract class AbstractGuardrailService implements GuardrailService {
         return Optional.ofNullable(this.outputGuardrails.get(method)).map(OutputGuardrailExecutor::config);
     }
 
-    <MethodKey> List<InputGuardrail> getInputGuardrails(@Nullable MethodKey method) {
+    <MethodKey> List<InputGuardrail> getInputGuardrails(MethodKey method) {
         return Optional.ofNullable(method)
                 .map(this.inputGuardrails::get)
                 .map(InputGuardrailExecutor::guardrails)
                 .orElseGet(List::of);
     }
 
-    <MethodKey> List<OutputGuardrail> getOutputGuardrails(@Nullable MethodKey method) {
+    <MethodKey> List<OutputGuardrail> getOutputGuardrails(MethodKey method) {
         return Optional.ofNullable(method)
                 .map(this.outputGuardrails::get)
                 .map(OutputGuardrailExecutor::guardrails)

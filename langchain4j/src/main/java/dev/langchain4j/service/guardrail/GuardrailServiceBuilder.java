@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.jspecify.annotations.Nullable;
 
 /**
  * A builder class for creating and configuring a {@link GuardrailService} instance, which provides input and output guardrail
@@ -92,8 +91,7 @@ final class GuardrailServiceBuilder implements Builder {
      * @return The current instance of {@link Builder} for method chaining.
      */
     @Override
-    public <I extends InputGuardrail> Builder inputGuardrailClasses(
-            @Nullable List<Class<? extends I>> guardrailClasses) {
+    public <I extends InputGuardrail> Builder inputGuardrailClasses(List<Class<? extends I>> guardrailClasses) {
         this.inputGuardrailClasses.clear();
 
         if (guardrailClasses != null) {
@@ -113,8 +111,7 @@ final class GuardrailServiceBuilder implements Builder {
      * @return The current instance of {@link Builder} for method chaining.
      */
     @Override
-    public <O extends OutputGuardrail> Builder outputGuardrailClasses(
-            @Nullable List<Class<? extends O>> guardrailClasses) {
+    public <O extends OutputGuardrail> Builder outputGuardrailClasses(List<Class<? extends O>> guardrailClasses) {
         this.outputGuardrailClasses.clear();
 
         if (guardrailClasses != null) {
@@ -133,7 +130,7 @@ final class GuardrailServiceBuilder implements Builder {
      * @return The current instance of {@link Builder} for method chaining.
      */
     @Override
-    public <I extends InputGuardrail> Builder inputGuardrails(@Nullable List<I> guardrails) {
+    public <I extends InputGuardrail> Builder inputGuardrails(List<I> guardrails) {
         this.inputGuardrails.clear();
 
         if (guardrails != null) {
@@ -152,7 +149,7 @@ final class GuardrailServiceBuilder implements Builder {
      * @return The current instance of {@link Builder} for method chaining.
      */
     @Override
-    public <O extends OutputGuardrail> Builder outputGuardrails(@Nullable List<O> guardrails) {
+    public <O extends OutputGuardrail> Builder outputGuardrails(List<O> guardrails) {
         this.outputGuardrails.clear();
 
         if (guardrails != null) {

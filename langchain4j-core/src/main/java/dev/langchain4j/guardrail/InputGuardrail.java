@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
-import org.jspecify.annotations.Nullable;
 
 /**
  * An input guardrail is a rule that is applied to the input of the model to ensure that the input (i.e. the user
@@ -89,7 +88,7 @@ public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGu
      *
      * @return The result of a failed input guardrail validation.
      */
-    default InputGuardrailResult failure(String message, @Nullable Throwable cause) {
+    default InputGuardrailResult failure(String message, Throwable cause) {
         return new InputGuardrailResult(new Failure(message, cause), false);
     }
 
@@ -115,7 +114,7 @@ public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGu
      *
      * @return The result of a failed input guardrail validation.
      */
-    default InputGuardrailResult fatal(String message, @Nullable Throwable cause) {
+    default InputGuardrailResult fatal(String message, Throwable cause) {
         return new InputGuardrailResult(new Failure(message, cause), true);
     }
 }

@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Responsible for managing and applying input and output guardrails
@@ -28,8 +27,8 @@ import org.jspecify.annotations.Nullable;
 final class DefaultGuardrailService extends AbstractGuardrailService {
     DefaultGuardrailService(
             Class<?> aiServiceClass,
-            Map<Object, @Nullable InputGuardrailExecutor> inputGuardrails,
-            Map<Object, @Nullable OutputGuardrailExecutor> outputGuardrails) {
+            Map<Object, InputGuardrailExecutor> inputGuardrails,
+            Map<Object, OutputGuardrailExecutor> outputGuardrails) {
         super(aiServiceClass, inputGuardrails, outputGuardrails);
     }
 

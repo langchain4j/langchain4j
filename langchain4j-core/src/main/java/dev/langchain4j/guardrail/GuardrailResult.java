@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The result of the validation of an interaction between a user and the LLM.
@@ -59,13 +57,11 @@ public sealed interface GuardrailResult<GR extends GuardrailResult<GR>>
         /**
          * The cause of the failure
          */
-        @Nullable
         Throwable cause();
 
         /**
          * The {@link Guardrail} class
          */
-        @Nullable
         Class<? extends Guardrail> guardrailClass();
 
         /**
@@ -88,7 +84,7 @@ public sealed interface GuardrailResult<GR extends GuardrailResult<GR>>
     /**
      * @return The list of failures eventually resulting from a set of validations.
      */
-    <F extends Failure> List<@NonNull F> failures();
+    <F extends Failure> List<F> failures();
 
     /**
      * The message of the successful result
@@ -120,7 +116,6 @@ public sealed interface GuardrailResult<GR extends GuardrailResult<GR>>
     /**
      * Gets the exception from the first failure
      */
-    @Nullable
     default Throwable getFirstFailureException() {
         return !isSuccess()
                 ? failures().stream()

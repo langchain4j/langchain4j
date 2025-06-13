@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,11 +38,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final AiServiceContext context;
     private final Object memoryId;
     private final ChatExecutor chatExecutor;
-
-    @Nullable
     private final GuardrailRequestParams commonGuardrailParams;
-
-    @Nullable
     private final Object methodKey;
 
     private final Consumer<String> partialResponseHandler;
@@ -71,8 +66,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             TokenUsage tokenUsage,
             List<ToolSpecification> toolSpecifications,
             Map<String, ToolExecutor> toolExecutors,
-            @Nullable GuardrailRequestParams commonGuardrailParams,
-            @Nullable Object methodKey) {
+            GuardrailRequestParams commonGuardrailParams,
+            Object methodKey) {
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");

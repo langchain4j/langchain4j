@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationResult;
 import java.util.Map;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Represents the common parameters shared across guardrail checks when validating interactions
@@ -13,8 +12,8 @@ import org.jspecify.annotations.Nullable;
  * template, and additional variables required for guardrail processing.
  */
 public final class GuardrailRequestParams {
-    private final @Nullable ChatMemory chatMemory;
-    private final @Nullable AugmentationResult augmentationResult;
+    private final ChatMemory chatMemory;
+    private final AugmentationResult augmentationResult;
     private final String userMessageTemplate;
     private final Map<String, Object> variables;
 
@@ -30,7 +29,6 @@ public final class GuardrailRequestParams {
      *
      * @return the chat memory, may be null
      */
-    @Nullable
     public ChatMemory chatMemory() {
         return chatMemory;
     }
@@ -40,7 +38,6 @@ public final class GuardrailRequestParams {
      *
      * @return the augmentation result, may be null
      */
-    @Nullable
     public AugmentationResult augmentationResult() {
         return augmentationResult;
     }
@@ -76,8 +73,8 @@ public final class GuardrailRequestParams {
      * Builder for {@link GuardrailRequestParams}.
      */
     public static class Builder {
-        private @Nullable ChatMemory chatMemory;
-        private @Nullable AugmentationResult augmentationResult;
+        private ChatMemory chatMemory;
+        private AugmentationResult augmentationResult;
         private String userMessageTemplate;
         private Map<String, Object> variables;
 
@@ -87,7 +84,7 @@ public final class GuardrailRequestParams {
          * @param chatMemory the chat memory
          * @return this builder
          */
-        public Builder chatMemory(@Nullable ChatMemory chatMemory) {
+        public Builder chatMemory(ChatMemory chatMemory) {
             this.chatMemory = chatMemory;
             return this;
         }
@@ -98,7 +95,7 @@ public final class GuardrailRequestParams {
          * @param augmentationResult the augmentation result
          * @return this builder
          */
-        public Builder augmentationResult(@Nullable AugmentationResult augmentationResult) {
+        public Builder augmentationResult(AugmentationResult augmentationResult) {
             this.augmentationResult = augmentationResult;
             return this;
         }

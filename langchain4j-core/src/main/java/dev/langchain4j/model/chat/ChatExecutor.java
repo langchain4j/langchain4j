@@ -7,14 +7,10 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Generic executor interface that defines a chat interaction
  */
-@NullMarked
 public interface ChatExecutor {
     /**
      * Execute a chat request
@@ -30,7 +26,7 @@ public interface ChatExecutor {
      * @return A response object containing the AI's response and additional metadata.
      * @see #execute(List)
      */
-    default ChatResponse execute(@Nullable ChatMemory chatMemory) {
+    default ChatResponse execute(ChatMemory chatMemory) {
         var messages = Optional.ofNullable(chatMemory).map(ChatMemory::messages).orElseGet(ArrayList::new);
 
         return execute(messages);
@@ -42,7 +38,7 @@ public interface ChatExecutor {
      *                     It provides the history of messages required for proper interaction with the chat model
      * @return A response object containing the AI's response and additional metadata.
      */
-    ChatResponse execute(List<@NonNull ChatMessage> chatMessages);
+    ChatResponse execute(List<ChatMessage> chatMessages);
 
     /**
      * Creates a new {@link Builder} instance for constructing {@link ChatExecutor} objects

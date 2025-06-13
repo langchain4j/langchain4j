@@ -1,7 +1,5 @@
 package dev.langchain4j.guardrail;
 
-import org.jspecify.annotations.Nullable;
-
 /**
  * Exception thrown when an input guardrail validation fails.
  * <p>
@@ -13,7 +11,7 @@ public final class InputGuardrailException extends GuardrailException {
         super(message);
     }
 
-    public InputGuardrailException(String message, @Nullable Throwable cause) {
+    public InputGuardrailException(String message, Throwable cause) {
         super(message, cause);
     }
 }

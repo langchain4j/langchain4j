@@ -39,7 +39,6 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Function;
-import org.jspecify.annotations.Nullable;
 
 /**
  * AI Services is a high-level API of LangChain4j to interact with {@link ChatModel} and {@link StreamingChatModel}.
@@ -466,8 +465,7 @@ public abstract class AiServices<T> {
      * @param <I> The type of {@link InputGuardrail}
      * @return The instance of {@link AiServices} to allow method chaining.
      */
-    public <I extends InputGuardrail> AiServices<T> inputGuardrailClasses(
-            @Nullable List<Class<? extends I>> guardrailClasses) {
+    public <I extends InputGuardrail> AiServices<T> inputGuardrailClasses(List<Class<? extends I>> guardrailClasses) {
         context.guardrailServiceBuilder.inputGuardrailClasses(guardrailClasses);
         return this;
     }
@@ -497,8 +495,7 @@ public abstract class AiServices<T> {
      * @param <I> The type of {@link InputGuardrail}
      * @return the current instance of {@link AiServices} for chaining further configurations.
      */
-    public <I extends InputGuardrail> AiServices<T> inputGuardrailClasses(
-            @Nullable Class<? extends I>... guardrailClasses) {
+    public <I extends InputGuardrail> AiServices<T> inputGuardrailClasses(Class<? extends I>... guardrailClasses) {
         context.guardrailServiceBuilder.inputGuardrailClasses(guardrailClasses);
         return this;
     }
@@ -526,7 +523,7 @@ public abstract class AiServices<T> {
      * @param guardrails a list of input guardrails, or null if no guardrails are to be set
      * @return the current instance of {@link AiServices} for method chaining
      */
-    public <I extends InputGuardrail> AiServices<T> inputGuardrails(@Nullable List<I> guardrails) {
+    public <I extends InputGuardrail> AiServices<T> inputGuardrails(List<I> guardrails) {
         context.guardrailServiceBuilder.inputGuardrails(guardrails);
         return this;
     }
@@ -554,7 +551,7 @@ public abstract class AiServices<T> {
      * @param guardrails an array of input guardrails to set, may be null
      * @return the current instance of {@link AiServices} for chaining
      */
-    public <I extends InputGuardrail> AiServices<T> inputGuardrails(@Nullable I... guardrails) {
+    public <I extends InputGuardrail> AiServices<T> inputGuardrails(I... guardrails) {
         context.guardrailServiceBuilder.inputGuardrails(guardrails);
         return this;
     }
@@ -590,8 +587,7 @@ public abstract class AiServices<T> {
      * @param <O> The type of {@link OutputGuardrail}
      * @return the current instance of {@link AiServices}.
      */
-    public <O extends OutputGuardrail> AiServices<T> outputGuardrailClasses(
-            @Nullable List<Class<? extends O>> guardrailClasses) {
+    public <O extends OutputGuardrail> AiServices<T> outputGuardrailClasses(List<Class<? extends O>> guardrailClasses) {
         context.guardrailServiceBuilder.outputGuardrailClasses(guardrailClasses);
         return this;
     }
@@ -628,8 +624,7 @@ public abstract class AiServices<T> {
      * @param <O> The type of {@link OutputGuardrail}
      * @return The current instance of {@link AiServices}, enabling method chaining.
      */
-    public <O extends OutputGuardrail> AiServices<T> outputGuardrailClasses(
-            @Nullable Class<? extends O>... guardrailClasses) {
+    public <O extends OutputGuardrail> AiServices<T> outputGuardrailClasses(Class<? extends O>... guardrailClasses) {
         context.guardrailServiceBuilder.outputGuardrailClasses(guardrailClasses);
         return this;
     }
@@ -663,7 +658,7 @@ public abstract class AiServices<T> {
      * @param guardrails a list of output guardrails to be applied; can be {@code null}
      * @return the current instance of {@link AiServices} for method chaining
      */
-    public <O extends OutputGuardrail> AiServices<T> outputGuardrails(@Nullable List<O> guardrails) {
+    public <O extends OutputGuardrail> AiServices<T> outputGuardrails(List<O> guardrails) {
         context.guardrailServiceBuilder.outputGuardrails(guardrails);
         return this;
     }
@@ -698,7 +693,7 @@ public abstract class AiServices<T> {
      *                   or contain multiple instances of OutputGuardrail
      * @return the current instance of {@link AiServices} with the specified guardrails applied
      */
-    public <O extends OutputGuardrail> AiServices<T> outputGuardrails(@Nullable O... guardrails) {
+    public <O extends OutputGuardrail> AiServices<T> outputGuardrails(O... guardrails) {
         context.guardrailServiceBuilder.outputGuardrails(guardrails);
         return this;
     }

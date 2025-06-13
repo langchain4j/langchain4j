@@ -1,7 +1,6 @@
 package dev.langchain4j.guardrail;
 
 import dev.langchain4j.exception.LangChain4jException;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Exception thrown when an input or output guardrail validation fails.
@@ -17,7 +16,7 @@ public sealed class GuardrailException extends LangChain4jException
         super(message);
     }
 
-    protected GuardrailException(String message, @Nullable Throwable cause) {
+    protected GuardrailException(String message, Throwable cause) {
         super(message, cause);
     }
 }

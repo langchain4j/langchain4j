@@ -11,7 +11,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Defines a service for executing guardrails associated with methods in an AI service.
@@ -34,7 +33,7 @@ public interface GuardrailService {
      * If no guardrails are associated with the method, a successful result is returned by default.
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> InputGuardrailResult executeInputGuardrails(@Nullable MethodKey method, InputGuardrailRequest params);
+    <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest params);
 
     /**
      * Executes the input guardrails associated with the given method and parameters,
@@ -48,7 +47,7 @@ public interface GuardrailService {
      *         a potentially rewritten user message is returned. If no guardrails are
      *         associated with the method, the original user message is returned.
      */
-    default <MethodKey> UserMessage executeGuardrails(@Nullable MethodKey method, InputGuardrailRequest params) {
+    default <MethodKey> UserMessage executeGuardrails(MethodKey method, InputGuardrailRequest params) {
         return executeInputGuardrails(method, params).userMessage(params);
     }
 
@@ -61,8 +60,7 @@ public interface GuardrailService {
      * If no guardrails are associated with the method, a successful result is returned by default.
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> OutputGuardrailResult executeOutputGuardrails(
-            @Nullable MethodKey method, OutputGuardrailRequest params);
+    <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest params);
 
     /**
      * Whether or not a method has any input guardrails associated with it
@@ -70,7 +68,7 @@ public interface GuardrailService {
      * @return {@code true} If {@code method} has input guardrails. {@code false} otherwise
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> boolean hasInputGuardrails(@Nullable MethodKey method);
+    <MethodKey> boolean hasInputGuardrails(MethodKey method);
 
     /**
      * Whether or not a method has any output guardrails associated with it
@@ -78,7 +76,7 @@ public interface GuardrailService {
      * @return {@code true} If {@code method} has output guardrails. {@code false} otherwise
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    <MethodKey> boolean hasOutputGuardrails(@Nullable MethodKey method);
+    <MethodKey> boolean hasOutputGuardrails(MethodKey method);
 
     /**
      * Executes the guardrails associated with a given method and parameters, returning the appropriate response.
@@ -89,7 +87,7 @@ public interface GuardrailService {
      * @param params The parameters to validate against the output guardrails. Must not be null.
      * @return A {@link ChatResponse} that encapsulates the output of executing the guardrails based on the provided parameters.
      */
-    default <MethodKey, T> T executeGuardrails(@Nullable MethodKey method, OutputGuardrailRequest params) {
+    default <MethodKey, T> T executeGuardrails(MethodKey method, OutputGuardrailRequest params) {
         return executeOutputGuardrails(method, params).response(params);
     }
 
@@ -130,7 +128,7 @@ public interface GuardrailService {
          * @param <I> The type of {@link InputGuardrail}
          * @return The current instance of {@link Builder} for method chaining.
          */
-        <I extends InputGuardrail> Builder inputGuardrailClasses(@Nullable List<Class<? extends I>> guardrailClasses);
+        <I extends InputGuardrail> Builder inputGuardrailClasses(List<Class<? extends I>> guardrailClasses);
 
         /**
          * Configures the classes of input guardrails for the Builder.
@@ -141,8 +139,7 @@ public interface GuardrailService {
          * @param <I> The type of {@link InputGuardrail}
          * @return The current instance of {@link Builder} for method chaining.
          */
-        default <I extends InputGuardrail> Builder inputGuardrailClasses(
-                @Nullable Class<? extends I>... guardrailClasses) {
+        default <I extends InputGuardrail> Builder inputGuardrailClasses(Class<? extends I>... guardrailClasses) {
             return Optional.ofNullable(guardrailClasses)
                     .map(g -> inputGuardrailClasses(List.of(g)))
                     .orElse(this);
@@ -157,7 +154,7 @@ public interface GuardrailService {
          * @param <O> The type of {@link OutputGuardrail}
          * @return The current instance of {@link Builder} for method chaining.
          */
-        <O extends OutputGuardrail> Builder outputGuardrailClasses(@Nullable List<Class<? extends O>> guardrailClasses);
+        <O extends OutputGuardrail> Builder outputGuardrailClasses(List<Class<? extends O>> guardrailClasses);
 
         /**
          * Configures the classes of output guardrails for the Builder.
@@ -182,7 +179,7 @@ public interface GuardrailService {
          *                   Can be {@code null}, in which case no guardrails will be added.
          * @return The current instance of {@link Builder} for method chaining.
          */
-        <I extends InputGuardrail> Builder inputGuardrails(@Nullable List<I> guardrails);
+        <I extends InputGuardrail> Builder inputGuardrails(List<I> guardrails);
 
         /**
          * Configures the input guardrails for the Builder.
@@ -191,7 +188,7 @@ public interface GuardrailService {
          *                   May be {@code null}, in which case no guardrails will be added.
          * @return The current instance of {@link Builder} for method chaining.
          */
-        default <I extends InputGuardrail> Builder inputGuardrails(@Nullable I... guardrails) {
+        default <I extends InputGuardrail> Builder inputGuardrails(I... guardrails) {
             return Optional.ofNullable(guardrails)
                     .map(ig -> inputGuardrails(List.of(ig)))
                     .orElse(this);
@@ -205,7 +202,7 @@ public interface GuardrailService {
          *                   interface. Can be {@code null}, in which case no guardrails will be added.
          * @return The current instance of {@link Builder} for method chaining.
          */
-        <O extends OutputGuardrail> Builder outputGuardrails(@Nullable List<O> guardrails);
+        <O extends OutputGuardrail> Builder outputGuardrails(List<O> guardrails);
 
         /**
          * Configures the output guardrails for the Builder.
@@ -214,7 +211,7 @@ public interface GuardrailService {
          *                   May be {@code null}, in which case no guardrails will be added.
          * @return The current instance of {@link Builder} for method chaining.
          */
-        default <O extends OutputGuardrail> Builder outputGuardrails(@Nullable O... guardrails) {
+        default <O extends OutputGuardrail> Builder outputGuardrails(O... guardrails) {
             return Optional.ofNullable(guardrails)
                     .map(og -> outputGuardrails(List.of(og)))
                     .orElse(this);
