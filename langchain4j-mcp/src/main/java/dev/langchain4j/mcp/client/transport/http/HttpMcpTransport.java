@@ -14,6 +14,8 @@ import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
@@ -50,6 +52,9 @@ public class HttpMcpTransport implements McpTransport {
         httpClientBuilder.readTimeout(timeout);
         httpClientBuilder.writeTimeout(timeout);
         this.logRequests = builder.logRequests;
+
+        builder.requestModifiers.forEach(requestModifier -> requestModifier.modify(httpClientBuilder));
+
         if (builder.logRequests) {
             httpClientBuilder.addInterceptor(new McpRequestLoggingInterceptor());
         }
@@ -185,10 +190,16 @@ public class HttpMcpTransport implements McpTransport {
         }
     }
 
+    @FunctionalInterface
+    public interface RequestModifier {
+        void modify(OkHttpClient.Builder builder);
+    }
+
     public static class Builder {
 
         private String sseUrl;
         private Duration timeout;
+        private List<RequestModifier> requestModifiers = new ArrayList<>();
         private boolean logRequests = false;
         private boolean logResponses = false;
 
@@ -198,6 +209,11 @@ public class HttpMcpTransport implements McpTransport {
          */
         public Builder sseUrl(String sseUrl) {
             this.sseUrl = sseUrl;
+            return this;
+        }
+
+        public Builder addModifier(RequestModifier modifier) {
+            this.requestModifiers.add(modifier);
             return this;
         }
 
