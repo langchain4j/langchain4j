@@ -14,6 +14,7 @@ Guardrails are mechanisms that let you validate the input and output of the LLM 
 - Verify the user input is not out of scope
 - Ensure the input meets some criteria before calling the LLM (i.e. guard against a [prompt injection attack](https://genai.owasp.org/llmrisk/llm01-prompt-injection/))
 - Ensure the output format is correct (i.e. it is a JSON document with the correct schema)
+- Ensure the LLM output is coherent with business rules and constraints (i.e. if this is a chatbot of company X, the response should not contain any reference to a competitor Y).
 - Detect hallucinations
 
 Those are just examples. You can do many other things with guardrails.
