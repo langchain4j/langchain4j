@@ -14,6 +14,7 @@
         <module>langchain4j-bom</module>
 
         <module>langchain4j-core</module>
+        <module>langchain4j-test</module>
         <module>langchain4j</module>
         <module>langchain4j-kotlin</module>
 
@@ -99,6 +100,9 @@
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
 
+        <!-- integration tests -->
+        <module>integration-tests</module>
+
     </modules>
 
     <properties>
@@ -174,6 +178,9 @@
                             <report>aggregate</report>
                         </reports>
                         <inherited>false</inherited>
+                        <configuration>
+                            <skippedModules>integration-tests</skippedModules>
+                        </configuration>
                     </reportSet>
                     <reportSet>
                         <id>default</id>
