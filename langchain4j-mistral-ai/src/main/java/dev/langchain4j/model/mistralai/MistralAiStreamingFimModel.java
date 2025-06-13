@@ -8,6 +8,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;

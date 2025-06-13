@@ -14,8 +14,10 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiTextContent;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiFimModelBuilderFactory;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
@@ -100,7 +102,7 @@ public class MistralAiFimModel implements LanguageModel {
                 withRetryMappingExceptions(() -> client.fimCompletion(request), maxRetries);
         MistralAiChatCompletionChoice responseChoice = response.getChoices().get(0);
         return Response.from(
-                responseChoice.getMessage().getContent(),
+                responseChoice.getMessage().asText(),
                 tokenUsageFrom(response.getUsage()),
                 finishReasonFrom(responseChoice.getFinishReason()));
     }

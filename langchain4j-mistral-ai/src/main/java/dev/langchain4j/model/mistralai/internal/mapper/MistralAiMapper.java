@@ -1,8 +1,10 @@
 package dev.langchain4j.model.mistralai.internal.mapper;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -11,21 +13,31 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatMessage;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFunction;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFunctionCall;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiImageBase64Content;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiImageUrlContent;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiMessageContent;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiParameters;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormat;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiRole;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiTextContent;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiTool;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolCall;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolType;
@@ -65,7 +77,6 @@ public class MistralAiMapper {
             if (isNullOrBlank(aiMessage.text())) {
                 return MistralAiChatMessage.builder()
                         .role(MistralAiRole.ASSISTANT)
-                        .content(null)
                         .toolCalls(toolCalls)
                         .build();
             }
@@ -80,7 +91,7 @@ public class MistralAiMapper {
         if (message instanceof UserMessage userMessage) {
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.USER)
-                    .content(userMessage.singleText()) // MistralAI support Text Content only as String
+                    .content(toMistralAiMessageContents(userMessage))
                     .build();
         }
 
@@ -141,7 +152,7 @@ public class MistralAiMapper {
         if (!isNullOrEmpty(toolCalls)) {
             return AiMessage.from(toToolExecutionRequests(toolCalls));
         }
-        return AiMessage.from(aiMistralMessage.getContent());
+        return AiMessage.from(aiMistralMessage.asText());
     }
 
     public static List<ToolExecutionRequest> toToolExecutionRequests(List<MistralAiToolCall> mistralAiToolCalls) {
@@ -184,13 +195,9 @@ public class MistralAiMapper {
         }
     }
 
-    public static MistralAiResponseFormat toMistralAiResponseFormat(
-            ResponseFormat responseFormat, ResponseFormat fallbackFormat) {
+    public static MistralAiResponseFormat toMistralAiResponseFormat(ResponseFormat responseFormat) {
         if (responseFormat == null) {
-            if (fallbackFormat == null) {
-                return null;
-            }
-            responseFormat = fallbackFormat;
+            return null;
         }
         return switch (responseFormat.type()) {
             case TEXT -> MistralAiResponseFormat.fromType(MistralAiResponseFormatType.TEXT);
@@ -198,5 +205,22 @@ public class MistralAiMapper {
                     ? MistralAiResponseFormat.fromSchema(responseFormat.jsonSchema())
                     : MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
         };
+    }
+
+    private static List<MistralAiMessageContent> toMistralAiMessageContents(UserMessage message) {
+        return message.contents().stream()
+                .map(content -> {
+                    if (content instanceof final TextContent textContent) {
+                        return new MistralAiTextContent(textContent.text());
+                    } else if (content instanceof ImageContent imageContent) {
+                        Image image = imageContent.image();
+                        return image.url() != null ?
+                                new MistralAiImageUrlContent(image.url().toString()) :
+                                new MistralAiImageBase64Content(image.base64Data());
+                    } else {
+                        throw illegalArgument("Unknown content type: " + content);
+                    }
+                })
+                .collect(toList());
     }
 }

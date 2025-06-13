@@ -3,6 +3,7 @@ package dev.langchain4j.model.mistralai.internal.client;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
@@ -12,7 +13,7 @@ public abstract class MistralAiClient {
     public abstract MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request);
 
     public abstract void streamingChatCompletion(
-            MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler);
+            MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler);
 
     public abstract MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request);
 
