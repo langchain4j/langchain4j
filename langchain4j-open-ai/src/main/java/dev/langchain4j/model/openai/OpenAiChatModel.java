@@ -76,13 +76,13 @@ public class OpenAiChatModel implements ChatModel {
             validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
-            commonParameters = DefaultChatRequestParameters.DEFAULT_INSTANCE;
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
         OpenAiChatRequestParameters openAiParameters =
                 builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters ?
                         openAiChatRequestParameters :
-                        OpenAiChatRequestParameters.DEFAULT_INSTANCE;
+                        OpenAiChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
