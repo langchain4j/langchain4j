@@ -1,5 +1,7 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -8,14 +10,11 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 
 public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implements StreamingChatModel {
 
@@ -26,6 +25,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.modelName,
                 builder.temperature,
                 builder.topK,
+                builder.seed,
                 builder.topP,
                 builder.frequencyPenalty,
                 builder.presencePenalty,
@@ -41,8 +41,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.listeners,
                 null,
                 builder.thinkingConfig,
-                builder.defaultRequestParameters
-        );
+                builder.defaultRequestParameters);
     }
 
     /**
@@ -50,21 +49,46 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
      */
     @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public GoogleAiGeminiStreamingChatModel(
-            String apiKey, String modelName,
-            Double temperature, Integer topK, Double topP,
-            Integer maxOutputTokens, Duration timeout,
+            String apiKey,
+            String modelName,
+            Double temperature,
+            Integer topK,
+            Double topP,
+            Integer seed,
+            Integer maxOutputTokens,
+            Duration timeout,
             ResponseFormat responseFormat,
-            List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
-            Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
+            List<String> stopSequences,
+            GeminiFunctionCallingConfig toolConfig,
+            Boolean allowCodeExecution,
+            Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners,
-            Integer maxRetries
-    ) {
-        super(null, apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
-                responseFormat, stopSequences, toolConfig, allowCodeExecution,
-                includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
-                listeners, maxRetries, null, null);
+            Integer maxRetries) {
+        super(
+                null,
+                apiKey,
+                modelName,
+                temperature,
+                topK,
+                seed,
+                topP,
+                null,
+                null,
+                maxOutputTokens,
+                timeout,
+                responseFormat,
+                stopSequences,
+                toolConfig,
+                allowCodeExecution,
+                includeCodeExecutionOutput,
+                logRequestsAndResponses,
+                safetySettings,
+                listeners,
+                maxRetries,
+                null,
+                null);
     }
 
     public static GoogleAiGeminiStreamingChatModelBuilder builder() {
@@ -79,7 +103,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     @Override
     public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
         GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request);
-        geminiService.generateContentStream(request.modelName(), apiKey, geminiRequest, includeCodeExecutionOutput, handler);
+        geminiService.generateContentStream(
+                request.modelName(), apiKey, geminiRequest, includeCodeExecutionOutput, handler);
     }
 
     @Override
@@ -100,6 +125,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private String modelName;
         private Double temperature;
         private Integer topK;
+        private Integer seed;
         private Double topP;
         private Double frequencyPenalty;
         private Double presencePenalty;
@@ -122,7 +148,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
-        public GoogleAiGeminiStreamingChatModelBuilder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+        public GoogleAiGeminiStreamingChatModelBuilder defaultRequestParameters(
+                ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return this;
         }
@@ -132,10 +159,11 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
-        public GoogleAiGeminiStreamingChatModelBuilder safetySettings(Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
+        public GoogleAiGeminiStreamingChatModelBuilder safetySettings(
+                Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
             this.safetySettings = safetySettingMap.entrySet().stream()
-                    .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue())
-                    ).collect(Collectors.toList());
+                    .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue()))
+                    .collect(Collectors.toList());
             return this;
         }
 
@@ -156,6 +184,11 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder topK(Integer topK) {
             this.topK = topK;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder seed(Integer seed) {
+            this.seed = seed;
             return this;
         }
 
