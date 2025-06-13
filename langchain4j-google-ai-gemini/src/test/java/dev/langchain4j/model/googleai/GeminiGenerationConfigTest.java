@@ -15,14 +15,14 @@ class GeminiGenerationConfigTest {
             GeminiGenerationConfig result =
                     GeminiGenerationConfig.builder().seed(42).build();
 
-            assertThat(result.getSeed()).isEqualTo(42);
+            assertThatCharSequence(Json.toJson(result)).contains("\"seed\" : 42");
         }
 
         @Test
         void defaultValues() {
             GeminiGenerationConfig result = GeminiGenerationConfig.builder().build();
 
-            assertThat(result.getSeed()).isNull();
+            assertThatCharSequence(Json.toJson(result)).doesNotContain("\"seed\"");
         }
     }
 }

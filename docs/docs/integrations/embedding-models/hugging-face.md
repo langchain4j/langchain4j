@@ -13,7 +13,7 @@ sidebar_position: 8
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hugging-face</artifactId>
-    <version>1.0.0-beta5</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 

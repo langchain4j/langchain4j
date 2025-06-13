@@ -6,6 +6,7 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
@@ -70,7 +71,7 @@ public interface StreamingChatModel {
     }
 
     default ChatRequestParameters defaultRequestParameters() {
-        return ChatRequestParameters.builder().build();
+        return DefaultChatRequestParameters.EMPTY;
     }
 
     default List<ChatModelListener> listeners() {

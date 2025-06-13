@@ -1,26 +1,35 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockStreamingChatModel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
 
 /**
  * @deprecated please use {@link BedrockStreamingChatModel} instead
  */
 @Deprecated(forRemoval = true, since = "1.0.0-beta4")
-@Getter
-@SuperBuilder
 public class BedrockAnthropicStreamingChatModel extends AbstractBedrockStreamingChatModel {
-    @Builder.Default
-    private final String model = BedrockAnthropicStreamingChatModel.Types.AnthropicClaudeV2.getValue();
+
+    private static String DEFAULT_MODEL = BedrockAnthropicStreamingChatModel.Types.AnthropicClaudeV2.getValue();
+
+    private final String model;
+
+    protected BedrockAnthropicStreamingChatModel(BedrockAnthropicStreamingChatModelBuilder<?, ?> builder) {
+        super(builder);
+        if (builder.isModelSet) {
+            this.model = builder.model;
+        } else {
+            this.model = DEFAULT_MODEL;
+        }
+    }
 
     @Override
     protected String getModelId() {
         return model;
     }
 
-    @Getter
+    public String getModel() {
+        return model;
+    }
+
     /**
      * Bedrock Anthropic model ids
      */
@@ -32,6 +41,49 @@ public class BedrockAnthropicStreamingChatModel extends AbstractBedrockStreaming
 
         Types(String modelID) {
             this.value = modelID;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
+    public abstract static class BedrockAnthropicStreamingChatModelBuilder<
+                    C extends BedrockAnthropicStreamingChatModel,
+                    B extends BedrockAnthropicStreamingChatModelBuilder<C, B>>
+            extends AbstractBedrockStreamingChatModel.AbstractBedrockStreamingChatModelBuilder<C, B> {
+        private boolean isModelSet;
+        private String model;
+
+        public B model(String model) {
+            this.model = model;
+            this.isModelSet = true;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        public String toString() {
+            return "BedrockAnthropicStreamingChatModel.BedrockAnthropicStreamingChatModelBuilder(super="
+                    + super.toString() + ", model$value=" + model + ")";
+        }
+    }
+
+    public static BedrockAnthropicStreamingChatModelBuilder<?, ?> builder() {
+        return new BedrockAnthropicStreamingChatModelBuilderImpl();
+    }
+
+    private static final class BedrockAnthropicStreamingChatModelBuilderImpl
+            extends BedrockAnthropicStreamingChatModelBuilder<
+                    BedrockAnthropicStreamingChatModel, BedrockAnthropicStreamingChatModelBuilderImpl> {
+        public BedrockAnthropicStreamingChatModelBuilderImpl self() {
+            return this;
+        }
+
+        public BedrockAnthropicStreamingChatModel build() {
+            return new BedrockAnthropicStreamingChatModel(this);
         }
     }
 }

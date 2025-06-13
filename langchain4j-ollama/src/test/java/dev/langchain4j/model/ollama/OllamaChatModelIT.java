@@ -9,6 +9,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -25,10 +26,14 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -268,5 +273,24 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when-then
         assertDoesNotThrow(() -> toolModel.chat(chatRequest));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100, 500})
+    void should_handle_timeout(int millis) {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        ChatModel model = OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+                .maxRetries(0)
+                .timeout(timeout)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model.chat("hi"))
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 }

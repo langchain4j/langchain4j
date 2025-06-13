@@ -88,7 +88,7 @@ You don't have to learn about embeddings, choose a vector store, find the right 
 figure out how to parse and split documents, etc.
 Just point to your document(s), and LangChain4j will do its magic.
 
-If you need a customizable RAG, skip to the [next section](/tutorials/rag#rag-apis).
+If you need a customizable RAG, skip to the [next section](/tutorials/rag#core-rag-apis).
 
 If you are using Quarkus, there is an even easier way to do Easy RAG.
 Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/easy-rag.html).
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.0-beta5</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 
@@ -233,7 +233,7 @@ It stores meta information about the `Document`, such as its name, source, last 
 or any other relevant details.
 
 The `Metadata` is stored as a key-value map, where the key is of the `String` type,
-and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`.
+and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`, `UUID`.
 
 `Metadata` is useful for several reasons:
 - When including the content of the `Document` in a prompt to the LLM,

@@ -24,7 +24,7 @@ class OpenAiEmbeddingModelIT {
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(TEXT_EMBEDDING_3_SMALL)
             .logRequests(true)
-            .logResponses(true)
+            .logResponses(false) // embeddings are huge in logs
             .build();
 
     @Test
@@ -85,7 +85,7 @@ class OpenAiEmbeddingModelIT {
                 .modelName(TEXT_EMBEDDING_3_SMALL)
                 .maxSegmentsPerBatch(maxSegmentsPerBatch)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         List<TextSegment> segments = Stream.generate(() -> TextSegment.from("hello"))
@@ -123,7 +123,7 @@ class OpenAiEmbeddingModelIT {
                 .modelName(TEXT_EMBEDDING_3_SMALL)
                 .dimensions(dimension)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         String text = "hello world";

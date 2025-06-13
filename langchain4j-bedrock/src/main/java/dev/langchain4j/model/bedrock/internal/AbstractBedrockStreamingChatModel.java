@@ -1,7 +1,10 @@
 package dev.langchain4j.model.bedrock.internal;
 
+import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -10,7 +13,6 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -19,29 +21,30 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamResponseHandler;
 
-import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
-
 /**
  * Bedrock Streaming chat model
  */
-@Slf4j
-@Getter
-@SuperBuilder
-public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBedrockChatModel implements StreamingChatModel {
+public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBedrockChatModel
+        implements StreamingChatModel {
+
+    private static final Logger log = LoggerFactory.getLogger(AbstractBedrockStreamingChatModel.class);
 
     private volatile BedrockRuntimeAsyncClient asyncClient;
 
     static class StreamingResponse {
         public String completion;
+    }
+
+    protected AbstractBedrockStreamingChatModel(AbstractBedrockStreamingChatModelBuilder<?, ?> b) {
+        super(b);
+        this.asyncClient = b.asyncClient;
     }
 
     @Override
@@ -91,8 +94,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
 
         ChatRequest listenerRequest = createListenerRequest(request, messages, Collections.emptyList());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -103,29 +105,22 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
 
         StringBuffer finalCompletion = new StringBuffer();
 
-        InvokeModelWithResponseStreamResponseHandler.Visitor visitor = InvokeModelWithResponseStreamResponseHandler.Visitor.builder()
-                .onChunk(chunk -> {
-                    StreamingResponse sr = Json.fromJson(chunk.bytes().asUtf8String(), StreamingResponse.class);
-                    finalCompletion.append(sr.completion);
-                    handler.onNext(sr.completion);
-                })
-                .build();
+        InvokeModelWithResponseStreamResponseHandler.Visitor visitor =
+                InvokeModelWithResponseStreamResponseHandler.Visitor.builder()
+                        .onChunk(chunk -> {
+                            StreamingResponse sr = Json.fromJson(chunk.bytes().asUtf8String(), StreamingResponse.class);
+                            finalCompletion.append(sr.completion);
+                            handler.onNext(sr.completion);
+                        })
+                        .build();
 
         InvokeModelWithResponseStreamResponseHandler h = InvokeModelWithResponseStreamResponseHandler.builder()
                 .onEventStream(stream -> stream.subscribe(event -> event.accept(visitor)))
                 .onComplete(() -> {
                     Response<AiMessage> response = Response.from(new AiMessage(finalCompletion.toString()));
-                    ChatResponse listenerResponse = createListenerResponse(
-                            null,
-                            null,
-                            response
-                    );
-                    ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                            listenerResponse,
-                            listenerRequest,
-                            provider(),
-                            attributes
-                    );
+                    ChatResponse listenerResponse = createListenerResponse(null, null, response);
+                    ChatModelResponseContext responseContext =
+                            new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
 
                     listeners.forEach(listener -> {
                         try {
@@ -146,7 +141,6 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
         } catch (RuntimeException e) {
             log.error("Error on bedrock stream request", e);
         }
-
     }
 
     public BedrockRuntimeAsyncClient getAsyncClient() {
@@ -169,7 +163,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
         BedrockRuntimeAsyncClient client = BedrockRuntimeAsyncClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
-                .overrideConfiguration(c-> c.apiCallTimeout(timeout))
+                .overrideConfiguration(c -> c.apiCallTimeout(timeout))
                 .build();
         return client;
     }
@@ -182,5 +176,26 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
     @Override
     public ModelProvider provider() {
         return AMAZON_BEDROCK;
+    }
+
+    public abstract static class AbstractBedrockStreamingChatModelBuilder<
+                    C extends AbstractBedrockStreamingChatModel,
+                    B extends AbstractBedrockStreamingChatModelBuilder<C, B>>
+            extends AbstractSharedBedrockChatModel.AbstractSharedBedrockChatModelBuilder<C, B> {
+        private BedrockRuntimeAsyncClient asyncClient;
+
+        public B asyncClient(BedrockRuntimeAsyncClient asyncClient) {
+            this.asyncClient = asyncClient;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+
+        public String toString() {
+            return "AbstractBedrockStreamingChatModel.AbstractBedrockStreamingChatModelBuilder(super="
+                    + super.toString() + ", asyncClient=" + this.asyncClient + ")";
+        }
     }
 }

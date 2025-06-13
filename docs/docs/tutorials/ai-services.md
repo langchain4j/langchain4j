@@ -536,7 +536,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.0.0-beta5</version>
+    <version>1.0.1-beta6</version>
 </dependency>
 ```
 ```java

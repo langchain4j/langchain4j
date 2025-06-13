@@ -4,12 +4,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.0.0-beta4-SNAPSHOT</version>
+        <version>1.1.0-beta7-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <name>langchain4j-onnx-scoring</name>
+    <name>LangChain4j :: Integration :: ONNX Scoring</name>
 
     <properties>
         <ai.djl.version>0.31.1</ai.djl.version>
@@ -21,7 +21,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>${project.version}</version>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>

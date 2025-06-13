@@ -22,7 +22,7 @@ class OvhAiEmbeddingModelIT {
                 .baseUrl("https://bge-base-en-v1-5.endpoints.kepler.ai.cloud.ovh.net")
                 .apiKey(System.getenv("OVHAI_AI_API_KEY"))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         // given
@@ -44,7 +44,7 @@ class OvhAiEmbeddingModelIT {
                 .apiKey(System.getenv("OVHAI_AI_API_KEY"))
                 .baseUrl("https://bge-base-en-v1-5.endpoints.kepler.ai.cloud.ovh.net")
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         // given
