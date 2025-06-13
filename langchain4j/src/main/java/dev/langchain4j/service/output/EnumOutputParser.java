@@ -10,6 +10,7 @@ import java.lang.reflect.Field;
 import java.util.Locale;
 import java.util.Optional;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
@@ -58,9 +59,7 @@ class EnumOutputParser<E extends Enum<E>> implements OutputParser<E> {
         try {
             E[] enumConstants = enumClass.getEnumConstants();
 
-            if (enumConstants.length == 0) {
-                throw new IllegalArgumentException("Should be at least one enum constant defined.");
-            }
+            ensureNotEmpty(enumConstants, "%s", "Should be at least one enum constant defined.");
 
             StringBuilder instruction = new StringBuilder();
 
