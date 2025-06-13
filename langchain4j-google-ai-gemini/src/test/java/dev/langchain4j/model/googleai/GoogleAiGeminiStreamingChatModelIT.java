@@ -58,6 +58,8 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
 class GoogleAiGeminiStreamingChatModelIT {
@@ -672,11 +674,12 @@ class GoogleAiGeminiStreamingChatModelIT {
         verifyNoMoreInteractions(spyTransactions);
     }
 
-    @Test
-    void should_handle_timeout() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) throws Exception {
 
         // given
-        Duration timeout = Duration.ofMillis(300);
+        Duration timeout = Duration.ofMillis(millis);
 
         GoogleAiGeminiStreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -708,9 +711,7 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         Throwable error = futureError.get(5, SECONDS);
 
-        assertThat(error)
-                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
-                .hasRootCauseExactlyInstanceOf(java.net.http.HttpTimeoutException.class);
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     @AfterEach

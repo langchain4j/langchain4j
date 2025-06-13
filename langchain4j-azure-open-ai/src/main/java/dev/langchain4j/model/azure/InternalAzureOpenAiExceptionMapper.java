@@ -1,12 +1,10 @@
 package dev.langchain4j.model.azure;
 
-import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.HttpResponse;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.internal.ExceptionMapper;
-import io.netty.channel.ConnectTimeoutException;
 
 @Internal
 class InternalAzureOpenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
@@ -22,7 +20,8 @@ class InternalAzureOpenAiExceptionMapper extends ExceptionMapper.DefaultExceptio
             }
         }
 
-        if (t instanceof io.netty.channel.ConnectTimeoutException) {
+        if (t instanceof io.netty.channel.ConnectTimeoutException
+                || t instanceof java.util.concurrent.TimeoutException) {
             return new TimeoutException(t);
         } else if (t.getCause() instanceof io.netty.channel.ConnectTimeoutException
                 || t.getCause() instanceof java.util.concurrent.TimeoutException) {

@@ -9,7 +9,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.azure.ai.openai.OpenAIAsyncClient;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -18,13 +17,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.TokenCountEstimator;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -34,7 +30,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -449,11 +444,12 @@ class AzureOpenAiStreamingChatModelIT {
         assertThat(response.tokenUsage()).isNull();
     }
 
-    @Test
-    void should_handle_timeout() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) throws Exception {
 
         // given
-        Duration timeout = Duration.ofMillis(10);
+        Duration timeout = Duration.ofMillis(millis);
 
         StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -487,9 +483,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         Throwable error = futureError.get(5, SECONDS);
 
-        assertThat(error)
-                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
-                .hasCauseExactlyInstanceOf(io.netty.channel.ConnectTimeoutException.class);
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     @AfterEach

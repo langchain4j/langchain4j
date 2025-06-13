@@ -57,6 +57,8 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
 class GoogleAiGeminiChatModelIT {
@@ -765,11 +767,12 @@ class GoogleAiGeminiChatModelIT {
         assertThat(reply).contains("20");
     }
 
-    @Test
-    void should_handle_timeout() {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) {
 
         // given
-        Duration timeout = Duration.ofMillis(10);
+        Duration timeout = Duration.ofMillis(millis);
 
         GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -780,9 +783,8 @@ class GoogleAiGeminiChatModelIT {
                 .build();
 
         // when
-        assertThatThrownBy(() -> model.chat("hello, how are you?"))
-                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
-                .hasCauseExactlyInstanceOf(java.net.http.HttpConnectTimeoutException.class);
+        assertThatThrownBy(() -> model.chat("hi"))
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     @AfterEach
