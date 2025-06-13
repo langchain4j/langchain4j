@@ -175,8 +175,6 @@ public class ChatRequest {
         public Builder(ChatRequest chatRequest) {
             this.messages = chatRequest.messages;
             this.parameters = chatRequest.parameters;
-            this.toolSpecifications = chatRequest.toolSpecifications();
-            this.responseFormat = chatRequest.responseFormat();
         }
 
         public Builder messages(List<ChatMessage> messages) {
