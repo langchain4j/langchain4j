@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.TokenCountEstimator;
 import org.slf4j.Logger;
 
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
@@ -32,14 +33,16 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
             String apiKey,
             Boolean logRequestsAndResponses,
             Duration timeout,
-            Integer maxRetries
+            Integer maxRetries,
+            InetSocketAddress proxyAddress
     ) {
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.geminiService = new GeminiService(
                 getOrDefault(logRequestsAndResponses, false) ? log : null,
-                timeout != null ? timeout : Duration.ofSeconds(60)
+                timeout != null ? timeout : Duration.ofSeconds(60),
+                proxyAddress
         );
     }
 
@@ -112,6 +115,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         private Boolean logRequestsAndResponses;
         private Duration timeout;
         private Integer maxRetries;
+        private InetSocketAddress proxyAddress;
 
         Builder() {
         }
@@ -141,8 +145,13 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
             return this;
         }
 
+        public Builder proxyAddress(InetSocketAddress proxyAddress) {
+            this.proxyAddress = proxyAddress;
+            return this;
+        }
+
         public GoogleAiGeminiTokenCountEstimator build() {
-            return new GoogleAiGeminiTokenCountEstimator(this.modelName, this.apiKey, this.logRequestsAndResponses, this.timeout, this.maxRetries);
+            return new GoogleAiGeminiTokenCountEstimator(this.modelName, this.apiKey, this.logRequestsAndResponses, this.timeout, this.maxRetries, this.proxyAddress);
         }
 
         public String toString() {

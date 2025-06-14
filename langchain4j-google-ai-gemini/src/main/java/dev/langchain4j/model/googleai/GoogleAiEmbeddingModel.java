@@ -8,6 +8,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
 
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,7 +42,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             String titleMetadataKey,
             Integer outputDimensionality,
             Duration timeout,
-            Boolean logRequestsAndResponses
+            Boolean logRequestsAndResponses,
+            InetSocketAddress proxyAddress
     ) {
 
         this.modelName = ensureNotBlank(modelName, "modelName");
@@ -58,7 +60,7 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         boolean logRequestsAndResponses1 = logRequestsAndResponses != null && logRequestsAndResponses;
 
-        this.geminiService = new GeminiService(logRequestsAndResponses1 ? log : null, timeout1);
+        this.geminiService = new GeminiService(logRequestsAndResponses1 ? log : null, timeout1, proxyAddress);
     }
 
     public static GoogleAiEmbeddingModelBuilder builder() {
@@ -163,6 +165,7 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Integer outputDimensionality;
         private Duration timeout;
         private Boolean logRequestsAndResponses;
+        private InetSocketAddress proxyAddress;
 
         GoogleAiEmbeddingModelBuilder() {
         }
@@ -207,8 +210,13 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        public GoogleAiEmbeddingModelBuilder proxyAddress(InetSocketAddress proxyAddress) {
+            this.proxyAddress = proxyAddress;
+            return this;
+        }
+
         public GoogleAiEmbeddingModel build() {
-            return new GoogleAiEmbeddingModel(this.modelName, this.apiKey, this.maxRetries, this.taskType, this.titleMetadataKey, this.outputDimensionality, this.timeout, this.logRequestsAndResponses);
+            return new GoogleAiEmbeddingModel(this.modelName, this.apiKey, this.maxRetries, this.taskType, this.titleMetadataKey, this.outputDimensionality, this.timeout, this.logRequestsAndResponses, this.proxyAddress);
         }
 
         public String toString() {

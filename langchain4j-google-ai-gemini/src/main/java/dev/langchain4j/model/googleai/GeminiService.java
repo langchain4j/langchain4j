@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -22,12 +24,13 @@ class GeminiService {
     private final ObjectMapper objectMapper;
     private final Logger logger;
 
-    GeminiService(Logger logger, Duration timeout) {
+    GeminiService(Logger logger, Duration timeout, InetSocketAddress proxyAddress) {
         this.logger = logger;
         this.objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(timeout)
+                .proxy(ProxySelector.of(proxyAddress))
                 .build();
     }
 

@@ -19,6 +19,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
 
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,7 +68,8 @@ abstract class BaseGeminiChatModel {
             Boolean logRequestsAndResponses,
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners,
-            Integer maxRetries
+            Integer maxRetries,
+            InetSocketAddress proxyAddress
     ) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.modelName = ensureNotBlank(modelName, "modelName");
@@ -85,7 +87,8 @@ abstract class BaseGeminiChatModel {
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.geminiService = new GeminiService(
                 getOrDefault(logRequestsAndResponses, false) ? log : null,
-                getOrDefault(timeout, ofSeconds(60))
+                getOrDefault(timeout, ofSeconds(60)),
+                proxyAddress
         );
     }
 
