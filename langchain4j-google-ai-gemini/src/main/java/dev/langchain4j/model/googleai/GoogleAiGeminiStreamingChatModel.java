@@ -19,6 +19,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
 
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -48,12 +49,13 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             Boolean logRequestsAndResponses,
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners,
-            Integer maxRetries
+            Integer maxRetries,
+            InetSocketAddress proxyAddress
     ) {
         super(apiKey, modelName, temperature, topK, topP, maxOutputTokens, timeout,
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
-                listeners, maxRetries);
+                listeners, maxRetries, proxyAddress);
     }
 
     public static GoogleAiGeminiStreamingChatModelBuilder builder() {
@@ -174,6 +176,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
         private Integer maxRetries;
+        InetSocketAddress proxyAddress;
 
         GoogleAiGeminiStreamingChatModelBuilder() {
         }
@@ -270,8 +273,13 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
+        public GoogleAiGeminiStreamingChatModelBuilder proxyAddress(InetSocketAddress proxyAddress) {
+            this.proxyAddress = proxyAddress;
+            return this;
+        }
+
         public GoogleAiGeminiStreamingChatModel build() {
-            return new GoogleAiGeminiStreamingChatModel(this.apiKey, this.modelName, this.temperature, this.topK, this.topP, this.maxOutputTokens, this.timeout, this.responseFormat, this.stopSequences, this.toolConfig, this.allowCodeExecution, this.includeCodeExecutionOutput, this.logRequestsAndResponses, this.safetySettings, this.listeners, this.maxRetries);
+            return new GoogleAiGeminiStreamingChatModel(this.apiKey, this.modelName, this.temperature, this.topK, this.topP, this.maxOutputTokens, this.timeout, this.responseFormat, this.stopSequences, this.toolConfig, this.allowCodeExecution, this.includeCodeExecutionOutput, this.logRequestsAndResponses, this.safetySettings, this.listeners, this.maxRetries, this.proxyAddress);
         }
 
         public String toString() {

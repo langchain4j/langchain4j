@@ -19,6 +19,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -48,12 +49,12 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
             List<GeminiSafetySetting> safetySettings,
-            List<ChatModelListener> listeners
-    ) {
+            List<ChatModelListener> listeners,
+            InetSocketAddress proxyAddress) {
         super(apiKey, modelName, temperature, topK, topP, maxOutputTokens, timeout,
                 responseFormat, stopSequences, toolConfig, allowCodeExecution,
                 includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
-                listeners, maxRetries);
+                listeners, maxRetries, proxyAddress);
     }
 
     public static GoogleAiGeminiChatModelBuilder builder() {
@@ -189,6 +190,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Boolean logRequestsAndResponses;
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
+        private InetSocketAddress proxyAddress;
 
         GoogleAiGeminiChatModelBuilder() {
         }
@@ -285,8 +287,13 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return this;
         }
 
+        public GoogleAiGeminiChatModelBuilder proxyAddress(InetSocketAddress proxyAddress) {
+            this.proxyAddress = proxyAddress;
+            return this;
+        }
+
         public GoogleAiGeminiChatModel build() {
-            return new GoogleAiGeminiChatModel(this.apiKey, this.modelName, this.maxRetries, this.temperature, this.topK, this.topP, this.maxOutputTokens, this.timeout, this.responseFormat, this.stopSequences, this.toolConfig, this.allowCodeExecution, this.includeCodeExecutionOutput, this.logRequestsAndResponses, this.safetySettings, this.listeners);
+            return new GoogleAiGeminiChatModel(this.apiKey, this.modelName, this.maxRetries, this.temperature, this.topK, this.topP, this.maxOutputTokens, this.timeout, this.responseFormat, this.stopSequences, this.toolConfig, this.allowCodeExecution, this.includeCodeExecutionOutput, this.logRequestsAndResponses, this.safetySettings, this.listeners, this.proxyAddress);
         }
     }
 }
