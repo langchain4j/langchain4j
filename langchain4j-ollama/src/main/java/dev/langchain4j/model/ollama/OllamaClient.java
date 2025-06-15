@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -153,18 +154,27 @@ class OllamaClient {
 
                 String content = ollamaChatResponse.getMessage().getContent();
                 if (!isNullOrEmpty(content)) {
-                    handler.onPartialResponse(content);
+                    try {
+                        handler.onPartialResponse(content);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
                 }
 
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
                     ChatResponse response = responseBuilder.build(ollamaChatResponse);
-                    handler.onCompleteResponse(response);
+                    try {
+                        handler.onCompleteResponse(response);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                handler.onError(ExceptionMapper.DEFAULT.mapException(throwable));
+                RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(throwable);
+                withLoggingExceptions(() -> handler.onError(mappedException));
             }
         });
     }

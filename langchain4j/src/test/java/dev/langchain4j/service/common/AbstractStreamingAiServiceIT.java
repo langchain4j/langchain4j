@@ -78,7 +78,9 @@ public abstract class AbstractStreamingAiServiceIT {
             assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType(model));
         }
 
-        assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
@@ -135,7 +137,9 @@ public abstract class AbstractStreamingAiServiceIT {
             assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType(model));
         }
 
-        assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
@@ -163,6 +167,10 @@ public abstract class AbstractStreamingAiServiceIT {
 
     protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
         return TokenUsage.class;
+    }
+
+    protected boolean assertTokenUsage() {
+        return true;
     }
 
     protected boolean assertFinishReason() {

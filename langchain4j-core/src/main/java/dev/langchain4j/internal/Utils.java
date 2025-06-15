@@ -4,6 +4,9 @@ import dev.langchain4j.Internal;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -17,6 +20,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -395,5 +399,35 @@ public class Utils {
             stringValueMap.put(key, stringValue);
         }
         return stringValueMap;
+    }
+
+    /**
+     * Returns the method eventually annotated with the given annotation.
+     * It could be the method itself or, if the method belongs to a proxy,
+     * a method from one of the interfaces implemented by the proxy.
+     *
+     * @param method The method to check for the annotation.
+     * @param annotation The annotation to look for.
+     * @return An {@link Optional} containing the method having the given annotation,
+     *         or an empty {@link Optional} if there isn't any.
+     */
+    public static Optional<Method> getAnnotatedMethod(Method method, Class<? extends Annotation> annotation) {
+        if (method.isAnnotationPresent(annotation)) {
+            return Optional.of(method);
+        }
+
+        if (Proxy.isProxyClass(method.getDeclaringClass())) {
+            for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
+                try {
+                    Method interfaceMethod = iface.getDeclaredMethod(method.getName(), method.getParameterTypes());
+                    if (interfaceMethod.isAnnotationPresent(annotation)) {
+                        return Optional.of(interfaceMethod);
+                    }
+                } catch (NoSuchMethodException e) {
+                    // Ignore and continue searching in the next interface
+                }
+            }
+        }
+        return Optional.empty();
     }
 }

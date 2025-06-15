@@ -84,7 +84,7 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(OllamaImage.TINY_DOLPHIN_MODEL)
-                .format("json")
+                .responseFormat(JSON)
                 .temperature(0.0)
                 .build();
 
@@ -140,14 +140,5 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
 
         assertThat(throwable).hasCauseExactlyInstanceOf(HttpException.class);
         assertThat(((HttpException) throwable.getCause()).statusCode()).isEqualTo(404);
-    }
-
-    @Test
-    void should_throw_exception_when_format_and_response_format_are_used() {
-        assertThatThrownBy(() -> OllamaStreamingLanguageModel.builder()
-                .format("json")
-                .responseFormat(ResponseFormat.JSON)
-                .build())
-                .isInstanceOf(IllegalStateException.class);
     }
 }
