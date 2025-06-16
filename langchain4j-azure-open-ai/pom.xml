@@ -12,6 +12,15 @@
     <artifactId>langchain4j-azure-open-ai</artifactId>
     <name>LangChain4j :: Integration :: Azure OpenAI</name>
 
+    <developers>
+        <developer>
+            <id>jdubois</id>
+            <name>Julien Dubois</name>
+            <email>github@julien-dubois.com</email>
+            <url>https://www.julien-dubois.com</url>
+        </developer>
+    </developers>
+
     <dependencyManagement>
         <dependencies>
             <dependency>

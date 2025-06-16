@@ -125,7 +125,7 @@ abstract class OpenAiOfficialBaseChatModel {
         if (defaultRequestParameters instanceof OpenAiOfficialChatRequestParameters openAiChatRequestParameters) {
             openAiParameters = openAiChatRequestParameters;
         } else {
-            openAiParameters = OpenAiOfficialChatRequestParameters.builder().build();
+            openAiParameters = OpenAiOfficialChatRequestParameters.EMPTY;
         }
 
         this.defaultRequestParameters = OpenAiOfficialChatRequestParameters.builder()

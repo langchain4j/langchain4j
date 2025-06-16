@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.embedding.Embedding;
@@ -97,6 +97,7 @@ class BedrockEmbeddingIT {
                     @Override
                     public void close() {}
                 })
+                .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV2.getValue())
                 .build();
 
         assertThat(model.getClient().serviceName()).isEqualTo(serviceName);

@@ -46,7 +46,7 @@ abstract class OllamaBaseChatModel {
         OllamaChatRequestParameters ollamaParameters =
                 builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters ?
                         ollamaChatRequestParameters :
-                        OllamaChatRequestParameters.DEFAULT_INSTANCE;
+                        OllamaChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters

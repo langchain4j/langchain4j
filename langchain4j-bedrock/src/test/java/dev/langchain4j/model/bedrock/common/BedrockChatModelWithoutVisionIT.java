@@ -1,5 +1,7 @@
-package dev.langchain4j.model.bedrock;
+package dev.langchain4j.model.bedrock.common;
 
+import dev.langchain4j.model.bedrock.BedrockChatModel;
+import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -12,10 +14,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
-import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
-import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AWS_NOVA_MICRO;
-import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.COHERE_COMMAND_R_PLUS;
-import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.MISTRAL_LARGE;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
+import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_MICRO;
+import static dev.langchain4j.model.bedrock.TestedModels.COHERE_COMMAND_R_PLUS;
+import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
@@ -37,7 +39,9 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return BedrockChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        return BedrockChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
@@ -49,39 +53,40 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
                 .build();
     }
 
-    // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
-    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
     @Override
     protected boolean supportsToolChoiceRequired() {
+        // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
+        // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
         return false;
     }
 
-    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false;
+        return false; // output format not supported
     }
 
-    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
+        return false; // output format not supported
     }
 
     @Override
     protected boolean assertExceptionType() {
+        // Bedrock throws ValidationException, while test expects UnsupportedFeatureException
         return false;
     }
 
-    // These models doesn't support image as input parameters
-    // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
+        // These models doesn't support image as input parameters
+        // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
         return false;
     }
 
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
+        // These models doesn't support image as input parameters
+        // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
         return false;
     }
 

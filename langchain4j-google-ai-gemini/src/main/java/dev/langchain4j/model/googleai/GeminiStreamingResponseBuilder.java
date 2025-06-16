@@ -134,17 +134,9 @@ class GeminiStreamingResponseBuilder {
 
     private AiMessage createAiMessage() {
         String text = contentBuilder.toString();
-        boolean hasText = !text.isEmpty() && !text.isBlank();
-        boolean hasFunctionCall = !functionCalls.isEmpty();
-
-        if (hasText && hasFunctionCall) {
-            return new AiMessage(text, functionCalls);
-        } else if (hasText) {
-            return new AiMessage(text);
-        } else if (hasFunctionCall) {
-            return new AiMessage(functionCalls);
-        }
-
-        throw new RuntimeException("Gemini has responded neither with text nor with a function call.");
+        return AiMessage.builder()
+                .text(text.isEmpty() ? null : text)
+                .toolExecutionRequests(functionCalls)
+                .build();
     }
 }

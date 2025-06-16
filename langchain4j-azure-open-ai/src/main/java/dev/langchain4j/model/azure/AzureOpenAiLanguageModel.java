@@ -138,7 +138,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel {
                 .setFrequencyPenalty(frequencyPenalty)
                 .setBestOf(bestOf);
 
-        Completions completions = InternalAzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
+        Completions completions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
                 client.getCompletions(deploymentName, options));
 
         return Response.from(

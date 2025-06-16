@@ -82,7 +82,7 @@ public class OpenAiChatModel implements ChatModel {
         OpenAiChatRequestParameters openAiParameters =
                 builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters ?
                         openAiChatRequestParameters :
-                        OpenAiChatRequestParameters.DEFAULT_INSTANCE;
+                        OpenAiChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters

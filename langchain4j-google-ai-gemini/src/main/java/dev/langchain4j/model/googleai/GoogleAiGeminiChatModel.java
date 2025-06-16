@@ -1,6 +1,14 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.Experimental;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Arrays.asList;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -15,7 +23,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -24,15 +31,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-
-@Experimental
 public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatModel {
+
+    private final Set<Capability> supportedCapabilities;
 
     public GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder builder) {
         super(
@@ -41,6 +42,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.modelName,
                 builder.temperature,
                 builder.topK,
+                builder.seed,
                 builder.topP,
                 builder.frequencyPenalty,
                 builder.presencePenalty,
@@ -56,8 +58,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.listeners,
                 builder.maxRetries,
                 builder.thinkingConfig,
-                builder.defaultRequestParameters
-        );
+                builder.defaultRequestParameters);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
 
     /**
@@ -65,21 +67,47 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
      */
     @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public GoogleAiGeminiChatModel(
-            String apiKey, String modelName,
+            String apiKey,
+            String modelName,
             Integer maxRetries,
-            Double temperature, Integer topK, Double topP,
-            Integer maxOutputTokens, Duration timeout,
+            Double temperature,
+            Integer topK,
+            Integer seed,
+            Double topP,
+            Integer maxOutputTokens,
+            Duration timeout,
             ResponseFormat responseFormat,
-            List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
-            Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
+            List<String> stopSequences,
+            GeminiFunctionCallingConfig toolConfig,
+            Boolean allowCodeExecution,
+            Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
             List<GeminiSafetySetting> safetySettings,
-            List<ChatModelListener> listeners
-    ) {
-        super(null, apiKey, modelName, temperature, topK, topP, null, null, maxOutputTokens, timeout,
-                responseFormat, stopSequences, toolConfig, allowCodeExecution,
-                includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
-                listeners, maxRetries, null, null);
+            List<ChatModelListener> listeners) {
+        super(
+                null,
+                apiKey,
+                modelName,
+                temperature,
+                topK,
+                seed,
+                topP,
+                null,
+                null,
+                maxOutputTokens,
+                timeout,
+                responseFormat,
+                stopSequences,
+                toolConfig,
+                allowCodeExecution,
+                includeCodeExecutionOutput,
+                logRequestsAndResponses,
+                safetySettings,
+                listeners,
+                maxRetries,
+                null,
+                null);
+        this.supportedCapabilities = Set.of();
     }
 
     public static GoogleAiGeminiChatModelBuilder builder() {
@@ -94,21 +122,15 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
 
-        ChatRequestParameters parameters = chatRequest.parameters();
-
         GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
 
-        GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(() ->
-                        geminiService.generateContent(parameters.modelName(), apiKey, request), maxRetries);
+        GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
+                () -> geminiService.generateContent(chatRequest.modelName(), apiKey, request), maxRetries);
 
         return processResponse(geminiResponse);
     }
 
     private ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
-        if (geminiResponse == null) {
-            throw new RuntimeException("Gemini response was null");
-        }
-
         GeminiCandidate firstCandidate = geminiResponse.getCandidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 
@@ -140,18 +162,16 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         return new TokenUsage(
                 tokenCounts.getPromptTokenCount(),
                 tokenCounts.getCandidatesTokenCount(),
-                tokenCounts.getTotalTokenCount()
-        );
+                tokenCounts.getTotalTokenCount());
     }
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        Set<Capability> capabilities = new HashSet<>();
+        Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
         // when response format is not null, it's JSON, either application/json or text/x.enum
         ResponseFormat responseFormat = this.defaultRequestParameters.responseFormat();
         if (responseFormat != null && ResponseFormatType.JSON.equals(responseFormat.type())) {
-            capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA); // TODO or allow always? all models support?
-            // TODO check docu
+            capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
     }
@@ -175,6 +195,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Integer maxRetries;
         private Double temperature;
         private Integer topK;
+        private Integer seed;
         private Double topP;
         private Double frequencyPenalty;
         private Double presencePenalty;
@@ -189,9 +210,9 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private List<GeminiSafetySetting> safetySettings;
         private GeminiThinkingConfig thinkingConfig;
         private List<ChatModelListener> listeners;
+        private Set<Capability> supportedCapabilities;
 
-        GoogleAiGeminiChatModelBuilder() {
-        }
+        GoogleAiGeminiChatModelBuilder() {}
 
         public GoogleAiGeminiChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -208,10 +229,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return this;
         }
 
-        public GoogleAiGeminiChatModelBuilder safetySettings(Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
+        public GoogleAiGeminiChatModelBuilder safetySettings(
+                Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
             this.safetySettings = safetySettingMap.entrySet().stream()
-                    .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue())
-                    ).collect(Collectors.toList());
+                    .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue()))
+                    .collect(Collectors.toList());
             return this;
         }
 
@@ -237,6 +259,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder topK(Integer topK) {
             this.topK = topK;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder seed(Integer seed) {
+            this.seed = seed;
             return this;
         }
 
@@ -308,6 +335,15 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         public GoogleAiGeminiChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
         public GoogleAiGeminiChatModel build() {
