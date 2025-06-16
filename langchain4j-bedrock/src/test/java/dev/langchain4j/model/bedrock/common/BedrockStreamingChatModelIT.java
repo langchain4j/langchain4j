@@ -1,9 +1,10 @@
-package dev.langchain4j.model.bedrock;
+package dev.langchain4j.model.bedrock.common;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
@@ -12,6 +13,9 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
+import dev.langchain4j.model.bedrock.BedrockStreamingChatModel;
+import dev.langchain4j.model.bedrock.TestedModels;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -19,25 +23,29 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModelIT {
+class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatModel> models() {
         return List.of(
                 //                TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_MICRO,
-                TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_LITE,
-                TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_PRO);
+                TestedModels.STREAMING_AWS_NOVA_LITE,
+                TestedModels.STREAMING_AWS_NOVA_PRO);
         //                TestedModelsWithConverseAPI.STREAMING_AI_JAMBA_1_5_MINI,
         //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU,
         //                TestedModelsWithConverseAPI.STREAMING_COHERE_COMMAND_R_PLUS,
@@ -60,22 +68,28 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
         return "cohere.command-r-v1:0";
     }
 
-    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false;
+        return false; // output format not supported
     }
 
-    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
+        return false; // output format not supported
     }
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         return BedrockChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
+                .build();
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return BedrockStreamingChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .listeners(List.of(listener))
                 .build();
     }
 
@@ -219,12 +233,12 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
 
     @Test
     void should_call_tool_with_chunked_parameters() {
-        StreamingChatModel model = TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU;
+        StreamingChatModel model = TestedModels.STREAMING_CLAUDE_3_HAIKU;
 
         UserMessage userMessage = userMessage(
                 "Create a clear timeline to be displayed in mermaid.live with iconic dinosaurs and major milestones of the Mesozoic era.");
         Method mermaidTimelineDiagram = Arrays.stream(
-                        BedrockStreamingChatModelWithConverseIT.class.getDeclaredMethods())
+                        BedrockStreamingChatModelIT.class.getDeclaredMethods())
                 .filter(m -> m.getName().equals("mermaidTimelineDiagram"))
                 .findFirst()
                 .orElseThrow();
@@ -245,9 +259,42 @@ class BedrockStreamingChatModelWithConverseIT extends AbstractStreamingChatModel
         }
     }
 
-    @Override
-    public StreamingChatModel createModelWith(ChatModelListener listener) {
-        return null; // TODO implement
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) throws Exception {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .timeout(timeout)
+                .build();
+
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        model.chat("hi", new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                futureError.completeExceptionally(new RuntimeException("onPartialResponse should not be called"));
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureError.completeExceptionally(new RuntimeException("onCompleteResponse should not be called"));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureError.complete(error);
+            }
+        });
+
+        Throwable error = futureError.get(5, SECONDS);
+
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     @AfterEach

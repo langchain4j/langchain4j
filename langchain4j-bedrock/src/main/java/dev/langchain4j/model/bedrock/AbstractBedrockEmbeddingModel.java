@@ -1,10 +1,11 @@
-package dev.langchain4j.model.bedrock.internal;
+package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.nio.charset.Charset;
@@ -21,10 +22,8 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
-/**
- * Abstract bedrock embedding model
- */
-public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> implements EmbeddingModel {
+@Internal
+abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> extends DimensionAwareEmbeddingModel {
 
     private static final Region DEFAULT_REGION = Region.US_EAST_1;
     private static final AwsCredentialsProvider DEFAULT_CREDENTIALS_PROVIDER =
@@ -64,7 +63,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
         final List<Map<String, Object>> requestParameters = getRequestParameters(textSegments);
         final List<T> responses = requestParameters.stream()
                 .map(Json::toJson)
-                .map(body -> withRetryMappingExceptions(() -> invoke(body), maxRetries))
+                .map(body -> withRetryMappingExceptions(() -> invoke(body), maxRetries, BedrockExceptionMapper.INSTANCE))
                 .map(invokeModelResponse -> invokeModelResponse.body().asUtf8String())
                 .map(response -> Json.fromJson(response, getResponseClassType()))
                 .collect(Collectors.toList());
@@ -203,11 +202,5 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
         protected abstract B self();
 
         public abstract C build();
-
-        public String toString() {
-            return "AbstractBedrockEmbeddingModel.AbstractBedrockEmbeddingModelBuilder(client=" + this.client
-                    + ", region$value=" + this.region + ", credentialsProvider$value=" + this.credentialsProvider
-                    + ", maxRetries$value=" + this.maxRetries + ")";
-        }
     }
 }

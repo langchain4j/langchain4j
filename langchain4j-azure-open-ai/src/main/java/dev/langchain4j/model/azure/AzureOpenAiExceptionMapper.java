@@ -7,9 +7,9 @@ import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.internal.ExceptionMapper;
 
 @Internal
-class InternalAzureOpenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
+class AzureOpenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
 
-    static final InternalAzureOpenAiExceptionMapper INSTANCE = new InternalAzureOpenAiExceptionMapper();
+    static final AzureOpenAiExceptionMapper INSTANCE = new AzureOpenAiExceptionMapper();
 
     @Override
     public RuntimeException mapException(Throwable t) {
