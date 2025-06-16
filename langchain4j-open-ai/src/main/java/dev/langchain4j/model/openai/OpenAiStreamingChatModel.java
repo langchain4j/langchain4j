@@ -20,10 +20,10 @@ import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -69,14 +69,14 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
-            commonParameters = DefaultChatRequestParameters.builder().build();
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
         OpenAiChatRequestParameters openAiParameters;
         if (builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
             openAiParameters = openAiChatRequestParameters;
         } else {
-            openAiParameters = OpenAiChatRequestParameters.builder().build();
+            openAiParameters = OpenAiChatRequestParameters.EMPTY;
         }
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
@@ -135,10 +135,15 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 })
                 .onComplete(() -> {
                     ChatResponse chatResponse = openAiResponseBuilder.build();
-                    handler.onCompleteResponse(chatResponse);
+                    try {
+                        handler.onCompleteResponse(chatResponse);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
                 })
                 .onError(throwable -> {
-                    handler.onError(ExceptionMapper.DEFAULT.mapException(throwable));
+                    RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(throwable);
+                    withLoggingExceptions(() -> handler.onError(mappedException));
                 })
                 .execute();
     }
@@ -166,7 +171,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
-            handler.onPartialResponse(content);
+            try {
+                handler.onPartialResponse(content);
+            } catch (Exception e) {
+                withLoggingExceptions(() -> handler.onError(e));
+            }
         }
     }
 

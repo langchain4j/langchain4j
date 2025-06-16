@@ -241,7 +241,7 @@ class AnthropicChatModelIT {
         assertThat(response.aiMessage().text()).containsIgnoringCase("hello");
         assertThat(response.aiMessage().text()).doesNotContainIgnoringCase("world");
 
-        assertThat(response.finishReason()).isEqualTo(OTHER);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test

@@ -173,6 +173,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         ChatRequestValidationUtils.validateParameters(parameters);
         ResponseFormat responseFormat = parameters.responseFormat();
 
+        // TODO use StreamingChatResponseHandler instead
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 
             @Override
