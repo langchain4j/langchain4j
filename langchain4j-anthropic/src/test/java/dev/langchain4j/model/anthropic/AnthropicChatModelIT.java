@@ -408,8 +408,7 @@ class AnthropicChatModelIT {
 
         assertThatThrownBy(() -> AnthropicChatModel.builder().apiKey(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Anthropic API key must be defined. "
-                        + "It can be generated here: https://console.anthropic.com/settings/keys");
+                .hasMessage("apiKey cannot be null or blank");
     }
 
     @Test
@@ -664,6 +663,33 @@ class AnthropicChatModelIT {
 
         // when
         ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
+    }
+
+    @Test
+    void should_allow_non_user_message_as_first_message_and_consecutive_user_messages() {
+
+        // given
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        AiMessage.from("Hi"),
+                        UserMessage.from("What is the"),
+                        UserMessage.from("capital of"),
+                        UserMessage.from("Germany?")
+                )
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
