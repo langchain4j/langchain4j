@@ -1,7 +1,6 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -26,6 +25,7 @@ public abstract class AnthropicClient {
 
     public abstract static class Builder<T extends AnthropicClient, B extends Builder<T, B>> {
 
+        public HttpClientBuilder httpClientBuilder;
         public String baseUrl;
         public String apiKey;
         public String version;
@@ -35,6 +35,11 @@ public abstract class AnthropicClient {
         public Boolean logResponses;
 
         public abstract T build();
+
+        public B httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return (B) this;
+        }
 
         public B baseUrl(String baseUrl) {
             if ((baseUrl == null) || baseUrl.trim().isEmpty()) {
