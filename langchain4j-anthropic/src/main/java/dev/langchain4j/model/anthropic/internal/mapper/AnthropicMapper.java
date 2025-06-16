@@ -71,7 +71,7 @@ public class AnthropicMapper {
             if (message instanceof ToolExecutionResultMessage) {
                 toolContents.add(toAnthropicToolResultContent((ToolExecutionResultMessage) message));
             } else if (message instanceof SystemMessage) {
-                // ignore
+                // ignore, it is handled in the "toAnthropicSystemPrompt" method
             } else {
                 if (!toolContents.isEmpty()) {
                     anthropicMessages.add(new AnthropicMessage(USER, toolContents));
