@@ -13,7 +13,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
  */
 public class Judge0JavaScriptExecutionTool {
 
-    private static final int JAVASCRIPT = 93;
+    private static final int JAVASCRIPT = 102;
 
     private final Judge0JavaScriptEngine engine;
     private final boolean fixCodeIfNeeded;
