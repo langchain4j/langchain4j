@@ -48,8 +48,39 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
             .post(requestBody)
             .build();
 
-        try {
-            Response response = client.newCall(request).execute();
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                if (response.code() == 429) {
+                    String errorMessage = "Rate limit exceeded. Please try again later.";
+                    log.warn(errorMessage);
+                    return errorMessage;
+                } else if (response.code() == 403) {
+                    String errorMessage = "Access forbidden. Please check your API key.";
+                    log.warn(errorMessage);
+                    return errorMessage;
+                } else if (response.code() == 404) {
+                    String errorMessage = "Resource not found. Please check the endpoint URL.";
+                    log.warn(errorMessage);
+                    return errorMessage;
+                } else if (response.code() == 500) {
+                    String errorMessage = "Internal server error. Please try again later.";
+                    log.warn(errorMessage);
+                    return errorMessage;
+                } else if (response.code() == 503) {
+                    String errorMessage = "Service unavailable. Please try again later.";
+                    log.warn(errorMessage);
+                    return errorMessage;
+                } else {
+                    String errorMessage = "Unexpected error code " + response.code() + ": " + response.message();
+                    log.warn(errorMessage);
+                    return errorMessage;
+                }
+            }
+            if (response.body() == null) {
+                String errorMessage = "Response body is null";
+                log.warn(errorMessage);
+                return errorMessage;
+            }
             String responseBody = response.body().string();
             SubmissionResult result = Json.fromJson(responseBody, SubmissionResult.class);
 
