@@ -56,7 +56,6 @@
             <scope>provided</scope>
         </dependency>
 
-
         <!-- test dependencies -->
 
         <dependency>
