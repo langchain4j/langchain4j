@@ -64,7 +64,6 @@ public abstract class BaseGuardrailTests {
             Function<AiServices<T>, AiServices<T>> builderCustomizer) {
 
         var builder = AiServices.builder(clazz)
-                .chatModel(new MyChatModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .inputGuardrailClasses(inputGuardrailClasses)
                 .outputGuardrailClasses(outputGuardrailClasses);

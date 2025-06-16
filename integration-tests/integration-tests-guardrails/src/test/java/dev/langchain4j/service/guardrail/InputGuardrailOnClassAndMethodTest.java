@@ -43,14 +43,19 @@ class InputGuardrailOnClassAndMethodTest extends BaseGuardrailTests {
 
     public interface MyAiServiceWithoutClassAnnotations extends MyAiService {
         static MyAiService create() {
-            return createAiService(MyAiServiceWithoutClassAnnotations.class, List.of(OKGuardrail.class), List.of());
+            return createAiService(
+                    MyAiServiceWithoutClassAnnotations.class,
+                    List.of(OKGuardrail.class),
+                    List.of(),
+                    builder -> builder.chatModel(new MyChatModel()));
         }
     }
 
     @InputGuardrails(KOGuardrail.class)
     public interface MyAiServiceUsingClassAnnotations extends MyAiService {
         static MyAiService create() {
-            return createAiService(MyAiServiceUsingClassAnnotations.class);
+            return createAiService(
+                    MyAiServiceUsingClassAnnotations.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 

@@ -249,9 +249,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .parameters(parameters)
                                 .build();
 
-                        ChatExecutor chatExecutor = ChatExecutor.builder()
+                        ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
-                                .chatModel(context.chatModel)
                                 .build();
 
                         ChatResponse chatResponse = chatExecutor.execute();

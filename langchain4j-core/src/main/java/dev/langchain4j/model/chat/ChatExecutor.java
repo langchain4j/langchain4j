@@ -1,5 +1,7 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -7,6 +9,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Generic executor interface that defines a chat interaction
@@ -41,26 +44,39 @@ public interface ChatExecutor {
     ChatResponse execute(List<ChatMessage> chatMessages);
 
     /**
-     * Creates a new {@link Builder} instance for constructing {@link ChatExecutor} objects
+     * Creates a new {@link SynchronousBuilder} instance for constructing {@link ChatExecutor} objects
      * that perform synchronous chat requests.
      *
-     * @return A new {@link Builder} instance to configure and build a {@link ChatExecutor}.
+     * @return A new {@link SynchronousBuilder} instance to configure and build a {@link ChatExecutor}.
      */
-    static Builder builder() {
-        return new Builder();
+    static SynchronousBuilder builder(ChatModel chatModel) {
+        return new SynchronousBuilder(chatModel);
     }
 
     /**
-     * Builder for constructing instances of {@link ChatExecutor}.
+     * Creates a new {@link StreamingToSynchronousBuilder} instance for constructing {@link ChatExecutor} objects
+     * that perform streaming chat requests.
      *
-     * This builder provides a fluent API for setting required components
-     * like {@link ChatRequest}, and for building an instance of the {@link ChatExecutor}.
+     * @return A new {@link StreamingToSynchronousBuilder} instance to configure and build a {@link ChatExecutor}.
      */
-    class Builder {
-        protected ChatRequest chatRequest;
-        protected ChatModel chatModel;
+    static StreamingToSynchronousBuilder builder(StreamingChatModel streamingChatModel) {
+        return new StreamingToSynchronousBuilder(streamingChatModel);
+    }
 
-        protected Builder() {}
+    /**
+     * An abstract base-builder class for constructing instances of {@link ChatExecutor}.
+     *
+     * This class provides a fluent API for setting required components, such as
+     * {@link ChatRequest}, and defines a contract for building {@link ChatExecutor}
+     * instances. Subclasses should implement the {@code build()} method to ensure
+     * proper construction of the target chat executor object.
+     *
+     * @param <T> the type of the builder subclass for enabling fluent method chaining
+     */
+    abstract class AbstractBuilder<T extends AbstractBuilder<T>> {
+        protected ChatRequest chatRequest;
+
+        protected AbstractBuilder() {}
 
         /**
          * Sets the {@link ChatRequest} instance for the synchronousBuilder.
@@ -68,22 +84,71 @@ public interface ChatExecutor {
          * to generate a response from the chat model.
          *
          * @param chatRequest the {@link ChatRequest} containing the input messages and parameters
-         * @return the updated Builder instance
+         * @return the updated SynchronousBuilder instance
          */
-        public Builder chatRequest(ChatRequest chatRequest) {
+        public AbstractBuilder<T> chatRequest(ChatRequest chatRequest) {
             this.chatRequest = chatRequest;
             return this;
         }
 
         /**
-         * Sets the {@link ChatModel} instance for the Builder.
-         * The {@link ChatModel} represents a language model that provides a chat API.
+         * Constructs and returns an instance of {@link ChatExecutor}.
+         * Ensures that all required parameters have been appropriately set
+         * before building the {@link ChatExecutor}.
          *
-         * @param chatModel the {@link ChatModel} to be used by the Builder
-         * @return the updated Builder instance
+         * @return a fully constructed {@link ChatExecutor} instance
          */
-        public Builder chatModel(ChatModel chatModel) {
-            this.chatModel = chatModel;
+        public abstract ChatExecutor build();
+    }
+
+    /**
+     * SynchronousBuilder for constructing instances of {@link ChatExecutor}.
+     *
+     * This synchronousBuilder provides a fluent API for setting required components
+     * like {@link ChatRequest}, and for building an instance of the {@link ChatExecutor}.
+     */
+    class SynchronousBuilder extends AbstractBuilder<SynchronousBuilder> {
+        protected final ChatModel chatModel;
+
+        protected SynchronousBuilder(ChatModel chatModel) {
+            this.chatModel = ensureNotNull(chatModel, "chatModel");
+        }
+
+        /**
+         * Constructs and returns an instance of {@link ChatExecutor}.
+         * Ensures that all required parameters have been appropriately set
+         * before building the {@link ChatExecutor}.
+         *
+         * @return a fully constructed {@link ChatExecutor} instance
+         */
+        public ChatExecutor build() {
+            return new SynchronousChatExecutor(this);
+        }
+    }
+
+    /**
+     * StreamingToSynchronousBuilder for constructing instances of {@link ChatExecutor}.
+     *
+     * This streaming build provides a fluent API for setting required components
+     * like {@link ChatRequest}, and for building an instance of the {@link ChatExecutor}
+     * that simulates streaming.
+     */
+    class StreamingToSynchronousBuilder extends AbstractBuilder<StreamingToSynchronousBuilder> {
+        protected final StreamingChatModel streamingChatModel;
+        protected Consumer<Throwable> errorHandler;
+
+        protected StreamingToSynchronousBuilder(StreamingChatModel streamingChatModel) {
+            this.streamingChatModel = ensureNotNull(streamingChatModel, "streamingChatModel");
+        }
+
+        /**
+         * Sets a custom error handler to manage exceptions or errors that occur during the execution.
+         *
+         * @param errorHandler a {@link Consumer} of {@link Throwable} that processes the error
+         * @return the current {@link StreamingToSynchronousBuilder} instance for method chaining
+         */
+        public StreamingToSynchronousBuilder errorHandler(Consumer<Throwable> errorHandler) {
+            this.errorHandler = errorHandler;
             return this;
         }
 
@@ -95,25 +160,7 @@ public interface ChatExecutor {
          * @return a fully constructed {@link ChatExecutor} instance
          */
         public ChatExecutor build() {
-            return new DefaultChatExecutor(this);
-        }
-    }
-
-    /**
-     * Exception thrown when an attempt is made to execute a chat request without a valid chat model.
-     * This typically occurs within the {@code ChatExecutor} when no {@code ChatModel} is provided or configured.
-     * <p>
-     *     This is intended for output guardrails, but can be caught in other places when streaming needs to be converted
-     *     to synchronous.
-     * </p>
-     */
-    class NoChatModelFoundException extends RuntimeException {
-        public NoChatModelFoundException(String message) {
-            super(message);
-        }
-
-        public NoChatModelFoundException() {
-            this("Can not invoke ChatExecutor without a ChatModel");
+            return new StreamingToSynchronousChatExecutor(this);
         }
     }
 }

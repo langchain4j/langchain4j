@@ -419,10 +419,6 @@ In this scenario, the output guardrails will be executed once the entire stream 
 
 In the situation where a **_retry_** or **_reprompt_** in the chain eventually succeeds, then the entire chain is re-executed _synchronously_. Each guardrail will be re-executed one after the other in the original order. Once the chain completes the result is passed into `TokenStream.onCompleteResponse`.
 
-:::info
-If you want to use **_retry_** or **_reprompt_** in an output guardrail when streaming, you need to configure a `ChatModel` on your `AiService` in addition to a `StreamingChatModel`. This is because the interaction with the LLM during a **_retry_** or **_reprompt_** needs to be done synchronously. This is transparent to the user.
-:::
-
 ### Out-of-the-box Output Guardrails
 
 There are several common use cases where implementations of an output guardrail are provided by LangChain4j:

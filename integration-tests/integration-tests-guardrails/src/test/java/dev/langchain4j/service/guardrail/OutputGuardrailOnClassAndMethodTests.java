@@ -35,7 +35,7 @@ class OutputGuardrailOnClassAndMethodTests extends BaseGuardrailTests {
         String hi(@MemoryId String mem);
 
         static MyAiService create() {
-            return createAiService(MyAiService.class);
+            return createAiService(MyAiService.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 

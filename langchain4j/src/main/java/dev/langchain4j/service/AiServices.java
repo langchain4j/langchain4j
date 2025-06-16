@@ -169,24 +169,6 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Creates an AI Service (an implementation of the provided interface), that is backed by the provided streaming chat model.
-     * This convenience method can be used to create simple AI Services.
-     * For more complex cases, please use {@link #builder}.
-     *
-     * @param aiService                  The class of the interface to be implemented.
-     * @param chatModel The chat model to be used under the hood.
-     * @param streamingChatModel The streaming chat model to be used under the hood.
-     *                                   The return type of all methods should be {@link TokenStream}.
-     * @return An instance of the provided interface, implementing all its defined methods.
-     */
-    public static <T> T create(Class<T> aiService, ChatModel chatModel, StreamingChatModel streamingChatModel) {
-        return builder(aiService)
-                .chatModel(chatModel)
-                .streamingChatModel(streamingChatModel)
-                .build();
-    }
-
-    /**
      * Begins the construction of an AI Service.
      *
      * @param aiService The class of the interface to be implemented.

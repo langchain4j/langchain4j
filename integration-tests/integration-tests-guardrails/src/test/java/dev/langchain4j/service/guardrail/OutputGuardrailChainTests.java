@@ -335,7 +335,7 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         String rewritingSuccessWithResult(@MemoryId String mem, @UserMessage String message);
 
         static MyAiService create() {
-            return createAiService(MyAiService.class);
+            return createAiService(MyAiService.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 

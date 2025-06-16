@@ -115,9 +115,9 @@ public class AiServiceTokenStream implements TokenStream {
                 .toolSpecifications(toolSpecifications)
                 .build();
 
-        ChatExecutor chatExecutor = ChatExecutor.builder()
+        ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
+                .errorHandler(errorHandler)
                 .chatRequest(chatRequest)
-                .chatModel(context.chatModel)
                 .build();
 
         var handler = new AiServiceStreamingResponseHandler(

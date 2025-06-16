@@ -80,7 +80,7 @@ class OutputGuardrailValidationTests extends BaseGuardrailTests {
         String fatal(@MemoryId String mem);
 
         static MyAiService create() {
-            return createAiService(MyAiService.class);
+            return createAiService(MyAiService.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 

@@ -119,7 +119,7 @@ class OutputGuardrailPromptTemplateTests extends BaseGuardrailTests {
     @OutputGuardrails(OutputGuardrailValidation.class)
     public interface ClassLevelAiService extends MyAiService {
         static MyAiService create() {
-            return createAiService(ClassLevelAiService.class);
+            return createAiService(ClassLevelAiService.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 
@@ -160,7 +160,7 @@ class OutputGuardrailPromptTemplateTests extends BaseGuardrailTests {
         String sayHiToMyFriends(@V("memoryId") @MemoryId String memoryId, @V("topics") List<String> topics);
 
         static MyAiService create() {
-            return createAiService(MethodLevelAiService.class);
+            return createAiService(MethodLevelAiService.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 

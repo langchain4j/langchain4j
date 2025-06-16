@@ -43,14 +43,19 @@ class OutputGuardrailOnClassTests extends BaseGuardrailTests {
         String hi(@MemoryId String mem);
 
         static MyAiService create() {
-            return createAiService(MyAiService.class, List.of(), List.of(OKGuardrail.class));
+            return createAiService(
+                    MyAiService.class,
+                    List.of(),
+                    List.of(OKGuardrail.class),
+                    builder -> builder.chatModel(new MyChatModel()));
         }
     }
 
     @OutputGuardrails(OKGuardrail.class)
     public interface MyAiServiceWithClassAnnotation extends MyAiService {
         static MyAiService create() {
-            return createAiService(MyAiServiceWithClassAnnotation.class);
+            return createAiService(
+                    MyAiServiceWithClassAnnotation.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 
@@ -62,7 +67,8 @@ class OutputGuardrailOnClassTests extends BaseGuardrailTests {
         String hi(@MemoryId String mem);
 
         static MyAiService create() {
-            return createAiService(MyAiServiceWithClassAndMethodAnnotation.class);
+            return createAiService(
+                    MyAiServiceWithClassAndMethodAnnotation.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 

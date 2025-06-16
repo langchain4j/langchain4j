@@ -63,7 +63,7 @@ class InputGuardrailChainTests extends BaseGuardrailTests {
         String failingFirstTwo(@MemoryId String mem, @UserMessage String message);
 
         static MyAiService create() {
-            return createAiService(MyAiService.class);
+            return createAiService(MyAiService.class, builder -> builder.chatModel(new MyChatModel()));
         }
     }
 
