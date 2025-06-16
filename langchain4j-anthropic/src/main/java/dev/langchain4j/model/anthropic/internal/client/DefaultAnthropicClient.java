@@ -1,5 +1,6 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
@@ -34,19 +35,21 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.Json.fromJson;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
+import static dev.langchain4j.model.anthropic.internal.client.Json.fromJson;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
+@Internal
 public class DefaultAnthropicClient extends AnthropicClient {
 
     private final HttpClient httpClient;
@@ -86,11 +89,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
         }
 
         this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
-        if (isNullOrBlank(builder.apiKey)) {
-            throw new IllegalArgumentException("Anthropic API key must be specified. " +
-                    "It can be generated here: https://console.anthropic.com/settings/keys");
-        }
-        this.apiKey = builder.apiKey;
+        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
         this.version = ensureNotBlank(builder.version, "version");
         this.beta = builder.beta;
     }
@@ -205,7 +204,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
                         currentContentBuilder().append(text);
-                        handler.onPartialResponse(text);
+                        try {
+                            handler.onPartialResponse(text);
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        }
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     toolExecutionRequestBuilderMap.putIfAbsent(
@@ -224,7 +227,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String text = data.delta.text;
                     if (isNotNullOrEmpty(text)) {
                         currentContentBuilder().append(text);
-                        handler.onPartialResponse(text);
+                        try {
+                            handler.onPartialResponse(text);
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        }
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     String partialJson = data.delta.partialJson;
@@ -257,7 +264,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             private void handleMessageStop() {
                 ChatResponse response = build();
-                handler.onCompleteResponse(response);
+                try {
+                    handler.onCompleteResponse(response);
+                } catch (Exception e) {
+                    withLoggingExceptions(() -> handler.onError(e));
+                }
             }
 
             private ChatResponse build() {
@@ -317,13 +328,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private void handleError(String dataString) {
-                handler.onError(new RuntimeException(dataString)); // TODO
+                withLoggingExceptions(() -> handler.onError(new RuntimeException(dataString)));
             }
 
             @Override
             public void onError(Throwable error) {
                 RuntimeException mappedError = ExceptionMapper.DEFAULT.mapException(error);
-                handler.onError(mappedError);
+                withLoggingExceptions(() -> handler.onError(mappedError));
             }
         };
 
