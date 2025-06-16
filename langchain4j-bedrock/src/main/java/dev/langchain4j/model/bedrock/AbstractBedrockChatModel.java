@@ -1,9 +1,9 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertAdditionalModelRequestFields;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
@@ -28,7 +28,9 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.output.FinishReason;
@@ -70,7 +72,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 abstract class AbstractBedrockChatModel {
 
     protected final Region region;
-    protected final String modelId;
     protected final Integer maxRetries;
     protected final Duration timeout;
     protected final BedrockChatRequestParameters defaultRequestParameters;
@@ -78,28 +79,34 @@ abstract class AbstractBedrockChatModel {
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
-        this.modelId = ensureNotBlank(
-                getOrDefault(
-                        builder.modelId,
-                        nonNull(builder.defaultRequestParameters)
-                                ? builder.defaultRequestParameters.modelName()
-                                : null),
-                "modelId");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
-        this.listeners = getOrDefault(builder.listeners, List.of());
+        this.listeners = copy(builder.listeners);
 
+        ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
             validate(builder.defaultRequestParameters);
-            this.defaultRequestParameters = BedrockChatRequestParameters.builder()
-                    .overrideWith(builder.defaultRequestParameters)
-                    .modelName(this.modelId)
-                    .build();
+            commonParameters = builder.defaultRequestParameters;
         } else {
-            this.defaultRequestParameters = BedrockChatRequestParameters.builder()
-                    .modelName(this.modelId)
-                    .build();
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
+
+        BedrockChatRequestParameters bedrockParameters = builder.defaultRequestParameters instanceof BedrockChatRequestParameters bedrockChatRequestParameters ?
+                bedrockChatRequestParameters :
+                BedrockChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = BedrockChatRequestParameters.builder()
+                // common parameters
+                .modelName(getOrDefault(builder.modelId, commonParameters.modelName()))
+                .temperature(commonParameters.temperature())
+                .topP(commonParameters.topP())
+                .maxOutputTokens(commonParameters.maxOutputTokens())
+                .stopSequences(commonParameters.stopSequences())
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                // Bedrock-specific parameters
+                .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
+                .build();
     }
 
     protected List<SystemContentBlock> extractSystemMessages(List<ChatMessage> messages) {
@@ -248,8 +255,10 @@ abstract class AbstractBedrockChatModel {
                 .build();
     }
 
-    protected ToolConfiguration extractToolConfigurationFrom(
-            List<ToolSpecification> toolSpecifications, ChatRequestParameters parameters) {
+    protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
+        List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
+        ChatRequestParameters parameters = chatRequest.parameters();
+
         final List<Tool> allTools = new ArrayList<>();
         final ToolConfiguration.Builder toolConfigurationBuilder = ToolConfiguration.builder();
 
@@ -333,6 +342,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected InferenceConfiguration inferenceConfigurationFrom(ChatRequestParameters chatRequestParameters) {
+        // TODO smth is wrong
         if (nonNull(chatRequestParameters)) {
             return InferenceConfiguration.builder()
                     .maxTokens(getOrDefault(
@@ -403,6 +413,7 @@ abstract class AbstractBedrockChatModel {
 
     // Abstract builder class
     public abstract static class AbstractBuilder<T extends AbstractBuilder<T>> {
+
         protected Region region;
         protected String modelId;
         protected Integer maxRetries;
@@ -427,7 +438,7 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
-        public T maxRetries(Integer maxRetries) {
+        public T maxRetries(Integer maxRetries) { // TODO only for sync model
             this.maxRetries = maxRetries;
             return self();
         }

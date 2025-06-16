@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  */
 public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockTitanEmbeddingResponse> {
 
-    private static final String DEFAULT_MODEL = Types.TitanEmbedTextV1.getValue();
+    private static final String DEFAULT_MODEL = Types.TitanEmbedTextV1.getValue(); // TODO
 
     private final String model;
 
@@ -30,6 +30,11 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
      * 1024 is default size of output vector for Titan Embedding model V2.
      */
     private final Integer dimensions;
+
+    @Override
+    protected Integer knownDimension() {
+        return dimensions;
+    }
 
     /**
      * A flag indicating whether to normalize the output embeddings.
@@ -136,13 +141,6 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
         protected abstract B self();
 
         public abstract C build();
-
-        @Override
-        public String toString() {
-            return "BedrockTitanEmbeddingModel.BedrockTitanEmbeddingModelBuilder(super=" + super.toString()
-                    + ", model$value=" + this.model + ", dimensions=" + this.dimensions + ", normalize="
-                    + this.normalize + ")";
-        }
     }
 
     private static final class BedrockTitanEmbeddingModelBuilderImpl

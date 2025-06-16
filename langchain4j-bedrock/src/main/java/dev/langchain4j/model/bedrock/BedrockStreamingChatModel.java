@@ -1,23 +1,19 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
-import static java.util.Objects.nonNull;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -42,7 +38,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         this(builder().modelId(modelId));
     }
 
-    private BedrockStreamingChatModel(Builder builder) {
+    public BedrockStreamingChatModel(Builder builder) {
         super(builder);
         this.client = isNull(builder.client)
                 ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
@@ -50,37 +46,46 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     }
 
     @Override
-    public void doChat(final ChatRequest chatRequest, final StreamingChatResponseHandler handler) {
-        final ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(
-                chatRequest.messages(), chatRequest.parameters().toolSpecifications(), chatRequest.parameters());
+    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        validate(chatRequest.parameters());
 
-        ConverseResponseFromStreamBuilder converseResponseBuilder = ConverseResponseFromStreamBuilder.builder();
-        final ConverseStreamResponseHandler built = ConverseStreamResponseHandler.builder()
+        ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
+
+        ConverseResponseFromStreamBuilder responseBuilder = ConverseResponseFromStreamBuilder.builder();
+
+        ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .subscriber(ConverseStreamResponseHandler.Visitor.builder()
-                        .onContentBlockStart(converseResponseBuilder::append)
+                        .onContentBlockStart(responseBuilder::append)
                         .onContentBlockDelta(chunk -> {
                             if (chunk.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
-                                handler.onPartialResponse(chunk.delta().text());
+                                try {
+                                    handler.onPartialResponse(chunk.delta().text());
+                                } catch (Exception e) {
+                                    withLoggingExceptions(() -> handler.onError(e));
+                                }
                             }
-                            converseResponseBuilder.append(chunk);
+                            responseBuilder.append(chunk);
                         })
-                        .onContentBlockStop(converseResponseBuilder::append)
+                        .onContentBlockStop(responseBuilder::append)
                         .onMetadata(chunk -> {
-                            converseResponseBuilder.append(chunk);
-                            final ChatResponse completeResponse =
-                                    chatResponseFrom(converseResponseBuilder.build(), converseStreamRequest.modelId());
-                            handler.onCompleteResponse(completeResponse);
+                            responseBuilder.append(chunk);
+                            ChatResponse response = responseFrom(responseBuilder.build(), converseStreamRequest.modelId());
+                            try {
+                                handler.onCompleteResponse(response);
+                            } catch (Exception e) {
+                                withLoggingExceptions(() -> handler.onError(e));
+                            }
                         })
-                        .onMessageStart(converseResponseBuilder::append)
-                        .onMessageStop(converseResponseBuilder::append)
+                        .onMessageStart(responseBuilder::append)
+                        .onMessageStop(responseBuilder::append)
                         .build())
-                .onError(handler::onError)
                 .build();
 
         try {
-            this.client.converseStream(converseStreamRequest, built).get();
-        } catch (ExecutionException | InterruptedException e) {
-            log.error("Can't invoke '{}': {}", modelId, e.getCause().getMessage());
+            this.client.converseStream(converseStreamRequest, converseStreamResponseHandler).get();
+        } catch (Exception e) {
+            RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(e);
+            withLoggingExceptions(() -> handler.onError(mappedError));
         }
     }
 
@@ -89,24 +94,18 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         return defaultRequestParameters;
     }
 
-    private ConverseStreamRequest buildConverseStreamRequest(
-            List<ChatMessage> messages, List<ToolSpecification> toolSpecs, ChatRequestParameters parameters) {
-        final String model =
-                isNull(parameters) || isNull(parameters.modelName()) ? this.modelId : parameters.modelName();
-
-        if (nonNull(parameters)) validate(parameters);
-
+    private ConverseStreamRequest buildConverseStreamRequest(ChatRequest chatRequest) {
         return ConverseStreamRequest.builder()
-                .modelId(model)
-                .inferenceConfig(inferenceConfigurationFrom(parameters))
-                .system(extractSystemMessages(messages))
-                .messages(extractRegularMessages(messages))
-                .toolConfig(extractToolConfigurationFrom(toolSpecs, parameters))
-                .additionalModelRequestFields(additionalRequestModelFieldsFrom(parameters))
+                .modelId(chatRequest.modelName())
+                .inferenceConfig(inferenceConfigurationFrom(chatRequest.parameters()))
+                .system(extractSystemMessages(chatRequest.messages()))
+                .messages(extractRegularMessages(chatRequest.messages()))
+                .toolConfig(extractToolConfigurationFrom(chatRequest))
+                .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .build();
     }
 
-    private ChatResponse chatResponseFrom(ConverseResponse converseResponse, String modelId) {
+    private ChatResponse responseFrom(ConverseResponse converseResponse, String modelId) {
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(converseResponse))
                 .metadata(ChatResponseMetadata.builder()

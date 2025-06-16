@@ -2,10 +2,11 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -23,14 +24,17 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-class BedrockChatModelWithConverseAPIIT {
+class BedrockChatModelIT {
 
     @Test
     void should_generate_with_default_config() {
@@ -188,7 +192,25 @@ class BedrockChatModelWithConverseAPIIT {
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when then
-        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> model.chat(userMessage));
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> model.chat(userMessage)); // TODO
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .maxRetries(0)
+                .timeout(timeout)
+                .build();
+
+        // when
+        assertThatThrownBy(() -> model.chat("hi"))
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     @AfterEach

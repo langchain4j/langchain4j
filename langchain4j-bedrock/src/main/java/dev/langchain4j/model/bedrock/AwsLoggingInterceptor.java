@@ -30,7 +30,7 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
     private final boolean logRequests;
     private final boolean logResponses;
 
-    public AwsLoggingInterceptor(final boolean logRequests, final boolean logResponses) {
+    public AwsLoggingInterceptor(boolean logRequests, boolean logResponses) {
         this.logRequests = logRequests;
         this.logResponses = logResponses;
     }
@@ -48,8 +48,7 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
         if (logRequests) {
             if (request.method() == SdkHttpMethod.POST && request instanceof SdkHttpFullRequest sdkHttpFullRequest) {
                 try {
-                    final ContentStreamProvider csp =
-                            sdkHttpFullRequest.contentStreamProvider().orElse(null);
+                    ContentStreamProvider csp = sdkHttpFullRequest.contentStreamProvider().orElse(null);
                     if (nonNull(csp)) body = IoUtils.toUtf8String(csp.newStream());
                 } catch (IOException e) {
                     logger.warn("Unable to obtain request body", e);
@@ -88,7 +87,7 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
         byte[] content = null;
         if (logResponses) {
             try {
-                final InputStream responseContentStream = context.responseBody().orElse(InputStream.nullInputStream());
+                InputStream responseContentStream = context.responseBody().orElse(InputStream.nullInputStream());
                 content = IoUtils.toByteArray(responseContentStream);
                 logger.debug("Response Body: {}", new String(content, StandardCharsets.UTF_8));
             } catch (IOException e) {

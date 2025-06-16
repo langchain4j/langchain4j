@@ -1,8 +1,7 @@
-package dev.langchain4j.model.bedrock;
+package dev.langchain4j.model.bedrock.common;
 
-import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
-import static java.util.Collections.singletonList;
-
+import dev.langchain4j.model.bedrock.BedrockChatModel;
+import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -10,7 +9,9 @@ import org.junit.jupiter.api.AfterEach;
 
 import java.util.List;
 
-class BedrockChatModelListenerWithConverseIT extends AbstractChatModelListenerIT {
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
+
+class BedrockChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected ChatModel createModel(ChatModelListener listener) {
@@ -37,13 +38,13 @@ class BedrockChatModelListenerWithConverseIT extends AbstractChatModelListenerIT
         return BedrockChatModel.builder()
                 .modelId("banana")
                 .maxRetries(0)
-                .listeners(singletonList(listener))
+                .listeners(List.of(listener))
                 .build();
     }
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return software.amazon.awssdk.services.bedrockruntime.model.ValidationException.class;
+        return dev.langchain4j.exception.InvalidRequestException.class;
     }
 
     @AfterEach
