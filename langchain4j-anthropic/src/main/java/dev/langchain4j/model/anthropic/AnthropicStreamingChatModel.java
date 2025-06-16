@@ -17,6 +17,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -31,9 +32,6 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -59,8 +57,6 @@ import org.slf4j.LoggerFactory;
  */
 public class AnthropicStreamingChatModel implements StreamingChatModel {
 
-    private static final Logger log = LoggerFactory.getLogger(AnthropicStreamingChatModel.class);
-
     private final AnthropicClient client;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
@@ -75,6 +71,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
      */
     private AnthropicStreamingChatModel(AnthropicStreamingChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
                 .version(getOrDefault(builder.version, "2023-06-01"))
@@ -110,6 +107,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
     public static class AnthropicStreamingChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String version;
@@ -128,6 +126,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
+
+        public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public AnthropicStreamingChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
