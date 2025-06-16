@@ -97,6 +97,7 @@ class BedrockEmbeddingIT {
                     @Override
                     public void close() {}
                 })
+                .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV2.getValue())
                 .build();
 
         assertThat(model.getClient().serviceName()).isEqualTo(serviceName);

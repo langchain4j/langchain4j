@@ -97,7 +97,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     private ConverseStreamRequest buildConverseStreamRequest(ChatRequest chatRequest) {
         return ConverseStreamRequest.builder()
                 .modelId(chatRequest.modelName())
-                .inferenceConfig(inferenceConfigurationFrom(chatRequest.parameters()))
+                .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
                 .system(extractSystemMessages(chatRequest.messages()))
                 .messages(extractRegularMessages(chatRequest.messages()))
                 .toolConfig(extractToolConfigurationFrom(chatRequest))

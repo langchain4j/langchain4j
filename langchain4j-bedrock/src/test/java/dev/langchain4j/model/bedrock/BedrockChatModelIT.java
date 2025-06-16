@@ -182,8 +182,10 @@ class BedrockChatModelIT {
     void should_fail_if_reasoning_enabled() {
 
         // given
+        String modelNotSupportingReasoning = "us.amazon.nova-lite-v1:0";
+
         ChatModel model = BedrockChatModel.builder()
-                .modelId("us.amazon.nova-lite-v1:0")
+                .modelId(modelNotSupportingReasoning)
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
                         .enableReasoning(1024)
                         .build())
@@ -191,8 +193,9 @@ class BedrockChatModelIT {
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
-        // when then
-        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> model.chat(userMessage)); // TODO
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(dev.langchain4j.exception.InvalidRequestException.class);
     }
 
     @ParameterizedTest

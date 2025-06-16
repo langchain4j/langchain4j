@@ -306,7 +306,7 @@ abstract class AbstractBedrockChatModel {
             } else if (cBlock.type() == ContentBlock.Type.TEXT) {
                 textAnswer = cBlock.text();
             } else if (cBlock.type() == ContentBlock.Type.REASONING_CONTENT) {
-                // TODO Implement full support of reasoning in lc4j
+                // TODO Implement full support of reasoning
             } else {
                 throw new IllegalArgumentException(
                         "Unsupported content in LLM response. Content type: " + cBlock.type());
@@ -341,26 +341,13 @@ abstract class AbstractBedrockChatModel {
         throw new IllegalArgumentException("Unknown stop reason: " + stopReason);
     }
 
-    protected InferenceConfiguration inferenceConfigurationFrom(ChatRequestParameters chatRequestParameters) {
-        // TODO smth is wrong
-        if (nonNull(chatRequestParameters)) {
-            return InferenceConfiguration.builder()
-                    .maxTokens(getOrDefault(
-                            chatRequestParameters.maxOutputTokens(), this.defaultRequestParameters.maxOutputTokens()))
-                    .temperature(dblToFloat(getOrDefault(
-                            chatRequestParameters.temperature(), this.defaultRequestParameters.temperature())))
-                    .topP(dblToFloat(getOrDefault(chatRequestParameters.topP(), this.defaultRequestParameters.topP())))
-                    .stopSequences(getOrDefault(
-                            chatRequestParameters.stopSequences(), this.defaultRequestParameters.stopSequences()))
-                    .build();
-        } else {
-            return InferenceConfiguration.builder()
-                    .maxTokens(this.defaultRequestParameters.maxOutputTokens())
-                    .temperature(dblToFloat(this.defaultRequestParameters.temperature()))
-                    .topP(dblToFloat(this.defaultRequestParameters.topP()))
-                    .stopSequences(this.defaultRequestParameters.stopSequences())
-                    .build();
-        }
+    protected InferenceConfiguration inferenceConfigFrom(ChatRequestParameters parameters) {
+        return InferenceConfiguration.builder()
+                .maxTokens(parameters.maxOutputTokens())
+                .temperature(dblToFloat(parameters.temperature()))
+                .topP(dblToFloat(parameters.topP()))
+                .stopSequences(parameters.stopSequences())
+                .build();
     }
 
     protected Document additionalRequestModelFieldsFrom(ChatRequestParameters chatRequestParameters) {
@@ -435,11 +422,6 @@ abstract class AbstractBedrockChatModel {
 
         public T modelId(String modelId) {
             this.modelId = modelId;
-            return self();
-        }
-
-        public T maxRetries(Integer maxRetries) { // TODO only for sync model
-            this.maxRetries = maxRetries;
             return self();
         }
 

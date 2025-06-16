@@ -65,7 +65,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     private ConverseRequest buildConverseRequest(ChatRequest chatRequest) {
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
-                .inferenceConfig(inferenceConfigurationFrom(chatRequest.parameters()))
+                .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
                 .system(extractSystemMessages(chatRequest.messages()))
                 .messages(extractRegularMessages(chatRequest.messages()))
                 .toolConfig(extractToolConfigurationFrom(chatRequest))
@@ -105,6 +105,11 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
 
         public Builder client(BedrockRuntimeClient client) {
             this.client = client;
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
             return this;
         }
 
