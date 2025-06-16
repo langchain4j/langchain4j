@@ -13,11 +13,11 @@ import java.time.Duration;
 import java.util.Random;
 import me.kpavlov.aimocks.anthropic.MockAnthropic;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.CONCURRENT)
 class AnthropicChatModelErrorsTest {
@@ -93,9 +93,23 @@ class AnthropicChatModelErrorsTest {
                 });
     }
 
-    @Test
-    void should_handle_timeout() {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) {
+
         // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey("dummy-key")
+                .baseUrl(MOCK.baseUrl() + "/v1")
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .maxTokens(20)
+                .timeout(timeout)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         final var question = "Simulate timeout " + System.currentTimeMillis();
         MOCK.messages(req -> req.userMessageContains(question)).respondsError(res -> {
             // don't really care about the response, just simulate a timeout
@@ -105,12 +119,9 @@ class AnthropicChatModelErrorsTest {
         });
 
         // when-then
-        final var chatRequest =
-                ChatRequest.builder().messages(userMessage(question)).build();
-
-        assertThatExceptionOfType(RuntimeException.class)
+        assertThatExceptionOfType(RuntimeException.class) // TODO
                 // when
-                .isThrownBy(() -> model.chat(chatRequest))
+                .isThrownBy(() -> model.chat(question))
                 // both socket timeout and read timeout are currently possible
                 .withMessageMatching(".*(timeout|Read timed out)");
     }

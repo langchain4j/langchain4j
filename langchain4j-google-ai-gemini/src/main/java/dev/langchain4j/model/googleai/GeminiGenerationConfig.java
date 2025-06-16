@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
@@ -13,24 +12,37 @@ class GeminiGenerationConfig {
 
     @JsonProperty
     private final List<String> stopSequences;
+
     @JsonProperty
     private final String responseMimeType;
+
     @JsonProperty
     private final GeminiSchema responseSchema;
+
     @JsonProperty
     private final Integer candidateCount;
+
     @JsonProperty
     private final Integer maxOutputTokens;
+
     @JsonProperty
     private final Double temperature;
+
     @JsonProperty
     private final Integer topK;
+
+    @JsonProperty
+    private Integer seed;
+
     @JsonProperty
     private final Double topP;
+
     @JsonProperty
     private final Double presencePenalty;
+
     @JsonProperty
     private final Double frequencyPenalty;
+
     @JsonProperty
     private final GeminiThinkingConfig thinkingConfig;
 
@@ -42,6 +54,7 @@ class GeminiGenerationConfig {
         this.maxOutputTokens = builder.maxOutputTokens;
         this.temperature = builder.temperature;
         this.topK = builder.topK;
+        this.seed = builder.seed;
         this.topP = builder.topP;
         this.presencePenalty = builder.presencePenalty;
         this.frequencyPenalty = builder.frequencyPenalty;
@@ -61,13 +74,13 @@ class GeminiGenerationConfig {
         private Integer maxOutputTokens;
         private Double temperature;
         private Integer topK;
+        private Integer seed;
         private Double topP;
         private Double presencePenalty;
         private Double frequencyPenalty;
         private GeminiThinkingConfig thinkingConfig;
 
-        GeminiGenerationConfigBuilder() {
-        }
+        GeminiGenerationConfigBuilder() {}
 
         GeminiGenerationConfigBuilder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
@@ -101,6 +114,11 @@ class GeminiGenerationConfig {
 
         GeminiGenerationConfigBuilder topK(Integer topK) {
             this.topK = topK;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder seed(Integer seed) {
+            this.seed = seed;
             return this;
         }
 

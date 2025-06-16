@@ -49,13 +49,13 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder() // TODO return Gemini-specific params
+        return ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return false; // TODO fix
+        return false; // Gemini does not support tools and response format simultaneously
     }
 }

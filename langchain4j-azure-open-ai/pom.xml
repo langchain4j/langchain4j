@@ -12,6 +12,15 @@
     <artifactId>langchain4j-azure-open-ai</artifactId>
     <name>LangChain4j :: Integration :: Azure OpenAI</name>
 
+    <developers>
+        <developer>
+            <id>jdubois</id>
+            <name>Julien Dubois</name>
+            <email>github@julien-dubois.com</email>
+            <url>https://www.julien-dubois.com</url>
+        </developer>
+    </developers>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -45,12 +54,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-identity</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
         </dependency>
@@ -58,11 +61,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
         </dependency>
 
 

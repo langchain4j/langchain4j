@@ -1,6 +1,14 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.Experimental;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
+import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
+
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -9,26 +17,11 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool;
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
-import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
-import static java.time.Duration.ofSeconds;
-
-@Experimental
 abstract class BaseGeminiChatModel {
-
-    private static final Logger log = LoggerFactory.getLogger(BaseGeminiChatModel.class);
 
     protected final GeminiService geminiService;
     protected final String apiKey;
@@ -39,14 +32,17 @@ abstract class BaseGeminiChatModel {
     protected final List<ChatModelListener> listeners;
     protected final Integer maxRetries;
     protected final GeminiThinkingConfig thinkingConfig;
+    protected final Integer seed;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
     protected BaseGeminiChatModel(
+            HttpClientBuilder httpClientBuilder,
             String apiKey,
             String modelName,
             Double temperature,
             Integer topK,
+            Integer seed,
             Double topP,
             Double frequencyPenalty,
             Double presencePenalty,
@@ -62,8 +58,7 @@ abstract class BaseGeminiChatModel {
             List<ChatModelListener> listeners,
             Integer maxRetries,
             GeminiThinkingConfig thinkingConfig,
-            ChatRequestParameters defaultRequestParameters
-    ) {
+            ChatRequestParameters defaultRequestParameters) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.functionCallingConfig = functionCallingConfig;
         this.allowCodeExecution = getOrDefault(allowCodeExecution, false);
@@ -72,16 +67,15 @@ abstract class BaseGeminiChatModel {
         this.listeners = copy(listeners);
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.thinkingConfig = thinkingConfig;
-        this.geminiService = new GeminiService(
-                getOrDefault(logRequestsAndResponses, false) ? log : null,
-                getOrDefault(timeout, ofSeconds(60))
-        );
+        this.seed = seed;
+        this.geminiService =
+                new GeminiService(httpClientBuilder, getOrDefault(logRequestsAndResponses, false), timeout);
 
         ChatRequestParameters parameters;
         if (defaultRequestParameters != null) {
             parameters = defaultRequestParameters;
         } else {
-            parameters = DefaultChatRequestParameters.builder().build();
+            parameters = DefaultChatRequestParameters.EMPTY;
         }
 
         this.defaultRequestParameters = ChatRequestParameters.builder()
@@ -123,6 +117,7 @@ abstract class BaseGeminiChatModel {
                         .stopSequences(parameters.stopSequences())
                         .temperature(parameters.temperature())
                         .topK(parameters.topK())
+                        .seed(seed)
                         .topP(parameters.topP())
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
@@ -140,7 +135,8 @@ abstract class BaseGeminiChatModel {
         }
 
         GeminiMode geminiMode = Optional.ofNullable(functionCallingConfig)
-                .map(GeminiFunctionCallingConfig::getMode).orElse(null);
+                .map(GeminiFunctionCallingConfig::getMode)
+                .orElse(null);
         List<String> allowedFunctionNames = Optional.ofNullable(functionCallingConfig)
                 .map(GeminiFunctionCallingConfig::getAllowedFunctionNames)
                 .orElse(null);
@@ -157,10 +153,10 @@ abstract class BaseGeminiChatModel {
             return "text/plain";
         }
 
-        if (ResponseFormatType.JSON.equals(responseFormat.type()) &&
-                responseFormat.jsonSchema() != null &&
-                responseFormat.jsonSchema().rootElement() != null &&
-                responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
+        if (ResponseFormatType.JSON.equals(responseFormat.type())
+                && responseFormat.jsonSchema() != null
+                && responseFormat.jsonSchema().rootElement() != null
+                && responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
             return "text/x.enum";
         }
 
@@ -186,4 +182,3 @@ abstract class BaseGeminiChatModel {
         };
     }
 }
-

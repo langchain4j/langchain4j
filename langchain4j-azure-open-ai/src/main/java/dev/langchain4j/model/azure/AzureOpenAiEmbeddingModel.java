@@ -1,8 +1,8 @@
 package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.data.embedding.Embedding.from;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.AzureOpenAiEmbeddingModelName.TEXT_EMBEDDING_ADA_002;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
@@ -45,7 +45,7 @@ import java.util.Map;
  * The constructor requires a KeyCredential instance, which can be created using `new AzureKeyCredential("{key}")`, and doesn't set up the endpoint.
  * <p>
  * 3. Azure OpenAI client with Microsoft Entra ID (formerly Azure Active Directory) credentials.
- * - This requires to add the `com.azure:azure-identity` dependency to your project, which is an optional dependency to this library.
+ * - This requires to add the `com.azure:azure-identity` dependency to your project.
  * - You need to provide a TokenCredential instance, using the tokenCredential() method in the Builder, or the tokenCredential parameter in the constructor.
  * As an example, DefaultAzureCredential can be used to authenticate the client: Set the values of the client ID, tenant ID, and
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
@@ -55,103 +55,55 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final int BATCH_SIZE = 16;
 
-    private OpenAIClient client;
+    private final OpenAIClient client;
     private final String deploymentName;
     private final Integer dimensions;
 
-    private AzureOpenAiEmbeddingModel(OpenAIClient client, String deploymentName, Integer dimensions) {
-        this(deploymentName, dimensions);
-        this.client = client;
-    }
+    public AzureOpenAiEmbeddingModel(Builder builder) {
+        if (builder.openAIClient == null) {
+            if (builder.tokenCredential != null) {
+                this.client = setupSyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.tokenCredential,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            } else if (builder.keyCredential != null) {
+                this.client = setupSyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.keyCredential,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            } else {
+                this.client = setupSyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.apiKey,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            }
+        } else {
+            this.client = ensureNotNull(builder.openAIClient, "openAIClient");
+        }
 
-    public AzureOpenAiEmbeddingModel(
-            String endpoint,
-            String serviceVersion,
-            String apiKey,
-            HttpClientProvider httpClientProvider,
-            String deploymentName,
-            Duration timeout,
-            Integer maxRetries,
-            ProxyOptions proxyOptions,
-            boolean logRequestsAndResponses,
-            String userAgentSuffix,
-            Integer dimensions,
-            Map<String, String> customHeaders) {
-
-        this(deploymentName, dimensions);
-        this.client = setupSyncClient(
-                endpoint,
-                serviceVersion,
-                apiKey,
-                timeout,
-                maxRetries,
-                httpClientProvider,
-                proxyOptions,
-                logRequestsAndResponses,
-                userAgentSuffix,
-                customHeaders);
-    }
-
-    public AzureOpenAiEmbeddingModel(
-            String endpoint,
-            String serviceVersion,
-            KeyCredential keyCredential,
-            HttpClientProvider httpClientProvider,
-            String deploymentName,
-            Duration timeout,
-            Integer maxRetries,
-            ProxyOptions proxyOptions,
-            boolean logRequestsAndResponses,
-            String userAgentSuffix,
-            Integer dimensions,
-            Map<String, String> customHeaders) {
-
-        this(deploymentName, dimensions);
-        this.client = setupSyncClient(
-                endpoint,
-                serviceVersion,
-                keyCredential,
-                timeout,
-                maxRetries,
-                httpClientProvider,
-                proxyOptions,
-                logRequestsAndResponses,
-                userAgentSuffix,
-                customHeaders);
-    }
-
-    public AzureOpenAiEmbeddingModel(
-            String endpoint,
-            String serviceVersion,
-            TokenCredential tokenCredential,
-            HttpClientProvider httpClientProvider,
-            String deploymentName,
-            Duration timeout,
-            Integer maxRetries,
-            ProxyOptions proxyOptions,
-            boolean logRequestsAndResponses,
-            String userAgentSuffix,
-            Integer dimensions,
-            Map<String, String> customHeaders) {
-
-        this(deploymentName, dimensions);
-        this.client = setupSyncClient(
-                endpoint,
-                serviceVersion,
-                tokenCredential,
-                timeout,
-                maxRetries,
-                httpClientProvider,
-                proxyOptions,
-                logRequestsAndResponses,
-                userAgentSuffix,
-                customHeaders);
-    }
-
-    private AzureOpenAiEmbeddingModel(String deploymentName, Integer dimensions) {
-
-        this.deploymentName = getOrDefault(deploymentName, TEXT_EMBEDDING_ADA_002.modelName());
-        this.dimensions = dimensions;
+        this.deploymentName = ensureNotBlank(builder.deploymentName, "deploymentName");
+        this.dimensions = builder.dimensions;
     }
 
     /**
@@ -177,9 +129,10 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         for (int i = 0; i < texts.size(); i += BATCH_SIZE) {
 
             List<String> batch = texts.subList(i, Math.min(i + BATCH_SIZE, texts.size()));
-
             EmbeddingsOptions options = new EmbeddingsOptions(batch).setDimensions(dimensions);
-            Embeddings response = client.getEmbeddings(deploymentName, options);
+
+            Embeddings response = InternalAzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
+                    client.getEmbeddings(deploymentName, options));
 
             for (EmbeddingItem embeddingItem : response.getData()) {
                 Embedding embedding = from(embeddingItem.getEmbedding());
@@ -202,8 +155,11 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     protected Integer knownDimension() {
-        if (dimensions != null) return dimensions;
-        return AzureOpenAiEmbeddingModelName.knownDimension(deploymentName);
+        if (dimensions != null) {
+            return dimensions;
+        } else {
+            return AzureOpenAiEmbeddingModelName.knownDimension(deploymentName);
+        }
     }
 
     public static class Builder {
@@ -350,52 +306,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public AzureOpenAiEmbeddingModel build() {
-            if (openAIClient == null) {
-                if (tokenCredential != null) {
-                    return new AzureOpenAiEmbeddingModel(
-                            endpoint,
-                            serviceVersion,
-                            tokenCredential,
-                            httpClientProvider,
-                            deploymentName,
-                            timeout,
-                            maxRetries,
-                            proxyOptions,
-                            logRequestsAndResponses,
-                            userAgentSuffix,
-                            dimensions,
-                            customHeaders);
-                } else if (keyCredential != null) {
-                    return new AzureOpenAiEmbeddingModel(
-                            endpoint,
-                            serviceVersion,
-                            keyCredential,
-                            httpClientProvider,
-                            deploymentName,
-                            timeout,
-                            maxRetries,
-                            proxyOptions,
-                            logRequestsAndResponses,
-                            userAgentSuffix,
-                            dimensions,
-                            customHeaders);
-                }
-                return new AzureOpenAiEmbeddingModel(
-                        endpoint,
-                        serviceVersion,
-                        apiKey,
-                        httpClientProvider,
-                        deploymentName,
-                        timeout,
-                        maxRetries,
-                        proxyOptions,
-                        logRequestsAndResponses,
-                        userAgentSuffix,
-                        dimensions,
-                        customHeaders);
-            } else {
-                return new AzureOpenAiEmbeddingModel(openAIClient, deploymentName, dimensions);
-            }
+            return new AzureOpenAiEmbeddingModel(this);
         }
     }
 }

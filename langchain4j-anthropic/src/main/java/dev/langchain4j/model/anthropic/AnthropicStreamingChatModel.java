@@ -84,14 +84,14 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .build();
 
-        ChatRequestParameters commonParameters = DefaultChatRequestParameters.DEFAULT_INSTANCE;
+        ChatRequestParameters commonParameters = DefaultChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
                 .modelName(ensureNotBlank(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName"))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
-                .maxOutputTokens(getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
+                .maxOutputTokens(getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024))) // TODO remove default?
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
