@@ -1,12 +1,11 @@
 package dev.langchain4j.code.judge0;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-
-import java.time.Duration;
-
 import static dev.langchain4j.code.judge0.JavaScriptCodeFixer.fixIfNoLogToConsole;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import java.time.Duration;
 
 /**
  * A tool that executes JS code using the Judge0 service, hosted by Rapid API.
@@ -47,9 +46,7 @@ public class Judge0JavaScriptExecutionTool {
 
     @Tool("MUST be used for accurate calculations: math, sorting, filtering, aggregating, string processing, etc")
     public String executeJavaScriptCode(
-            @P("JavaScript code to execute, result MUST be printed to console")
-            String javaScriptCode
-    ) {
+            @P("JavaScript code to execute, result MUST be printed to console") String javaScriptCode) {
         if (fixCodeIfNeeded) {
             javaScriptCode = fixIfNoLogToConsole(javaScriptCode);
         }

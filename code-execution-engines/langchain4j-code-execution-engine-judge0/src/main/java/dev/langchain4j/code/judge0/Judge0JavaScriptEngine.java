@@ -1,14 +1,13 @@
 package dev.langchain4j.code.judge0;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.code.CodeExecutionEngine;
+import java.time.Duration;
+import java.util.Base64;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.time.Duration;
-import java.util.Base64;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 class Judge0JavaScriptEngine implements CodeExecutionEngine {
 
@@ -25,11 +24,11 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
         this.apiKey = apiKey;
         this.languageId = languageId;
         this.client = new OkHttpClient.Builder()
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .callTimeout(timeout)
-            .build();
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
+                .callTimeout(timeout)
+                .build();
     }
 
     @Override
@@ -42,11 +41,11 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
         RequestBody requestBody = RequestBody.create(Json.toJson(submission), MEDIA_TYPE);
 
         Request request = new Request.Builder()
-            .url("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true&fields=*")
-            .addHeader("x-rapidapi-host", "judge0-ce.p.rapidapi.com")
-            .addHeader("x-rapidapi-key", apiKey)
-            .post(requestBody)
-            .build();
+                .url("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true&fields=*")
+                .addHeader("x-rapidapi-host", "judge0-ce.p.rapidapi.com")
+                .addHeader("x-rapidapi-key", apiKey)
+                .post(requestBody)
+                .build();
 
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
