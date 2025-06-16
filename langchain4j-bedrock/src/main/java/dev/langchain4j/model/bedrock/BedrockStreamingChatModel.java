@@ -144,6 +144,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     }
 
     public static class Builder extends AbstractBuilder<Builder> {
+
         private BedrockRuntimeAsyncClient client;
 
         public Builder client(BedrockRuntimeAsyncClient client) {
