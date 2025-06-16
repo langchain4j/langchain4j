@@ -95,6 +95,7 @@
 
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
+        <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-builder-language</module>
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
