@@ -1,11 +1,10 @@
-package dev.langchain4j.model.bedrock.internal;
+package dev.langchain4j.model.bedrock;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
 
-/**
- * Bedrock embedding response
- */
-public interface BedrockEmbeddingResponse {
+@Internal
+interface BedrockEmbeddingResponse {
 
     /**
      * Get embedding
@@ -20,5 +19,4 @@ public interface BedrockEmbeddingResponse {
      * @return input text token count
      */
     int getInputTextTokenCount();
-
 }

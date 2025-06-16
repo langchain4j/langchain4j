@@ -1,12 +1,13 @@
-package dev.langchain4j.model.bedrock;
+package dev.langchain4j.model.bedrock.common;
 
-import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
-import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.*;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
+import static dev.langchain4j.model.bedrock.TestedModels.*;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.bedrock.BedrockChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -35,7 +36,9 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        return ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
@@ -47,21 +50,14 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
                 .build();
     }
 
-    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false;
+        return false; // output format not supported
     }
 
-    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
-    }
-
-    @Override
-    protected boolean assertExceptionType() {
-        return false;
+        return false; // output format not supported
     }
 
     // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
