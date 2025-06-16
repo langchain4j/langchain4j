@@ -33,7 +33,6 @@ import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_7_SONNET_20250219;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -70,20 +69,6 @@ class AnthropicChatModelIT {
                     .addIntegerProperty("first")
                     .addIntegerProperty("second")
                     .required("first", "second")
-                    .build())
-            .build();
-
-    ToolSpecification weather = ToolSpecification.builder()
-            .name("weather")
-            .description("returns a weather forecast for a given location")
-            .parameters(JsonObjectSchema.builder()
-                    .addProperty(
-                            "location",
-                            JsonObjectSchema.builder()
-                                    .addStringProperty("city")
-                                    .required("city")
-                                    .build())
-                    .required("location")
                     .build())
             .build();
 
@@ -338,7 +323,7 @@ class AnthropicChatModelIT {
         // then
         assertThatThrownBy(() -> model.chat(
                         systemMessageOne, systemMessageTwo, systemMessageThree, systemMessageFour, systemMessageFive))
-                .isExactlyInstanceOf(dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException.class)
+                .isExactlyInstanceOf(dev.langchain4j.exception.InvalidRequestException.class)
                 .hasMessage(
                         "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages: at least one message is required\"}}");
     }

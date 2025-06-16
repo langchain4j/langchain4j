@@ -41,7 +41,7 @@ public class MessageSanitizer {
             if (message instanceof UserMessage) {
                 if (lastWasUserMessage) {
                     toRemove.add(message);
-                    log.warn("Removing consecutive UserMessage: {}", ((UserMessage) message).singleText());
+                    log.warn("Removing consecutive UserMessage: {}", ((UserMessage) message).singleText()); // TODO
                 } else {
                     lastWasUserMessage = true;
                 }
@@ -56,7 +56,7 @@ public class MessageSanitizer {
     private static void ensureFirstMessageIsUserMessage(List<ChatMessage> messages) {
         while (!messages.isEmpty() && !(messages.get(0) instanceof UserMessage)) {
             ChatMessage removedMessage = messages.remove(0);
-            log.warn("Dropping non-UserMessage in 1st element: {}", removedMessage);
+            log.warn("Dropping non-UserMessage in 1st element: {}", removedMessage); // TODO
         }
     }
 }
