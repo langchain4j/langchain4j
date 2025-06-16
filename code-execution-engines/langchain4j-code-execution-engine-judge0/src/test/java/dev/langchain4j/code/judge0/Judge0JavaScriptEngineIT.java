@@ -47,17 +47,9 @@ class Judge0JavaScriptEngineIT {
                         + "const result = calculateCompoundInterest(1000, 0.05, 5, 12);\n"
                         + "console.log(JSON.stringify(result));");
 
-        // then
-        assertThat(result).contains("principal");
-        assertThat(result).contains("amount");
-        assertThat(result).contains("interest");
-
-        // Parse JSON result to verify calculations
-        assertThat(result).satisfies(jsonResult -> {
-            // Check for the exact values instead of rounded values
-            assertThat(jsonResult).contains("1000");
-            assertThat(jsonResult).contains("1283.358");
-            assertThat(jsonResult).contains("283.358");
-        });
+        assertThat(result)
+                .contains("\"principal\":1000")
+                .contains("\"amount\":1283.3586785035118")
+                .contains("\"interest\":283.3586785035118");
     }
 }
