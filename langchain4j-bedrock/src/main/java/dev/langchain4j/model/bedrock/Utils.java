@@ -2,6 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import static java.util.Objects.isNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.net.URI;
@@ -12,6 +13,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ImageFormat;
 /**
  * Utility methods.
  */
+@Internal
 class Utils {
     /**
      * Extracts the extension from a file path, URI, or URL.
