@@ -1,7 +1,6 @@
 package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
@@ -29,7 +28,7 @@ public class AiServiceTokenStreamParameters {
     private final Object methodKey;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
-        this.messages = ensureNotEmpty(builder.messages, "messages");
+        this.messages = builder.messages;
         this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
         this.toolExecutors = copyIfNotNull(builder.toolExecutors);
         this.retrievedContents = builder.retrievedContents;

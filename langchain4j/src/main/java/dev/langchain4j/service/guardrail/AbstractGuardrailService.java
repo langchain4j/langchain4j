@@ -32,6 +32,10 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     private final Map<Object, InputGuardrailExecutor> inputGuardrails = new HashMap<>();
     private final Map<Object, OutputGuardrailExecutor> outputGuardrails = new HashMap<>();
 
+    // Caches for whether or not a method has input or output guardrails
+    private final Map<Object, Boolean> inputGuardrailMethods = new HashMap<>();
+    private final Map<Object, Boolean> outputGuardrailMethods = new HashMap<>();
+
     protected AbstractGuardrailService(
             Class<?> aiServiceClass,
             Map<Object, InputGuardrailExecutor> inputGuardrails,
@@ -64,12 +68,14 @@ public abstract class AbstractGuardrailService implements GuardrailService {
 
     @Override
     public <MethodKey> boolean hasInputGuardrails(MethodKey method) {
-        return !getInputGuardrails(method).isEmpty();
+        return this.inputGuardrailMethods.computeIfAbsent(
+                method, m -> !getInputGuardrails(m).isEmpty());
     }
 
     @Override
     public <MethodKey> boolean hasOutputGuardrails(MethodKey method) {
-        return !getOutputGuardrails(method).isEmpty();
+        return this.outputGuardrailMethods.computeIfAbsent(
+                method, m -> !getOutputGuardrails(m).isEmpty());
     }
 
     // These methods below really only exist for testing purposes

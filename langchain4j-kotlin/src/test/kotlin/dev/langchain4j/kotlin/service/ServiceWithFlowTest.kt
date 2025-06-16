@@ -53,13 +53,7 @@ internal class ServiceWithFlowTest {
             handler.onCompleteResponse(completeResponse)
         }.whenever(streamingModel).chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
 
-        val assistant =
-            AiServices
-                .builder(Assistant::class.java)
-                .streamingChatModel(streamingModel)
-                .chatModel(model)
-                .build()
-
+        val assistant = AiServices.create(Assistant::class.java, model, streamingModel)
         val result = assistant.askQuestion(userName = "My friend", question = "How are you?")
             .toList()
 
@@ -80,14 +74,7 @@ internal class ServiceWithFlowTest {
         }.whenever(streamingModel)
             .chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
 
-        val assistant =
-            AiServices
-                .builder(Assistant::class.java)
-                .streamingChatModel(streamingModel)
-                .chatModel(model)
-                .build()
-
-
+        val assistant = AiServices.create(Assistant::class.java, model, streamingModel)
         val response = assistant.askQuestion(userName = "My friend", question = "How are you?")
             .catch {
                 val message =
@@ -111,13 +98,7 @@ internal class ServiceWithFlowTest {
             handler.onCompleteResponse(completeResponse)
         }.whenever(streamingModel).chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
 
-        val assistant =
-            AiServices
-                .builder(Assistant::class.java)
-                .streamingChatModel(streamingModel)
-                .chatModel(model)
-                .build()
-
+        val assistant = AiServices.create(Assistant::class.java, model, streamingModel)
         val result = assistant.askQuestion2(userName = "My friend", question = "How are you?")
             .toList()
 
@@ -141,13 +122,7 @@ internal class ServiceWithFlowTest {
             handler.onError(error)
         }.whenever(streamingModel).chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
 
-        val assistant =
-            AiServices
-                .builder(Assistant::class.java)
-                .streamingChatModel(streamingModel)
-                .chatModel(model)
-                .build()
-
+        val assistant = AiServices.create(Assistant::class.java, model, streamingModel)
         val response = assistant.askQuestion2(userName = "My friend", question = "How are you?")
             .catch { emit(StreamingChatModelReply.Error(it)) }
             .toList()

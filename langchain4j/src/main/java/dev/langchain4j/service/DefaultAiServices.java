@@ -348,11 +348,16 @@ class DefaultAiServices<T> extends AiServices<T> {
             UserMessage userMessage,
             GuardrailRequestParams commonGuardrailParams) {
 
-        var inputGuardrailRequest = InputGuardrailRequest.builder()
-                .userMessage(userMessage)
-                .commonParams(commonGuardrailParams)
-                .build();
-        return guardrailService.executeGuardrails(method, inputGuardrailRequest);
+        // NOTE: This check is cached, so it really only needs to be computed the first time for each method
+        if (guardrailService.hasInputGuardrails(method)) {
+            var inputGuardrailRequest = InputGuardrailRequest.builder()
+                    .userMessage(userMessage)
+                    .commonParams(commonGuardrailParams)
+                    .build();
+            return guardrailService.executeGuardrails(method, inputGuardrailRequest);
+        }
+
+        return userMessage;
     }
 
     private <T> T invokeOutputGuardrails(
@@ -362,12 +367,16 @@ class DefaultAiServices<T> extends AiServices<T> {
             ChatExecutor chatExecutor,
             GuardrailRequestParams commonGuardrailParams) {
 
-        var outputGuardrailRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(responseFromLLM)
-                .chatExecutor(chatExecutor)
-                .requestParams(commonGuardrailParams)
-                .build();
-        return guardrailService.executeGuardrails(method, outputGuardrailRequest);
+        if (guardrailService.hasOutputGuardrails(method)) {
+            var outputGuardrailRequest = OutputGuardrailRequest.builder()
+                    .responseFromLLM(responseFromLLM)
+                    .chatExecutor(chatExecutor)
+                    .requestParams(commonGuardrailParams)
+                    .build();
+            return guardrailService.executeGuardrails(method, outputGuardrailRequest);
+        }
+
+        return (T) responseFromLLM;
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {

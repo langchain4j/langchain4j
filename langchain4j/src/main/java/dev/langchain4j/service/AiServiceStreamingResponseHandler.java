@@ -53,6 +53,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
     private final List<String> responseBuffer = new ArrayList<>();
+    private final boolean hasOutputGuardrails;
 
     AiServiceStreamingResponseHandler(
             ChatExecutor chatExecutor,
@@ -84,12 +85,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.toolSpecifications = copy(toolSpecifications);
         this.toolExecutors = copy(toolExecutors);
+        this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
     }
 
     @Override
     public void onPartialResponse(String partialResponse) {
         // If we're using output guardrails, then buffer the partial response until the guardrails have completed
-        if (context.guardrailService().hasOutputGuardrails(methodKey)) {
+        if (hasOutputGuardrails) {
             responseBuffer.add(partialResponse);
         } else {
             partialResponseHandler.accept(partialResponse);
@@ -151,7 +153,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .build();
 
                 // Invoke output guardrails
-                if (context.guardrailService().hasOutputGuardrails(methodKey)) {
+                if (hasOutputGuardrails) {
                     if (commonGuardrailParams != null) {
                         var newCommonParams = GuardrailRequestParams.builder()
                                 .chatMemory(getMemory())
