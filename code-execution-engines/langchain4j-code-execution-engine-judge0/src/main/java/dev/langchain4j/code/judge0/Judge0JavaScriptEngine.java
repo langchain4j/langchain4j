@@ -43,7 +43,8 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
 
         Request request = new Request.Builder()
             .url("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true&fields=*")
-            .addHeader("X-RapidAPI-Key", apiKey)
+            .addHeader("x-rapidapi-host", "judge0-ce.p.rapidapi.com")
+            .addHeader("x-rapidapi-key", apiKey)
             .post(requestBody)
             .build();
 
