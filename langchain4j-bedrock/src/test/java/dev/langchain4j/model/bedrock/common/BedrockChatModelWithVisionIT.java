@@ -1,18 +1,19 @@
-package dev.langchain4j.model.bedrock;
+package dev.langchain4j.model.bedrock.common;
 
-import static dev.langchain4j.model.bedrock.BedrockAiServicesIT.sleepIfNeeded;
-import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.CLAUDE_3_HAIKU;
-
+import dev.langchain4j.model.bedrock.BedrockChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import java.util.List;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import java.util.List;
+
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
+import static dev.langchain4j.model.bedrock.TestedModels.CLAUDE_3_HAIKU;
+
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
+class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> models() {
@@ -26,7 +27,9 @@ public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        return ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
@@ -38,21 +41,14 @@ public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
                 .build();
     }
 
-    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false;
+        return false; // output format not supported
     }
 
-    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
-    }
-
-    @Override
-    protected boolean assertExceptionType() {
-        return false;
+        return false; // output format not supported
     }
 
     @AfterEach

@@ -3,7 +3,7 @@ package dev.langchain4j.model.bedrock;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 
-public final class TestedModelsWithConverseAPI {
+public final class TestedModels {
 
     public static final ChatModel AWS_NOVA_MICRO =
             BedrockChatModel.builder().modelId("us.amazon.nova-micro-v1:0").build();

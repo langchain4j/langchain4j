@@ -117,7 +117,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                 .setStyle(style)
                 .setResponseFormat(responseFormat);
 
-        ImageGenerations imageGenerations = InternalAzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
+        ImageGenerations imageGenerations = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
                 client.getImageGenerations(deploymentName, options));
 
         Image image = imageFrom(imageGenerations.getData().get(0));
