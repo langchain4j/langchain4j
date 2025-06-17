@@ -1,39 +1,25 @@
-package dev.langchain4j.model.chat;
+package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
  * Generic executor interface that defines a chat interaction
  */
 public interface ChatExecutor {
+
     /**
      * Execute a chat request
      * @return The response
      */
     ChatResponse execute();
-
-    /**
-     * Executes a chat request using the provided chat memory.
-     *
-     * @param chatMemory The chat memory containing the context of the conversation.
-     *                   It provides the history of messages required for proper interaction with the chat language model.
-     * @return A response object containing the AI's response and additional metadata.
-     * @see #execute(List)
-     */
-    default ChatResponse execute(ChatMemory chatMemory) {
-        var messages = Optional.ofNullable(chatMemory).map(ChatMemory::messages).orElseGet(ArrayList::new);
-
-        return execute(messages);
-    }
 
     /**
      * Executes a chat request using the provided chat messages

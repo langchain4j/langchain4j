@@ -10,7 +10,6 @@ import dev.langchain4j.data.message.AiMessage
 import dev.langchain4j.kotlin.model.chat.StreamingChatModelReply
 import dev.langchain4j.kotlin.model.chat.StreamingChatModelReply.CompleteResponse
 import dev.langchain4j.kotlin.model.chat.StreamingChatModelReply.PartialResponse
-import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.chat.StreamingChatModel
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
@@ -35,10 +34,7 @@ import org.mockito.kotlin.whenever
 @ExtendWith(MockitoExtension::class)
 internal class ServiceWithFlowTest {
     @Mock
-    private lateinit var streamingModel: StreamingChatModel
-
-    @Mock
-    private lateinit var model: ChatModel
+    private lateinit var model: StreamingChatModel
 
     @Test
     fun `Should use TokenStreamToStringFlowAdapter`() = runTest {
@@ -51,9 +47,9 @@ internal class ServiceWithFlowTest {
             handler.onPartialResponse(partialToken1)
             handler.onPartialResponse(partialToken2)
             handler.onCompleteResponse(completeResponse)
-        }.whenever(streamingModel).chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
+        }.whenever(model).chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
 
-        val assistant = AiServices.create(Assistant::class.java, streamingModel)
+        val assistant = AiServices.create(Assistant::class.java, model)
         val result = assistant.askQuestion(userName = "My friend", question = "How are you?")
             .toList()
 
@@ -71,10 +67,10 @@ internal class ServiceWithFlowTest {
             handler.onPartialResponse(partialToken1)
             handler.onPartialResponse(partialToken2)
             handler.onError(error)
-        }.whenever(streamingModel)
+        }.whenever(model)
             .chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
 
-        val assistant = AiServices.create(Assistant::class.java,  streamingModel)
+        val assistant = AiServices.create(Assistant::class.java,  model)
         val response = assistant.askQuestion(userName = "My friend", question = "How are you?")
             .catch {
                 val message =
@@ -96,9 +92,9 @@ internal class ServiceWithFlowTest {
             handler.onPartialResponse(partialToken1)
             handler.onPartialResponse(partialToken2)
             handler.onCompleteResponse(completeResponse)
-        }.whenever(streamingModel).chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
+        }.whenever(model).chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
 
-        val assistant = AiServices.create(Assistant::class.java, streamingModel)
+        val assistant = AiServices.create(Assistant::class.java, model)
         val result = assistant.askQuestion2(userName = "My friend", question = "How are you?")
             .toList()
 
@@ -120,9 +116,9 @@ internal class ServiceWithFlowTest {
             handler.onPartialResponse(partialToken1)
             handler.onPartialResponse(partialToken2)
             handler.onError(error)
-        }.whenever(streamingModel).chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
+        }.whenever(model).chat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
 
-        val assistant = AiServices.create(Assistant::class.java, streamingModel)
+        val assistant = AiServices.create(Assistant::class.java, model)
         val response = assistant.askQuestion2(userName = "My friend", question = "How are you?")
             .catch { emit(StreamingChatModelReply.Error(it)) }
             .toList()

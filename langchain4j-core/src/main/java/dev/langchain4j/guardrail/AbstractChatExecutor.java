@@ -1,4 +1,4 @@
-package dev.langchain4j.model.chat;
+package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 

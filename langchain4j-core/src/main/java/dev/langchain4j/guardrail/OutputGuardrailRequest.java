@@ -3,7 +3,6 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatExecutor;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.Optional;
 

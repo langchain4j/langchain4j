@@ -1,8 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -29,14 +26,13 @@ public class AiServiceTokenStreamParameters {
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
-        this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
-        this.toolExecutors = copyIfNotNull(builder.toolExecutors);
+        this.toolSpecifications = builder.toolSpecifications;
+        this.toolExecutors = builder.toolExecutors;
         this.retrievedContents = builder.retrievedContents;
-        this.context = ensureNotNull(builder.context, "context");
-        this.memoryId = ensureNotNull(builder.memoryId, "memoryId");
+        this.context = builder.context;
+        this.memoryId = builder.memoryId;
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
-        ensureNotNull(context.streamingChatModel, "streamingChatModel");
     }
 
     /**
