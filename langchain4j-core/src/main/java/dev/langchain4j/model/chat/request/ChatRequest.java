@@ -1,16 +1,14 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
+
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
+import java.util.List;
+import java.util.Objects;
 
 public class ChatRequest {
 
@@ -131,8 +129,7 @@ public class ChatRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ChatRequest that = (ChatRequest) o;
-        return Objects.equals(this.messages, that.messages)
-                && Objects.equals(this.parameters, that.parameters);
+        return Objects.equals(this.messages, that.messages) && Objects.equals(this.parameters, that.parameters);
     }
 
     @Override
@@ -142,10 +139,14 @@ public class ChatRequest {
 
     @Override
     public String toString() {
-        return "ChatRequest {" +
-                " messages = " + messages +
-                ", parameters = " + parameters +
-                " }";
+        return "ChatRequest {" + " messages = " + messages + ", parameters = " + parameters + " }";
+    }
+
+    /**
+     * Transforms this instance to a {@link Builder} with all of the same field values
+     */
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     public static Builder builder() {
@@ -168,6 +169,13 @@ public class ChatRequest {
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
+
+        public Builder() {}
+
+        public Builder(ChatRequest chatRequest) {
+            this.messages = chatRequest.messages;
+            this.parameters = chatRequest.parameters;
+        }
 
         public Builder messages(List<ChatMessage> messages) {
             this.messages = messages;

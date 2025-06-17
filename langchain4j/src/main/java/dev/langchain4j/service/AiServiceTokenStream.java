@@ -1,25 +1,25 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.emptyList;
 
 @Internal
 public class AiServiceTokenStream implements TokenStream {
@@ -30,6 +30,8 @@ public class AiServiceTokenStream implements TokenStream {
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
+    private final GuardrailRequestParams commonGuardrailParams;
+    private final Object methodKey;
 
     private Consumer<String> partialResponseHandler;
     private Consumer<List<Content>> contentsHandler;
@@ -50,6 +52,7 @@ public class AiServiceTokenStream implements TokenStream {
      * @param parameters the parameters for creating the token stream
      */
     public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
+        ensureNotNull(parameters, "parameters");
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
         this.toolSpecifications = copy(parameters.toolSpecifications());
         this.toolExecutors = copy(parameters.toolExecutors());
@@ -57,6 +60,8 @@ public class AiServiceTokenStream implements TokenStream {
         this.context = ensureNotNull(parameters.context(), "context");
         ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
         this.memoryId = ensureNotNull(parameters.memoryId(), "memoryId");
+        this.commonGuardrailParams = parameters.commonGuardrailParams();
+        this.methodKey = parameters.methodKey();
     }
 
     @Override
@@ -110,7 +115,13 @@ public class AiServiceTokenStream implements TokenStream {
                 .toolSpecifications(toolSpecifications)
                 .build();
 
-        StreamingChatResponseHandler handler = new AiServiceStreamingResponseHandler(
+        ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
+                .errorHandler(errorHandler)
+                .chatRequest(chatRequest)
+                .build();
+
+        var handler = new AiServiceStreamingResponseHandler(
+                chatExecutor,
                 context,
                 memoryId,
                 partialResponseHandler,
@@ -120,7 +131,9 @@ public class AiServiceTokenStream implements TokenStream {
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
                 toolSpecifications,
-                toolExecutors);
+                toolExecutors,
+                commonGuardrailParams,
+                methodKey);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);
@@ -148,11 +161,13 @@ public class AiServiceTokenStream implements TokenStream {
         }
     }
 
-    private List<ChatMessage> initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
-        if (context.hasChatMemory()) {
-            return emptyList();
-        } else {
-            return new ArrayList<>(messagesToSend);
+    private ChatMemory initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
+        var chatMemory = MessageWindowChatMemory.withMaxMessages(Integer.MAX_VALUE);
+
+        if (!context.hasChatMemory()) {
+            chatMemory.add(messagesToSend);
         }
+
+        return chatMemory;
     }
 }

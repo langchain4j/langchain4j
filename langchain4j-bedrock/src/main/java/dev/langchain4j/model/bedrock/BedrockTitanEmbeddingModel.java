@@ -1,12 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.bedrock.internal.AbstractBedrockEmbeddingModel;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * Bedrock Amazon Titan embedding model with support for both versions:
@@ -17,36 +19,25 @@ import java.util.stream.Collectors;
  */
 public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockTitanEmbeddingResponse> {
 
-    private static final String DEFAULT_MODEL = Types.TitanEmbedTextV1.getValue();
-
     private final String model;
+    private final Integer dimensions;
+    private final Boolean normalize;
+
+    protected BedrockTitanEmbeddingModel(BedrockTitanEmbeddingModelBuilder<?, ?> builder) {
+        super(builder);
+        this.model = ensureNotBlank(builder.model, "model");
+        this.dimensions = builder.dimensions;
+        this.normalize = builder.normalize;
+    }
 
     @Override
     protected String getModelId() {
         return model;
     }
 
-    /**
-     * 1024 is default size of output vector for Titan Embedding model V2.
-     */
-    private final Integer dimensions;
-
-    /**
-     * A flag indicating whether to normalize the output embeddings.
-     * It defaults to true, which is optimal for RAG use cases.
-     */
-    private final Boolean normalize;
-
-    protected BedrockTitanEmbeddingModel(BedrockTitanEmbeddingModelBuilder<?, ?> builder) {
-        super(builder);
-        if (builder.isModelSet) {
-            this.model = builder.model;
-        } else {
-            this.model = DEFAULT_MODEL;
-        }
-
-        this.dimensions = builder.dimensions;
-        this.normalize = builder.normalize;
+    @Override
+    protected Integer knownDimension() {
+        return dimensions;
     }
 
     @Override
@@ -112,14 +103,13 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
                     C extends BedrockTitanEmbeddingModel, B extends BedrockTitanEmbeddingModelBuilder<C, B>>
             extends AbstractBedrockEmbeddingModel.AbstractBedrockEmbeddingModelBuilder<
                     BedrockTitanEmbeddingResponse, C, B> {
-        private boolean isModelSet;
+
         private String model;
         private Integer dimensions;
         private Boolean normalize;
 
         public B model(String model) {
             this.model = model;
-            this.isModelSet = true;
             return self();
         }
 
@@ -136,13 +126,6 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
         protected abstract B self();
 
         public abstract C build();
-
-        @Override
-        public String toString() {
-            return "BedrockTitanEmbeddingModel.BedrockTitanEmbeddingModelBuilder(super=" + super.toString()
-                    + ", model$value=" + this.model + ", dimensions=" + this.dimensions + ", normalize="
-                    + this.normalize + ")";
-        }
     }
 
     private static final class BedrockTitanEmbeddingModelBuilderImpl

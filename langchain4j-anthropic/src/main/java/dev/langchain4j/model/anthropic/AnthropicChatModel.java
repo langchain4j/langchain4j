@@ -1,8 +1,8 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnthropicRequest;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
@@ -11,7 +11,6 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
-import static java.util.Collections.emptyList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -19,6 +18,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
@@ -34,11 +34,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -65,8 +61,6 @@ import org.slf4j.LoggerFactory;
  */
 public class AnthropicChatModel implements ChatModel {
 
-    private static final Logger log = LoggerFactory.getLogger(AnthropicChatModel.class);
-
     private final AnthropicClient client;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
@@ -76,13 +70,14 @@ public class AnthropicChatModel implements ChatModel {
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
 
-    private AnthropicChatModel(AnthropicChatModelBuilder builder) {
+    public AnthropicChatModel(AnthropicChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
                 .version(getOrDefault(builder.version, "2023-06-01"))
                 .beta(builder.beta)
-                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .build();
@@ -92,7 +87,7 @@ public class AnthropicChatModel implements ChatModel {
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-        this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
+        this.listeners = copy(builder.listeners);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -103,11 +98,11 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
-                .modelName(ensureNotBlank(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName"))
+                .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
-                .maxOutputTokens(getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024))) // TODO remove default?
+                .maxOutputTokens(getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
@@ -120,6 +115,7 @@ public class AnthropicChatModel implements ChatModel {
 
     public static class AnthropicChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String version;
@@ -142,6 +138,11 @@ public class AnthropicChatModel implements ChatModel {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
+
+        public AnthropicChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public AnthropicChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -275,6 +276,7 @@ public class AnthropicChatModel implements ChatModel {
 
         AnthropicCreateMessageResponse response =
                 withRetryMappingExceptions(() -> client.createMessage(anthropicRequest), maxRetries);
+
         return createChatResponse(response);
     }
 

@@ -234,7 +234,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     }
                 },
                 error -> {
-                    RuntimeException mappedError = InternalAzureOpenAiExceptionMapper.INSTANCE.mapException(error);
+                    RuntimeException mappedError = AzureOpenAiExceptionMapper.INSTANCE.mapException(error);
                     withLoggingExceptions(() -> handler.onError(mappedError));
                 },
                 () -> {
