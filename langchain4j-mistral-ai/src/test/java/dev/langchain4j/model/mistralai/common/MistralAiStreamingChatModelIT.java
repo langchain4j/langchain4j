@@ -62,6 +62,6 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false;
+        return true;
     }
 }
