@@ -100,7 +100,7 @@ public class MistralAiFimModel implements LanguageModel {
                 withRetryMappingExceptions(() -> client.fimCompletion(request), maxRetries);
         MistralAiChatCompletionChoice responseChoice = response.getChoices().get(0);
         return Response.from(
-                responseChoice.getMessage().getContent(),
+                responseChoice.getMessage().asText(),
                 tokenUsageFrom(response.getUsage()),
                 finishReasonFrom(responseChoice.getFinishReason()));
     }
