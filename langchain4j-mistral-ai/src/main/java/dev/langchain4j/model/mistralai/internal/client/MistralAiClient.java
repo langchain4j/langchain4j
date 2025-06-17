@@ -1,6 +1,6 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
-import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -8,6 +8,7 @@ import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
 
+@Internal
 public abstract class MistralAiClient {
 
     public abstract MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request);
@@ -37,6 +38,7 @@ public abstract class MistralAiClient {
 
     @SuppressWarnings("unchecked")
     public abstract static class Builder<T extends MistralAiClient, B extends Builder<T, B>> {
+
         public String baseUrl;
         public String apiKey;
         public Duration timeout;
@@ -47,26 +49,16 @@ public abstract class MistralAiClient {
         public abstract T build();
 
         public B baseUrl(String baseUrl) {
-            if (baseUrl == null || baseUrl.trim().isEmpty()) {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
-            this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+            this.baseUrl = baseUrl;
             return (B) this;
         }
 
         public B apiKey(String apiKey) {
-            if (apiKey == null || apiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException(
-                        "MistralAI API Key must be defined. It can be generated here: https://console.mistral.ai/user/api-keys");
-            }
             this.apiKey = apiKey;
             return (B) this;
         }
 
         public B timeout(Duration timeout) {
-            if (timeout == null) {
-                throw new IllegalArgumentException("callTimeout cannot be null");
-            }
             this.timeout = timeout;
             return (B) this;
         }

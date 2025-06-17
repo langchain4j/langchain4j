@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.MISTRAL_AI;
@@ -13,6 +14,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -21,7 +23,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
 
@@ -42,10 +43,9 @@ public class MistralAiChatModel implements ChatModel {
     private final MistralAiClient client;
     private final Boolean safePrompt;
     private final Integer randomSeed;
-
     private final Integer maxRetries;
+    private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
-
     private final ChatRequestParameters defaultRequestParameters;
 
     public MistralAiChatModel(MistralAiChatModelBuilder builder) {
@@ -53,7 +53,7 @@ public class MistralAiChatModel implements ChatModel {
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(builder.apiKey)
-                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .build();
@@ -61,7 +61,8 @@ public class MistralAiChatModel implements ChatModel {
         this.safePrompt = builder.safePrompt;
         this.randomSeed = builder.randomSeed;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-        this.supportedCapabilities = getOrDefault(builder.supportedCapabilities, Set.of());
+        this.listeners = copy(builder.listeners);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.defaultRequestParameters = initDefaultRequestParameters(builder);
     }
 
@@ -78,13 +79,13 @@ public class MistralAiChatModel implements ChatModel {
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
-                .maxOutputTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens()))
-                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
-                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
-                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
                 .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .build();
     }
 
@@ -133,7 +134,7 @@ public class MistralAiChatModel implements ChatModel {
                 .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
+                .timeout(timeout)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
@@ -141,6 +142,7 @@ public class MistralAiChatModel implements ChatModel {
         this.safePrompt = safePrompt;
         this.randomSeed = randomSeed;
         this.maxRetries = getOrDefault(maxRetries, 2);
+        this.listeners = List.of();
         this.supportedCapabilities = getOrDefault(supportedCapabilities, Set.of());
         this.defaultRequestParameters = initDefaultRequestParameters(ensureNotBlank(modelName, "modelName"), temperature, topP, maxTokens, responseFormat);
     }
@@ -219,23 +221,19 @@ public class MistralAiChatModel implements ChatModel {
     }
 
     @Override
-    public Set<Capability> supportedCapabilities() {
-        return supportedCapabilities;
-    }
-
-    @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
 
         MistralAiChatCompletionRequest request = createMistralAiRequest(chatRequest, safePrompt, randomSeed, false);
+
         MistralAiChatCompletionResponse mistralAiResponse =
                 withRetryMappingExceptions(() -> client.chatCompletion(request), maxRetries);
 
          return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(mistralAiResponse))
                 .metadata(ChatResponseMetadata.builder()
-                        .modelName(mistralAiResponse.getModel())
                         .id(mistralAiResponse.getId())
+                        .modelName(mistralAiResponse.getModel())
                         .tokenUsage(tokenUsageFrom(mistralAiResponse.getUsage()))
                         .finishReason(finishReasonFrom(mistralAiResponse.getChoices().get(0).getFinishReason()))
                         .build())
@@ -248,8 +246,18 @@ public class MistralAiChatModel implements ChatModel {
     }
 
     @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
     public ModelProvider provider() {
         return MISTRAL_AI;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 
     public static MistralAiChatModelBuilder builder() {
@@ -261,6 +269,7 @@ public class MistralAiChatModel implements ChatModel {
 
     public static class MistralAiChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String modelName;
@@ -277,11 +286,16 @@ public class MistralAiChatModel implements ChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Integer maxRetries;
+        private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
-        private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
 
         public MistralAiChatModelBuilder() {}
+
+        public MistralAiChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public MistralAiChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
@@ -290,25 +304,6 @@ public class MistralAiChatModel implements ChatModel {
 
         public MistralAiChatModelBuilder modelName(MistralAiChatModelName modelName) {
             this.modelName = modelName.toString();
-            return this;
-        }
-
-        /**
-         * @deprecated please use {@link #responseFormat(ResponseFormat)} instead
-         */
-        @Deprecated(forRemoval = true)
-        public MistralAiChatModelBuilder responseFormat(String responseFormat) {
-            this.responseFormat = MistralAiResponseFormatType.valueOf(responseFormat.toUpperCase())
-                    .toGenericResponseFormat();
-            return this;
-        }
-
-        /**
-         * @deprecated please use {@link #responseFormat(ResponseFormat)} instead
-         */
-        @Deprecated(forRemoval = true)
-        public MistralAiChatModelBuilder responseFormat(MistralAiResponseFormatType responseFormat) {
-            this.responseFormat = responseFormat.toGenericResponseFormat();
             return this;
         }
 
@@ -428,23 +423,23 @@ public class MistralAiChatModel implements ChatModel {
             return this;
         }
 
-        public MistralAiChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
-            this.httpClientBuilder = httpClientBuilder;
-            return this;
-        }
-
-        public MistralAiChatModelBuilder stopSequences(final List<String> stopSequences) {
+        public MistralAiChatModelBuilder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return this;
         }
 
-        public MistralAiChatModelBuilder presencePenalty(final Double presencePenalty) {
+        public MistralAiChatModelBuilder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return this;
         }
 
-        public MistralAiChatModelBuilder frequencyPenalty(final Double frequencyPenalty) {
+        public MistralAiChatModelBuilder frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public MistralAiChatModelBuilder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
             return this;
         }
 

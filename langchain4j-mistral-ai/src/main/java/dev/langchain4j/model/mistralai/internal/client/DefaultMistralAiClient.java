@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.fromJson;
 import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.toJson;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -20,6 +21,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import java.time.Duration;
 
+@Internal
 public class DefaultMistralAiClient extends MistralAiClient {
 
     private final HttpClient httpClient;
