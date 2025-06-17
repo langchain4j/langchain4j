@@ -54,6 +54,6 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false;
+        return true;
     }
 }
