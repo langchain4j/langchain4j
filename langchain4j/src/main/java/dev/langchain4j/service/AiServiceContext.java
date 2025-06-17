@@ -2,14 +2,16 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.service.guardrail.GuardrailService;
+import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.ToolService;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 @Internal
@@ -26,6 +28,9 @@ public class AiServiceContext {
 
     public ToolService toolService = new ToolService();
 
+    public final GuardrailService.Builder guardrailServiceBuilder;
+    private final AtomicReference<GuardrailService> guardrailService = new AtomicReference<>();
+
     public ModerationModel moderationModel;
 
     public RetrievalAugmentor retrievalAugmentor;
@@ -34,6 +39,7 @@ public class AiServiceContext {
 
     public AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
+        this.guardrailServiceBuilder = GuardrailService.builder(aiServiceClass);
     }
 
     public boolean hasChatMemory() {
@@ -46,5 +52,10 @@ public class AiServiceContext {
 
     public void initChatMemories(ChatMemoryProvider chatMemoryProvider) {
         chatMemoryService = new ChatMemoryService(chatMemoryProvider);
+    }
+
+    public GuardrailService guardrailService() {
+        return this.guardrailService.updateAndGet(
+                service -> (service != null) ? service : guardrailServiceBuilder.build());
     }
 }
