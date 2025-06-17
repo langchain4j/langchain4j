@@ -51,9 +51,4 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return true;
-    }
 }

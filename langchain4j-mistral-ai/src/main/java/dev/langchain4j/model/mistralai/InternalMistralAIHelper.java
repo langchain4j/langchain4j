@@ -1,23 +1,21 @@
 package dev.langchain4j.model.mistralai;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiToolChoiceName;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toMistralAiMessages;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toMistralAiResponseFormat;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toMistralAiToolChoiceName;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toMistralAiTools;
-import static java.util.Collections.singletonList;
 
+@Internal
 class InternalMistralAIHelper {
 
     private InternalMistralAIHelper() { }
@@ -52,15 +50,11 @@ class InternalMistralAIHelper {
                         .presencePenalty(chatRequest.presencePenalty())
                         .stream(stream);
 
-        List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
-        if (!isNullOrEmpty(toolSpecifications)) {
-            if (chatRequest.toolChoice() == REQUIRED) {
-                requestBuilder.tools(toMistralAiTools(toolSpecifications));
-                // MistralAi does not support toolChoice as Function object. ANY force to the model to call a function
-                requestBuilder.toolChoice(MistralAiToolChoiceName.ANY);
-            } else {
-                requestBuilder.tools(toMistralAiTools(toolSpecifications));
-            }
+        if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
+            requestBuilder.tools(toMistralAiTools(chatRequest.toolSpecifications()));
+        }
+        if (chatRequest.toolChoice() != null) {
+            requestBuilder.toolChoice(toMistralAiToolChoiceName(chatRequest.toolChoice()));
         }
 
         return requestBuilder.build();
