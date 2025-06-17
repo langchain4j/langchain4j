@@ -51,7 +51,7 @@
         <assertj.version>3.27.3</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.2.2</awaitility.version>
-        <aws.java.sdk.version>2.31.6</aws.java.sdk.version>
+        <aws.java.sdk.version>2.31.62</aws.java.sdk.version>
         <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
         <azure-sdk.version>1.2.34</azure-sdk.version>
         <elastic.version>8.15.3</elastic.version>
@@ -79,6 +79,7 @@
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <retrofit.version>2.9.0</retrofit.version>
         <slf4j.version>2.0.17</slf4j.version>
+        <selenium.webdriver.version>4.33.0</selenium.webdriver.version>
         <testcontainers.version>1.20.4</testcontainers.version>
         <tinylog.version>2.6.2</tinylog.version>
         <wiremock.version>3.12.1</wiremock.version>

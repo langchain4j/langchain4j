@@ -1,12 +1,10 @@
 package dev.langchain4j.model.bedrock;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.model.bedrock.internal.BedrockEmbeddingResponse;
 
-/**
- * Bedrock Titan embedding response
- */
-public class BedrockTitanEmbeddingResponse implements BedrockEmbeddingResponse {
+@Internal
+class BedrockTitanEmbeddingResponse implements BedrockEmbeddingResponse {
 
     private float[] embedding;
     private int inputTextTokenCount;

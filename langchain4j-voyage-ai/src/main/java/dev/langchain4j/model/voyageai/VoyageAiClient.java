@@ -37,7 +37,8 @@ class VoyageAiClient {
                         getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
 
-        if (builder.logRequests != null || builder.logResponses != null) {
+        if (builder.logRequests != null && builder.logRequests
+                || builder.logResponses != null && builder.logResponses) {
             this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
         } else {
             this.httpClient = httpClient;
