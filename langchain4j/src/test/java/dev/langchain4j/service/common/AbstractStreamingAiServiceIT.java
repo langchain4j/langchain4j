@@ -48,9 +48,7 @@ public abstract class AbstractStreamingAiServiceIT {
         // given
         model = spy(model);
 
-        Assistant assistant =
-                AiServices.builder(Assistant.class).streamingChatModel(model).build();
-
+        Assistant assistant = AiServices.create(Assistant.class, model);
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();

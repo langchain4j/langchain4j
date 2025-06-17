@@ -14,7 +14,7 @@
 
     <properties>
         <pgvector.version>0.1.6</pgvector.version>
-        <postgresql.version>42.7.4</postgresql.version>
+        <postgresql.version>42.7.7</postgresql.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
@@ -55,7 +55,6 @@
             <version>${lombok.version}</version>
             <scope>provided</scope>
         </dependency>
-
 
         <!-- test dependencies -->
 
