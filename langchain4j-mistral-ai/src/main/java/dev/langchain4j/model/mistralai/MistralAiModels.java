@@ -55,10 +55,6 @@ public class MistralAiModels {
         this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
-    /**
-     * @deprecated please use {@link #MistralAiModels(MistralAiModelsBuilder)} instead
-     */
-    @Deprecated(forRemoval = true)
     public static MistralAiModels withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

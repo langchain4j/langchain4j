@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.stream.Collectors.toList;
@@ -135,7 +136,7 @@ public class MistralAiMapper {
             case "length" -> LENGTH;
             case "tool_calls" -> TOOL_EXECUTION;
             case "content_filter" -> CONTENT_FILTER;
-            default -> null;
+            default -> OTHER;
         };
     }
 
