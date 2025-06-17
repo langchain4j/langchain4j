@@ -69,6 +69,7 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
     private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
     private final Duration reconnectInterval;
+    private volatile boolean closed = false;
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -95,13 +96,15 @@ public class DefaultMcpClient implements McpClient {
                 .put("type", "text")
                 .put("text", toolExecutionTimeoutErrorMessage);
         transport.onFailure(() -> {
-            try {
-                TimeUnit.MILLISECONDS.sleep(reconnectInterval.toMillis());
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            if (!closed) {
+                try {
+                    TimeUnit.MILLISECONDS.sleep(reconnectInterval.toMillis());
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                log.info("Trying to reconnect...");
+                initialize();
             }
-            log.info("Trying to reconnect...");
-            initialize();
         });
         initialize();
     }
@@ -354,6 +357,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public void close() {
+        closed = true;
         try {
             transport.close();
         } catch (Exception e) {
