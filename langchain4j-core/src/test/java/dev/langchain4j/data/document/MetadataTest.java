@@ -262,6 +262,50 @@ class MetadataTest implements WithAssertions {
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
                         + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
                         + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+
+        assertThatThrownBy(() -> Metadata.from("key1", "value1", "key", new Object()))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("The metadata key 'key' has the value")
+                .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
+                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
+                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+    }
+
+    @Test
+    void should_create_from_multiple_key_value_pairs() {
+        UUID uuid = UUID.randomUUID();
+
+        Metadata metadata = Metadata.from("string", "s", "int", 1, "float", 1.5f, "uuid", uuid);
+
+        assertThat(metadata.getString("string")).isEqualTo("s");
+        assertThat(metadata.getInteger("int")).isEqualTo(1);
+        assertThat(metadata.getFloat("float")).isEqualTo(1.5f);
+        assertThat(metadata.getUUID("uuid")).isEqualTo(uuid);
+    }
+
+    @Test
+    void should_fail_when_odd_number_of_arguments_provided() {
+        assertThatThrownBy(() -> Metadata.from("key1", "value1", "key2"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Expected even number of arguments (key-value pairs).");
+    }
+
+    @Test
+    void should_fail_when_key_is_null_or_blank() {
+        assertThatThrownBy(() -> Metadata.from(null, "value"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value 'value' cannot be null or blank");
+
+        assertThatThrownBy(() -> Metadata.from("   ", "value"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value 'value' cannot be null or blank");
+    }
+
+    @Test
+    void should_fail_when_value_is_null() {
+        assertThatThrownBy(() -> Metadata.from("key", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata value for the key 'key' cannot be null");
     }
 
     @Test
@@ -376,7 +420,11 @@ class MetadataTest implements WithAssertions {
         assertThat(new Metadata().put("k1", "v1").putAll(Map.of("k1", "v2")).toMap())
                 .isEqualTo(Map.of("k1", "v2"));
 
-        assertThatThrownBy(() -> new Metadata().putAll(new HashMap<>() {{ put("k", null); }}))
+        assertThatThrownBy(() -> new Metadata().putAll(new HashMap<>() {
+                    {
+                        put("k", null);
+                    }
+                }))
                 .isExactlyInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> new Metadata().putAll(Map.of("k", new Object())))
