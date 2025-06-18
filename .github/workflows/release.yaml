@@ -38,7 +38,7 @@ jobs:
         run: |
           mvn -B -U --fail-at-end \
             -DskipTests -DskipITs \
-            -pl langchain4j-ovh-ai,langchain4j-pgvector,langchain4j-pinecone,langchain4j-qdrant,langchain4j-tablestore,langchain4j-test,langchain4j-vertex-ai,langchain4j-vertex-ai-gemini,langchain4j-vespa,langchain4j-voyage-ai,langchain4j-weaviate,web-search-engines/langchain4j-web-search-engine-google-custom,web-search-engines/langchain4j-web-search-engine-searchapi,web-search-engines/langchain4j-web-search-engine-tavily,langchain4j-workers-ai \
+            -pl document-loaders/langchain4j-document-loader-amazon-s3,document-loaders/langchain4j-document-loader-azure-storage-blob,document-loaders/langchain4j-document-loader-github,document-loaders/langchain4j-document-loader-google-cloud-storage,document-loaders/langchain4j-document-loader-selenium,document-loaders/langchain4j-document-loader-tencent-cos,document-parsers/langchain4j-document-parser-apache-pdfbox,document-parsers/langchain4j-document-parser-apache-poi,document-parsers/langchain4j-document-parser-apache-tika,langchain4j-easy-rag,langchain4j-elasticsearch,embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql,experimental/langchain4j-experimental-sql,langchain4j-github-models,langchain4j-google-ai-gemini \
             -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
