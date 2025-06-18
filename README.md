@@ -1,3 +1,5 @@
+# THIS IS an Experiment - dont take it as langchain4j repo
+
 # LangChain for Java: Supercharge your Java application with the power of LLMs
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/main.yaml?branch=main&style=for-the-badge&label=CI%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/main.yaml)
