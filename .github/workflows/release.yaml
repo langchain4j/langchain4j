@@ -36,7 +36,7 @@ jobs:
 
       - name: release
         run: |
-          mvn -B -U --fail-at-end \
+          mvn -B -U -X --fail-at-end \
             -DskipTests -DskipITs \
             -pl !langchain4j-core,!langchain4j-parent \
             -Psign clean deploy
