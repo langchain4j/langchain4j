@@ -38,7 +38,7 @@ jobs:
         run: |
           mvn -B -U --fail-at-end \
             -DskipTests -DskipITs \
-            -pl langchain4j-anthropic,langchain4j-azure-ai-search,langchain4j-azure-cosmos-mongo-vcore,langchain4j-azure-cosmos-nosql,langchain4j-azure-open-ai,langchain4j-bedrock,langchain4j-bom,document-transformers/langchain4j-document-transformer-jsoup,langchain4j-cassandra,langchain4j-chroma,code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,code-execution-engines/langchain4j-code-execution-engine-judge0,langchain4j-cohere,langchain4j-coherence,langchain4j-couchbase,langchain4j-hugging-face \
+            -pl document-loaders/langchain4j-document-loader-amazon-s3,document-loaders/langchain4j-document-loader-azure-storage-blob,document-loaders/langchain4j-document-loader-github,document-loaders/langchain4j-document-loader-google-cloud-storage,document-loaders/langchain4j-document-loader-selenium,document-loaders/langchain4j-document-loader-tencent-cos,document-parsers/langchain4j-document-parser-apache-pdfbox,document-parsers/langchain4j-document-parser-apache-poi,document-parsers/langchain4j-document-prser-apache-tika,langchain4j-easy-rag,langchain4j-elasticsearch,embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql,experimental/langchain4j-experimental-sql,langchain4j-github-models,langchain4j-google-ai-gemini \
             -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
