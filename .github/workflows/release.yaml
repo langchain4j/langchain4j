@@ -38,7 +38,7 @@ jobs:
         run: |
           mvn -B -U --fail-at-end \
             -DskipTests -DskipITs \
-            -pl langchain4j-infinispan,langchain4j-jina,langchain4j-jlama,langchain4j-kotlin,langchain4j-local-ai,langchain4j-mariadb,langchain4j-mcp,langchain4j-milvus,langchain4j-mistral-ai,langchain4j-mongodb-atlas,langchain4j-nomic,langchain4j-ollama,langchain4j-onnx-scoring,langchain4j-open-ai-official,langchain4j-opensearch,langchain4j-oracle \
+            -pl langchain4j-ovh-ai,langchain4j-pgvector,langchain4j-pinecone,langchain4j-qdrant,langchain4j-tablestore,langchain4j-test,langchain4j-vertex-ai,langchain4j-vertex-ai-gemini,langchain4j-vespa,langchain4j-voyage-ai,langchain4j-weaviate,web-search-engines/langchain4j-web-search-engine-google-custom,web-search-engines/langchain4j-web-search-engine-searchapi,web-search-engines/langchain4j-web-search-engine-tavily,langchain4j-workers-ai \
             -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
