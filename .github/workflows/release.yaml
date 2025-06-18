@@ -38,7 +38,7 @@ jobs:
         run: |
           mvn -B -U --fail-at-end \
             -DskipTests -DskipITs \
-            -pl langchain4j-anthropic,langchain4j-azure-ai-search,langchain4j-azure-cosmos-mongo-vcore,langchain4j-azure-cosmos-nosql,langchain4j-azure-open-ai,langchain4j-bedrock,langchain4j-bom,langchain4j-cassandra,langchain4j-chroma,code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,code-execution-engines/langchain4j-code-execution-engine-judge0,langchain4j-coher,langchain4j-coherence,langchain4j-couchbase,langchain4j-hugging-face \
+            -pl langchain4j-anthropic,langchain4j-azure-ai-search,langchain4j-azure-cosmos-mongo-vcore,langchain4j-azure-cosmos-nosql,langchain4j-azure-open-ai,langchain4j-bedrock,langchain4j-bom,langchain4j-cassandra,langchain4j-chroma,code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,code-execution-engines/langchain4j-code-execution-engine-judge0,langchain4j-cohere,langchain4j-coherence,langchain4j-couchbase,langchain4j-hugging-face \
             -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
