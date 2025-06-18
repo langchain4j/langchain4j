@@ -38,7 +38,7 @@ jobs:
         run: |
           mvn -B -U --fail-at-end \
             -DskipTests -DskipITs \
-            -pl langchain4j-http-client,langchain4j-http-client-jdk,langchain4j-open-ai,langchain4j \
+            -pl langchain4j-http-client,http-clients/langchain4j-http-client-jdk,langchain4j-open-ai,langchain4j \
             -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
