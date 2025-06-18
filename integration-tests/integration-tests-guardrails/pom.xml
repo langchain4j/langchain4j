@@ -35,4 +35,18 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.github.gradle-nexus</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.7.0</version>
+                <configuration>
+                    <publish>false</publish>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
