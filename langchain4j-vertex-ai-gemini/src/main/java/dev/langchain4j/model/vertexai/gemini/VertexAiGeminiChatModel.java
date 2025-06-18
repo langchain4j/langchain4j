@@ -55,8 +55,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.processing.SupportedOptions;
-
 /**
  * Represents a Google Vertex AI Gemini language model with a chat completion interface, such as gemini-pro.
  * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/model-reference/gemini">here</a>.
@@ -78,6 +76,8 @@ import javax.annotation.processing.SupportedOptions;
  */
 public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
+    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
+
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
     private final Integer maxRetries;
@@ -94,11 +94,111 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
     private final Boolean logRequests;
     private final Boolean logResponses;
 
-    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
-
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
 
+    public VertexAiGeminiChatModel(VertexAiGeminiChatModelBuilder builder) {
+        ensureNotBlank(builder.modelName, "modelName");
+
+        GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
+        if (builder.temperature != null) {
+            generationConfigBuilder.setTemperature(builder.temperature);
+        }
+        if (builder.maxOutputTokens != null) {
+            generationConfigBuilder.setMaxOutputTokens(builder.maxOutputTokens);
+        }
+        if (builder.topK != null) {
+            generationConfigBuilder.setTopK(builder.topK);
+        }
+        if (builder.topP != null) {
+            generationConfigBuilder.setTopP(builder.topP);
+        }
+        if (builder.seed != null) {
+            generationConfigBuilder.setSeed(builder.seed);
+        }
+        if (builder.responseMimeType != null) {
+            generationConfigBuilder.setResponseMimeType(builder.responseMimeType);
+        }
+        if (builder.responseSchema != null) {
+            if (builder.responseSchema.getEnumCount() > 0) {
+                generationConfigBuilder.setResponseMimeType("text/x.enum");
+            } else {
+                generationConfigBuilder.setResponseMimeType("application/json");
+            }
+            generationConfigBuilder.setResponseSchema(builder.responseSchema);
+        }
+        this.generationConfig = generationConfigBuilder.build();
+
+        this.safetySettings = copy(builder.safetySettings);
+
+        if (builder.useGoogleSearch != null && builder.useGoogleSearch) {
+            googleSearch = ResponseGrounding.googleSearchTool(builder.modelName);
+        } else {
+            googleSearch = null;
+        }
+        if (builder.vertexSearchDatastore != null) {
+            vertexSearch = ResponseGrounding.vertexAiSearch(builder.vertexSearchDatastore);
+        } else {
+            vertexSearch = null;
+        }
+
+        if (builder.allowedFunctionNames != null) {
+            this.allowedFunctionNames = Collections.unmodifiableList(builder.allowedFunctionNames);
+        } else {
+            this.allowedFunctionNames = Collections.emptyList();
+        }
+        if (builder.toolCallingMode != null) {
+            // only a subset of functions allowed to be used by the model
+            this.toolConfig = switch (builder.toolCallingMode) {
+                case NONE ->
+                        ToolConfig.newBuilder()
+                                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                        .setMode(FunctionCallingConfig.Mode.NONE)
+                                        .build())
+                                .build();
+                case AUTO ->
+                        ToolConfig.newBuilder()
+                                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                        .setMode(FunctionCallingConfig.Mode.AUTO)
+                                        .build())
+                                .build();
+                case ANY ->
+                        ToolConfig.newBuilder()
+                                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                        .setMode(FunctionCallingConfig.Mode.ANY)
+                                        .addAllAllowedFunctionNames(this.allowedFunctionNames)
+                                        .build())
+                                .build();
+            };
+
+        } else {
+            this.toolConfig = ToolConfig.newBuilder()
+                    .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                            .setMode(FunctionCallingConfig.Mode.AUTO)
+                            .build())
+                    .build();
+        }
+
+        this.vertexAI = new VertexAI.Builder()
+                .setProjectId(ensureNotBlank(builder.project, "project"))
+                .setLocation(ensureNotBlank(builder.location, "location"))
+                .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
+                .build();
+
+        this.generativeModel = new GenerativeModel(builder.modelName, vertexAI)
+                .withGenerationConfig(generationConfig);
+
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.logRequests = getOrDefault(builder.logRequests, false);
+        this.logResponses = getOrDefault(builder.logResponses, false);
+        this.listeners = copy(builder.listeners);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
+    }
+
+    /**
+     * @deprecated please use {@link #VertexAiGeminiChatModel(VertexAiGeminiChatModelBuilder)} instead
+     */
+    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public VertexAiGeminiChatModel(
             String project,
             String location,
@@ -593,27 +693,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         }
 
         public VertexAiGeminiChatModel build() {
-            return new VertexAiGeminiChatModel(
-                    this.project,
-                    this.location,
-                    this.modelName,
-                    this.temperature,
-                    this.maxOutputTokens,
-                    this.topK,
-                    this.topP,
-                    this.seed,
-                    this.maxRetries,
-                    this.responseMimeType,
-                    this.responseSchema,
-                    this.safetySettings,
-                    this.useGoogleSearch,
-                    this.vertexSearchDatastore,
-                    this.toolCallingMode,
-                    this.allowedFunctionNames,
-                    this.logRequests,
-                    this.logResponses,
-                    this.listeners,
-                    this.supportedCapabilities);
+            return new VertexAiGeminiChatModel(this);
         }
     }
 }

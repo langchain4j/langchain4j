@@ -1,5 +1,7 @@
 package dev.langchain4j.model.vertexai.gemini;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -50,6 +52,8 @@ import org.slf4j.LoggerFactory;
  */
 public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Closeable {
 
+    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
+
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
     private final VertexAI vertexAI;
@@ -65,10 +69,111 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     private final Boolean logRequests;
     private final Boolean logResponses;
 
-    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
-
     private final List<ChatModelListener> listeners;
 
+    public VertexAiGeminiStreamingChatModel(VertexAiGeminiStreamingChatModelBuilder builder) {
+        ensureNotBlank(builder.modelName, "modelName");
+
+        GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
+        if (builder.temperature != null) {
+            generationConfigBuilder.setTemperature(builder.temperature);
+        }
+        if (builder.maxOutputTokens != null) {
+            generationConfigBuilder.setMaxOutputTokens(builder.maxOutputTokens);
+        }
+        if (builder.topK != null) {
+            generationConfigBuilder.setTopK(builder.topK);
+        }
+        if (builder.topP != null) {
+            generationConfigBuilder.setTopP(builder.topP);
+        }
+        if (builder.responseMimeType != null) {
+            generationConfigBuilder.setResponseMimeType(builder.responseMimeType);
+        }
+        if (builder.responseSchema != null) {
+            if (builder.responseSchema.getEnumCount() > 0) {
+                generationConfigBuilder.setResponseMimeType("text/x.enum");
+            } else {
+                generationConfigBuilder.setResponseMimeType("application/json");
+            }
+            generationConfigBuilder.setResponseSchema(builder.responseSchema);
+        }
+        this.generationConfig = generationConfigBuilder.build();
+
+        this.safetySettings = copy(builder.safetySettings);
+
+        if (builder.useGoogleSearch != null && builder.useGoogleSearch) {
+            googleSearch = ResponseGrounding.googleSearchTool(builder.modelName);
+        } else {
+            googleSearch = null;
+        }
+        if (builder.vertexSearchDatastore != null) {
+            vertexSearch = ResponseGrounding.vertexAiSearch(builder.vertexSearchDatastore);
+        } else {
+            vertexSearch = null;
+        }
+
+        if (builder.allowedFunctionNames != null) {
+            this.allowedFunctionNames = Collections.unmodifiableList(builder.allowedFunctionNames);
+        } else {
+            this.allowedFunctionNames = Collections.emptyList();
+        }
+        if (builder.toolCallingMode != null) {
+            // only a subset of functions allowed to be used by the model
+            if (builder.toolCallingMode == ToolCallingMode.ANY
+                    && allowedFunctionNames != null
+                    && !allowedFunctionNames.isEmpty()) {
+                this.toolConfig = ToolConfig.newBuilder()
+                        .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                .setMode(FunctionCallingConfig.Mode.ANY)
+                                .addAllAllowedFunctionNames(this.allowedFunctionNames)
+                                .build())
+                        .build();
+            } else if (builder.toolCallingMode == ToolCallingMode.NONE) { // no functions allowed
+                this.toolConfig = ToolConfig.newBuilder()
+                        .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                .setMode(FunctionCallingConfig.Mode.NONE)
+                                .build())
+                        .build();
+            } else { // Mode AUTO by default
+                this.toolConfig = ToolConfig.newBuilder()
+                        .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                .setMode(FunctionCallingConfig.Mode.AUTO)
+                                .build())
+                        .build();
+            }
+        } else {
+            this.toolConfig = ToolConfig.newBuilder()
+                    .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                            .setMode(FunctionCallingConfig.Mode.AUTO)
+                            .build())
+                    .build();
+        }
+        final Map<String, String> headers;
+        if (builder.customHeaders != null) {
+            headers = new HashMap<>(builder.customHeaders);
+            headers.putIfAbsent("user-agent", "LangChain4j");
+        } else {
+            headers = Map.of("user-agent", "LangChain4j");
+        }
+
+        this.vertexAI = new VertexAI.Builder()
+                .setProjectId(ensureNotBlank(builder.project, "project"))
+                .setLocation(ensureNotBlank(builder.location, "location"))
+                .setCustomHeaders(headers)
+                .build();
+
+        this.generativeModel = new GenerativeModel(builder.modelName, vertexAI)
+                .withGenerationConfig(generationConfig);
+        this.logRequests = getOrDefault(builder.logRequests, false);
+        this.logResponses = getOrDefault(builder.logResponses, false);
+        this.listeners = copy(builder.listeners);
+    }
+
+    /**
+     * @deprecated please use {@link #VertexAiGeminiStreamingChatModel(VertexAiGeminiStreamingChatModelBuilder)} instead
+     */
+    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public VertexAiGeminiStreamingChatModel(
             String project,
             String location,
@@ -525,37 +630,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         }
 
         public VertexAiGeminiStreamingChatModel build() {
-            return new VertexAiGeminiStreamingChatModel(
-                    this.project,
-                    this.location,
-                    this.modelName,
-                    this.temperature,
-                    this.maxOutputTokens,
-                    this.topK,
-                    this.topP,
-                    this.responseMimeType,
-                    this.responseSchema,
-                    this.safetySettings,
-                    this.useGoogleSearch,
-                    this.vertexSearchDatastore,
-                    this.toolCallingMode,
-                    this.allowedFunctionNames,
-                    this.logRequests,
-                    this.logResponses,
-                    this.listeners,
-                    this.customHeaders);
-        }
-
-        public String toString() {
-            return "VertexAiGeminiStreamingChatModel.VertexAiGeminiStreamingChatModelBuilder(project=" + this.project
-                    + ", location=" + this.location + ", modelName=" + this.modelName + ", temperature="
-                    + this.temperature + ", maxOutputTokens=" + this.maxOutputTokens + ", topK=" + this.topK + ", topP="
-                    + this.topP + ", responseMimeType=" + this.responseMimeType + ", responseSchema="
-                    + this.responseSchema + ", safetySettings=" + this.safetySettings + ", useGoogleSearch="
-                    + this.useGoogleSearch + ", vertexSearchDatastore=" + this.vertexSearchDatastore
-                    + ", toolCallingMode=" + this.toolCallingMode + ", allowedFunctionNames="
-                    + this.allowedFunctionNames + ", logRequests=" + this.logRequests + ", logResponses="
-                    + this.logResponses + ", listeners=" + this.listeners + ")";
+            return new VertexAiGeminiStreamingChatModel(this);
         }
     }
 }

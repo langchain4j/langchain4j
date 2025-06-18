@@ -1,46 +1,43 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.fromJson;
-import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolCall;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiUsage;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
 import java.util.function.BiFunction;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.fromJson;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.finishReasonFrom;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toToolExecutionRequests;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
+
 @Internal
-class MistralAiServerSentEventListener implements ServerSentEventListener {
+class MistralAiFimServerSentEventListener implements ServerSentEventListener {
 
     private final StringBuffer contentBuilder;
-    private final StreamingChatResponseHandler handler;
-    private final BiFunction<String, List<ToolExecutionRequest>, AiMessage> toResponse;
+    private final StreamingResponseHandler<String> handler;
+    private final BiFunction<String, List<ToolExecutionRequest>, String> toResponse;
 
     private List<ToolExecutionRequest> toolExecutionRequests;
     private TokenUsage tokenUsage;
     private FinishReason finishReason;
 
-    private String modelName;
-    private String id;
-
-    public MistralAiServerSentEventListener(
-            StreamingChatResponseHandler handler, BiFunction<String, List<ToolExecutionRequest>, AiMessage> toResponse) {
+    public MistralAiFimServerSentEventListener(
+            StreamingResponseHandler<String> handler, BiFunction<String, List<ToolExecutionRequest>, String> toResponse) {
         this.contentBuilder = new StringBuffer();
         this.handler = handler;
         this.toResponse = toResponse;
@@ -50,18 +47,10 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
     public void onEvent(ServerSentEvent event) {
         String data = event.data();
         if ("[DONE]".equals(data)) {
-            AiMessage responseContent = toResponse.apply(contentBuilder.toString(), toolExecutionRequests);
-            ChatResponse response = ChatResponse.builder()
-                    .aiMessage(responseContent)
-                    .metadata(ChatResponseMetadata.builder()
-                            .tokenUsage(tokenUsage)
-                            .finishReason(finishReason)
-                            .modelName(modelName)
-                            .id(id)
-                            .build())
-                    .build();
+            String responseContent = toResponse.apply(contentBuilder.toString(), toolExecutionRequests);
+            Response<String> response = Response.from(responseContent, tokenUsage, finishReason);
             try {
-                handler.onCompleteResponse(response);
+                handler.onComplete(response);
             } catch (Exception e) {
                 withLoggingExceptions(() -> handler.onError(e));
             }
@@ -71,14 +60,11 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
             MistralAiChatCompletionChoice choice =
                     chatCompletionResponse.getChoices().get(0);
 
-            this.modelName = chatCompletionResponse.getModel();
-            this.id = chatCompletionResponse.getId();
-
             String chunk = choice.getDelta().getContent();
             if (isNotNullOrEmpty(chunk)) {
                 contentBuilder.append(chunk);
                 try {
-                    handler.onPartialResponse(chunk);
+                    handler.onNext(chunk);
                 } catch (Exception e) {
                     withLoggingExceptions(() -> handler.onError(e));
                 }

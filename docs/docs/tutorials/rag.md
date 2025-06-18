@@ -473,7 +473,7 @@ Currently supported embedding stores can be found [here](/integrations/embedding
 - `EmbeddingStore.addAll(List<String> ids, List<Embedding>, List<TextSegment>)` adds a list of given `Embedding`s with associated IDs and `TextSegment`s to the store
 - `EmbeddingStore.search(EmbeddingSearchRequest)` searches for the most similar `Embedding`s
 - `EmbeddingStore.remove(String id)` removes a single `Embedding` from the store by ID
-- `EmbeddingStore.removeAll(Collection<String> ids)` removes multiple `Embedding`s from the store by ID
+- `EmbeddingStore.removeAll(Collection<String> ids)` removes all `Embedding`s from the store whose IDs are present in the given collection.
 - `EmbeddingStore.removeAll(Filter)` removes all `Embedding`s that match the specified `Filter` from the store
 - `EmbeddingStore.removeAll()` removes all `Embedding`s from the store
 </details>
@@ -812,13 +812,13 @@ The `ContentAggregator` is responsible for aggregating multiple ranked lists of 
 #### Default Content Aggregator
 The `DefaultContentAggregator` is the default implementation of `ContentAggregator`,
 which performs two-stage Reciprocal Rank Fusion (RRF).
-Please see `DefaultContentAggregator` Javadoc for more details.
+Please see [`DefaultContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/DefaultContentAggregator.html) for more details.
 
 #### Re-Ranking Content Aggregator
 The `ReRankingContentAggregator` uses a `ScoringModel`, like Cohere, to perform re-ranking.
 The complete list of supported scoring (re-ranking) models can be found
 [here](https://docs.langchain4j.dev/category/scoring-reranking-models).
-Please see `ReRankingContentAggregator` Javadoc for more details.
+Please see [`ReRankingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/ReRankingContentAggregator.html) for more details.
 
 ### Content Injector
 

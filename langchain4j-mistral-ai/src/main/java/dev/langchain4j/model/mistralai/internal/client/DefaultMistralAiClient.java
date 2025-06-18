@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.fromJson;
 import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.toJson;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -16,9 +17,11 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import java.time.Duration;
 
+@Internal
 public class DefaultMistralAiClient extends MistralAiClient {
 
     private final HttpClient httpClient;
@@ -75,7 +78,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
     @Override
     public void streamingChatCompletion(
-            MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
+            MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler) {
         ensureNotEmpty(request.getMessages(), "messages");
 
         HttpRequest httpRequest = HttpRequest.builder()
@@ -87,8 +90,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .body(toJson(request))
                 .build();
 
-        MistralAiServerSentEventListener<AiMessage> listener =
-                new MistralAiServerSentEventListener<>(handler, (content, toolExecutionRequests) -> {
+        MistralAiServerSentEventListener listener =
+                new MistralAiServerSentEventListener(handler, (content, toolExecutionRequests) -> {
                     if (!isNullOrEmpty(toolExecutionRequests)) {
                         return AiMessage.from(toolExecutionRequests);
                     } else {
@@ -125,8 +128,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .body(toJson(request))
                 .build();
 
-        MistralAiServerSentEventListener<String> listener =
-                new MistralAiServerSentEventListener<>(handler, (content, toolExecutionRequests) -> content);
+        MistralAiFimServerSentEventListener listener =
+                new MistralAiFimServerSentEventListener(handler, (content, toolExecutionRequests) -> content);
         httpClient.execute(httpRequest, listener);
     }
 
