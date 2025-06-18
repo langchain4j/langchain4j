@@ -10,6 +10,10 @@ import TabItem from '@theme/TabItem';
 
 # Guardrails
 
+:::note
+Guardrails is an experimental feature. Its API and behavior might change in future versions.
+:::
+
 Guardrails are mechanisms that let you validate the input and output of the LLM to ensure it meets your expectations. You can do some of the following things with guardrails:
 - Verify the user input is not out of scope
 - Ensure the input meets some criteria before calling the LLM (i.e. guard against a [prompt injection attack](https://genai.owasp.org/llmrisk/llm01-prompt-injection/))
