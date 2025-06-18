@@ -36,9 +36,9 @@ jobs:
 
       - name: release
         run: |
-          mvn -B -U -X --fail-at-end \
+          mvn -B -U --fail-at-end \
             -DskipTests -DskipITs \
-            -pl !langchain4j-core,!langchain4j-parent \
+            -pl langchain4j-http-client,langchain4j-http-client-jdk,langchain4j-open-ai,langchain4j \
             -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
