@@ -175,9 +175,6 @@
                             <report>aggregate</report>
                         </reports>
                         <inherited>false</inherited>
-                        <configuration>
-                            <skippedModules>integration-tests</skippedModules>
-                        </configuration>
                     </reportSet>
                     <reportSet>
                         <id>default</id>
