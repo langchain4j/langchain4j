@@ -38,7 +38,7 @@ jobs:
         run: |
           mvn -B -U --fail-at-end \
             -DskipTests -DskipITs \
-            -pl !langchain4j-core,!langchain4j-parent,!langchain4j-jlama,!langchain4j-experimental-sql \
+            -pl !langchain4j-core,!langchain4j-parent,!langchain4j-jlama,!experimental/langchain4j-experimental-sql \
             -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
