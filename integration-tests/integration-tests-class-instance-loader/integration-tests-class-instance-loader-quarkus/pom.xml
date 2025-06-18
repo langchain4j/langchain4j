@@ -83,7 +83,7 @@
                 <artifactId>central-publishing-maven-plugin</artifactId>
                 <version>0.7.0</version>
                 <configuration>
-                    <publish>false</publish>
+                    <skipPublishing>true</skipPublishing>
                 </configuration>
             </plugin>
 
