@@ -61,7 +61,6 @@
 
     <build>
         <plugins>
-
             <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>
@@ -77,16 +76,6 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <plugin>
-                <groupId>io.github.gradle-nexus</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.7.0</version>
-                <configuration>
-                    <skipPublishing>true</skipPublishing>
-                </configuration>
-            </plugin>
-
         </plugins>
     </build>
 
