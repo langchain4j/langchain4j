@@ -656,14 +656,6 @@
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>false</autoPublish>
-                    <excludeArtifacts>
-                        <excludeArtifact>dev.langchain4j:langchain4j-integration-tests-class-instance-loader</excludeArtifact>
-                        <excludeArtifact>dev.langchain4j:langchain4j-integration-tests-class-instance-loader-spring</excludeArtifact>
-                        <excludeArtifact>dev.langchain4j:langchain4j-integration-tests-class-instance-loader-quarkus</excludeArtifact>
-                        <excludeArtifact>dev.langchain4j:langchain4j-integration-tests-class-metadata-provider</excludeArtifact>
-                        <excludeArtifact>dev.langchain4j:langchain4j-integration-tests-class-metadata-provider-spring</excludeArtifact>
-                        <excludeArtifact>dev.langchain4j:langchain4j-integration-tests-guardrails</excludeArtifact>
-                    </excludeArtifacts>
                 </configuration>
             </plugin>
 

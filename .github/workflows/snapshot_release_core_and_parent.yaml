@@ -33,9 +33,7 @@ jobs:
         #  - tests already run in a separate action (main)
         run: |
           mvn -B -U --fail-at-end \
-            -DskipTests -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs \
-            -DskipMongoDbAtlasITs -DskipOllamaITs \
-            -DskipVearchITs -DskipVertexAiGeminiITs \
+            -DskipTests -DskipITs \
             -pl langchain4j-core,langchain4j-parent \
             clean deploy
 
