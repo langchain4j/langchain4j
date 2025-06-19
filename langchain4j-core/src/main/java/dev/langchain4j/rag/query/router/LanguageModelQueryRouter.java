@@ -1,6 +1,16 @@
 package dev.langchain4j.rag.query.router;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -10,16 +20,17 @@ import dev.langchain4j.rag.query.Query;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.DO_NOT_ROUTE;
-import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * A {@link QueryRouter} that utilizes a {@link ChatModel} to make a routing decision.
@@ -43,13 +54,19 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             """
-                    Based on the user query, determine the most suitable data source(s) \
+                    Based on the user query, determine the most suitable data source(s)
                     to retrieve relevant information from the following options:
                     {{options}}
-                    It is very important that your answer consists of either a single number \
-                    or multiple numbers separated by commas and nothing else!
-                    User query: {{query}}"""
+                    User query: {{query}}
+                    
+                    It is important that your answer contains only numbers from the available options,
+                    or empty if none is suitable.
+                    """
     );
+
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+            .visibility(FIELD, ANY)
+            .build();
 
     protected final ChatModel chatModel;
     protected final PromptTemplate promptTemplate;
@@ -96,13 +113,26 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     @Override
     public Collection<ContentRetriever> route(Query query) {
-        Prompt prompt = createPrompt(query);
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(ChatRequestParameters.builder()
+                        .responseFormat(jsonListOfIntegers())
+                        .build())
+                .messages(new UserMessage(createPrompt(query).text()))
+                .build();
         try {
-            String response = chatModel.chat(prompt.text());
-            return parse(response);
+            ChatResponse chatResponse = chatModel.chat(chatRequest);
+            return parse(chatResponse.aiMessage().text());
         } catch (Exception e) {
             return fallback(query, e);
         }
+    }
+
+    private JsonSchema jsonListOfIntegers() {
+        return JsonSchema.builder()
+                .rootElement(JsonArraySchema.builder()
+                        .items(JsonIntegerSchema.builder().build())
+                        .build())
+                .build();
     }
 
     protected Collection<ContentRetriever> fallback(Query query, Exception e) {
@@ -124,12 +154,11 @@ public class LanguageModelQueryRouter implements QueryRouter {
         return promptTemplate.apply(variables);
     }
 
-    protected Collection<ContentRetriever> parse(String choices) {
-        return stream(choices.split(","))
-                .map(String::trim)
-                .map(Integer::parseInt)
+    protected Collection<ContentRetriever> parse(String choices) throws JsonProcessingException {
+        return OBJECT_MAPPER.readValue(choices, new TypeReference<List<Integer>>() {
+                }).stream()
                 .map(idToRetriever::get)
-                .collect(toList());
+                .toList();
     }
 
     /**

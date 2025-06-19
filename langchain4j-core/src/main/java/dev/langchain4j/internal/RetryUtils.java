@@ -194,6 +194,17 @@ public final class RetryUtils {
         }
 
         /**
+         * This method attempts to execute a given action up to 3 times with an exponential backoff.
+         * If the action fails on all attempts, it throws a RuntimeException.
+         *
+         * @param action The action to be executed.
+         * @throws RuntimeException if the action fails on all attempts.
+         */
+        public void withRetry(Runnable action) {
+            withRetry(toCallable(action), maxRetries);
+        }
+
+        /**
          * This method attempts to execute a given action up to a specified number of times with an exponential backoff.
          * If the action fails on all attempts, it throws a RuntimeException.
          *
@@ -274,10 +285,14 @@ public final class RetryUtils {
      * @throws RuntimeException if the action fails on all attempts.
      */
     public static void withRetry(Runnable action, int maxRetries) {
-        DEFAULT_RETRY_POLICY.withRetry(() -> {
+        DEFAULT_RETRY_POLICY.withRetry(toCallable(action), maxRetries);
+    }
+
+    private static Callable toCallable(Runnable action) {
+        return () -> {
             action.run();
             return null;
-        }, maxRetries);
+        };
     }
 
     /**
