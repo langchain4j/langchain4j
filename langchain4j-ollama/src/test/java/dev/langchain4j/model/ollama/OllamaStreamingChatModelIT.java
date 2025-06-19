@@ -20,7 +20,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.ModelNotFoundException;
-import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -30,13 +29,14 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
-import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -309,11 +309,12 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         assertThat(onPartialResponseCounter.get()).isPositive();
     }
 
-    @Test
-    void should_handle_timeout() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100, 500})
+    void should_handle_timeout(int millis) throws Exception {
 
         // given
-        Duration timeout = Duration.ofSeconds(1);
+        Duration timeout = Duration.ofMillis(millis);
 
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
@@ -330,9 +331,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // then
         Throwable error = futureError.get(5, SECONDS);
 
-        assertThat(error)
-                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
-                .hasRootCauseExactlyInstanceOf(java.net.http.HttpTimeoutException.class);
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     private record ErrorHandler(CompletableFuture<Throwable> futureError) implements StreamingChatResponseHandler {

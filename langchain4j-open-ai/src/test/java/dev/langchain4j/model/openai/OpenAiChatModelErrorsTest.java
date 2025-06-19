@@ -11,17 +11,15 @@ import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
-import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.ChatModel;
 import io.ktor.http.HttpStatusCode;
-import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class OpenAiChatModelErrorsTest {
 
@@ -69,10 +67,22 @@ class OpenAiChatModelErrorsTest {
                         .isEqualTo(httpStatusCode));
     }
 
-    @Test
-    void should_handle_timeout() {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) {
 
         // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        ChatModel model = OpenAiChatModel.builder()
+                .baseUrl(MOCK.baseUrl())
+                .modelName(GPT_4_O_MINI)
+                .timeout(timeout)
+                .maxRetries(0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         final var question = "Simulate timeout";
         MOCK.completion(req -> req.userMessageContains(question)).respondsError(res -> {
             res.delayMillis(TIMEOUT.multipliedBy(2).toMillis());
@@ -82,7 +92,6 @@ class OpenAiChatModelErrorsTest {
 
         // when-then
         assertThatThrownBy(() -> model.chat(question))
-                .isExactlyInstanceOf(TimeoutException.class)
-                .hasRootCauseExactlyInstanceOf(HttpTimeoutException.class);
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 }

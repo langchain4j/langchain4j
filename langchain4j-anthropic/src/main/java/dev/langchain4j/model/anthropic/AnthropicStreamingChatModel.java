@@ -1,7 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModel.toThinking;
@@ -9,7 +9,6 @@ import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnth
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
-import static java.util.Collections.emptyList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -17,6 +16,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -29,11 +29,7 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -59,35 +55,33 @@ import org.slf4j.LoggerFactory;
  */
 public class AnthropicStreamingChatModel implements StreamingChatModel {
 
-    private static final Logger log = LoggerFactory.getLogger(AnthropicStreamingChatModel.class);
-
     private final AnthropicClient client;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
     private final List<ChatModelListener> listeners;
-
     private final ChatRequestParameters defaultRequestParameters;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
      */
-    private AnthropicStreamingChatModel(AnthropicStreamingChatModelBuilder builder) {
+    public AnthropicStreamingChatModel(AnthropicStreamingChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
                 .version(getOrDefault(builder.version, "2023-06-01"))
                 .beta(builder.beta)
-                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .build();
 
-        ChatRequestParameters commonParameters = DefaultChatRequestParameters.DEFAULT_INSTANCE;
+        ChatRequestParameters commonParameters = DefaultChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
-                .modelName(ensureNotBlank(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName"))
+                .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
@@ -101,7 +95,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.cacheTools = getOrDefault(builder.cacheTools, false);
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
-        this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
+        this.listeners = copy(builder.listeners);
     }
 
     public static AnthropicStreamingChatModelBuilder builder() {
@@ -110,6 +104,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
     public static class AnthropicStreamingChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String version;
@@ -128,6 +123,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
+
+        public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public AnthropicStreamingChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;

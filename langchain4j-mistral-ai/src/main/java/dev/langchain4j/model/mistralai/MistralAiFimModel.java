@@ -8,7 +8,6 @@ import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.fi
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
@@ -27,7 +26,6 @@ import java.util.List;
  * <p>
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createFIMCompletion">here</a>.
  */
-@Experimental
 public class MistralAiFimModel implements LanguageModel {
 
     private final MistralAiClient client;
@@ -45,14 +43,14 @@ public class MistralAiFimModel implements LanguageModel {
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(builder.apiKey)
-                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.maxTokens = builder.maxTokens;
-        this.minTokens = getOrDefault(builder.minTokens, 0);
+        this.minTokens = builder.minTokens;
         this.topP = builder.topP;
         this.randomSeed = builder.randomSeed;
         this.stop = copy(builder.stop);
@@ -98,9 +96,10 @@ public class MistralAiFimModel implements LanguageModel {
 
         MistralAiChatCompletionResponse response =
                 withRetryMappingExceptions(() -> client.fimCompletion(request), maxRetries);
+
         MistralAiChatCompletionChoice responseChoice = response.getChoices().get(0);
         return Response.from(
-                responseChoice.getMessage().getContent(),
+                responseChoice.getMessage().asText(),
                 tokenUsageFrom(response.getUsage()),
                 finishReasonFrom(responseChoice.getFinishReason()));
     }

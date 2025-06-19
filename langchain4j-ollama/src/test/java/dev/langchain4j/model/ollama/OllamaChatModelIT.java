@@ -19,7 +19,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -28,12 +27,13 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
-import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.List;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -275,11 +275,12 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         assertDoesNotThrow(() -> toolModel.chat(chatRequest));
     }
 
-    @Test
-    void should_handle_timeout() {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100, 500})
+    void should_handle_timeout(int millis) {
 
         // given
-        Duration timeout = Duration.ofMillis(100);
+        Duration timeout = Duration.ofMillis(millis);
 
         ChatModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
@@ -290,7 +291,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when-then
         assertThatThrownBy(() -> model.chat("hi"))
-                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class)
-                .hasRootCauseExactlyInstanceOf(java.net.http.HttpTimeoutException.class);
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 }

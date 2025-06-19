@@ -33,7 +33,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-// TODO use exact model for TokenCountEstimator (the one returned by LLM)
 @Disabled("this test is very long and expensive, we will need to set a schedule for it to run maybe 1 time per month")
 class AzureOpenAiTokenCountEstimatorIT {
 
@@ -50,7 +49,6 @@ class AzureOpenAiTokenCountEstimatorIT {
     ));
 
     private static final Set<AzureOpenAiChatModelName> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
-            // TODO add GPT_3_5_TURBO once it points to GPT_3_5_TURBO_1106
             GPT_3_5_TURBO_1106,
             GPT_4_TURBO_2024_04_09,
             GPT_4_1106_PREVIEW,

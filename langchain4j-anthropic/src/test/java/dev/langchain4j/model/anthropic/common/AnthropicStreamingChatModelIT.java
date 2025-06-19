@@ -84,13 +84,11 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        // TODO implement
-        return false;
-    }
-
-    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
-        return null; // TODO implement
+        return AnthropicStreamingChatModel.builder()
+                .apiKey(getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .listeners(List.of(listener))
+                .build();
     }
 }

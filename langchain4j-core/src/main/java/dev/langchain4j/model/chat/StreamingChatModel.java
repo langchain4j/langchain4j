@@ -71,7 +71,7 @@ public interface StreamingChatModel {
     }
 
     default ChatRequestParameters defaultRequestParameters() {
-        return DefaultChatRequestParameters.DEFAULT_INSTANCE;
+        return DefaultChatRequestParameters.EMPTY;
     }
 
     default List<ChatModelListener> listeners() {
