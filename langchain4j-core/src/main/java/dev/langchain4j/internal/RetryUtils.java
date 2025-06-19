@@ -151,7 +151,7 @@ public final class RetryUtils {
          * @return The raw delay in milliseconds.
          */
         public double rawDelayMs(int retry) {
-            return ((double) delayMillis) * Math.pow(backoffExp, retry);
+            return delayMillis * Math.pow(backoffExp, retry);
         }
 
         /**
