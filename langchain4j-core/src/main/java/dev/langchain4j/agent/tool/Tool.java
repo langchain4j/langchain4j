@@ -36,4 +36,17 @@ public @interface Tool {
      * @return description of the tool.
      */
     String[] value() default "";
+
+    /**
+     * Return behavior of the tool.
+     * - If {@link ReturnBehavior#TO_LLM} is used (default), the value returned by the tool is sent back to the LLM for further processing.
+     * - If {@link ReturnBehavior#DIRECT} is used, the value returned by the tool is sent to the LLM to allow it to invoke more tools if necessary.
+     *   The LLM invocation will directly return the value returned by the last invoked tool, instead of the one further manipulated by the LLM,
+     *   if and only if all the tools invoked by the LLM to fulfill the request are marked with {@link ReturnBehavior#DIRECT}.
+     * - If {@link ReturnBehavior#IMMEDIATE} is used, returns immediately to the caller the value returned by the tool without
+     *   allowing the LLM to further processing it.
+     *
+     * @return return behavior of the tool.
+     */
+    ReturnBehavior returnBehavior() default ReturnBehavior.TO_LLM;
 }
