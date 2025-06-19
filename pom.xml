@@ -27,6 +27,9 @@
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
+        <!-- Temporarily commented out for local development
+        <module>langchain4j-azure-aca-dynamic-sessions</module>
+        -->
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
         <module>langchain4j-cohere</module>
