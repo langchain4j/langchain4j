@@ -25,6 +25,7 @@ public class StdioMcpTransport implements McpTransport {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(StdioMcpTransport.class);
     private volatile McpOperationHandler messageHandler;
+    private ProcessStderrHandler stderrHandler;
 
     public StdioMcpTransport(Builder builder) {
         this.command = builder.command;
@@ -50,7 +51,8 @@ public class StdioMcpTransport implements McpTransport {
         processIOHandler = new ProcessIOHandler(process, messageHandler, logEvents);
         // FIXME: where should we obtain the thread?
         new Thread(processIOHandler).start();
-        new Thread(new ProcessStderrHandler(process)).start();
+        stderrHandler = new ProcessStderrHandler(process);
+        new Thread(stderrHandler).start();
     }
 
     @Override
@@ -100,6 +102,14 @@ public class StdioMcpTransport implements McpTransport {
 
     @Override
     public void close() throws IOException {
+        try {
+            stderrHandler.close();
+        } catch (Exception ignored) {
+        }
+        try {
+            processIOHandler.close();
+        } catch (Exception ignored) {
+        }
         process.destroy();
     }
 
