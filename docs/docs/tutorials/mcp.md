@@ -170,7 +170,7 @@ messages with binary blob content to a `ChatMessage` is unsupported regardless o
 
 Let's now see how to use the Model Context Protocol (MCP) to bridge AI models with external tools in a standardized way.
 The following example will interact with GitHub, through the LangChain4j MCP client, to fetch and summarize the latest commits from a public GitHub repository.
-For that, no need to reinvent the wheel, we can use the existing [GitHub MCP server implementation](https://github.com/modelcontextprotocol/servers/tree/main/src/github) available in the [MCP GitHub repo](https://github.com/modelcontextprotocol).
+For that, no need to reinvent the wheel, we can use the existing [GitHub MCP server implementation](https://github.com/modelcontextprotocol/servers-archived/tree/main/src/github) available in the [MCP GitHub repo](https://github.com/modelcontextprotocol).
 
 The idea is to build a Java application that connects to a GitHub MCP server running locally in Docker, to fetch and summarize the latest commits.
 The example uses the stdio transport mechanism of MCP to communicate between our Java application and the GitHub MCP server.
