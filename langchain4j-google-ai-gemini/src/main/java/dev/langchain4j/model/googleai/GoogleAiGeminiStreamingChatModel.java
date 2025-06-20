@@ -144,7 +144,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
         private Boolean responseLogprobs;
-        private  Boolean enableEnhancedCivicAnswers;
+        private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
         private GeminiThinkingConfig thinkingConfig;
@@ -278,12 +278,12 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
-        public  GoogleAiGeminiStreamingChatModelBuilder responseLogprobs(Boolean responseLogprobs){
+        public GoogleAiGeminiStreamingChatModelBuilder responseLogprobs(Boolean responseLogprobs) {
             this.responseLogprobs = responseLogprobs;
             return this;
         }
 
-        public GoogleAiGeminiStreamingChatModelBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers){
+        public GoogleAiGeminiStreamingChatModelBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers) {
             this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
             return this;
         }

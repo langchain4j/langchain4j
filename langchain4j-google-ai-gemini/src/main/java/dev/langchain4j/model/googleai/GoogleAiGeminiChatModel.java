@@ -340,12 +340,12 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return this;
         }
 
-        public GoogleAiGeminiChatModelBuilder responseLogprobs(Boolean responseLogprobs){
+        public GoogleAiGeminiChatModelBuilder responseLogprobs(Boolean responseLogprobs) {
             this.responseLogprobs = responseLogprobs;
             return this;
         }
 
-        public GoogleAiGeminiChatModelBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers){
+        public GoogleAiGeminiChatModelBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers) {
             this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
             return this;
         }
