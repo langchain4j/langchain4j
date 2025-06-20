@@ -14,7 +14,7 @@
     <description>MariaDB Vector support implementation</description>
 
     <properties>
-        <mariadb-client.version>3.5.1</mariadb-client.version>
+        <mariadb-client.version>3.5.3</mariadb-client.version>
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
 
