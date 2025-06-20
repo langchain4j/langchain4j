@@ -54,6 +54,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.allowCodeExecution,
                 builder.includeCodeExecutionOutput,
                 builder.logRequestsAndResponses,
+                builder.responseLogprobs,
+                builder.enableEnhancedCivicAnswers,
                 builder.safetySettings,
                 builder.listeners,
                 builder.maxRetries,
@@ -82,6 +84,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             Boolean allowCodeExecution,
             Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
+            Boolean responseLogprobs,
+            Boolean enableEnhancedCivicAnswers,
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners) {
         super(
@@ -102,6 +106,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 allowCodeExecution,
                 includeCodeExecutionOutput,
                 logRequestsAndResponses,
+                responseLogprobs,
+                enableEnhancedCivicAnswers,
                 safetySettings,
                 listeners,
                 maxRetries,
@@ -207,6 +213,8 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Boolean responseLogprobs;
+        private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
         private GeminiThinkingConfig thinkingConfig;
         private List<ChatModelListener> listeners;
@@ -329,6 +337,16 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
             this.thinkingConfig = thinkingConfig;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder responseLogprobs(Boolean responseLogprobs){
+            this.responseLogprobs = responseLogprobs;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers){
+            this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
             return this;
         }
 

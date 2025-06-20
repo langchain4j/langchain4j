@@ -33,6 +33,8 @@ abstract class BaseGeminiChatModel {
     protected final Integer maxRetries;
     protected final GeminiThinkingConfig thinkingConfig;
     protected final Integer seed;
+    protected final Boolean responseLogprobs;
+    protected final Boolean enableEnhancedCivicAnswers;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -54,6 +56,8 @@ abstract class BaseGeminiChatModel {
             Boolean allowCodeExecution,
             Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
+            Boolean responseLogprobs,
+            Boolean enableEnhancedCivicAnswers,
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners,
             Integer maxRetries,
@@ -68,6 +72,8 @@ abstract class BaseGeminiChatModel {
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.thinkingConfig = thinkingConfig;
         this.seed = seed;
+        this.responseLogprobs = getOrDefault(responseLogprobs, false);
+        this.enableEnhancedCivicAnswers = getOrDefault(enableEnhancedCivicAnswers, false);
         this.geminiService =
                 new GeminiService(httpClientBuilder, getOrDefault(logRequestsAndResponses, false), timeout);
 

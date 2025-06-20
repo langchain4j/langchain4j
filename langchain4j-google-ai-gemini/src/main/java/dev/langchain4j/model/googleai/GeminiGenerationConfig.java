@@ -46,6 +46,13 @@ class GeminiGenerationConfig {
     @JsonProperty
     private final GeminiThinkingConfig thinkingConfig;
 
+    @JsonProperty
+    private final Boolean responseLogprobs;
+
+    @JsonProperty
+    private final Boolean enableEnhancedCivicAnswers;
+
+
     GeminiGenerationConfig(GeminiGenerationConfigBuilder builder) {
         this.stopSequences = builder.stopSequences;
         this.responseMimeType = builder.responseMimeType;
@@ -58,6 +65,8 @@ class GeminiGenerationConfig {
         this.topP = builder.topP;
         this.presencePenalty = builder.presencePenalty;
         this.frequencyPenalty = builder.frequencyPenalty;
+        this.responseLogprobs = builder.responseLogprobs;
+        this.enableEnhancedCivicAnswers = builder.enableEnhancedCivicAnswers;
         this.thinkingConfig = builder.thinkingConfig;
     }
 
@@ -78,6 +87,8 @@ class GeminiGenerationConfig {
         private Double topP;
         private Double presencePenalty;
         private Double frequencyPenalty;
+        private Boolean responseLogprobs;
+        private Boolean enableEnhancedCivicAnswers;
         private GeminiThinkingConfig thinkingConfig;
 
         GeminiGenerationConfigBuilder() {}
@@ -139,6 +150,16 @@ class GeminiGenerationConfig {
 
         GeminiGenerationConfigBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
             this.thinkingConfig = thinkingConfig;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder responseLogprobs(Boolean responseLogprobs){
+            this.responseLogprobs = responseLogprobs;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers){
+            this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
             return this;
         }
 

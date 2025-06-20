@@ -37,6 +37,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.allowCodeExecution,
                 builder.includeCodeExecutionOutput,
                 builder.logRequestsAndResponses,
+                builder.responseLogprobs,
+                builder.enableEnhancedCivicAnswers,
                 builder.safetySettings,
                 builder.listeners,
                 null,
@@ -63,6 +65,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             Boolean allowCodeExecution,
             Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
+            Boolean responseLogprobs,
+            Boolean enableEnhancedCivicAnswers,
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners,
             Integer maxRetries) {
@@ -84,6 +88,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 allowCodeExecution,
                 includeCodeExecutionOutput,
                 logRequestsAndResponses,
+                responseLogprobs,
+                enableEnhancedCivicAnswers,
                 safetySettings,
                 listeners,
                 maxRetries,
@@ -137,6 +143,8 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Boolean responseLogprobs;
+        private  Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
         private GeminiThinkingConfig thinkingConfig;
@@ -267,6 +275,16 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
             this.thinkingConfig = thinkingConfig;
+            return this;
+        }
+
+        public  GoogleAiGeminiStreamingChatModelBuilder responseLogprobs(Boolean responseLogprobs){
+            this.responseLogprobs = responseLogprobs;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers){
+            this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
             return this;
         }
 
