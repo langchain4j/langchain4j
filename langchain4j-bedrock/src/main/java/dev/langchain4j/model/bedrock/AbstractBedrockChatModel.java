@@ -72,14 +72,12 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 abstract class AbstractBedrockChatModel {
 
     protected final Region region;
-    protected final Integer maxRetries;
     protected final Duration timeout;
     protected final BedrockChatRequestParameters defaultRequestParameters;
     protected final List<ChatModelListener> listeners;
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
-        this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
         this.listeners = copy(builder.listeners);
 
@@ -403,7 +401,6 @@ abstract class AbstractBedrockChatModel {
 
         protected Region region;
         protected String modelId;
-        protected Integer maxRetries;
         protected Duration timeout;
         protected ChatRequestParameters defaultRequestParameters;
         protected Boolean logRequests;

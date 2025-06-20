@@ -1,5 +1,10 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.model.ModelProvider.OTHER;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onError;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -8,16 +13,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onError;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
-import static dev.langchain4j.model.ModelProvider.OTHER;
 
 /**
  * Represents a language model that has a chat API.
@@ -71,9 +70,8 @@ public interface ChatModel {
 
     default String chat(String userMessage) {
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(userMessage))
-                .build();
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
 
         ChatResponse chatResponse = chat(chatRequest);
 
@@ -82,18 +80,14 @@ public interface ChatModel {
 
     default ChatResponse chat(ChatMessage... messages) {
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .build();
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
 
         return chat(chatRequest);
     }
 
     default ChatResponse chat(List<ChatMessage> messages) {
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(messages)
-                .build();
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
 
         return chat(chatRequest);
     }

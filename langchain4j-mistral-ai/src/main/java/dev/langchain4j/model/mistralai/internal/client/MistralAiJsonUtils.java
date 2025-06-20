@@ -4,12 +4,15 @@ import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.Internal;
 import java.io.IOException;
 
-public class MistralAiJsonUtils {
+@Internal
+class MistralAiJsonUtils {
+
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
 
-    public static String toJson(Object object) {
+    static String toJson(Object object) {
         try {
             return OBJECT_MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException e) {
@@ -17,7 +20,7 @@ public class MistralAiJsonUtils {
         }
     }
 
-    public static <T> T fromJson(String json, Class<T> clazz) {
+    static <T> T fromJson(String json, Class<T> clazz) {
         try {
             return OBJECT_MAPPER.readValue(json, clazz);
         } catch (IOException e) {

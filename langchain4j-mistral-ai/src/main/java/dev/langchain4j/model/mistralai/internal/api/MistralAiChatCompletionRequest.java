@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -28,6 +30,9 @@ public class MistralAiChatCompletionRequest {
     private List<MistralAiTool> tools;
     private MistralAiToolChoiceName toolChoice;
     private MistralAiResponseFormat responseFormat;
+    private String[] stop;
+    private Double frequencyPenalty;
+    private Double presencePenalty;
 
     private MistralAiChatCompletionRequest(MistralAiChatCompletionRequestBuilder builder) {
         this.model = builder.model;
@@ -41,6 +46,9 @@ public class MistralAiChatCompletionRequest {
         this.tools = builder.tools;
         this.toolChoice = builder.toolChoice;
         this.responseFormat = builder.responseFormat;
+        this.stop = builder.stop;
+        this.frequencyPenalty = builder.frequencyPenalty;
+        this.presencePenalty = builder.presencePenalty;
     }
 
     public String getModel() {
@@ -87,6 +95,18 @@ public class MistralAiChatCompletionRequest {
         return this.responseFormat;
     }
 
+    public String[] getStop() {
+        return stop;
+    }
+
+    public Double getFrequencyPenalty() {
+        return frequencyPenalty;
+    }
+
+    public Double getPresencePenalty() {
+        return presencePenalty;
+    }
+
     @Override
     public int hashCode() {
         int hash = 7;
@@ -101,6 +121,9 @@ public class MistralAiChatCompletionRequest {
         hash = 83 * hash + Objects.hashCode(this.tools);
         hash = 83 * hash + Objects.hashCode(this.toolChoice);
         hash = 83 * hash + Objects.hashCode(this.responseFormat);
+        hash = 83 * hash + Objects.hashCode(this.stop);
+        hash = 83 * hash + Objects.hashCode(this.frequencyPenalty);
+        hash = 83 * hash + Objects.hashCode(this.presencePenalty);
         return hash;
     }
 
@@ -119,7 +142,10 @@ public class MistralAiChatCompletionRequest {
                 && Objects.equals(this.randomSeed, other.randomSeed)
                 && Objects.equals(this.tools, other.tools)
                 && this.toolChoice == other.toolChoice
-                && Objects.equals(this.responseFormat, other.responseFormat);
+                && Objects.equals(this.responseFormat, other.responseFormat)
+                && Arrays.equals(this.stop, other.stop)
+                && Objects.equals(this.frequencyPenalty, other.frequencyPenalty)
+                && Objects.equals(this.presencePenalty, other.presencePenalty);
     }
 
     @Override
@@ -159,6 +185,9 @@ public class MistralAiChatCompletionRequest {
         private List<MistralAiTool> tools;
         private MistralAiToolChoiceName toolChoice;
         private MistralAiResponseFormat responseFormat;
+        private String[] stop;
+        private Double frequencyPenalty;
+        private Double presencePenalty;
 
         private MistralAiChatCompletionRequestBuilder() {}
 
@@ -247,6 +276,21 @@ public class MistralAiChatCompletionRequest {
          */
         public MistralAiChatCompletionRequestBuilder responseFormat(MistralAiResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public MistralAiChatCompletionRequestBuilder stop(String ... stop) {
+            this.stop = stop;
+            return this;
+        }
+
+        public MistralAiChatCompletionRequestBuilder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public MistralAiChatCompletionRequestBuilder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
             return this;
         }
 

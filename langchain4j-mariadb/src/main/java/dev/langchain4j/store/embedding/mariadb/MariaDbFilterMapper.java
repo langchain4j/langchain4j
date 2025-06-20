@@ -96,8 +96,11 @@ abstract class MariaDbFilterMapper {
 
     String formatValue(Object value) {
         if (value instanceof final Collection<?> vals) {
-            return "(" + vals.stream().map(v -> formatValue(v)).collect(Collectors.joining(",")) + ")";
-        } else if (value instanceof String || value instanceof UUID) {
+            return "(" + vals.stream().map(this::formatValue).collect(Collectors.joining(",")) + ")";
+        } else if (value instanceof String stringValue) {
+            final String escapedValue = stringValue.replace("'", "''");
+            return "'" + escapedValue + "'";
+        } else if (value instanceof UUID) {
             return "'" + value + "'";
         } else {
             return value.toString();

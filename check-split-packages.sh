@@ -12,8 +12,8 @@ echo "🔍 Scanning all JARs under: $ROOT_DIR (excluding test JARs)"
 # Get all JAR files first, excluding test JARs
 jar_files=()
 while IFS= read -r jar; do
-  # Skip JAR files ending with "-tests.jar"
-  if [[ "$jar" != *"-tests.jar" ]]; then
+  # Skip JAR files ending with "-tests.jar" and anything in the integration-tests directory
+  if [[ "$jar" != *"-tests.jar" ]] && [[ "$jar" != "./integration-tests/"* ]]; then
     jar_files+=("$jar")
   fi
 done < <(find "$ROOT_DIR" -type f -name "*.jar")
