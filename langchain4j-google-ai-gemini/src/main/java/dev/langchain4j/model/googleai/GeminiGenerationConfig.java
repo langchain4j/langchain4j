@@ -52,6 +52,9 @@ class GeminiGenerationConfig {
     @JsonProperty
     private final Boolean enableEnhancedCivicAnswers;
 
+    @JsonProperty
+    private final Integer logprobs;
+
     GeminiGenerationConfig(GeminiGenerationConfigBuilder builder) {
         this.stopSequences = builder.stopSequences;
         this.responseMimeType = builder.responseMimeType;
@@ -67,6 +70,7 @@ class GeminiGenerationConfig {
         this.responseLogprobs = builder.responseLogprobs;
         this.enableEnhancedCivicAnswers = builder.enableEnhancedCivicAnswers;
         this.thinkingConfig = builder.thinkingConfig;
+        this.logprobs = builder.logprobs;
     }
 
     static GeminiGenerationConfigBuilder builder() {
@@ -89,6 +93,7 @@ class GeminiGenerationConfig {
         private Boolean responseLogprobs;
         private Boolean enableEnhancedCivicAnswers;
         private GeminiThinkingConfig thinkingConfig;
+        private Integer logprobs;
 
         GeminiGenerationConfigBuilder() {}
 
@@ -159,6 +164,11 @@ class GeminiGenerationConfig {
 
         GeminiGenerationConfigBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers) {
             this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder logprobs(Integer logprobs) {
+            this.logprobs = logprobs;
             return this;
         }
 

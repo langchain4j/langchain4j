@@ -30,6 +30,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.frequencyPenalty,
                 builder.presencePenalty,
                 builder.maxOutputTokens,
+                builder.logprobs,
                 builder.timeout,
                 builder.responseFormat,
                 builder.stopSequences,
@@ -67,6 +68,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             Boolean logRequestsAndResponses,
             Boolean responseLogprobs,
             Boolean enableEnhancedCivicAnswers,
+            Integer logprobs,
             List<GeminiSafetySetting> safetySettings,
             List<ChatModelListener> listeners,
             Integer maxRetries) {
@@ -81,6 +83,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 null,
                 null,
                 maxOutputTokens,
+                logprobs,
                 timeout,
                 responseFormat,
                 stopSequences,
@@ -136,6 +139,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private Double frequencyPenalty;
         private Double presencePenalty;
         private Integer maxOutputTokens;
+        private Integer logprobs;
         private Duration timeout;
         private ResponseFormat responseFormat;
         private List<String> stopSequences;
@@ -280,6 +284,11 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder responseLogprobs(Boolean responseLogprobs) {
             this.responseLogprobs = responseLogprobs;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder logprobs(Integer logprobs) {
+            this.logprobs = logprobs;
             return this;
         }
 

@@ -47,6 +47,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 builder.frequencyPenalty,
                 builder.presencePenalty,
                 builder.maxOutputTokens,
+                builder.logprobs,
                 builder.timeout,
                 builder.responseFormat,
                 builder.stopSequences,
@@ -77,6 +78,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             Integer seed,
             Double topP,
             Integer maxOutputTokens,
+            Integer logprobs,
             Duration timeout,
             ResponseFormat responseFormat,
             List<String> stopSequences,
@@ -99,6 +101,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
                 null,
                 null,
                 maxOutputTokens,
+                logprobs,
                 timeout,
                 responseFormat,
                 stopSequences,
@@ -217,6 +220,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
         private GeminiThinkingConfig thinkingConfig;
+        private Integer logprobs;
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
 
@@ -347,6 +351,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers) {
             this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder logprobs(Integer logprobs) {
+            this.logprobs = logprobs;
             return this;
         }
 

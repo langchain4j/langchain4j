@@ -33,6 +33,7 @@ abstract class BaseGeminiChatModel {
     protected final Integer maxRetries;
     protected final GeminiThinkingConfig thinkingConfig;
     protected final Integer seed;
+    protected final Integer logprobs;
     protected final Boolean responseLogprobs;
     protected final Boolean enableEnhancedCivicAnswers;
 
@@ -49,6 +50,7 @@ abstract class BaseGeminiChatModel {
             Double frequencyPenalty,
             Double presencePenalty,
             Integer maxOutputTokens,
+            Integer logprobs,
             Duration timeout,
             ResponseFormat responseFormat,
             List<String> stopSequences,
@@ -74,6 +76,7 @@ abstract class BaseGeminiChatModel {
         this.seed = seed;
         this.responseLogprobs = getOrDefault(responseLogprobs, false);
         this.enableEnhancedCivicAnswers = getOrDefault(enableEnhancedCivicAnswers, false);
+        this.logprobs = logprobs;
         this.geminiService =
                 new GeminiService(httpClientBuilder, getOrDefault(logRequestsAndResponses, false), timeout);
 
@@ -127,6 +130,7 @@ abstract class BaseGeminiChatModel {
                         .topP(parameters.topP())
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
+                        .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .build())
                 .safetySettings(this.safetySettings)
