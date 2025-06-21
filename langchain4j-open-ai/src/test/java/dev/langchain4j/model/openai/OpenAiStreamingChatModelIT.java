@@ -107,7 +107,7 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    void should_respoct_maxTokens() throws Exception {
+    void should_respect_maxTokens() throws Exception {
 
         // given
         int maxTokens = 1;
@@ -152,7 +152,7 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    void should_respoct_maxCompletionTokens() throws Exception {
+    void should_respect_maxCompletionTokens() throws Exception {
 
         // given
         int maxCompletionTokens = 1;
