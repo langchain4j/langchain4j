@@ -8,10 +8,10 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
@@ -164,7 +164,8 @@ public class AiServiceTokenStream implements TokenStream {
             throw new IllegalConfigurationException("onRetrieved can be invoked on TokenStream at most 1 time");
         }
         if (onToolBeforeExecutionInvoked > 1) {
-            throw new IllegalConfigurationException("onToolBeforeExecution can be invoked on TokenStream at most 1 time");
+            throw new IllegalConfigurationException(
+                    "onToolBeforeExecution can be invoked on TokenStream at most 1 time");
         }
         if (onToolExecutedInvoked > 1) {
             throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");
