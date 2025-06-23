@@ -123,13 +123,15 @@ public class HttpMcpTransport implements McpTransport {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                int statusCode = response.code();
-                if (!isExpectedStatusCode(statusCode)) {
-                    future.completeExceptionally(new RuntimeException("Unexpected status code: " + statusCode));
-                }
-                // For messages with null ID, we don't wait for a response in the SSE channel
-                if (id == null) {
-                    future.complete(null);
+                try (response) {
+                    int statusCode = response.code();
+                    if (!isExpectedStatusCode(statusCode)) {
+                        future.completeExceptionally(new RuntimeException("Unexpected status code: " + statusCode));
+                    }
+                    // For messages with null ID, we don't wait for a response in the SSE channel
+                    if (id == null) {
+                        future.complete(null);
+                    }
                 }
             }
         });

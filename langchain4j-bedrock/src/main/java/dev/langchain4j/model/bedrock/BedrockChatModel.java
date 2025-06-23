@@ -25,6 +25,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 public class BedrockChatModel extends AbstractBedrockChatModel implements ChatModel {
 
     private final BedrockRuntimeClient client;
+    private final Integer maxRetries;
 
     public BedrockChatModel(String modelId) {
         this(builder().modelId(modelId));
@@ -35,6 +36,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         this.client = isNull(builder.client)
                 ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
                 : builder.client;
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     @Override
@@ -102,6 +104,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     public static class Builder extends AbstractBuilder<Builder> {
 
         private BedrockRuntimeClient client;
+        private Integer maxRetries;
 
         public Builder client(BedrockRuntimeClient client) {
             this.client = client;
