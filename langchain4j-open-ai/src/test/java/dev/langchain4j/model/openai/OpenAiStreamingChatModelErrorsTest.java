@@ -11,20 +11,18 @@ import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
-import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.ktor.http.HttpStatusCode;
-import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class OpenAiStreamingChatModelErrorsTest {
 
@@ -78,10 +76,21 @@ class OpenAiStreamingChatModelErrorsTest {
                 .isEqualTo(httpStatusCode));
     }
 
-    @Test
-    void should_handle_timeout() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) throws Exception {
 
         // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        StreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .baseUrl(MOCK.baseUrl())
+                .modelName(GPT_4_O_MINI)
+                .timeout(timeout)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
         final var question = "Simulate timeout";
         MOCK.completion(req -> req.userMessageContains(question)).respondsError(res -> {
             res.delayMillis(TIMEOUT.multipliedBy(2).toMillis());
@@ -98,9 +107,7 @@ class OpenAiStreamingChatModelErrorsTest {
         // then
         Throwable error = futureError.get(30, SECONDS);
 
-        assertThat(error)
-                .isExactlyInstanceOf(TimeoutException.class)
-                .hasRootCauseExactlyInstanceOf(HttpTimeoutException.class);
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     private record ErrorHandler(CompletableFuture<Throwable> futureError) implements StreamingChatResponseHandler {

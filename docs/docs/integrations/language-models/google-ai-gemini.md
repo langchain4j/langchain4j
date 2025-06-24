@@ -13,7 +13,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.0.1-beta6</version>
+    <version>1.1.0-rc1</version>
 </dependency>
 ```
 
@@ -69,6 +69,7 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .temperature(1.0)
     .topP(0.95)
     .topK(64)
+    .seed(42)
     .maxOutputTokens(8192)
     .timeout(Duration.ofSeconds(60))
     .candidateCount(1)
@@ -82,6 +83,12 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .safetySettings(List<GeminiSafetySetting> or Map<GeminiHarmCategory, GeminiHarmBlockThreshold>)
     .build();
 ```
+### Thinking Configuration
+
+The `GeminiThinkingConfig` class supports:
+
+- `includeThoughts`: Boolean indicating whether to include thoughts in the response (optional).
+- `thinkingBudget`: Integer specifying the thinking budget in milliseconds (optional, set to `null` to disable thinking).
 
 ## GoogleAiGeminiStreamingChatModel
 The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.
@@ -204,7 +211,7 @@ interface WeatherForecastAssistant {
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
-    .responseFormat(ResponseFormat.JSON) // this is required to enable structured outputs feature
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // this is required to enable structured outputs feature
     .build();
 
 WeatherForecastAssistant forecastAssistant =

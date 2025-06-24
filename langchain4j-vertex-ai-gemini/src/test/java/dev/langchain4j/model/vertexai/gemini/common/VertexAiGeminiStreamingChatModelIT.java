@@ -2,6 +2,7 @@ package dev.langchain4j.model.vertexai.gemini.common;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiStreamingChatModel;
 import org.junit.jupiter.api.AfterEach;
 
@@ -74,6 +75,11 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean assertThreads() {
         return false; // TODO what to do with it?
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return null; // TODO implement
     }
 
     @AfterEach

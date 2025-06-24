@@ -9,6 +9,7 @@ import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRA
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -25,10 +26,15 @@ import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class MistralAiStreamingChatModelIT {
 
@@ -706,5 +712,46 @@ class MistralAiStreamingChatModelIT {
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
 
         assertThat(response2.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) throws Exception {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName("open-mistral-nemo")
+                .logRequests(true)
+                .logResponses(true)
+                .timeout(timeout)
+                .build();
+
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        model.chat("hi", new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                futureError.completeExceptionally(new RuntimeException("onPartialResponse should not be called"));
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureError.completeExceptionally(new RuntimeException("onCompleteResponse should not be called"));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureError.complete(error);
+            }
+        });
+
+        Throwable error = futureError.get(5, SECONDS);
+
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 }
