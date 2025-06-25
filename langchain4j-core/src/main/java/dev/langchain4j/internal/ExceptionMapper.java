@@ -2,6 +2,7 @@ package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.InvalidRequestException;
@@ -68,6 +69,9 @@ public interface ExceptionMapper {
                 return new RateLimitException(cause);
             }
             if (httpStatusCode >= 400 && httpStatusCode < 500) {
+                if(cause.getMessage().contains("\"code\":\"content_filter\"")) {
+                    return new ContentFilteredException("Content has been filtered", cause);
+                }
                 return new InvalidRequestException(cause);
             }
             return cause instanceof RuntimeException re ? re : new LangChain4jException(cause);
