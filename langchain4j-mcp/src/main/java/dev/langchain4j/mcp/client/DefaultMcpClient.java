@@ -151,6 +151,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<ToolSpecification> listTools() {
+        assertNotClosed();
         if (toolListOutOfDate.get()) {
             CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
             if (updateInProgress != null) {
@@ -177,6 +178,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public String executeTool(ToolExecutionRequest executionRequest) {
+        assertNotClosed();
         ObjectNode arguments = null;
         try {
             String args = executionRequest.arguments();
@@ -208,6 +210,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<McpResource> listResources() {
+        assertNotClosed();
         if (resourceRefs.get() == null) {
             obtainResourceList();
         }
@@ -216,6 +219,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public McpReadResourceResult readResource(String uri) {
+        assertNotClosed();
         final long operationId = idGenerator.getAndIncrement();
         McpReadResourceRequest operation = new McpReadResourceRequest(operationId, uri);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
@@ -234,6 +238,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<McpPrompt> listPrompts() {
+        assertNotClosed();
         if (promptRefs.get() == null) {
             obtainPromptList();
         }
@@ -242,6 +247,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
+        assertNotClosed();
         long operationId = idGenerator.getAndIncrement();
         McpGetPromptRequest operation = new McpGetPromptRequest(operationId, name, arguments);
         long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
@@ -260,6 +266,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public void checkHealth() {
+        assertNotClosed();
         transport.checkHealth();
         long operationId = idGenerator.getAndIncrement();
         McpPingRequest ping = new McpPingRequest(operationId);
@@ -275,6 +282,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<McpResourceTemplate> listResourceTemplates() {
+        assertNotClosed();
         if (resourceTemplateRefs.get() == null) {
             obtainResourceTemplateList();
         }
@@ -362,6 +370,12 @@ public class DefaultMcpClient implements McpClient {
             transport.close();
         } catch (Exception e) {
             log.warn("Cannot close MCP transport", e);
+        }
+    }
+
+    private void assertNotClosed() {
+        if (closed) {
+            throw new IllegalStateException("The client is closed");
         }
     }
 
