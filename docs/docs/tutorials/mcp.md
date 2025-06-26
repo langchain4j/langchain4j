@@ -282,3 +282,42 @@ Here are the summaries of the last three commits in the LangChain4j GitHub repos
 
 All commits were made by the same author, Dmytro Liubarskyi, on the same day, focusing on updating various GitHub Actions to newer versions.
 ```
+
+## Using MCP without AI Services
+
+The previous examples showed how to use MCP with the high-level AI Services API. However, it is also possible to use MCP through the low-level API.
+You can manually use the `DefaultMcpClient` instance that you built to execute commands against the server. Some examples:
+
+```java
+// obtain a list of tools from the server
+List<ToolSpecification> toolSpecifications = mcpClient.listTools();
+
+// build and execute a ChatRequest that has access to the MCP tools
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("What will the weather be like in London tomorrow?"))
+        .toolSpecifications(toolSpecifications)
+        .build();
+ChatResponse response = chatModel.chat(chatRequest);
+AiMessage aiMessage = response.aiMessage();
+
+// if the LLM requested to invoke a tool, forward it to the MCP server
+if(aiMessage.hasToolExecutionRequests()) {
+    for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
+        String resultString = mcpClient.executeTool(req);
+        // prepare the result for adding it to the memory for the next ChatRequest...
+        ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.from(req.id(), req.name(), resultString);
+    }
+}
+```
+
+If you want to directly programmatically execute a tool using the MCP client (outside of a chat),
+you need to build a `ToolExecutionRequest` instance manually:
+
+```java
+// to execute a tool named "tool1" with argument "a=b"
+ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .name("tool1")
+                .arguments("{\"a\": \"b\"}")
+                .build();
+String toolResult = mcpClient.executeTool(request);
+```
