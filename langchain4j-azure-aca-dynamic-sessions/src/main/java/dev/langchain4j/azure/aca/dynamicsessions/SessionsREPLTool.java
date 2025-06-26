@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
  *   credential:  A DefaultAzureCredential instance for authenticating with Azure services.
  *   accessTokenRef:  An AtomicReference to store and manage the access token.
  *   FileUploader, FileDownloader, FileLister:  Interfaces defining file management operations.
- *   FileUploaderImpl, FileDownloaderImpl, FileListerImpl:  Implementations of the file management interfaces.
+ *   DefaultFileUploader, DefaultFileDownloader, DefaultFileLister:  Implementations of the file management interfaces.
  *   RemoteFileMetadata:  A class representing metadata for remote files.
  *
  * Functionality:
@@ -72,7 +72,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SessionsREPLTool implements CodeExecutionEngine {
 
-    private static final String USER_AGENT = "langchain4j-azure-dynamic-sessions/1.0.0-beta1 (Language=Java)";
+    private static final String USER_AGENT = "langchain4j-azure-dynamic-sessions";
     private static final String API_VERSION = "2024-02-02-preview";
     private static final Logger log = LoggerFactory.getLogger(SessionsREPLTool.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -321,9 +321,17 @@ public class SessionsREPLTool implements CodeExecutionEngine {
     }
 
     /**
-     * Implementation of the FileUploader interface that uploads files to Azure Container Apps.
+     * Default implementation of the FileUploader interface that uploads files to Azure Container Apps.
      */
-    public class FileUploaderImpl implements FileUploader {
+    public class DefaultFileUploader implements FileUploader {
+        
+        /**
+         * Constructs a new DefaultFileUploader.
+         * Uses the parent SessionsREPLTool's configuration for authentication and endpoint access.
+         */
+        public DefaultFileUploader() {
+            // Default constructor - uses parent SessionsREPLTool's configuration
+        }
 
         @Override
         public RemoteFileMetadata uploadFileToAca(Path localFilePath) {
@@ -336,10 +344,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
             File file = localFilePath.toFile(); // Convert Path to File
 
             try {
-                // Note: For multipart/form-data uploads, we need to use the native Java HttpClient
-                // as the langchain4j HttpClient abstraction doesn't directly support multipart yet
-                java.net.http.HttpRequest.BodyPublisher publisher =
-                        java.net.http.HttpRequest.BodyPublishers.ofFile(localFilePath);
+                // Prepare multipart form data
 
                 String boundary = "----" + System.currentTimeMillis();
                 String contentDisposition =
@@ -386,9 +391,17 @@ public class SessionsREPLTool implements CodeExecutionEngine {
     }
 
     /**
-     * Implementation of the FileDownloader interface that downloads files from Azure Container Apps.
+     * Default implementation of the FileDownloader interface that downloads files from Azure Container Apps.
      */
-    public class FileDownloaderImpl implements FileDownloader {
+    public class DefaultFileDownloader implements FileDownloader {
+        
+        /**
+         * Constructs a new DefaultFileDownloader.
+         * Uses the parent SessionsREPLTool's configuration for authentication and endpoint access.
+         */
+        public DefaultFileDownloader() {
+            // Default constructor - uses parent SessionsREPLTool's configuration
+        }
         @Override
         public String downloadFile(String remoteFilePath) {
             String accessToken = getAccessToken();
@@ -422,9 +435,17 @@ public class SessionsREPLTool implements CodeExecutionEngine {
     }
 
     /**
-     * Implementation of the FileLister interface that lists files in Azure Container Apps.
+     * Default implementation of the FileLister interface that lists files in Azure Container Apps.
      */
-    public class FileListerImpl implements FileLister {
+    public class DefaultFileLister implements FileLister {
+        
+        /**
+         * Constructs a new DefaultFileLister.
+         * Uses the parent SessionsREPLTool's configuration for authentication and endpoint access.
+         */
+        public DefaultFileLister() {
+            // Default constructor - uses parent SessionsREPLTool's configuration
+        }
         @Override
         public String listFiles() {
             String accessToken = getAccessToken();

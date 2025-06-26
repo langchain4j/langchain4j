@@ -157,13 +157,10 @@ class SessionsREPLToolTest {
      * Custom SessionsREPLTool for testing that uses mocked dependencies
      */
     private static class TestSessionsREPLTool extends SessionsREPLTool {
-        private final HttpClient mockHttpClient;
-
         public TestSessionsREPLTool(
                 String poolManagementEndpoint, DefaultAzureCredential credential, HttpClient mockHttpClient) {
             // Use the protected constructor for testing that accepts pre-configured dependencies
             super(poolManagementEndpoint, "test-session-id", true, mockHttpClient, credential);
-            this.mockHttpClient = mockHttpClient;
         }
     }
 }

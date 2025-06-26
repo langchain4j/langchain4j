@@ -5,31 +5,14 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.1.0-beta7-SNAPSHOT</version>
+        <version>1.2.0-beta8-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <!-- Project Coordinates -->
-    <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-aca-dynamic-sessions</artifactId>
-    <version>1.1.0-beta7-SNAPSHOT</version>
-    <packaging>jar</packaging>
-    <name>LangChain4j :: Integration :: Azure ACA Dynamic Sessions</name>
-
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
-    <properties>
-        <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
-    </properties>
-
+    <version>1.2.0-SNAPSHOT</version>
+    
     <dependencies>
         <!-- Core dependencies required by SessionsREPLTool -->
         <dependency>
@@ -38,28 +21,12 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Dependencies for CodeExecutionEngine interface - langchain4j dependency is transitive through langchain4j-core -->
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-            <!-- Marked as provided since it comes transitively -->
-        </dependency>
 
-        <!-- HTTP client abstraction and implementation -->
+        <!-- HTTP client abstraction -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
-        </dependency>
-        <!-- The JDK implementation is available at runtime through SPI mechanism -->
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-http-client-jdk</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
-            <scope>runtime</scope>
-            <!-- Needed at runtime but not compile time -->
+            <version>${project.version}</version>
         </dependency>
 
         <!-- Azure dependencies needed for authentication -->
@@ -67,18 +34,19 @@
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
             <optional>true</optional>
+            <!-- Marked as optional to avoid dependency convergence issues with netty, -->
+            <!-- but consumers of this library must include azure-identity explicitly -->
         </dependency>
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-core</artifactId>
-            <version>1.54.1</version>
         </dependency>
 
         <!-- Jackson for JSON processing -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.18.2</version>
+            <version>2.19.0</version>
         </dependency>
 
         <!-- Required for reactor.core.publisher.Mono used in getToken -->
@@ -94,9 +62,18 @@
         </dependency>
 
         <!-- Test dependencies -->
+
+        <!-- The "Unused undeclared dependency" warnings can be ignored, preferred vs. adding exclusions from the parent POM -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Only include the JUnit engine for running tests -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -109,12 +86,6 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
             <scope>test</scope>
         </dependency>
 
