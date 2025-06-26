@@ -12,7 +12,7 @@
     <!-- Project Coordinates -->
     <artifactId>langchain4j-azure-aca-dynamic-sessions</artifactId>
     <version>1.2.0-SNAPSHOT</version>
-    
+
     <dependencies>
         <!-- Core dependencies required by SessionsREPLTool -->
         <dependency>
@@ -20,7 +20,6 @@
             <artifactId>langchain4j-core</artifactId>
             <version>${project.version}</version>
         </dependency>
-
 
         <!-- HTTP client abstraction -->
         <dependency>

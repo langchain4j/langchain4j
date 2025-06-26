@@ -324,7 +324,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
      * Default implementation of the FileUploader interface that uploads files to Azure Container Apps.
      */
     public class DefaultFileUploader implements FileUploader {
-        
+
         /**
          * Constructs a new DefaultFileUploader.
          * Uses the parent SessionsREPLTool's configuration for authentication and endpoint access.
@@ -394,7 +394,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
      * Default implementation of the FileDownloader interface that downloads files from Azure Container Apps.
      */
     public class DefaultFileDownloader implements FileDownloader {
-        
+
         /**
          * Constructs a new DefaultFileDownloader.
          * Uses the parent SessionsREPLTool's configuration for authentication and endpoint access.
@@ -402,6 +402,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
         public DefaultFileDownloader() {
             // Default constructor - uses parent SessionsREPLTool's configuration
         }
+
         @Override
         public String downloadFile(String remoteFilePath) {
             String accessToken = getAccessToken();
@@ -438,7 +439,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
      * Default implementation of the FileLister interface that lists files in Azure Container Apps.
      */
     public class DefaultFileLister implements FileLister {
-        
+
         /**
          * Constructs a new DefaultFileLister.
          * Uses the parent SessionsREPLTool's configuration for authentication and endpoint access.
@@ -446,6 +447,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
         public DefaultFileLister() {
             // Default constructor - uses parent SessionsREPLTool's configuration
         }
+
         @Override
         public String listFiles() {
             String accessToken = getAccessToken();
