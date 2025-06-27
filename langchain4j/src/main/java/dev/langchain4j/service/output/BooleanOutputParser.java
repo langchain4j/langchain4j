@@ -6,7 +6,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.Optional;
 
-import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
+import static dev.langchain4j.internal.JsonParsingUtils.outputParsingException;
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
 @Internal

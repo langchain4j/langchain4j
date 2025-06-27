@@ -9,9 +9,9 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static dev.langchain4j.internal.JsonParsingUtils.outputParsingException;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.quoted;
 
 @Internal
 class ParsingUtils {
@@ -44,7 +44,7 @@ class ParsingUtils {
                                                                 Supplier<CT> emptyCollectionSupplier,
                                                                 String type) {
         if (text == null) {
-            throw ParsingUtils.outputParsingException(text, type, null);
+            throw outputParsingException(text, type, null);
         }
 
         if (isJson(text)) {
@@ -95,13 +95,5 @@ class ParsingUtils {
         } catch (IllegalArgumentException iae) {
             throw outputParsingException(text, type, iae);
         }
-    }
-
-    static OutputParsingException outputParsingException(String text, Type type) {
-        return outputParsingException(text, type.getTypeName(), null);
-    }
-
-    static OutputParsingException outputParsingException(String text, String type, Throwable cause) {
-        return new OutputParsingException("Failed to parse %s into %s".formatted(quoted(text), type), cause);
     }
 }

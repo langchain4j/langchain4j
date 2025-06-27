@@ -10,8 +10,8 @@ import java.lang.reflect.Field;
 import java.util.Locale;
 import java.util.Optional;
 
+import static dev.langchain4j.internal.JsonParsingUtils.outputParsingException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 import static java.util.Arrays.stream;
 

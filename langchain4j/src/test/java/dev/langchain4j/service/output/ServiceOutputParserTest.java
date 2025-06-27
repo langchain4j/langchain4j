@@ -3,6 +3,7 @@ package dev.langchain4j.service.output;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.OutputParsingException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;

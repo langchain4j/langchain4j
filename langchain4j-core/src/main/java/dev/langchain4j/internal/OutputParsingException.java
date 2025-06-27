@@ -1,4 +1,4 @@
-package dev.langchain4j.service.output;
+package dev.langchain4j.internal;
 
 import dev.langchain4j.exception.LangChain4jException;
 
