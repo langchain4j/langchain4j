@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.model.chat.ChatModel;
@@ -24,6 +25,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AiServiceTokenStreamTest {
 
     static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
+
+    static Consumer<ToolExecutionRequest> DUMMY_TOOL_BEFORE_EXECUTION_HANDLER = (toolExecutionRequest) -> {};
 
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
 
@@ -71,6 +74,29 @@ class AiServiceTokenStreamTest {
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("onPartialResponse must be invoked on TokenStream exactly 1 time");
+    }
+
+    @Test
+    void start_onToolBeforeExecutionInvoked_shouldNotThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onToolBeforeExecution(DUMMY_TOOL_BEFORE_EXECUTION_HANDLER)
+                .ignoreErrors();
+
+        assertThatNoException().isThrownBy(() -> tokenStream.start());
+    }
+
+    @Test
+    void start_onToolBeforeExecutionInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onToolBeforeExecution(DUMMY_TOOL_BEFORE_EXECUTION_HANDLER)
+                .onToolBeforeExecution(DUMMY_TOOL_BEFORE_EXECUTION_HANDLER)
+                .ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onToolBeforeExecution can be invoked on TokenStream at most 1 time");
     }
 
     @Test
