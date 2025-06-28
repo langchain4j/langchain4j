@@ -62,7 +62,6 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-
         <!-- test dependencies -->
 
         <dependency>
@@ -106,6 +105,13 @@
             <groupId>org.junit-pioneer</groupId>
             <artifactId>junit-pioneer</artifactId>
             <version>1.9.1</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>me.kpavlov.aimocks</groupId>
+            <artifactId>ai-mocks-gemini-jvm</artifactId>
+            <version>${ai-mocks.version}</version>
             <scope>test</scope>
         </dependency>
 

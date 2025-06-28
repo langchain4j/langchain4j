@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
+import static dev.langchain4j.model.googleai.GeminiService.GEMINI_AI_ENDPOINT;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -39,6 +40,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         super(
                 builder.httpClientBuilder,
                 builder.apiKey,
+                builder.baseUrl,
                 builder.modelName,
                 builder.temperature,
                 builder.topK,
@@ -71,6 +73,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public GoogleAiGeminiChatModel(
             String apiKey,
+            String baseUrl,
             String modelName,
             Integer maxRetries,
             Double temperature,
@@ -93,6 +96,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         super(
                 null,
                 apiKey,
+                baseUrl,
                 modelName,
                 temperature,
                 topK,
@@ -134,7 +138,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
 
         GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
-                () -> geminiService.generateContent(chatRequest.modelName(), apiKey, request), maxRetries);
+                () -> geminiService.generateContent(chatRequest.modelName(), request), maxRetries);
 
         return processResponse(geminiResponse);
     }
@@ -200,6 +204,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
+        private String baseUrl = GEMINI_AI_ENDPOINT;
         private String modelName;
         private Integer maxRetries;
         private Double temperature;
@@ -251,6 +256,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
             return this;
         }
 
