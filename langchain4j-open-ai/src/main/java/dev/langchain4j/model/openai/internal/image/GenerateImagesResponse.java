@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents the response from the OpenAI DALL·E API when generating images.
+ * Represents the response from the OpenAI Image API when generating images.
  * Find description of parameters <a href="https://platform.openai.com/docs/api-reference/images/object">here</a>.
  */
 @JsonDeserialize(builder = GenerateImagesResponse.Builder.class)
@@ -22,9 +22,12 @@ public class GenerateImagesResponse {
 
     @JsonProperty
     private final List<ImageData> data;
+    @JsonProperty
+    private final Usage usage;
 
     public GenerateImagesResponse(Builder builder) {
         this.data = builder.data;
+        this.usage = builder.usage;
     }
 
     public static Builder builder() {
@@ -35,9 +38,20 @@ public class GenerateImagesResponse {
         return data;
     }
 
+    public Usage usage() {
+        return usage;
+    }
+
     @Override
     public String toString() {
-        return "GenerateImagesResponse{" + "data=" + data + '}';
+        return (
+                "GenerateImagesResponse{" +
+                        "data=" +
+                        data +
+                        ", usage=" +
+                        usage +
+                        '}'
+        );
     }
 
     @Override
@@ -45,12 +59,15 @@ public class GenerateImagesResponse {
         if (this == another) return true;
         if (another == null || getClass() != another.getClass()) return false;
         GenerateImagesResponse anotherGenerateImagesResponse = (GenerateImagesResponse) another;
-        return Objects.equals(data, anotherGenerateImagesResponse.data);
+        return (
+                Objects.equals(data, anotherGenerateImagesResponse.data) &&
+                        Objects.equals(usage, anotherGenerateImagesResponse.usage)
+        );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(data);
+        return Objects.hash(data, usage);
     }
 
     @JsonPOJOBuilder(withPrefix = "")
@@ -59,9 +76,15 @@ public class GenerateImagesResponse {
     public static class Builder {
 
         private List<ImageData> data;
+        private Usage usage;
 
         public Builder data(List<ImageData> data) {
             this.data = data;
+            return this;
+        }
+
+        public Builder usage(Usage usage) {
+            this.usage = usage;
             return this;
         }
 

@@ -23,7 +23,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
- * Represents an OpenAI DALL·E models to generate artistic images. Versions 2 and 3 (default) are supported.
+ * Represents an OpenAI Image models to generate artistic images. DALL·E Versions 2 and 3 (default), gpt-image-1 are supported.
  * Find the parameters description <a href="https://platform.openai.com/docs/api-reference/images/create">here</a>.
  */
 public class OpenAiImageModel implements ImageModel {
@@ -34,6 +34,10 @@ public class OpenAiImageModel implements ImageModel {
     private final String style;
     private final String user;
     private final String responseFormat;
+    private final String background;
+    private final String moderation;
+    private final Integer outputCompression;
+    private final String outputFormat;
 
     private final OpenAiClient client;
 
@@ -62,6 +66,10 @@ public class OpenAiImageModel implements ImageModel {
         this.style = builder.style;
         this.user = builder.user;
         this.responseFormat = builder.responseFormat;
+        this.background = builder.background;
+        this.moderation = builder.moderation;
+        this.outputCompression = builder.outputCompression;
+        this.outputFormat = builder.outputFormat;
     }
 
     public String modelName() {
@@ -109,6 +117,10 @@ public class OpenAiImageModel implements ImageModel {
         private String style;
         private String user;
         private String responseFormat;
+        private String background;
+        private String moderation;
+        private Integer outputCompression;
+        private String outputFormat;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -179,6 +191,26 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
+        public OpenAiImageModelBuilder background(String background) {
+            this.background = background;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder moderation(String moderation) {
+            this.moderation = moderation;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder outputCompression(Integer outputCompression) {
+            this.outputCompression = outputCompression;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder outputFormat(String outputFormat) {
+            this.outputFormat = outputFormat;
+            return this;
+        }
+
         public OpenAiImageModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -221,6 +253,10 @@ public class OpenAiImageModel implements ImageModel {
                 .quality(quality)
                 .style(style)
                 .user(user)
-                .responseFormat(responseFormat);
+                .responseFormat(responseFormat)
+                .background(background)
+                .moderation(moderation)
+                .outputCompression(outputCompression)
+                .outputFormat(outputFormat);
     }
 }
