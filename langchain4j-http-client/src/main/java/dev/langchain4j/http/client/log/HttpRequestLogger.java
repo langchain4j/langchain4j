@@ -45,9 +45,8 @@ class HttpRequestLogger {
     }
 
     static String format(String headerKey, List<String> headerValues) {
-        if (COMMON_SECRET_HEADERS.contains(headerKey.toLowerCase())) {
-            headerValues =
-                    headerValues.stream().map(HttpRequestLogger::maskSecretKey).collect(toList());
+        if (COMMON_SECRET_HEADERS.contains(headerKey.toLowerCase()) || headerKey.toLowerCase().contains("api-key")) {
+            headerValues = headerValues.stream().map(HttpRequestLogger::maskSecretKey).collect(toList());
         }
 
         if (headerValues.size() == 1) {

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import java.util.Map;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.core.document.internal.MapDocument;
 
+@Internal
 class AwsDocumentConverter {
 
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()

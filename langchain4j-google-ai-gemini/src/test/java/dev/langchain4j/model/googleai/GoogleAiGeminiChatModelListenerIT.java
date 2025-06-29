@@ -28,15 +28,9 @@ class GoogleAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
     }
 
     @Override
-    protected boolean assertResponseId() {
-        return false;
-    }
-
-    @Override
     protected ChatModel createFailingModel(ChatModelListener listener) {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey("banana")
-                .modelName(modelName())
                 .maxRetries(0)
                 .listeners(singletonList(listener))
                 .logRequestsAndResponses(true)
@@ -45,7 +39,7 @@ class GoogleAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return dev.langchain4j.exception.InvalidRequestException.class;
     }
 
     @AfterEach

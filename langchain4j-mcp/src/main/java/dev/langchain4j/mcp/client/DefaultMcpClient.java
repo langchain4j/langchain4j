@@ -34,11 +34,14 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +72,11 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
     private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
     private final Duration reconnectInterval;
+    private volatile boolean closed = false;
+    private final Boolean autoHealthCheck;
+    private final Duration autoHealthCheckInterval;
+    private final ScheduledExecutorService healthCheckScheduler;
+    private final ReentrantLock initializationLock = new ReentrantLock();
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -83,6 +91,15 @@ public class DefaultMcpClient implements McpClient {
         logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
         pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
         reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
+        autoHealthCheck = getOrDefault(builder.autoHealthCheck, Boolean.TRUE);
+        autoHealthCheckInterval = getOrDefault(builder.autoHealthCheckInterval, Duration.ofSeconds(30));
+        healthCheckScheduler = autoHealthCheck
+                ? Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "mcp-server-health-checker");
+            t.setDaemon(true);
+            return t;
+        })
+                : null;
         toolExecutionTimeoutErrorMessage =
                 getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
         RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
@@ -95,15 +112,18 @@ public class DefaultMcpClient implements McpClient {
                 .put("type", "text")
                 .put("text", toolExecutionTimeoutErrorMessage);
         transport.onFailure(() -> {
-            try {
-                TimeUnit.MILLISECONDS.sleep(reconnectInterval.toMillis());
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            if (!closed) {
+                try {
+                    TimeUnit.MILLISECONDS.sleep(reconnectInterval.toMillis());
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                log.info("Trying to reconnect...");
+                triggerReconnection();
             }
-            log.info("Trying to reconnect...");
-            initialize();
         });
         initialize();
+        startAutoHealthCheck();
     }
 
     private void initialize() {
@@ -148,6 +168,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<ToolSpecification> listTools() {
+        assertNotClosed();
         if (toolListOutOfDate.get()) {
             CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
             if (updateInProgress != null) {
@@ -174,6 +195,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public String executeTool(ToolExecutionRequest executionRequest) {
+        assertNotClosed();
         ObjectNode arguments = null;
         try {
             String args = executionRequest.arguments();
@@ -205,6 +227,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<McpResource> listResources() {
+        assertNotClosed();
         if (resourceRefs.get() == null) {
             obtainResourceList();
         }
@@ -213,6 +236,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public McpReadResourceResult readResource(String uri) {
+        assertNotClosed();
         final long operationId = idGenerator.getAndIncrement();
         McpReadResourceRequest operation = new McpReadResourceRequest(operationId, uri);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
@@ -231,6 +255,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<McpPrompt> listPrompts() {
+        assertNotClosed();
         if (promptRefs.get() == null) {
             obtainPromptList();
         }
@@ -239,6 +264,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
+        assertNotClosed();
         long operationId = idGenerator.getAndIncrement();
         McpGetPromptRequest operation = new McpGetPromptRequest(operationId, name, arguments);
         long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
@@ -257,6 +283,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public void checkHealth() {
+        assertNotClosed();
         transport.checkHealth();
         long operationId = idGenerator.getAndIncrement();
         McpPingRequest ping = new McpPingRequest(operationId);
@@ -272,6 +299,7 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public List<McpResourceTemplate> listResourceTemplates() {
+        assertNotClosed();
         if (resourceTemplateRefs.get() == null) {
             obtainResourceTemplateList();
         }
@@ -333,6 +361,37 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    private void startAutoHealthCheck() {
+        if (Boolean.FALSE.equals(autoHealthCheck)) {
+            return;
+        }
+        Runnable healthCheckTask = () -> {
+            try {
+                checkHealth();
+            } catch (Exception e) {
+                log.warn("mcp server health check failed. Attempting to reconnect...", e);
+                triggerReconnection();
+            }
+        };
+        healthCheckScheduler.scheduleAtFixedRate(
+                healthCheckTask,
+                autoHealthCheckInterval.toMillis(),
+                autoHealthCheckInterval.toMillis(),
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    private void triggerReconnection() {
+        if (initializationLock.tryLock()) {
+            try {
+                initialize();
+            } finally {
+                initializationLock.unlock();
+            }
+        }
+
+    }
+
     private synchronized void obtainPromptList() {
         if (promptRefs.get() != null) {
             return;
@@ -354,10 +413,20 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public void close() {
+        closed = true;
+        if (healthCheckScheduler != null) {
+            healthCheckScheduler.shutdownNow();
+        }
         try {
             transport.close();
         } catch (Exception e) {
             log.warn("Cannot close MCP transport", e);
+        }
+    }
+
+    private void assertNotClosed() {
+        if (closed) {
+            throw new IllegalStateException("The client is closed");
         }
     }
 
@@ -376,6 +445,8 @@ public class DefaultMcpClient implements McpClient {
         private Duration promptsTimeout;
         private McpLogMessageHandler logHandler;
         private Duration reconnectInterval;
+        private Boolean autoHealthCheck;
+        private Duration autoHealthCheckInterval;
 
         public Builder transport(McpTransport transport) {
             this.transport = transport;
@@ -496,6 +567,27 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder reconnectInterval(Duration reconnectInterval) {
             this.reconnectInterval = reconnectInterval;
+            return this;
+        }
+
+        /**
+         * Enables or disables the automatic health check feature.
+         * When enabled, the client will periodically send ping messages to the server
+         * to ensure the connection is alive, and will attempt to reconnect if it's not.
+         * The default is enabled
+         */
+        public Builder autoHealthCheck(boolean autoHealthCheck) {
+            this.autoHealthCheck = autoHealthCheck;
+            return this;
+        }
+
+        /**
+         * Sets the interval for the automatic health checks.
+         * This is only used when the auto health check feature is enabled.
+         * The default is 30 seconds
+         */
+        public Builder autoHealthCheckInterval(Duration interval) {
+            this.autoHealthCheckInterval = interval;
             return this;
         }
 
