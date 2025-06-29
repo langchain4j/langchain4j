@@ -131,6 +131,7 @@ abstract class BaseGeminiChatModel {
                         .topP(parameters.topP())
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
+                        .responseLogprobs(responseLogprobs)
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .build())
