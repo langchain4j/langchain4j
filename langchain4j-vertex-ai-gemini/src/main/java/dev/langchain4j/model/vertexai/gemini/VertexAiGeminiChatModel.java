@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
@@ -151,24 +152,24 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             // only a subset of functions allowed to be used by the model
             this.toolConfig = switch (builder.toolCallingMode) {
                 case NONE ->
-                        ToolConfig.newBuilder()
-                                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
-                                        .setMode(FunctionCallingConfig.Mode.NONE)
-                                        .build())
-                                .build();
+                    ToolConfig.newBuilder()
+                            .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                    .setMode(FunctionCallingConfig.Mode.NONE)
+                                    .build())
+                            .build();
                 case AUTO ->
-                        ToolConfig.newBuilder()
-                                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
-                                        .setMode(FunctionCallingConfig.Mode.AUTO)
-                                        .build())
-                                .build();
+                    ToolConfig.newBuilder()
+                            .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                    .setMode(FunctionCallingConfig.Mode.AUTO)
+                                    .build())
+                            .build();
                 case ANY ->
-                        ToolConfig.newBuilder()
-                                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
-                                        .setMode(FunctionCallingConfig.Mode.ANY)
-                                        .addAllAllowedFunctionNames(this.allowedFunctionNames)
-                                        .build())
-                                .build();
+                    ToolConfig.newBuilder()
+                            .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                                    .setMode(FunctionCallingConfig.Mode.ANY)
+                                    .addAllAllowedFunctionNames(this.allowedFunctionNames)
+                                    .build())
+                            .build();
             };
 
         } else {
@@ -185,8 +186,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
                 .build();
 
-        this.generativeModel = new GenerativeModel(builder.modelName, vertexAI)
-                .withGenerationConfig(generationConfig);
+        this.generativeModel = new GenerativeModel(builder.modelName, vertexAI).withGenerationConfig(generationConfig);
 
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.logRequests = getOrDefault(builder.logRequests, false);
@@ -311,21 +311,12 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
                 .build();
 
-        this.generativeModel = new GenerativeModel(modelName, vertexAI)
-                .withGenerationConfig(generationConfig);
+        this.generativeModel = new GenerativeModel(modelName, vertexAI).withGenerationConfig(generationConfig);
 
         this.maxRetries = getOrDefault(maxRetries, 2);
 
-        if (logRequests != null) {
-            this.logRequests = logRequests;
-        } else {
-            this.logRequests = false;
-        }
-        if (logResponses != null) {
-            this.logResponses = logResponses;
-        } else {
-            this.logResponses = false;
-        }
+        this.logRequests = Objects.requireNonNullElse(logRequests, false);
+        this.logResponses = Objects.requireNonNullElse(logResponses, false);
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copy(supportedCapabilities);
@@ -451,7 +442,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                         .responseFormat(responseFormat)
                         .build())
                 .build();
-        ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
+        final ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
         ChatModelRequestContext chatModelRequestContext =
                 new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
         listeners.forEach((listener) -> {
@@ -462,7 +453,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             }
         });
 
-        GenerateContentResponse response = null;
+        final GenerateContentResponse response;
         try {
             response = withRetryMappingExceptions(
                     () -> finalModel.generateContent(instructionAndContent.contents), maxRetries);
@@ -491,24 +482,20 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .map(Part::getFunctionCall)
                 .toList();
 
-        Response finalResponse = null;
-        AiMessage aiMessage;
+        final Response<AiMessage> finalResponse;
+        final AiMessage aiMessage;
 
         if (!functionCalls.isEmpty()) {
             List<ToolExecutionRequest> toolExecutionRequests = FunctionCallHelper.fromFunctionCalls(functionCalls);
 
             aiMessage = AiMessage.from(toolExecutionRequests);
-            finalResponse = Response.from(
-                    aiMessage,
-                    TokenUsageMapper.map(response.getUsageMetadata()),
-                    FinishReasonMapper.map(ResponseHandler.getFinishReason(response)));
         } else {
             aiMessage = AiMessage.from(ResponseHandler.getText(response));
-            finalResponse = Response.from(
-                    aiMessage,
-                    TokenUsageMapper.map(response.getUsageMetadata()),
-                    FinishReasonMapper.map(ResponseHandler.getFinishReason(response)));
         }
+        finalResponse = Response.from(
+                aiMessage,
+                TokenUsageMapper.map(response.getUsageMetadata()),
+                FinishReasonMapper.map(ResponseHandler.getFinishReason(response)));
 
         ChatResponse listenerResponse = ChatResponse.builder()
                 .aiMessage(aiMessage)

@@ -1,6 +1,5 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -14,11 +13,9 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.model.chat.ChatModel;
 import io.ktor.http.HttpStatusCode;
 import java.time.Duration;
-import java.util.Random;
 import java.util.stream.Stream;
-import me.kpavlov.aimocks.anthropic.MockAnthropic;
+import me.kpavlov.aimocks.gemini.MockGemini;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,28 +24,20 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.CONCURRENT)
-class AnthropicChatModelErrorsTest {
+class GoogleAiGeminiChatModelErrorsTest {
 
-    private static final MockAnthropic MOCK = new MockAnthropic(0, true);
+    private static final MockGemini MOCK = new MockGemini();
 
-    public static final Duration TIMEOUT = Duration.ofSeconds(2);
+    public static final Duration TIMEOUT = Duration.ofSeconds(3);
+    public static final String MODEL_NAME = "gemini-2.0-flash";
 
-    private static final ChatModel model = AnthropicChatModel.builder()
-            .apiKey("dummy-key")
-            .baseUrl(MOCK.baseUrl() + "/v1")
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
-            .maxTokens(20)
+    final ChatModel model = GoogleAiGeminiChatModel.builder()
+            .apiKey("dummy-api-key")
+            .modelName(MODEL_NAME)
+            .baseUrl(MOCK.baseUrl())
             .timeout(TIMEOUT)
-            .logRequests(true)
-            .logResponses(true)
+            .maxRetries(0)
             .build();
-
-    private double seed;
-
-    @BeforeEach
-    void setUp() {
-        seed = new Random().nextDouble(0.0, 1.0);
-    }
 
     public static Stream<Arguments> errors() {
         return Stream.of(
@@ -66,26 +55,16 @@ class AnthropicChatModelErrorsTest {
     @MethodSource("errors")
     void should_handle_error_responses(int httpStatusCode, Class<LangChain4jException> exception) {
 
-        final var question = "What is the number: " + seed;
-        final var message = "Error with seed: " + seed;
-
-        // language=json
-        final var responseBody =
-                """
-                        {
-                          "type": "error",
-                          "error": {
-                            "type": "does not matter",
-                            "message": "%s"
-                          }
-                        }
-                        """
-                        .formatted(message);
-
-        MOCK.messages(req -> req.userMessageContains(question)).respondsError(res -> {
-            res.setBody(responseBody);
-            res.setHttpStatus(HttpStatusCode.Companion.fromValue(httpStatusCode));
-        });
+        // given
+        final var question = "Return error: " + httpStatusCode;
+        MOCK.generateContent(req -> {
+                    req.userMessageContains(question);
+                    req.path("/models/%s:generateContent".formatted(MODEL_NAME));
+                })
+                .respondsError(res -> {
+                    res.setHttpStatus(HttpStatusCode.Companion.fromValue(httpStatusCode));
+                    res.setBody("");
+                });
 
         // when-then
         assertThatThrownBy(() -> model.chat(question))
@@ -100,25 +79,26 @@ class AnthropicChatModelErrorsTest {
     void should_handle_timeout(int millis) {
 
         // given
-        Duration timeout = Duration.ofMillis(millis);
+        final Duration timeout = Duration.ofMillis(millis);
 
-        ChatModel model = AnthropicChatModel.builder()
-                .apiKey("dummy-key")
-                .baseUrl(MOCK.baseUrl() + "/v1")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
-                .maxTokens(20)
+        final ChatModel model = GoogleAiGeminiChatModel.builder()
+                .apiKey("dummy-api-key2")
+                .modelName(MODEL_NAME)
+                .baseUrl(MOCK.baseUrl())
                 .timeout(timeout)
-                .logRequests(true)
-                .logResponses(true)
+                .maxRetries(0)
                 .build();
 
-        final var question = "Simulate timeout " + System.currentTimeMillis();
-        MOCK.messages(req -> req.userMessageContains(question)).respondsError(res -> {
-            // don't really care about the response, just simulate a timeout
-            res.delayMillis(TIMEOUT.plusMillis(250).toMillis());
-            res.setHttpStatus(HttpStatusCode.Companion.getNoContent());
-            res.setBody("");
-        });
+        final var question = "Simulate timeout";
+        MOCK.generateContent(req -> {
+                    req.userMessageContains(question);
+                    req.path("/models/%s:generateContent".formatted(MODEL_NAME));
+                })
+                .respondsError(res -> {
+                    res.delayMillis(TIMEOUT.multipliedBy(2).toMillis());
+                    res.setHttpStatus(HttpStatusCode.Companion.getNoContent());
+                    res.setBody("");
+                });
 
         // when-then
         assertThatThrownBy(() -> model.chat(question))

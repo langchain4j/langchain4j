@@ -24,7 +24,6 @@ import java.util.Optional;
 abstract class BaseGeminiChatModel {
 
     protected final GeminiService geminiService;
-    protected final String apiKey;
     protected final GeminiFunctionCallingConfig functionCallingConfig;
     protected final boolean allowCodeExecution;
     protected final boolean includeCodeExecutionOutput;
@@ -42,6 +41,7 @@ abstract class BaseGeminiChatModel {
     protected BaseGeminiChatModel(
             HttpClientBuilder httpClientBuilder,
             String apiKey,
+            String baseUrl,
             String modelName,
             Double temperature,
             Integer topK,
@@ -65,7 +65,8 @@ abstract class BaseGeminiChatModel {
             Integer maxRetries,
             GeminiThinkingConfig thinkingConfig,
             ChatRequestParameters defaultRequestParameters) {
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
+        ensureNotBlank(apiKey, "apiKey");
+        ensureNotBlank(baseUrl, "baseUrl");
         this.functionCallingConfig = functionCallingConfig;
         this.allowCodeExecution = getOrDefault(allowCodeExecution, false);
         this.includeCodeExecutionOutput = getOrDefault(includeCodeExecutionOutput, false);
@@ -77,8 +78,8 @@ abstract class BaseGeminiChatModel {
         this.responseLogprobs = getOrDefault(responseLogprobs, false);
         this.enableEnhancedCivicAnswers = getOrDefault(enableEnhancedCivicAnswers, false);
         this.logprobs = logprobs;
-        this.geminiService =
-                new GeminiService(httpClientBuilder, getOrDefault(logRequestsAndResponses, false), timeout);
+        this.geminiService = new GeminiService(
+                httpClientBuilder, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), timeout);
 
         ChatRequestParameters parameters;
         if (defaultRequestParameters != null) {
