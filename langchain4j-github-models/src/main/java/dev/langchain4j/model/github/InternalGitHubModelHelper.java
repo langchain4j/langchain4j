@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -178,16 +179,11 @@ class InternalGitHubModelHelper {
     }
 
     private static KeyCredential getCredential(String gitHubToken) {
-        if (gitHubToken != null) {
-            return new AzureKeyCredential(gitHubToken);
-        } else {
-            throw new IllegalArgumentException(
-                    "GitHub token is a mandatory parameter for connecting to GitHub models.");
-        }
+        ensureNotNull(gitHubToken, "%s", "GitHub token is a mandatory parameter for connecting to GitHub models.");
+        return new AzureKeyCredential(gitHubToken);
     }
 
     public static List<ChatRequestMessage> toAzureAiMessages(List<ChatMessage> messages) {
-
         return messages.stream()
                 .map(InternalGitHubModelHelper::toAzureAiMessage)
                 .collect(toList());
@@ -221,10 +217,7 @@ class InternalGitHubModelHelper {
                                 return new ChatMessageTextContentItem(text);
                             } else if (content instanceof ImageContent) {
                                 ImageContent imageContent = (ImageContent) content;
-                                if (imageContent.image().url() == null) {
-                                    throw new IllegalArgumentException(
-                                            "Image URL is not present. Base64 encoded images are not supported at the moment.");
-                                }
+                                ensureNotNull(imageContent.image().url(), "%s" , "Image URL is not present. Base64 encoded images are not supported at the moment.");
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(
                                         imageContent.image().url().toString());
                                 imageUrl.setDetail(ChatMessageImageDetailLevel.fromString(
