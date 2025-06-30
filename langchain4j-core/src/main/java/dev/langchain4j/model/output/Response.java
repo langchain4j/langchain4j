@@ -1,13 +1,12 @@
 package dev.langchain4j.model.output;
 
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Map;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents the response from various types of models, including language, chat, embedding, and moderation models.
@@ -19,8 +18,10 @@ public class Response<T> {
 
     @NonNull
     private final T content;
+
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
+
     @NonNull
     private final Map<String, Object> metadata;
 
@@ -54,10 +55,11 @@ public class Response<T> {
      * @param finishReason the finish reason, or {@code null}.
      * @param metadata     the response metadata, or {@code null}.
      */
-    public Response(@NonNull T content,
-                    TokenUsage tokenUsage,
-                    FinishReason finishReason,
-                    @Nullable Map<String, Object> metadata) {
+    public Response(
+            @NonNull T content,
+            TokenUsage tokenUsage,
+            FinishReason finishReason,
+            @Nullable Map<String, Object> metadata) {
         this.content = ensureNotNull(content, "content");
         this.tokenUsage = tokenUsage;
         this.finishReason = finishReason;
@@ -120,12 +122,11 @@ public class Response<T> {
 
     @Override
     public String toString() {
-        return "Response {" +
-                " content = " + content +
-                ", tokenUsage = " + tokenUsage +
-                ", finishReason = " + finishReason +
-                ", metadata = " + metadata +
-                " }";
+        return "Response {" + " content = "
+                + content + ", tokenUsage = "
+                + tokenUsage + ", finishReason = "
+                + finishReason + ", metadata = "
+                + metadata + " }";
     }
 
     /**
@@ -178,10 +179,11 @@ public class Response<T> {
      * @return the new Response.
      */
     @NonNull
-    public static <T> Response<T> from(@NonNull T content,
-                                       TokenUsage tokenUsage,
-                                       FinishReason finishReason,
-                                       @Nullable Map<String, Object> metadata) {
+    public static <T> Response<T> from(
+            @NonNull T content,
+            TokenUsage tokenUsage,
+            FinishReason finishReason,
+            @Nullable Map<String, Object> metadata) {
         return new Response<>(content, tokenUsage, finishReason, metadata);
     }
 }
