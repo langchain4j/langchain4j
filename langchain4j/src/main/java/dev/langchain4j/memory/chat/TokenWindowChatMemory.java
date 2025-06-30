@@ -3,6 +3,8 @@ package dev.langchain4j.memory.chat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageDeserializer;
+import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -122,6 +124,17 @@ public class TokenWindowChatMemory implements ChatMemory {
     @Override
     public void clear() {
         store.deleteMessages(id);
+    }
+
+    public String serializeToJson() {
+        return ChatMessageSerializer.messagesToJson(store.getMessages(id));
+    }
+
+    public static TokenWindowChatMemory fromJson(String json, int size, TokenCountEstimator tokenCountEstimator) {
+        List<ChatMessage> messages = ChatMessageDeserializer.messagesFromJson(json);
+        TokenWindowChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(size, tokenCountEstimator);
+        messages.forEach(chatMemory::add);
+        return chatMemory;
     }
 
     public static Builder builder() {
