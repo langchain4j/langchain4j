@@ -259,6 +259,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-mcp-docker</artifactId>
+                <version>1.4.0-beta10-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-milvus</artifactId>
                 <version>1.4.0-beta10-SNAPSHOT</version>
             </dependency>
