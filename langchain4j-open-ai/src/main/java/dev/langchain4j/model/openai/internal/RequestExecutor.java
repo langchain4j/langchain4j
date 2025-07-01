@@ -35,7 +35,7 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
 
     @Override
     public Response execute() {
-        return executeRaw().response();
+        return executeRaw().parsedResponse();
     }
 
     @Override
@@ -50,12 +50,12 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
     }
 
     @Override
-    public StreamingResponseHandling onPartialResponse(Consumer<Response> partialResponseHandler) {
-        return onPartialRawResponse(partialRawResponse -> partialResponseHandler.accept(partialRawResponse.response()));
+    public StreamingResponseHandling onPartialResponse(Consumer<Response> handler) {
+        return onRawPartialResponse(parsedAndRawResponse -> handler.accept(parsedAndRawResponse.parsedResponse()));
     }
 
     @Override
-    public StreamingResponseHandling onPartialRawResponse(Consumer<ParsedAndRawResponse<Response>> handler) {
+    public StreamingResponseHandling onRawPartialResponse(Consumer<ParsedAndRawResponse<Response>> handler) {
         StreamingRequestExecutor<Response> executor =
                 new StreamingRequestExecutor<>(httpClient, streamingHttpRequest, responseClass);
         return executor.onPartialResponse(handler);

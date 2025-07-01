@@ -6,9 +6,9 @@ public interface SyncOrAsync<ResponseContent> {
 
     ResponseContent execute();
 
-    default ParsedAndRawResponse<ResponseContent> executeRaw() { // TODO name
+    default ParsedAndRawResponse<ResponseContent> executeRaw() {
         throw new UnsupportedOperationException("not implemented");
-    };
+    }
 
     AsyncResponseHandling onResponse(Consumer<ResponseContent> responseHandler);
 }

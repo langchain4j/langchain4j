@@ -56,7 +56,7 @@ public class OpenAiStreamingResponseBuilder {
 
     public void append(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {
         rawEvents.add(parsedAndRawResponse.rawEvent());
-        append(parsedAndRawResponse.response());
+        append(parsedAndRawResponse.parsedResponse());
     }
 
     public void append(ChatCompletionResponse partialResponse) {

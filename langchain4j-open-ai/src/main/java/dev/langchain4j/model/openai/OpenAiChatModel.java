@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -35,7 +34,6 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiRespon
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
-import static dev.langchain4j.model.openai.internal.ParsedAndRawResponse.RAW_RESPONSE_ATTRIBUTE;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
@@ -144,7 +142,7 @@ public class OpenAiChatModel implements ChatModel {
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(() ->
                 client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
 
-        ChatCompletionResponse openAiResponse = parsedAndRawResponse.response();
+        ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
