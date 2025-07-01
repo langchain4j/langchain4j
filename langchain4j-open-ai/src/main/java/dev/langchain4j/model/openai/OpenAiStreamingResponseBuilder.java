@@ -1,6 +1,8 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.model.openai.internal.ResponseAndAttributes;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
@@ -18,12 +20,14 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
+import static dev.langchain4j.model.openai.internal.ResponseAndAttributes.RAW_EVENT_ATTRIBUTE;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 

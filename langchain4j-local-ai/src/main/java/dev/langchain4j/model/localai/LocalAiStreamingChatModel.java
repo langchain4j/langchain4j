@@ -159,7 +159,7 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
                     responseBuilder.append(partialResponse);
-                    handle(partialResponse, handler);
+                    handle(partialResponse.response(), handler);
                 })
                 .onComplete(() -> {
                     ChatResponse chatResponse = responseBuilder.build();

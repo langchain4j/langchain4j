@@ -11,6 +11,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;

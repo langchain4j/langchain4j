@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -10,6 +11,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ResponseAndAttributes;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
@@ -33,6 +35,7 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiRespon
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
+import static dev.langchain4j.model.openai.internal.ResponseAndAttributes.RAW_RESPONSE_ATTRIBUTE;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
