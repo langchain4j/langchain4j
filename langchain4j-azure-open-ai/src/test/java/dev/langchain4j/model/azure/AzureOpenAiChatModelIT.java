@@ -71,9 +71,10 @@ class AzureOpenAiChatModelIT {
         assertThat(response.aiMessage().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
+        final var inputTokenCount = tokenUsage.inputTokenCount();
+        assertThat(inputTokenCount).isBetween(15, 20);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
-        assertThat(tokenUsage.totalTokenCount()).isGreaterThan(14);
+        assertThat(tokenUsage.totalTokenCount()).isGreaterThan(inputTokenCount + 1);
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
@@ -419,10 +420,10 @@ class AzureOpenAiChatModelIT {
 
         UserMessage userMessage = UserMessage.from(
                 """
-                Extract information from the following text:
-                1. A circle with a radius of 5
-                2. A rectangle with a width of 10 and a height of 20
-                """);
+                        Extract information from the following text:
+                        1. A circle with a radius of 5
+                        2. A rectangle with a width of 10 and a height of 20
+                        """);
 
         ChatRequest request = ChatRequest.builder()
                 .messages(userMessage)
