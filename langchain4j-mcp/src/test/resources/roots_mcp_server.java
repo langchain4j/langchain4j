@@ -2,10 +2,10 @@
 //DEPS io.quarkus:quarkus-bom:${quarkus.version:3.24.1}@pom
 //DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.3.1
 //DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.3.1
-//DEPS org.awaitility:awaitility:4.3.0
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import io.quarkus.logging.Log;
@@ -19,7 +19,6 @@ import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.ToolResponse;
-import org.awaitility.Awaitility;
 
 // this server expects the client to provide a list of roots during initialization
 // and provides a tool named 'assertRoots' that returns 'OK' if the
@@ -27,6 +26,8 @@ import org.awaitility.Awaitility;
 public class roots_mcp_server {
 
     private volatile List<Root> rootList;
+    private CountDownLatch initializationLatch = new CountDownLatch(1);
+    private CountDownLatch updateLatch = new CountDownLatch(1);
 
     @Notification(Type.INITIALIZED)
     void init(McpConnection connection, Roots roots) {
@@ -34,14 +35,32 @@ public class roots_mcp_server {
             throw new RuntimeException("The client does not support roots.");
         }
         rootList = roots.listAndAwait();
+        initializationLatch.countDown();
         Log.info("Roots list = " + rootList);
     }
 
+
+    @Notification(Type.ROOTS_LIST_CHANGED)
+    void change(McpConnection connection, Roots roots) {
+        rootList = roots.listAndAwait();
+        updateLatch.countDown();
+    }
+
     @Tool
-    String assertRoots() {
+    String assertRoots() throws Exception {
         // Wait up to 20 seconds until the `rootList` variable has been set because that happens asynchronously
         // and the tool may be called before the MCP server receives the roots.
-        Awaitility.await().atMost(20, TimeUnit.SECONDS).until(() -> rootList != null);
+        initializationLatch.await(20, TimeUnit.SECONDS);
+        return assertRoot("David's workspace", "file:///home/david/workspace");
+    }
+
+    @Tool
+    String assertRootsAfterUpdate() throws Exception {
+        updateLatch.await(20, TimeUnit.SECONDS);
+        return assertRoot("Paul's workspace", "file:///home/paul/workspace");
+    }
+
+    private String assertRoot(String name, String uri) {
         if(rootList.isEmpty()) {
             throw new RuntimeException("The client didn't send any roots");
         }
@@ -49,7 +68,7 @@ public class roots_mcp_server {
             throw new RuntimeException("The client sent more than one root: " + rootList);
         }
         Root root = rootList.get(0);
-        if(!root.name().equals("David's workspace") || !root.uri().equals("file:///home/david/workspace")) {
+        if(!root.name().equals(name) || !root.uri().equals(uri)) {
             throw new RuntimeException("The client sent the wrong root: " + root);
         }
         return "OK";

@@ -25,6 +25,7 @@ import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.client.protocol.McpPingRequest;
 import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
+import dev.langchain4j.mcp.client.protocol.RootListChangedNotification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
@@ -78,7 +79,7 @@ public class DefaultMcpClient implements McpClient {
     private final Duration autoHealthCheckInterval;
     private final ScheduledExecutorService healthCheckScheduler;
     private final ReentrantLock initializationLock = new ReentrantLock();
-    private final List<McpRoot> mcpRoots;
+    private final AtomicReference<List<McpRoot>> mcpRoots;
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -104,11 +105,11 @@ public class DefaultMcpClient implements McpClient {
                 : null;
         toolExecutionTimeoutErrorMessage =
                 getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
-        mcpRoots = getOrDefault(builder.roots, new ArrayList<>());
+        mcpRoots = new AtomicReference<>(getOrDefault(builder.roots, new ArrayList<>()));
         RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
         messageHandler = new McpOperationHandler(
                 pendingOperations,
-                mcpRoots,
+                mcpRoots::get,
                 transport,
                 logHandler::handleLogMessage,
                 () -> toolListOutOfDate.set(true));
@@ -161,7 +162,7 @@ public class DefaultMcpClient implements McpClient {
 
         InitializeParams.Capabilities capabilities = new InitializeParams.Capabilities();
         InitializeParams.Capabilities.Roots roots = new InitializeParams.Capabilities.Roots();
-        roots.setListChanged(false); // TODO: listChanged is not supported yet
+        roots.setListChanged(true);
         capabilities.setRoots(roots);
         params.setCapabilities(capabilities);
 
@@ -302,6 +303,12 @@ public class DefaultMcpClient implements McpClient {
         } finally {
             pendingOperations.remove(operationId);
         }
+    }
+
+    @Override
+    public void setRoots(final List<McpRoot> roots) {
+        this.mcpRoots.set(roots);
+        transport.executeOperationWithoutResponse(new RootListChangedNotification());
     }
 
     @Override

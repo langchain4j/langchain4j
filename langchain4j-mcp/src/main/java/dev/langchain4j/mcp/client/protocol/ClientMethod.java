@@ -24,5 +24,7 @@ public enum ClientMethod {
     @JsonProperty("prompts/list")
     PROMPTS_LIST,
     @JsonProperty("prompts/get")
-    PROMPTS_GET
+    PROMPTS_GET,
+    @JsonProperty("notifications/roots/list_changed")
+    NOTIFICATION_ROOT_LIST_CHANGED
 }

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,11 +26,11 @@ public class McpOperationHandler {
     private final McpTransport transport;
     private final Consumer<McpLogMessage> logMessageConsumer;
     private final Runnable onToolListUpdate;
-    private final List<McpRoot> roots;
+    private final Supplier<List<McpRoot>> roots;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
-            List<McpRoot> roots,
+            Supplier<List<McpRoot>> roots,
             McpTransport transport,
             Consumer<McpLogMessage> logMessageConsumer,
             Runnable onToolListUpdate) {
@@ -59,7 +60,7 @@ public class McpOperationHandler {
                         transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
                         return;
                     } else if (method.equals("roots/list")) {
-                        transport.executeOperationWithoutResponse(new McpRootsListResponse(messageId, roots));
+                        transport.executeOperationWithoutResponse(new McpRootsListResponse(messageId, roots.get()));
                         return;
                     }
                 }
