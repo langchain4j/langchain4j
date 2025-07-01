@@ -2,7 +2,7 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.model.openai.internal.ResponseAndAttributes;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
@@ -27,7 +27,6 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
-import static dev.langchain4j.model.openai.internal.ResponseAndAttributes.RAW_EVENT_ATTRIBUTE;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -55,9 +54,9 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
     private final List<ServerSentEvent> rawEvents = new CopyOnWriteArrayList<>(); // TODO performance
 
-    public void append(ResponseAndAttributes<ChatCompletionResponse> responseAndAttributes) {
-        rawEvents.add((ServerSentEvent) responseAndAttributes.attributes().get(RAW_EVENT_ATTRIBUTE));
-        append(responseAndAttributes.response());
+    public void append(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {
+        rawEvents.add(parsedAndRawResponse.rawEvent());
+        append(parsedAndRawResponse.response());
     }
 
     public void append(ChatCompletionResponse partialResponse) {

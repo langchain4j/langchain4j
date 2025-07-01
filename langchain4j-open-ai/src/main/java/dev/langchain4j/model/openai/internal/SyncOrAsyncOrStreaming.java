@@ -6,7 +6,7 @@ public interface SyncOrAsyncOrStreaming<ResponseContent> extends SyncOrAsync<Res
 
     StreamingResponseHandling onPartialResponse(Consumer<ResponseContent> partialResponseHandler);
 
-    default StreamingResponseHandling onPartialResponseRaw(Consumer<ResponseAndAttributes<ResponseContent>> handler) {
+    default StreamingResponseHandling onPartialRawResponse(Consumer<ParsedAndRawResponse<ResponseContent>> handler) {
         throw new UnsupportedOperationException("not implemented");
     }
 }

@@ -6,7 +6,7 @@ public interface SyncOrAsync<ResponseContent> {
 
     ResponseContent execute();
 
-    default ResponseAndAttributes<ResponseContent> executeRaw() { // TODO name
+    default ParsedAndRawResponse<ResponseContent> executeRaw() { // TODO name
         throw new UnsupportedOperationException("not implemented");
     };
 

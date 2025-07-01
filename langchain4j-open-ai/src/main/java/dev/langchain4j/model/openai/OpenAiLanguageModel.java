@@ -65,8 +65,7 @@ public class OpenAiLanguageModel implements LanguageModel {
                 .temperature(temperature)
                 .build();
 
-        CompletionResponse response =
-                withRetryMappingExceptions(() -> client.completion(request).executeRaw().response(), maxRetries);
+        CompletionResponse response = withRetryMappingExceptions(() -> client.completion(request).executeRaw().response(), maxRetries);
 
         CompletionChoice completionChoice = response.choices().get(0);
         return Response.from(

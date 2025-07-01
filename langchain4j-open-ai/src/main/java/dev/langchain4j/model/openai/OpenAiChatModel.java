@@ -11,7 +11,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.ResponseAndAttributes;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
@@ -35,7 +35,7 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiRespon
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
-import static dev.langchain4j.model.openai.internal.ResponseAndAttributes.RAW_RESPONSE_ATTRIBUTE;
+import static dev.langchain4j.model.openai.internal.ParsedAndRawResponse.RAW_RESPONSE_ATTRIBUTE;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
@@ -141,10 +141,10 @@ public class OpenAiChatModel implements ChatModel {
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
-        ResponseAndAttributes<ChatCompletionResponse> responseAndAttributes =
-                withRetryMappingExceptions(() -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+        ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(() ->
+                client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
 
-        ChatCompletionResponse openAiResponse = responseAndAttributes.response();
+        ChatCompletionResponse openAiResponse = parsedAndRawResponse.response();
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
@@ -154,7 +154,7 @@ public class OpenAiChatModel implements ChatModel {
                 .created(openAiResponse.created())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
-                .rawResponse((SuccessfulHttpResponse) responseAndAttributes.attributes().get(RAW_RESPONSE_ATTRIBUTE))
+                .rawResponse(parsedAndRawResponse.rawResponse())
                 .build();
 
         return ChatResponse.builder()
