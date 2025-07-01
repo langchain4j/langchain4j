@@ -64,7 +64,7 @@ class AzureOpenAiChatModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        UserMessage userMessage = userMessage("hello, how are you?");
+        UserMessage userMessage = userMessage("Hello, how are you? Answer just one word.");
 
         ChatResponse response = model.chat(userMessage);
 
@@ -310,8 +310,7 @@ class AzureOpenAiChatModelIT {
 
         SystemMessage systemMessage =
                 SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage(
-                "List teams in the past French presidents,last name only.");
+        UserMessage userMessage = userMessage("List teams in the past French presidents,last names only.");
 
         ChatResponse response = model.chat(systemMessage, userMessage);
 
@@ -447,6 +446,7 @@ class AzureOpenAiChatModelIT {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 10, 100})
+    // todo: should be mokksy test
     void should_handle_timeout(int millis) {
 
         // given

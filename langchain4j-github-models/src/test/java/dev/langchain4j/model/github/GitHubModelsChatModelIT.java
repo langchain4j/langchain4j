@@ -17,7 +17,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -308,8 +307,7 @@ class GitHubModelsChatModelIT {
 
         SystemMessage systemMessage =
                 SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage(
-                "List teams in the past French presidents, with their last name only.");
+        UserMessage userMessage = userMessage("List teams in the past French presidents,last names only.");
 
         ChatResponse response = model.chat(systemMessage, userMessage);
 
