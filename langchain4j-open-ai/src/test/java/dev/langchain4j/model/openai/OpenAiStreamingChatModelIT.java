@@ -15,6 +15,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -23,9 +24,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
@@ -34,6 +37,7 @@ import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -51,8 +55,9 @@ class OpenAiStreamingChatModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_O_MINI)
+            .modelName(GPT_4_1_NANO)
             .temperature(0.0)
+            .maxTokens(50)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -197,6 +202,7 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
+    @RetryingTest(value = 2, suspendForMs = 1500)
     void should_execute_a_tool_then_stream_answer() throws Exception {
 
         // given
@@ -204,6 +210,7 @@ class OpenAiStreamingChatModelIT {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
+                .maxOutputTokens(20)
                 .toolSpecifications(calculator)
                 .build();
 
@@ -229,7 +236,7 @@ class OpenAiStreamingChatModelIT {
             }
         });
 
-        ChatResponse response = futureResponse.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(10, SECONDS);
         AiMessage aiMessage = response.aiMessage();
 
         // then
