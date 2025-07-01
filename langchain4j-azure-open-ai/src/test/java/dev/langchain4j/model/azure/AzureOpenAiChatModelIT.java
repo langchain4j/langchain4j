@@ -60,6 +60,7 @@ class AzureOpenAiChatModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
+                .maxTokens(10)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -107,9 +108,7 @@ class AzureOpenAiChatModelIT {
     @CsvSource({"gpt-4o"})
     void should_execute_tool_forcefully_then_answer(String deploymentName) {
 
-        ChatModel model = AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        ChatModel model = AzureModelBuilders.chatModelBuilder()
                 .deploymentName(deploymentName)
                 .logRequestsAndResponses(true)
                 .build();
@@ -303,9 +302,7 @@ class AzureOpenAiChatModelIT {
     @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({"gpt-4o"})
     void should_use_json_format(String deploymentName) {
-        ChatModel model = AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        ChatModel model = AzureModelBuilders.chatModelBuilder()
                 .deploymentName(deploymentName)
                 .responseFormat(ResponseFormat.JSON)
                 .logRequestsAndResponses(true)
@@ -433,9 +430,7 @@ class AzureOpenAiChatModelIT {
                 .responseFormat(responseFormat)
                 .build();
 
-        ChatModel model = AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        ChatModel model = AzureModelBuilders.chatModelBuilder()
                 .deploymentName("gpt-4o-mini")
                 .strictJsonSchema(true)
                 .logRequestsAndResponses(true)
@@ -457,9 +452,7 @@ class AzureOpenAiChatModelIT {
         // given
         Duration timeout = Duration.ofMillis(millis);
 
-        ChatModel model = AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        ChatModel model = AzureModelBuilders.chatModelBuilder()
                 .deploymentName("gpt-4o")
                 .logRequestsAndResponses(true)
                 .maxRetries(0)

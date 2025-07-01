@@ -34,9 +34,10 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
         AzureOpenAiChatModel.Builder chatModelBuilder = AzureModelBuilders.chatModelBuilder()
                 .defaultRequestParameters(parameters)
+                .deploymentName(null)
                 .logRequestsAndResponses(true);
         if (parameters.modelName() == null) {
-            chatModelBuilder.deploymentName("gpt-4.1-nano");
+            chatModelBuilder.deploymentName(AzureModelBuilders.DEFAULT_CHAT_MODEL);
         }
         return chatModelBuilder.build();
     }
