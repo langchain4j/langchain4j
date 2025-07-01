@@ -25,7 +25,6 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
@@ -159,7 +158,7 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
                     responseBuilder.append(partialResponse);
-                    handle(partialResponse.response(), handler);
+                    handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
                     ChatResponse chatResponse = responseBuilder.build();

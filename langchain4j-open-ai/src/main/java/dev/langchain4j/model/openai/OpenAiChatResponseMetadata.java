@@ -1,6 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -10,7 +9,6 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
-@Experimental
 public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
     private final Long created;
@@ -50,7 +48,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
     }
 
     public List<ServerSentEvent> rawEvents() {
-        return rawEvents;
+        return rawEvents; // TODO names
     }
 
     @Override

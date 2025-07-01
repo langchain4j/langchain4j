@@ -66,8 +66,8 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
-                    responseBuilder.append(partialResponse.response());
-                    String token = partialResponse.response().text();
+                    responseBuilder.append(partialResponse);
+                    String token = partialResponse.text();
                     if (token != null) {
                         handler.onNext(token);
                     }

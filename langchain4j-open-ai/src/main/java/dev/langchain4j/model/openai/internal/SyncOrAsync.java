@@ -2,9 +2,13 @@ package dev.langchain4j.model.openai.internal;
 
 import java.util.function.Consumer;
 
-public interface SyncOrAsync<Response> {
+public interface SyncOrAsync<ResponseContent> {
 
-    ResponseAndAttributes<Response> execute();
+    ResponseContent execute();
 
-    AsyncResponseHandling onResponse(Consumer<ResponseAndAttributes<Response>> responseHandler);
+    default ResponseAndAttributes<ResponseContent> executeRaw() { // TODO name
+        throw new UnsupportedOperationException("not implemented");
+    };
+
+    AsyncResponseHandling onResponse(Consumer<ResponseContent> responseHandler);
 }

@@ -136,8 +136,7 @@ public class LocalAiChatModel implements ChatModel {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        ChatCompletionResponse response =
-                withRetryMappingExceptions(() -> client.chatCompletion(request).execute().response(), maxRetries);
+        ChatCompletionResponse response = withRetryMappingExceptions(() -> client.chatCompletion(request).execute(), maxRetries);
 
         return Response.from(
                 aiMessageFrom(response),

@@ -130,7 +130,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.chatCompletion(openAiRequest)
-                .onPartialResponse(partialResponse -> {
+                .onPartialResponseRaw(partialResponse -> {
                     openAiResponseBuilder.append(partialResponse);
                     handle(partialResponse.response(), handler);
                 })

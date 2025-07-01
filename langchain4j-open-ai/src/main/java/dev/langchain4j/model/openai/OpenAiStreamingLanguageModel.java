@@ -73,8 +73,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
         OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.completion(request)
-                .onPartialResponse(responseAndAttributes -> {
-                    CompletionResponse partialResponse = responseAndAttributes.response();
+                .onPartialResponse(partialResponse -> {
                     responseBuilder.append(partialResponse);
                     for (CompletionChoice choice : partialResponse.choices()) {
                         String token = choice.text();

@@ -53,13 +53,14 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<String> systemFingerprint = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
-    private final List<ServerSentEvent> rawEvents = new CopyOnWriteArrayList<>();
+    private final List<ServerSentEvent> rawEvents = new CopyOnWriteArrayList<>(); // TODO performance
 
     public void append(ResponseAndAttributes<ChatCompletionResponse> responseAndAttributes) {
-
         rawEvents.add((ServerSentEvent) responseAndAttributes.attributes().get(RAW_EVENT_ATTRIBUTE));
+        append(responseAndAttributes.response());
+    }
 
-        ChatCompletionResponse partialResponse = responseAndAttributes.response();
+    public void append(ChatCompletionResponse partialResponse) {
         if (partialResponse == null) {
             return;
         }

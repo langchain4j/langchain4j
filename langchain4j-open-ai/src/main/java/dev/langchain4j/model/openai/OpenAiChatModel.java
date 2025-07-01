@@ -142,7 +142,7 @@ public class OpenAiChatModel implements ChatModel {
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
         ResponseAndAttributes<ChatCompletionResponse> responseAndAttributes =
-                withRetryMappingExceptions(() -> client.chatCompletion(openAiRequest).execute(), maxRetries);
+                withRetryMappingExceptions(() -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
 
         ChatCompletionResponse openAiResponse = responseAndAttributes.response();
 

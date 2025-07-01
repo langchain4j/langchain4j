@@ -120,8 +120,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .user(user)
                 .build();
 
-        EmbeddingResponse response =
-                withRetryMappingExceptions(() -> client.embedding(request).execute().response(), maxRetries);
+        EmbeddingResponse response = withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
