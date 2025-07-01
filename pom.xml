@@ -74,6 +74,7 @@
         <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>
         <module>document-loaders/langchain4j-document-loader-github</module>
         <module>document-loaders/langchain4j-document-loader-selenium</module>
+        <module>document-loaders/langchain4j-document-loader-playwright</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
         <module>document-loaders/langchain4j-document-loader-google-cloud-storage</module>
 
@@ -158,9 +159,9 @@
         </plugins>
         <extensions>
             <extension>
-                <groupId>io.github.gitflow-incremental-builder</groupId>
+                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
                 <artifactId>gitflow-incremental-builder</artifactId>
-                <version>4.0.0</version>
+                <version>3.16.0</version>
             </extension>
         </extensions>
     </build>
