@@ -6,8 +6,8 @@ import org.jetbrains.annotations.NotNull;
 public class AzureModelBuilders {
 
     // Use the lower max_tokens limit to avoid rate-limiting
-    private static final int DEFAULT_MAX_TOKENS = 50;
-    private static final double DEFAULT_TEMPERATURE = 0.2;
+    private static final int DEFAULT_MAX_TOKENS = 100;
+    private static final double DEFAULT_TEMPERATURE = 0.1;
     public static final String DEFAULT_CHAT_MODEL = "gpt-4o-mini";
 
     private AzureModelBuilders() {}
