@@ -12,13 +12,13 @@ public class AzureModelBuilders {
 
     private AzureModelBuilders() {}
 
-    static @NotNull String getAzureOpenaiKey() {
+    public static @NotNull String getAzureOpenaiKey() {
         return Objects.requireNonNull(
                 System.getenv("AZURE_OPENAI_KEY"),
                 "AZURE_OPENAI_KEY environment variable is required to run this test.");
     }
 
-    private static String getAzureOpenaiEndpoint() {
+    public static String getAzureOpenaiEndpoint() {
         return System.getenv("AZURE_OPENAI_ENDPOINT");
     }
 
