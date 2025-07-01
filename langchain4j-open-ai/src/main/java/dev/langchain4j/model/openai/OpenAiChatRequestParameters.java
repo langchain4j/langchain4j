@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.quoted;
 
@@ -24,7 +23,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     private final Map<String, String> metadata;
     private final String serviceTier;
     private final String reasoningEffort;
-    private final Map<String, Object> customParameters; // TODO names
+    private final Map<String, Object> customParameters;
 
     private OpenAiChatRequestParameters(Builder builder) {
         super(builder);
@@ -37,7 +36,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         this.metadata = copy(builder.metadata);
         this.serviceTier = builder.serviceTier;
         this.reasoningEffort = builder.reasoningEffort;
-        this.customParameters = copyIfNotNull(builder.customParameters); // TODO
+        this.customParameters = copy(builder.customParameters);
     }
 
     public Integer maxCompletionTokens() {

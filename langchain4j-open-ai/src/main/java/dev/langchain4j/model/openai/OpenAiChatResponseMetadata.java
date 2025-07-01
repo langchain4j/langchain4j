@@ -7,15 +7,15 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 
 public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
     private final Long created;
     private final String serviceTier;
     private final String systemFingerprint;
-    private final SuccessfulHttpResponse rawResponse; // TODO names
-    private final List<ServerSentEvent> rawEvents; // TODO names
+    private final SuccessfulHttpResponse rawResponse;
+    private final List<ServerSentEvent> rawEvents;
 
     private OpenAiChatResponseMetadata(Builder builder) {
         super(builder);
@@ -23,7 +23,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         this.serviceTier = builder.serviceTier;
         this.systemFingerprint = builder.systemFingerprint;
         this.rawResponse = builder.rawResponse;
-        this.rawEvents = copyIfNotNull(builder.rawEvents); // TODO
+        this.rawEvents = copy(builder.rawEvents);
     }
 
     @Override
@@ -48,7 +48,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
     }
 
     public List<ServerSentEvent> rawEvents() {
-        return rawEvents; // TODO names
+        return rawEvents;
     }
 
     @Override
@@ -56,7 +56,9 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return ((Builder) super.toBuilder(builder()))
                 .created(created)
                 .serviceTier(serviceTier)
-                .systemFingerprint(systemFingerprint);
+                .systemFingerprint(systemFingerprint)
+                .rawResponse(rawResponse)
+                .rawEvents(rawEvents);
     }
 
     @Override

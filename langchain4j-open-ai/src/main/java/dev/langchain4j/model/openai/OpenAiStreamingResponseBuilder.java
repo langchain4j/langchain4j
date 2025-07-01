@@ -17,10 +17,12 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -52,7 +54,7 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<String> systemFingerprint = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
-    private final List<ServerSentEvent> rawEvents = new CopyOnWriteArrayList<>(); // TODO performance
+    private final Queue<ServerSentEvent> rawEvents = new ConcurrentLinkedQueue<>();
 
     public void append(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {
         rawEvents.add(parsedAndRawResponse.rawEvent());
@@ -185,7 +187,7 @@ public class OpenAiStreamingResponseBuilder {
                 .created(created.get())
                 .serviceTier(serviceTier.get())
                 .systemFingerprint(systemFingerprint.get())
-                .rawEvents(rawEvents)
+                .rawEvents(new ArrayList<>(rawEvents))
                 .build();
 
         String text = contentBuilder.toString();
