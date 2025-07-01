@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.milvus;
 
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -12,6 +14,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.ConnectParam;
 import java.util.List;
@@ -24,10 +27,12 @@ import org.testcontainers.milvus.MilvusContainer;
 @Testcontainers
 class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
+    static final String MILVUS_DOCKER_IMAGE = "milvusdb/milvus:v2.5.10";
+
     private static final String COLLECTION_NAME = "test_collection";
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.4.20");
+    private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(milvus.getEndpoint())
@@ -132,5 +137,24 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     @Override
     protected boolean supportsContains() {
         return true;
+    }
+
+    @Test
+    void escapeCharacterShouldBeUsed() {
+        Embedding embedding = embeddingModel().embed("hello").content();
+        embeddingStore().add(embedding);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
+        Embedding referenceEmbedding = embeddingModel().embed("hi").content();
+
+        Filter filter = metadataKey("key").isEqualTo("foo\"");
+
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(1)
+                .filter(filter)
+                .build();
+
+        embeddingStore().search(searchRequest);
     }
 }

@@ -15,9 +15,9 @@ import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -32,7 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 
 public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
-        implements StreamingChatLanguageModel {
+        implements StreamingChatModel {
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 
@@ -68,7 +68,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 builder.timeout,
                 builder.maxRetries,
                 builder.proxy,
-                builder.tokenizer,
+                builder.tokenCountEstimator,
                 builder.customHeaders,
                 builder.listeners,
                 builder.capabilities,
@@ -273,7 +273,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         private Duration timeout;
         private Integer maxRetries;
         private Proxy proxy;
-        private Tokenizer tokenizer;
+        private TokenCountEstimator tokenCountEstimator;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
         private Set<Capability> capabilities;
@@ -443,8 +443,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             return this;
         }
 
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
+        public Builder tokenCountEstimator(TokenCountEstimator tokenCountEstimator) {
+            this.tokenCountEstimator = tokenCountEstimator;
             return this;
         }
 

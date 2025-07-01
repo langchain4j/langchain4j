@@ -11,6 +11,7 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -22,31 +23,27 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicStreamingChatModelIT {
-
-    StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
-            .apiKey(getenv("ANTHROPIC_API_KEY"))
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
-            .maxTokens(20)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
 
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
@@ -76,7 +73,7 @@ class AnthropicStreamingChatModelIT {
     void should_stream_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .logRequests(true)
@@ -106,7 +103,7 @@ class AnthropicStreamingChatModelIT {
     void should_accept_base64_image() {
 
         // given
-        StreamingChatLanguageModel visionModel = AnthropicStreamingChatModel.builder()
+        StreamingChatModel visionModel = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .maxTokens(20)
@@ -132,7 +129,7 @@ class AnthropicStreamingChatModelIT {
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
                 .maxTokens(1)
@@ -155,7 +152,7 @@ class AnthropicStreamingChatModelIT {
     void all_parameters() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
@@ -257,15 +254,14 @@ class AnthropicStreamingChatModelIT {
         assertThatThrownBy(
                         () -> AnthropicStreamingChatModel.builder().apiKey(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Anthropic API key must be defined. "
-                        + "It can be generated here: https://console.anthropic.com/settings/keys");
+                .hasMessage("apiKey cannot be null or blank");
     }
 
     @Test
     void should_execute_a_tool_then_stream_answer() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -315,7 +311,7 @@ class AnthropicStreamingChatModelIT {
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(secondResponse.tokenUsage());
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
@@ -325,7 +321,7 @@ class AnthropicStreamingChatModelIT {
     void must_execute_a_tool() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -363,7 +359,7 @@ class AnthropicStreamingChatModelIT {
     void should_execute_multiple_tools_in_parallel_then_answer() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -425,7 +421,7 @@ class AnthropicStreamingChatModelIT {
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(secondResponse.tokenUsage());
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
@@ -435,7 +431,7 @@ class AnthropicStreamingChatModelIT {
     void should_execute_a_tool_with_nested_properties_then_answer() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -486,7 +482,7 @@ class AnthropicStreamingChatModelIT {
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("42");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         assertTokenUsage(secondResponse.tokenUsage());
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
@@ -496,7 +492,7 @@ class AnthropicStreamingChatModelIT {
     void should_answer_with_thinking() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_7_SONNET_20250219)
                 .thinkingType("enabled")
@@ -515,6 +511,47 @@ class AnthropicStreamingChatModelIT {
 
         // then
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) throws Exception {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_7_SONNET_20250219)
+                .logRequests(true)
+                .logResponses(true)
+                .timeout(timeout)
+                .build();
+
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        model.chat("hi", new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                futureError.completeExceptionally(new RuntimeException("onPartialResponse should not be called"));
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureError.completeExceptionally(new RuntimeException("onCompleteResponse should not be called"));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureError.complete(error);
+            }
+        });
+
+        Throwable error = futureError.get(5, SECONDS);
+
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     private static void assertTokenUsage(@NotNull TokenUsage tokenUsage) {

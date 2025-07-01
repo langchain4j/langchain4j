@@ -31,7 +31,7 @@ class GraalVmJavaScriptExecutionToolIT {
         GraalVmJavaScriptExecutionTool tool = spy(new GraalVmJavaScriptExecutionTool());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .build();

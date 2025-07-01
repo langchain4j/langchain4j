@@ -15,16 +15,14 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -52,8 +50,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.GITHUB_MODELS;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.contentFilterManagement;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerRequest;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerResponse;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createListenerRequest;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createListenerResponse;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.setupChatCompletionsBuilder;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.toAzureAiMessages;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.toToolChoice;
@@ -70,7 +68,7 @@ import static java.util.Collections.singletonList;
  * <p>
  * The list of models, as well as the documentation and a playground to test them, can be found at https://github.com/marketplace/models
  */
-public class GitHubModelsStreamingChatModel implements StreamingChatLanguageModel {
+public class GitHubModelsStreamingChatModel implements StreamingChatModel {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubModelsStreamingChatModel.class);
 
@@ -153,8 +151,8 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     @Override
     public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = request.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 
@@ -236,10 +234,10 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
         GitHubModelsStreamingResponseBuilder responseBuilder = new GitHubModelsStreamingResponseBuilder();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
+        ChatRequest listenerRequest = createListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(modelListenerRequest, provider(), attributes);
+                new ChatModelRequestContext(listenerRequest, provider(), attributes);
 
         listeners.forEach(listener -> {
             try {
@@ -290,22 +288,12 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                     }
                 },
                 throwable -> {
-                    Response<AiMessage> response = responseBuilder.build();
-
-                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
-                            responseId.get(),
-                            responseModel.get(),
-                            response
-                    );
-
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(
                             throwable,
-                            requestContext.request(),
-                            modelListenerPartialResponse,
+                            requestContext.chatRequest(),
                             provider(),
                             requestContext.attributes()
                     );
-
                     listeners.forEach(listener -> {
                         try {
                             listener.onError(errorContext);
@@ -317,14 +305,14 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                 },
                 () -> {
                     Response<AiMessage> response = responseBuilder.build();
-                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    ChatResponse listenerResponse = createListenerResponse(
                             responseId.get(),
                             options.getModel(),
                             response
                     );
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                            modelListenerResponse,
-                            requestContext.request(),
+                            listenerResponse,
+                            requestContext.chatRequest(),
                             provider(),
                             requestContext.attributes()
                     );
@@ -344,7 +332,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                                StreamingResponseHandler<AiMessage> handler) {
 
         List<StreamingChatChoiceUpdate> choices = chatCompletions.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
         StreamingChatResponseMessageUpdate message = choices.get(0).getDelta();

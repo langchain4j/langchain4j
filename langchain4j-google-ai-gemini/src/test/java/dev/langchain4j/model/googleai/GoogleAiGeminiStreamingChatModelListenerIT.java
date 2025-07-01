@@ -1,19 +1,18 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.AfterEach;
 
-import java.io.IOException;
-
 import static java.util.Collections.singletonList;
 
-class GoogleAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+class GoogleAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
+
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
     @Override
-    protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
+    protected StreamingChatModel createModel(ChatModelListener listener) {
         return GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName(modelName())
@@ -31,15 +30,9 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListe
     }
 
     @Override
-    protected boolean assertResponseId() {
-        return false;
-    }
-
-    @Override
-    protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected StreamingChatModel createFailingModel(ChatModelListener listener) {
         return GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("banana")
+                .apiKey("banana")
                 .listeners(singletonList(listener))
                 .logRequestsAndResponses(true)
                 .build();
@@ -47,9 +40,8 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListe
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return dev.langchain4j.exception.InvalidRequestException.class;
     }
-
 
     @AfterEach
     void afterEach() throws InterruptedException {

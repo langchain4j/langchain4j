@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -48,7 +49,7 @@ public class WebSearchRequest {
         this.startPage = getOrDefault(builder.startPage,1);
         this.startIndex = builder.startIndex;
         this.safeSearch = getOrDefault(builder.safeSearch,true);
-        this.additionalParams = getOrDefault(builder.additionalParams, () -> new HashMap<>());
+        this.additionalParams = copy(builder.additionalParams);
     }
 
     /**
@@ -179,6 +180,7 @@ public class WebSearchRequest {
     }
 
     public static final class Builder {
+
         private String searchTerms;
         private Integer maxResults;
         private String language;

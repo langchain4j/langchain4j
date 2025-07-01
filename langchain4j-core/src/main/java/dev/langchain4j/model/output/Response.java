@@ -7,8 +7,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.emptyMap;
 
 /**
  * Represents the response from various types of models, including language, chat, embedding, and moderation models.
@@ -33,7 +33,7 @@ public class Response<T> {
      * @param content the content to wrap.
      */
     public Response(@NonNull T content) {
-        this(content, null, null, emptyMap());
+        this(content, null, null, Map.of());
     }
 
     /**
@@ -44,7 +44,7 @@ public class Response<T> {
      * @param finishReason the finish reason, or {@code null}.
      */
     public Response(@NonNull T content, TokenUsage tokenUsage, FinishReason finishReason) {
-        this(content, tokenUsage, finishReason, emptyMap());
+        this(content, tokenUsage, finishReason, Map.of());
     }
 
     /**
@@ -62,7 +62,7 @@ public class Response<T> {
         this.content = ensureNotNull(content, "content");
         this.tokenUsage = tokenUsage;
         this.finishReason = finishReason;
-        this.metadata = metadata == null ? emptyMap() : new HashMap<>(metadata);
+        this.metadata = copy(metadata);
     }
 
     /**

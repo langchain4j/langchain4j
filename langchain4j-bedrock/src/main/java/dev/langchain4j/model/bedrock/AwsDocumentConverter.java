@@ -7,8 +7,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -17,6 +18,7 @@ import java.util.Map;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.core.document.internal.MapDocument;
 
+@Internal
 class AwsDocumentConverter {
 
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
@@ -113,7 +115,7 @@ class AwsDocumentConverter {
 
         if (toolSpecification.parameters() != null) {
             Map<String, Map<String, Object>> propertiesMap =
-                    JsonSchemaElementHelper.toMap(toolSpecification.parameters().properties());
+                    JsonSchemaElementUtils.toMap(toolSpecification.parameters().properties());
             schemaMap.put("properties", propertiesMap);
 
             List<String> required =
@@ -127,6 +129,15 @@ class AwsDocumentConverter {
             return documentFromJson(jsonSchema);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to convert schema to Document", e);
+        }
+    }
+
+    public static Document convertAdditionalModelRequestFields(Map<String, Object> additionalModelRequestFields) {
+        try {
+            String json = OBJECT_MAPPER.writeValueAsString(additionalModelRequestFields);
+            return documentFromJson(json);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to convert additionalModelRequestFields to Document", e);
         }
     }
 }

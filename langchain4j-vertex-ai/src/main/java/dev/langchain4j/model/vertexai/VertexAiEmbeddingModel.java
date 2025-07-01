@@ -108,7 +108,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             throw new RuntimeException(e);
         }
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
 
         this.maxSegmentsPerBatch = ensureGreaterThanZero(
                 getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH), "maxSegmentsPerBatch");

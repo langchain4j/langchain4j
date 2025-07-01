@@ -1,9 +1,6 @@
 package dev.langchain4j.exception;
 
-import dev.langchain4j.Experimental;
-
-@Experimental
-public class HttpException extends RuntimeException {
+public class HttpException extends LangChain4jException {
 
     private final int statusCode;
 

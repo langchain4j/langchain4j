@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 class McpRequestLoggingInterceptor implements Interceptor {
 
     private static final Logger log = LoggerFactory.getLogger(McpRequestLoggingInterceptor.class);
+    private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
 
     @Override
     public Response intercept(Chain chain) throws IOException {
@@ -24,7 +25,7 @@ class McpRequestLoggingInterceptor implements Interceptor {
 
     private void log(Request request) {
         try {
-            log.debug(
+            trafficLog.debug(
                     "Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}",
                     request.method(),
                     request.url(),

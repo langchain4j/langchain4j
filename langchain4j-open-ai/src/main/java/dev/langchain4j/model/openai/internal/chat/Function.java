@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 @JsonDeserialize(builder = Function.Builder.class)
@@ -22,7 +24,7 @@ public class Function {
     @JsonProperty
     private final Boolean strict;
     @JsonProperty
-    private final JsonObjectSchema parameters;
+    private final Map<String, Object> parameters;
 
     public Function(Builder builder) {
         this.name = builder.name;
@@ -43,7 +45,7 @@ public class Function {
         return strict;
     }
 
-    public JsonObjectSchema parameters() {
+    public Map<String, Object> parameters() {
         return parameters;
     }
 
@@ -93,7 +95,7 @@ public class Function {
         private String name;
         private String description;
         private Boolean strict;
-        private JsonObjectSchema parameters = JsonObjectSchema.builder().build();
+        private Map<String, Object> parameters = new HashMap<>();
 
         public Builder name(String name) {
             this.name = name;
@@ -110,7 +112,7 @@ public class Function {
             return this;
         }
 
-        public Builder parameters(JsonObjectSchema parameters) {
+        public Builder parameters(Map<String, Object> parameters) {
             this.parameters = parameters;
             return this;
         }

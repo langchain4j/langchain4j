@@ -62,16 +62,12 @@ class ChatMessageSerializerTest {
                         "{\"contents\":[{\"video\":{\"base64Data\":\"bXA0\",\"mimeType\":\"video/mp4\"},\"type\":\"VIDEO\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
-                        UserMessage.from(TextFileContent.from("cGRm", "text/markdown")),
-                        "{\"contents\":[{\"textFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"text/markdown\"},\"type\":\"TEXT_FILE\"}],\"type\":\"USER\"}"
-                ),
-                Arguments.of(
                         UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
-                        "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"application/pdf\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         AiMessage.from("hello"),
-                        "{\"text\":\"hello\",\"type\":\"AI\"}"
+                        "{\"text\":\"hello\",\"toolExecutionRequests\":[],\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         AiMessage.from(ToolExecutionRequest.builder()
@@ -118,5 +114,14 @@ class ChatMessageSerializerTest {
 
         List<ChatMessage> deserializedMessages = messagesFromJson(json);
         assertThat(deserializedMessages).isEqualTo(messages);
+    }
+
+    @Test
+    void should_deserialize_AiMessage_without_toolExecutionRequests() {
+
+        ChatMessage deserialized = messageFromJson("{\"text\":\"hello\",\"type\":\"AI\"}");
+
+        assertThat(deserialized).isEqualTo(AiMessage.from("hello"));
+        assertThat(((AiMessage) deserialized).toolExecutionRequests()).isEmpty();
     }
 }

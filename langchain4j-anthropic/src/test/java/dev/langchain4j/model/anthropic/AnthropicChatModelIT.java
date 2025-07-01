@@ -10,7 +10,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -33,7 +33,6 @@ import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_7_SONNET_20250219;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -47,7 +46,7 @@ class AnthropicChatModelIT {
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
-    ChatLanguageModel model = AnthropicChatModel.builder()
+    ChatModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
@@ -55,7 +54,7 @@ class AnthropicChatModelIT {
             .logResponses(true)
             .build();
 
-    ChatLanguageModel visionModel = AnthropicChatModel.builder()
+    ChatModel visionModel = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(20)
@@ -73,25 +72,11 @@ class AnthropicChatModelIT {
                     .build())
             .build();
 
-    ToolSpecification weather = ToolSpecification.builder()
-            .name("weather")
-            .description("returns a weather forecast for a given location")
-            .parameters(JsonObjectSchema.builder()
-                    .addProperty(
-                            "location",
-                            JsonObjectSchema.builder()
-                                    .addStringProperty("city")
-                                    .required("city")
-                                    .build())
-                    .required("location")
-                    .build())
-            .build();
-
     @Test
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .logRequests(true)
@@ -183,7 +168,7 @@ class AnthropicChatModelIT {
         // given
         int maxTokens = 3;
 
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .maxTokens(maxTokens)
@@ -224,7 +209,7 @@ class AnthropicChatModelIT {
         // given
         List<String> stopSequences = singletonList("World");
 
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .stopSequences(stopSequences)
@@ -241,14 +226,14 @@ class AnthropicChatModelIT {
         assertThat(response.aiMessage().text()).containsIgnoringCase("hello");
         assertThat(response.aiMessage().text()).doesNotContainIgnoringCase("world");
 
-        assertThat(response.finishReason()).isEqualTo(OTHER);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
     void should_cache_system_message() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .beta("prompt-caching-2024-07-31")
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
@@ -283,7 +268,7 @@ class AnthropicChatModelIT {
     void should_cache_multiple_system_messages() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .beta("prompt-caching-2024-07-31")
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
@@ -320,7 +305,7 @@ class AnthropicChatModelIT {
     void should_fail_if_more_than_four_system_message_with_cache() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .beta("prompt-caching-2024-07-31")
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
@@ -338,7 +323,7 @@ class AnthropicChatModelIT {
         // then
         assertThatThrownBy(() -> model.chat(
                         systemMessageOne, systemMessageTwo, systemMessageThree, systemMessageFour, systemMessageFive))
-                .isExactlyInstanceOf(dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException.class)
+                .isExactlyInstanceOf(dev.langchain4j.exception.InvalidRequestException.class)
                 .hasMessage(
                         "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages: at least one message is required\"}}");
     }
@@ -347,7 +332,7 @@ class AnthropicChatModelIT {
     void all_parameters() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
@@ -358,7 +343,7 @@ class AnthropicChatModelIT {
                 .maxTokens(3)
                 .stopSequences(asList("hello", "world"))
                 .timeout(Duration.ofSeconds(30))
-                .maxRetries(1)
+                .maxRetries(2)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -377,7 +362,7 @@ class AnthropicChatModelIT {
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
                 .maxTokens(1)
@@ -401,7 +386,7 @@ class AnthropicChatModelIT {
         // given
         String modelNameString = modelName.toString();
 
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelNameString)
                 .maxTokens(1)
@@ -423,15 +408,14 @@ class AnthropicChatModelIT {
 
         assertThatThrownBy(() -> AnthropicChatModel.builder().apiKey(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Anthropic API key must be defined. "
-                        + "It can be generated here: https://console.anthropic.com/settings/keys");
+                .hasMessage("apiKey cannot be null or blank");
     }
 
     @Test
     void should_execute_a_tool_then_answer() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -483,7 +467,7 @@ class AnthropicChatModelIT {
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -595,7 +579,7 @@ class AnthropicChatModelIT {
     void should_execute_multiple_tools_in_parallel_then_answer() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
@@ -650,73 +634,7 @@ class AnthropicChatModelIT {
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
-
-        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.totalTokenCount())
-                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
-
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_execute_a_tool_with_nested_properties_then_answer() {
-
-        // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage = userMessage("What is the weather in Munich?");
-
-        ChatRequest request = ChatRequest.builder()
-                .messages(userMessage)
-                .toolSpecifications(weather)
-                .build();
-
-        // when
-        ChatResponse response = model.chat(request);
-
-        // then
-        AiMessage aiMessage = response.aiMessage();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.id()).isNotBlank();
-        assertThat(toolExecutionRequest.name()).isEqualTo("weather");
-        assertThat(toolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"location\": {\"city\": \"Munich\"}}");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "Super hot, 42 Celsius");
-
-        ChatRequest secondRequest = ChatRequest.builder()
-                .messages(userMessage, aiMessage, toolExecutionResultMessage)
-                .toolSpecifications(calculator)
-                .build();
-
-        // when
-        ChatResponse secondResponse = model.chat(secondRequest);
-
-        // then
-        AiMessage secondAiMessage = secondResponse.aiMessage();
-        assertThat(secondAiMessage.text()).contains("42");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -731,7 +649,7 @@ class AnthropicChatModelIT {
     void should_answer_with_thinking() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
+        ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_7_SONNET_20250219)
                 .thinkingType("enabled")
@@ -745,6 +663,33 @@ class AnthropicChatModelIT {
 
         // when
         ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
+    }
+
+    @Test
+    void should_allow_non_user_message_as_first_message_and_consecutive_user_messages() {
+
+        // given
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        AiMessage.from("Hi"),
+                        UserMessage.from("What is the"),
+                        UserMessage.from("capital of"),
+                        UserMessage.from("Germany?")
+                )
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");

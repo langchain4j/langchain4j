@@ -1,28 +1,34 @@
 package dev.langchain4j.model.googleai;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.readBytes;
 import static java.util.Collections.singletonList;
 
 class PartsAndContentsMapper {
@@ -30,60 +36,46 @@ class PartsAndContentsMapper {
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector =
         new CustomMimeTypesFileTypeDetector();
 
-    private static final Gson GSON = new Gson();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static GeminiPart fromContentToGPart(Content content) {
-        if (content.type().equals(ContentType.TEXT)) {
-            TextContent textContent = (TextContent) content;
-
+        if (content instanceof TextContent textContent) {
             return GeminiPart.builder()
                 .text(textContent.text())
                 .build();
-        }  else if (content.type().equals(ContentType.TEXT_FILE)) {
-            TextFileContent textFileContent = (TextFileContent) content;
+        } else if (content instanceof ImageContent imageContent) {
+            Image image = imageContent.image();
 
-            URI uri = textFileContent.textFile().url();
-            if (uri != null) {
+            if (!isNullOrBlank(image.base64Data())) {
                 return GeminiPart.builder()
-                    .fileData(GeminiFileData.builder()
-                        .fileUri(uri.toString())
-                        .mimeType(mimeTypeDetector.probeContentType(uri))
-                        .build())
-                    .build();
+                        .inlineData(GeminiBlob.builder()
+                                .mimeType(image.mimeType())
+                                .data(image.base64Data())
+                                .build())
+                        .build();
+            } else if (image.url() != null) {
+                URI url = image.url();
+                if (url.getScheme() != null && url.getScheme().startsWith("http")) {
+                    byte[] imageBytes = readBytes(url.toString());
+                    String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+                    return GeminiPart.builder()
+                            .inlineData(GeminiBlob.builder()
+                                    .mimeType(getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)))
+                                    .data(base64Data)
+                                    .build())
+                            .build();
+                } else {
+                    return GeminiPart.builder()
+                            .fileData(GeminiFileData.builder()
+                                    .fileUri(url.toString())
+                                    .mimeType(getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)))
+                                    .build())
+                            .build();
+                }
             } else {
-                return GeminiPart.builder()
-                    .inlineData(GeminiBlob.builder()
-                        .mimeType(textFileContent.textFile().mimeType())
-                        .data(textFileContent.textFile().base64Data())
-                        .build())
-                    .build();
+                throw new IllegalArgumentException("Image should contain either base64 data or url");
             }
-
-        } else if (content.type().equals(ContentType.IMAGE)) {
-            ImageContent imageContent = (ImageContent) content;
-
-            URI uri = imageContent.image().url();
-            if (uri != null) {
-                return GeminiPart.builder()
-                    .fileData(GeminiFileData.builder()
-                        .fileUri(uri.toString())
-                        .mimeType(mimeTypeDetector.probeContentType(uri))
-                        .build())
-                    .build();
-            } else {
-                return GeminiPart.builder()
-                    .inlineData(GeminiBlob.builder()
-                        .mimeType(imageContent.image().mimeType())
-                        .data(imageContent.image().base64Data())
-                        .build())
-                    .build();
-            }
-//            Base64.getEncoder().encode(readBytes(imageContent.image().url()));
-
-
-        } else if (content.type().equals(ContentType.AUDIO)) {
-            AudioContent audioContent = (AudioContent) content;
-
+        } else if (content instanceof AudioContent audioContent) {
             URI uri = audioContent.audio().url();
             if (uri != null) {
                 return GeminiPart.builder()
@@ -100,9 +92,7 @@ class PartsAndContentsMapper {
                         .build())
                     .build();
             }
-        } else if (content.type().equals(ContentType.VIDEO)) {
-                VideoContent videoContent = (VideoContent) content;
-
+        } else if (content instanceof VideoContent videoContent) {
                 URI uri = videoContent.video().url();
                 if (uri != null) {
                     return GeminiPart.builder()
@@ -119,10 +109,10 @@ class PartsAndContentsMapper {
                             .build())
                         .build();
                 }
-        } else if (content.type().equals(ContentType.PDF)) {
-            PdfFileContent pdfFileContent = (PdfFileContent) content;
+        } else if (content instanceof PdfFileContent pdfFileContent) {
+            PdfFile pdfFile = pdfFileContent.pdfFile();
 
-            URI uri = pdfFileContent.pdfFile().url();
+            URI uri = pdfFile.url();
             if (uri != null) {
                 return GeminiPart.builder()
                     .fileData(GeminiFileData.builder()
@@ -133,14 +123,13 @@ class PartsAndContentsMapper {
             } else {
                 return GeminiPart.builder()
                     .inlineData(GeminiBlob.builder()
-                        .mimeType("application/pdf")
-                        .data(pdfFileContent.pdfFile().base64Data())
+                        .mimeType(pdfFile.mimeType())
+                        .data(pdfFile.base64Data())
                         .build())
                     .build();
             }
         } else {
-            //TODO return null? throw error?
-            return GeminiPart.builder().text("Error: Unknown content type").build();
+            throw new UnsupportedFeatureException("Unsupported content type: " + content.type());
         }
     }
 
@@ -221,12 +210,18 @@ class PartsAndContentsMapper {
                             return GeminiContent.builder()
                                 .role(GeminiRole.MODEL.toString())
                                 .parts(((AiMessage) msg).toolExecutionRequests().stream()
-                                    .map(toolExecutionRequest -> GeminiPart.builder()
-                                        .functionCall(GeminiFunctionCall.builder()
-                                            .name(toolExecutionRequest.name())
-                                            .args(GSON.fromJson(toolExecutionRequest.arguments(), Map.class))
-                                            .build())
-                                        .build())
+                                    .map(toolExecutionRequest -> {
+                                        try {
+                                            return GeminiPart.builder()
+                                                .functionCall(GeminiFunctionCall.builder()
+                                                    .name(toolExecutionRequest.name())
+                                                    .args(MAPPER.readValue(toolExecutionRequest.arguments(), Map.class))
+                                                    .build())
+                                                .build();
+                                        } catch (JsonProcessingException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    })
                                     .collect(Collectors.toList()))
                                 .build();
                         } else {
@@ -251,7 +246,12 @@ class PartsAndContentsMapper {
 
                         return GeminiContent.builder()
                             .role(GeminiRole.USER.toString())
-                            .parts(singletonList(fromContentToGPart(TextContent.from(toolResultMessage.text()))))
+                            .parts(List.of(GeminiPart.builder()
+                                    .functionResponse(GeminiFunctionResponse.builder()
+                                            .name(toolResultMessage.toolName())
+                                            .response(Map.of("response", toolResultMessage.text()))
+                                            .build())
+                                    .build()))
                             .build();
                     default:
                         return null;

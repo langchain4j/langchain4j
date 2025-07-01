@@ -13,6 +13,8 @@ import com.mongodb.client.result.InsertManyResult;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import org.bson.BsonArray;
@@ -39,7 +41,6 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toEmbeddingMatch;
 import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toMongoDbDocument;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -109,12 +110,12 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             Integer m,
             Integer efConstruction,
             Integer efSearch) {
-        if (mongoClient == null && (connectionString == null || connectionString.isEmpty())) {
+        if (mongoClient == null && isNullOrEmpty(connectionString)) {
             throw new IllegalArgumentException("You need to pass either the mongoClient or " +
                     "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
         }
 
-        if (databaseName == null || databaseName.isEmpty() || collectionName == null || collectionName.isEmpty()) {
+        if (isNullOrEmpty(databaseName) || isNullOrEmpty(collectionName)) {
             throw new IllegalArgumentException("databaseName and collectionName needs to be provided.");
         }
         createIndex = getOrDefault(createIndex, false);
@@ -122,7 +123,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         applicationName = getOrDefault(applicationName, "LangChain4j");
         this.kind = VectorIndexType.fromString(kind);
         this.numLists = getOrDefault(numLists, 1);
-        // TODO: update this value as a user input once LangChain4J only
+        // TODO: update this value as a user input once LangChain4j only
         //  supports other similarity types other than Cosine.
         this.dimensions = getOrDefault(dimensions, 1536);
         this.m = getOrDefault(m, 16);
@@ -188,6 +189,16 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     }
 
     @Override
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        if (request.filter() != null) {
+            throw new UnsupportedOperationException("EmbeddingSearchRequest.Filter is not supported yet.");
+        }
+
+        List<EmbeddingMatch<TextSegment>> matches =
+                findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
+        return new EmbeddingSearchResult<>(matches);
+    }
+
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
 
         List<Bson> pipeline = new ArrayList<>();

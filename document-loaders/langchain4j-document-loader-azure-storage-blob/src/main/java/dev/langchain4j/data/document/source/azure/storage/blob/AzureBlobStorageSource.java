@@ -37,8 +37,8 @@ public class AzureBlobStorageSource implements DocumentSource {
     public Metadata metadata() {
         Metadata metadata = new Metadata();
         metadata.put(SOURCE, format("https://%s.blob.core.windows.net/%s/%s", accountName, containerName, blobName));
-        metadata.add("azure_storage_blob_creation_time", properties.getCreationTime());
-        metadata.add("azure_storage_blob_last_modified", properties.getLastModified());
+        metadata.put("azure_storage_blob_creation_time", String.valueOf(properties.getCreationTime()));
+        metadata.put("azure_storage_blob_last_modified", String.valueOf(properties.getLastModified()));
         metadata.put("azure_storage_blob_content_length", String.valueOf(properties.getBlobSize()));
         return metadata;
     }

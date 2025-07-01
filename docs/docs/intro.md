@@ -40,7 +40,7 @@ The library is under active development. While some features are still being wor
 the core functionality is in place, allowing you to start building LLM-powered apps now!
 
 For easier integration, LangChain4j also includes integration with
-[Quarkus](/tutorials/quarkus-integration) and [Spring Boot](/tutorials/spring-boot-integration).
+[Quarkus](/tutorials/quarkus-integration), [Spring Boot](/tutorials/spring-boot-integration), [Helidon](/tutorials/helidon-integration) and [Micronaut](/tutorials/micronaut-integration)
 
 
 ## LangChain4j Features
@@ -79,7 +79,7 @@ For easier integration, LangChain4j also includes integration with
 ## 2 levels of abstraction
 LangChain4j operates on two levels of abstraction:
 - Low level. At this level, you have the most freedom and access to all the low-level components such as
-[ChatLanguageModel](/tutorials/chat-and-language-models), `UserMessage`, `AiMessage`, `EmbeddingStore`, `Embedding`, etc.
+[ChatModel](/tutorials/chat-and-language-models), `UserMessage`, `AiMessage`, `EmbeddingStore`, `Embedding`, etc.
 These are the "primitives" of your LLM-powered application.
 You have complete control over how to combine them, but you will need to write more glue code.
 - High level. At this level, you interact with LLMs using high-level APIs like [AI Services](/tutorials/ai-services),
@@ -91,7 +91,7 @@ You still have the flexibility to adjust and fine-tune the behavior, but it is d
 
 ## LangChain4j Library Structure
 LangChain4j features a modular design, comprising:
-- The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
+- The `langchain4j-core` module, which defines core abstractions (such as `ChatModel` and `EmbeddingStore`) and their APIs.
 - The main `langchain4j` module, containing useful tools like document loaders, [chat memory](/tutorials/chat-memory) implementations as well as a high-level features like [AI Services](/tutorials/ai-services).
 - A wide array of `langchain4j-{integration}` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
   You can use the `langchain4j-{integration}` modules independently. For additional features, simply import the main `langchain4j` dependency.

@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,7 +31,7 @@ class ConversationalChainTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(aiMessage);
 
         ConversationalChain chain = ConversationalChain.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .chatMemory(chatMemory)
                 .build();
 
@@ -58,7 +58,7 @@ class ConversationalChainTest {
 
         // given
         ConversationalChain chain = ConversationalChain.builder()
-                .chatLanguageModel(mock(ChatLanguageModel.class))
+                .chatModel(mock(ChatModel.class))
                 .build();
 
         // when-then

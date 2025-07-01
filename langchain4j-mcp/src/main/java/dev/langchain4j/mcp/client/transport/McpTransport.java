@@ -32,4 +32,16 @@ public interface McpTransport extends Closeable {
      * of the message should be null.
      */
     void executeOperationWithoutResponse(McpClientMessage request);
+
+    /**
+     * Performs transport-specific health checks, if applicable. This is called
+     * by `McpClient.checkHealth()` as the first check before performing a check
+     * by sending a 'ping' over the MCP protocol. The purpose is that the
+     * transport may have some specific and faster ways to detect that it is broken,
+     * like for example, the STDIO transport can fail the check if it detects
+     * that the server subprocess isn't alive anymore.
+     */
+    void checkHealth();
+
+    void onFailure(Runnable actionOnFailure);
 }

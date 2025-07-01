@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -8,6 +9,7 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
@@ -15,8 +17,6 @@ import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an OpenAI image model, hosted on Azure, such as dall-e-3.
@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * The constructor requires a KeyCredential instance, which can be created using `new AzureKeyCredential("{key}")`, and doesn't set up the endpoint.
  * <p>
  * 3. Azure OpenAI client with Microsoft Entra ID (formerly Azure Active Directory) credentials.
- * - This requires to add the `com.azure:azure-identity` dependency to your project, which is an optional dependency to this library.
+ * - This requires to add the `com.azure:azure-identity` dependency to your project.
  * - You need to provide a TokenCredential instance, using the tokenCredential() method in the Builder, or the tokenCredential parameter in the constructor.
  * As an example, DefaultAzureCredential can be used to authenticate the client: Set the values of the client ID, tenant ID, and
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
@@ -47,141 +47,68 @@ import org.slf4j.LoggerFactory;
  */
 public class AzureOpenAiImageModel implements ImageModel {
 
-    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiImageModel.class);
-
-    private OpenAIClient client;
+    private final OpenAIClient client;
     private final String deploymentName;
-    private ImageGenerationQuality quality = null;
-    private ImageSize size = null;
-    private String user = null;
-    private ImageGenerationStyle style = null;
-    private ImageGenerationResponseFormat responseFormat = null;
+    private final ImageGenerationQuality quality;
+    private final ImageSize size;
+    private final String user;
+    private final ImageGenerationStyle style;
+    private final ImageGenerationResponseFormat responseFormat;
 
-    public AzureOpenAiImageModel(
-            OpenAIClient client,
-            String deploymentName,
-            String quality,
-            String size,
-            String user,
-            String style,
-            String responseFormat) {
-
-        this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = client;
-    }
-
-    public AzureOpenAiImageModel(
-            String endpoint,
-            String serviceVersion,
-            String apiKey,
-            String deploymentName,
-            String quality,
-            String size,
-            String user,
-            String style,
-            String responseFormat,
-            Duration timeout,
-            Integer maxRetries,
-            ProxyOptions proxyOptions,
-            boolean logRequestsAndResponses,
-            String userAgentSuffix,
-            Map<String, String> customHeaders) {
-
-        this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupSyncClient(
-                endpoint,
-                serviceVersion,
-                apiKey,
-                timeout,
-                maxRetries,
-                proxyOptions,
-                logRequestsAndResponses,
-                userAgentSuffix,
-                customHeaders);
-    }
-
-    public AzureOpenAiImageModel(
-            String endpoint,
-            String serviceVersion,
-            KeyCredential keyCredential,
-            String deploymentName,
-            String quality,
-            String size,
-            String user,
-            String style,
-            String responseFormat,
-            Duration timeout,
-            Integer maxRetries,
-            ProxyOptions proxyOptions,
-            boolean logRequestsAndResponses,
-            String userAgentSuffix,
-            Map<String, String> customHeaders) {
-
-        this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupSyncClient(
-                endpoint,
-                serviceVersion,
-                keyCredential,
-                timeout,
-                maxRetries,
-                proxyOptions,
-                logRequestsAndResponses,
-                userAgentSuffix,
-                customHeaders);
-    }
-
-    public AzureOpenAiImageModel(
-            String endpoint,
-            String serviceVersion,
-            TokenCredential tokenCredential,
-            String deploymentName,
-            String quality,
-            String size,
-            String user,
-            String style,
-            String responseFormat,
-            Duration timeout,
-            Integer maxRetries,
-            ProxyOptions proxyOptions,
-            boolean logRequestsAndResponses,
-            String userAgentSuffix,
-            Map<String, String> customHeaders) {
-
-        this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupSyncClient(
-                endpoint,
-                serviceVersion,
-                tokenCredential,
-                timeout,
-                maxRetries,
-                proxyOptions,
-                logRequestsAndResponses,
-                userAgentSuffix,
-                customHeaders);
-    }
-
-    private AzureOpenAiImageModel(
-            String deploymentName, String quality, String size, String user, String style, String responseFormat) {
-        this.deploymentName = getOrDefault(deploymentName, "dall-e-3");
-        if (quality != null) {
-            this.quality = ImageGenerationQuality.fromString(quality);
+    public AzureOpenAiImageModel(Builder builder) {
+        if (builder.openAIClient == null) {
+            if (builder.tokenCredential != null) {
+                this.client = setupSyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.tokenCredential,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            } else if (builder.keyCredential != null) {
+                this.client = setupSyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.keyCredential,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            } else {
+                this.client = setupSyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.apiKey,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            }
+        } else {
+            this.client = ensureNotNull(builder.openAIClient, "openAIClient");
         }
-        if (size != null) {
-            this.size = ImageSize.fromString(size);
-        }
-        if (user != null) {
-            this.user = user;
-        }
-        if (style != null) {
-            this.style = ImageGenerationStyle.fromString(style);
-        }
-        if (responseFormat != null) {
-            this.responseFormat = ImageGenerationResponseFormat.fromString(responseFormat);
-        }
+
+        this.deploymentName = ensureNotBlank(builder.deploymentName, "deploymentName");
+        this.quality = builder.quality != null ? ImageGenerationQuality.fromString(builder.quality) : null;
+        this.size = builder.size != null ? ImageSize.fromString(builder.size) : null;
+        this.user = builder.user;
+        this.style = builder.style != null ? ImageGenerationStyle.fromString(builder.style): null;
+        this.responseFormat = builder.responseFormat != null ? ImageGenerationResponseFormat.fromString(builder.responseFormat) : null;
     }
 
     @Override
     public Response<Image> generate(String prompt) {
+
         ImageGenerationOptions options = new ImageGenerationOptions(prompt)
                 .setModel(deploymentName)
                 .setQuality(quality)
@@ -190,7 +117,9 @@ public class AzureOpenAiImageModel implements ImageModel {
                 .setStyle(style)
                 .setResponseFormat(responseFormat);
 
-        ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
+        ImageGenerations imageGenerations = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
+                client.getImageGenerations(deploymentName, options));
+
         Image image = imageFrom(imageGenerations.getData().get(0));
         return Response.from(image);
     }
@@ -209,6 +138,7 @@ public class AzureOpenAiImageModel implements ImageModel {
         private String apiKey;
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
+        private HttpClientProvider httpClientProvider;
         private String deploymentName;
         private String quality;
         private String size;
@@ -276,6 +206,17 @@ public class AzureOpenAiImageModel implements ImageModel {
          */
         public Builder tokenCredential(TokenCredential tokenCredential) {
             this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        /**
+         * Sets the {@code HttpClientProvider} to use for creating the HTTP client to communicate with the OpenAI api.
+         *
+         * @param httpClientProvider The {@code HttpClientProvider} to use
+         * @return builder
+         */
+        public Builder httpClientProvider(HttpClientProvider httpClientProvider) {
+            this.httpClientProvider = httpClientProvider;
             return this;
         }
 
@@ -425,60 +366,7 @@ public class AzureOpenAiImageModel implements ImageModel {
         }
 
         public AzureOpenAiImageModel build() {
-            if (openAIClient == null) {
-                if (tokenCredential != null) {
-                    return new AzureOpenAiImageModel(
-                            endpoint,
-                            serviceVersion,
-                            tokenCredential,
-                            deploymentName,
-                            quality,
-                            size,
-                            user,
-                            style,
-                            responseFormat,
-                            timeout,
-                            maxRetries,
-                            proxyOptions,
-                            logRequestsAndResponses,
-                            userAgentSuffix,
-                            customHeaders);
-                } else if (keyCredential != null) {
-                    return new AzureOpenAiImageModel(
-                            endpoint,
-                            serviceVersion,
-                            keyCredential,
-                            deploymentName,
-                            quality,
-                            size,
-                            user,
-                            style,
-                            responseFormat,
-                            timeout,
-                            maxRetries,
-                            proxyOptions,
-                            logRequestsAndResponses,
-                            userAgentSuffix,
-                            customHeaders);
-                }
-                return new AzureOpenAiImageModel(
-                        endpoint,
-                        serviceVersion,
-                        apiKey,
-                        deploymentName,
-                        quality,
-                        size,
-                        user,
-                        style,
-                        responseFormat,
-                        timeout,
-                        maxRetries,
-                        proxyOptions,
-                        logRequestsAndResponses,
-                        userAgentSuffix,
-                        customHeaders);
-            }
-            return new AzureOpenAiImageModel(openAIClient, deploymentName, quality, size, user, style, responseFormat);
+            return new AzureOpenAiImageModel(this);
         }
     }
 }

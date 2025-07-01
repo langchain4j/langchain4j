@@ -88,7 +88,7 @@ You don't have to learn about embeddings, choose a vector store, find the right 
 figure out how to parse and split documents, etc.
 Just point to your document(s), and LangChain4j will do its magic.
 
-If you need a customizable RAG, skip to the [next section](/tutorials/rag#rag-apis).
+If you need a customizable RAG, skip to the [next section](/tutorials/rag#core-rag-apis).
 
 If you are using Quarkus, there is an even easier way to do Easy RAG.
 Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/easy-rag.html).
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.1.0-beta7</version>
 </dependency>
 ```
 
@@ -185,13 +185,13 @@ interface Assistant {
     String chat(String userMessage);
 }
 
-ChatLanguageModel chatModel = OpenAiChatModel.builder()
+ChatModel chatModel = OpenAiChatModel.builder()
     .apiKey(System.getenv("OPENAI_API_KEY"))
     .modelName(GPT_4_O_MINI)
     .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(chatModel)
+    .chatModel(chatModel)
     .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
     .contentRetriever(EmbeddingStoreContentRetriever.from(embeddingStore))
     .build();
@@ -233,7 +233,7 @@ It stores meta information about the `Document`, such as its name, source, last 
 or any other relevant details.
 
 The `Metadata` is stored as a key-value map, where the key is of the `String` type,
-and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`.
+and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`, `UUID`.
 
 `Metadata` is useful for several reasons:
 - When including the content of the `Document` in a prompt to the LLM,
@@ -252,11 +252,13 @@ and update it in the `EmbeddingStore` as well to keep it in sync.
 
 - `Metadata.from(Map)` creates `Metadata` from a `Map`
 - `Metadata.put(String key, String value)` / `put(String, int)` / etc., adds an entry to the `Metadata`
+- `Metadata.putAll(Map)` adds multiple entries to the `Metadata`
 - `Metadata.getString(String key)` / `getInteger(String key)` / etc., returns a value of the `Metadata` entry, casting it to the required type
 - `Metadata.containsKey(String key)` checks whether `Metadata` contains an entry with the specified key
 - `Metadata.remove(String key)` removes an entry from the `Metadata` by key
 - `Metadata.copy()` returns a copy of the `Metadata`
 - `Metadata.toMap()` converts `Metadata` into a `Map`
+- `Metadata.merge(Metadata)` merges the current `Metadata` with another `Metadata`
 </details>
 
 ### Document Loader
@@ -471,7 +473,7 @@ Currently supported embedding stores can be found [here](/integrations/embedding
 - `EmbeddingStore.addAll(List<String> ids, List<Embedding>, List<TextSegment>)` adds a list of given `Embedding`s with associated IDs and `TextSegment`s to the store
 - `EmbeddingStore.search(EmbeddingSearchRequest)` searches for the most similar `Embedding`s
 - `EmbeddingStore.remove(String id)` removes a single `Embedding` from the store by ID
-- `EmbeddingStore.removeAll(Collection<String> ids)` removes multiple `Embedding`s from the store by ID
+- `EmbeddingStore.removeAll(Collection<String> ids)` removes all `Embedding`s from the store whose IDs are present in the given collection.
 - `EmbeddingStore.removeAll(Filter)` removes all `Embedding`s that match the specified `Filter` from the store
 - `EmbeddingStore.removeAll()` removes all `Embedding`s from the store
 </details>
@@ -565,11 +567,11 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
     })
 
     // splitting each Document into TextSegments of 1000 tokens each, with a 200-token overlap
-    .documentSplitter(DocumentSplitters.recursive(1000, 200, new OpenAiTokenizer()))
+    .documentSplitter(DocumentSplitters.recursive(1000, 200, new OpenAiTokenCountEstimator("gpt-4o-mini")))
 
     // adding a name of the Document to each TextSegment to improve the quality of search
     .textSegmentTransformer(textSegment -> TextSegment.from(
-            textSegment.metadata("file_name") + "\n" + textSegment.text(),
+            textSegment.metadata().getString("file_name") + "\n" + textSegment.text(),
             textSegment.metadata()
     ))
 
@@ -594,7 +596,7 @@ ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
     .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .contentRetriever(contentRetriever)
     .build();
 ```
@@ -789,7 +791,7 @@ Please refer to the `AzureAiSearchContentRetriever` Javadoc for more information
 `Neo4jContentRetriever` is an integration with the [Neo4j](https://neo4j.com/) graph database.
 It converts natural language queries into Neo4j Cypher queries
 and retrieves relevant information by running these queries in Neo4j.
-It can be found in the `langchain4j-neo4j` module.
+It can be found in the `langchain4j-community-neo4j-retriever` module.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).
@@ -810,13 +812,13 @@ The `ContentAggregator` is responsible for aggregating multiple ranked lists of 
 #### Default Content Aggregator
 The `DefaultContentAggregator` is the default implementation of `ContentAggregator`,
 which performs two-stage Reciprocal Rank Fusion (RRF).
-Please see `DefaultContentAggregator` Javadoc for more details.
+Please see [`DefaultContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/DefaultContentAggregator.html) for more details.
 
 #### Re-Ranking Content Aggregator
 The `ReRankingContentAggregator` uses a `ScoringModel`, like Cohere, to perform re-ranking.
 The complete list of supported scoring (re-ranking) models can be found
 [here](https://docs.langchain4j.dev/category/scoring-reranking-models).
-Please see `ReRankingContentAggregator` Javadoc for more details.
+Please see [`ReRankingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/ReRankingContentAggregator.html) for more details.
 
 ### Content Injector
 

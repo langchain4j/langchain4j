@@ -1,19 +1,16 @@
 package dev.langchain4j.http.client;
 
-import dev.langchain4j.Experimental;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyMap;
 
-@Experimental
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class HttpRequest {
 
     private final HttpMethod method;
@@ -24,7 +21,7 @@ public class HttpRequest {
     public HttpRequest(Builder builder) {
         this.method = ensureNotNull(builder.method, "method");
         this.url = ensureNotBlank(builder.url, "url");
-        this.headers = builder.headers == null ? emptyMap() : new HashMap<>(builder.headers);
+        this.headers = copy(builder.headers);
         this.body = builder.body;
     }
 
@@ -55,8 +52,7 @@ public class HttpRequest {
         private Map<String, List<String>> headers;
         private String body;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         public Builder method(HttpMethod method) {
             this.method = method;

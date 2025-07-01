@@ -53,7 +53,7 @@ class EasyRagIT {
                 .ingest(document);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .contentRetriever(EmbeddingStoreContentRetriever.from(embeddingStore))
                 .build();
 

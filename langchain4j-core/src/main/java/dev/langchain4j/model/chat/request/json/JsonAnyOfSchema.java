@@ -1,16 +1,14 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.Experimental;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
-@Experimental
 public class JsonAnyOfSchema implements JsonSchemaElement {
 
     private final String description;
@@ -18,9 +16,10 @@ public class JsonAnyOfSchema implements JsonSchemaElement {
 
     public JsonAnyOfSchema(Builder builder) {
         this.description = builder.description;
-        this.anyOf = new ArrayList<>(ensureNotEmpty(builder.anyOf, "anyOf"));
+        this.anyOf = copy(ensureNotEmpty(builder.anyOf, "anyOf"));
     }
 
+    @Override
     public String description() {
         return description;
     }
@@ -34,6 +33,7 @@ public class JsonAnyOfSchema implements JsonSchemaElement {
     }
 
     public static class Builder {
+
         private String description;
         private List<JsonSchemaElement> anyOf;
 

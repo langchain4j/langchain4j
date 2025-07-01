@@ -14,8 +14,8 @@ token-by-token instead of waiting for the entire text to be generated.
 This significantly improves the user experience, as the user does not need to wait an unknown
 amount of time and can start reading the response almost immediately.
 
-For the `ChatLanguageModel` and `LanguageModel` interfaces, there are corresponding
-`StreamingChatLanguageModel` and `StreamingLanguageModel` interfaces.
+For the `ChatModel` and `LanguageModel` interfaces, there are corresponding
+`StreamingChatModel` and `StreamingLanguageModel` interfaces.
 These have a similar API but can stream the responses.
 They accept an implementation of the `StreamingChatResponseHandler` interface as an argument.
 
@@ -38,9 +38,9 @@ For instance, you can send the token directly to the UI as soon as it becomes av
 The `ChatResponse` object contains the complete response (`AiMessage`) as well as `ChatResponseMetadata`.
 - When an error occurs: `onError(Throwable error)` is invoked.
 
-Below is an example of how to implement streaming with `StreamingChatLanguageModel`:
+Below is an example of how to implement streaming with `StreamingChatModel`:
 ```java
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
     .apiKey(System.getenv("OPENAI_API_KEY"))
     .modelName(GPT_4_O_MINI)
     .build();

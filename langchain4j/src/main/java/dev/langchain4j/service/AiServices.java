@@ -12,11 +12,14 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -26,7 +29,6 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -34,13 +36,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 
 /**
- * AI Services is a high-level API of LangChain4j to interact with {@link ChatLanguageModel} and {@link StreamingChatLanguageModel}.
+ * AI Services is a high-level API of LangChain4j to interact with {@link ChatModel} and {@link StreamingChatModel}.
  * <p>
  * You can define your own API (a Java interface with one or more methods),
  * and {@code AiServices} will provide an implementation for it, hiding all the complexity from you.
@@ -131,11 +132,8 @@ import java.util.function.Function;
  */
 public abstract class AiServices<T> {
 
-    protected static final String DEFAULT = "default";
-
     protected final AiServiceContext context;
 
-    private boolean retrieverSet = false;
     private boolean contentRetrieverSet = false;
     private boolean retrievalAugmentorSet = false;
 
@@ -149,11 +147,11 @@ public abstract class AiServices<T> {
      * For more complex cases, please use {@link #builder}.
      *
      * @param aiService         The class of the interface to be implemented.
-     * @param chatLanguageModel The chat model to be used under the hood.
+     * @param chatModel The chat model to be used under the hood.
      * @return An instance of the provided interface, implementing all its defined methods.
      */
-    public static <T> T create(Class<T> aiService, ChatLanguageModel chatLanguageModel) {
-        return builder(aiService).chatLanguageModel(chatLanguageModel).build();
+    public static <T> T create(Class<T> aiService, ChatModel chatModel) {
+        return builder(aiService).chatModel(chatModel).build();
     }
 
     /**
@@ -162,14 +160,12 @@ public abstract class AiServices<T> {
      * For more complex cases, please use {@link #builder}.
      *
      * @param aiService                  The class of the interface to be implemented.
-     * @param streamingChatLanguageModel The streaming chat model to be used under the hood.
+     * @param streamingChatModel The streaming chat model to be used under the hood.
      *                                   The return type of all methods should be {@link TokenStream}.
      * @return An instance of the provided interface, implementing all its defined methods.
      */
-    public static <T> T create(Class<T> aiService, StreamingChatLanguageModel streamingChatLanguageModel) {
-        return builder(aiService)
-                .streamingChatLanguageModel(streamingChatLanguageModel)
-                .build();
+    public static <T> T create(Class<T> aiService, StreamingChatModel streamingChatModel) {
+        return builder(aiService).streamingChatModel(streamingChatModel).build();
     }
 
     /**
@@ -189,14 +185,14 @@ public abstract class AiServices<T> {
     /**
      * Configures chat model that will be used under the hood of the AI Service.
      * <p>
-     * Either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel} should be configured,
+     * Either {@link ChatModel} or {@link StreamingChatModel} should be configured,
      * but not both at the same time.
      *
-     * @param chatLanguageModel Chat model that will be used under the hood of the AI Service.
+     * @param chatModel Chat model that will be used under the hood of the AI Service.
      * @return builder
      */
-    public AiServices<T> chatLanguageModel(ChatLanguageModel chatLanguageModel) {
-        context.chatModel = chatLanguageModel;
+    public AiServices<T> chatModel(ChatModel chatModel) {
+        context.chatModel = chatModel;
         return this;
     }
 
@@ -204,14 +200,14 @@ public abstract class AiServices<T> {
      * Configures streaming chat model that will be used under the hood of the AI Service.
      * The methods of the AI Service must return a {@link TokenStream} type.
      * <p>
-     * Either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel} should be configured,
+     * Either {@link ChatModel} or {@link StreamingChatModel} should be configured,
      * but not both at the same time.
      *
-     * @param streamingChatLanguageModel Streaming chat model that will be used under the hood of the AI Service.
+     * @param streamingChatModel Streaming chat model that will be used under the hood of the AI Service.
      * @return builder
      */
-    public AiServices<T> streamingChatLanguageModel(StreamingChatLanguageModel streamingChatLanguageModel) {
-        context.streamingChatModel = streamingChatLanguageModel;
+    public AiServices<T> streamingChatModel(StreamingChatModel streamingChatModel) {
+        context.streamingChatModel = streamingChatModel;
         return this;
     }
 
@@ -252,8 +248,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
-        context.chatMemories = new ConcurrentHashMap<>();
-        context.chatMemories.put(DEFAULT, chatMemory);
+        context.initChatMemories(chatMemory);
         return this;
     }
 
@@ -278,8 +273,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
-        context.chatMemories = new ConcurrentHashMap<>();
-        context.chatMemoryProvider = chatMemoryProvider;
+        context.initChatMemories(chatMemoryProvider);
         return this;
     }
 
@@ -349,6 +343,11 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
     /**
      * Configures the strategy to be used when the LLM hallucinates a tool name (i.e., attempts to call a nonexistent tool).
      *
@@ -359,29 +358,6 @@ public abstract class AiServices<T> {
     public AiServices<T> hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
         context.toolService.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
-        return this;
-    }
-
-    /**
-     * @param retriever The retriever to be used by the AI Service.
-     * @return builder
-     * @deprecated Use {@link #contentRetriever(ContentRetriever)}
-     * (e.g. {@link EmbeddingStoreContentRetriever}) instead.
-     * <br>
-     * Configures a retriever that will be invoked on every method call to fetch relevant information
-     * related to the current user message from an underlying source (e.g., embedding store).
-     * This relevant information is automatically injected into the message sent to the LLM.
-     */
-    @Deprecated(forRemoval = true)
-    public AiServices<T> retriever(Retriever<TextSegment> retriever) {
-        if (contentRetrieverSet || retrievalAugmentorSet) {
-            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
-        }
-        if (retriever != null) {
-            AiServices<T> withContentRetriever = contentRetriever(retriever.toContentRetriever());
-            retrieverSet = true;
-            return withContentRetriever;
-        }
         return this;
     }
 
@@ -399,7 +375,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> contentRetriever(ContentRetriever contentRetriever) {
-        if (retrieverSet || retrievalAugmentorSet) {
+        if (retrievalAugmentorSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         contentRetrieverSet = true;
@@ -416,11 +392,291 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
-        if (retrieverSet || contentRetrieverSet) {
+        if (contentRetrieverSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
+        return this;
+    }
+
+    /**
+     * Configures the input guardrails for the AI service context by setting the provided InputGuardrailsConfig.
+     *
+     * @param inputGuardrailsConfig the configuration object that defines input guardrails for the AI service
+     * @return the current instance of {@link AiServices} to allow method chaining
+     */
+    public AiServices<T> inputGuardrailsConfig(InputGuardrailsConfig inputGuardrailsConfig) {
+        context.guardrailServiceBuilder.inputGuardrailsConfig(inputGuardrailsConfig);
+        return this;
+    }
+
+    /**
+     * Configures the output guardrails for AI services.
+     *
+     * @param outputGuardrailsConfig the configuration object specifying the output guardrails
+     * @return the current instance of {@link AiServices} to allow for method chaining
+     */
+    public AiServices<T> outputGuardrailsConfig(OutputGuardrailsConfig outputGuardrailsConfig) {
+        context.guardrailServiceBuilder.outputGuardrailsConfig(outputGuardrailsConfig);
+        return this;
+    }
+
+    /**
+     * Configures the input guardrail classes for the AI services.
+     * <p>
+     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
+     *     annotation at the class level. Using the annotation takes precedence.
+     * </p>
+     * <p>
+     *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
+     *     that the input is safe and meets the expectations of the model. It does not replace a moderation model, but it can
+     *     be used to add additional checks (i.e. prompt injection, etc).
+     * </p>
+     * <p>
+     *     Unlike for output guardrails, the input guardrails do not support retry or reprompt. The failure is passed directly
+     *     to the caller, wrapped into a {@link dev.langchain4j.guardrail.GuardrailException GuardrailException}.
+     * </p>
+     * <p>
+     *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in the order
+     *     they are listed.
+     * </p>
+     *
+     * @param guardrailClasses A list of {@link InputGuardrailsConfig} classes, which will be used for input validation.
+     *                         The list can be {@code null} if no guardrails are to be applied.
+     * @param <I> The type of {@link InputGuardrail}
+     * @return The instance of {@link AiServices} to allow method chaining.
+     */
+    public <I extends InputGuardrail> AiServices<T> inputGuardrailClasses(List<Class<? extends I>> guardrailClasses) {
+        context.guardrailServiceBuilder.inputGuardrailClasses(guardrailClasses);
+        return this;
+    }
+
+    /**
+     * Configures input guardrail classes for the AI service.
+     * <p>
+     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
+     *     annotation at the class level. Using the annotation takes precedence.
+     * </p>
+     * <p>
+     *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
+     *     that the input is safe and meets the expectations of the model. It does not replace a moderation model, but it can
+     *     be used to add additional checks (i.e. prompt injection, etc).
+     * </p>
+     * <p>
+     *     Unlike for output guardrails, the input guardrails do not support retry or reprompt. The failure is passed directly
+     *     to the caller, wrapped into a {@link dev.langchain4j.guardrail.GuardrailException GuardrailException}.
+     * </p>
+     * <p>
+     *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in the order
+     *     they are listed.
+     * </p>
+     *
+     * @param guardrailClasses A list of {@link InputGuardrail} classes, which
+     *                         can include {@code null} to indicate no guardrails or optional configurations.
+     * @param <I> The type of {@link InputGuardrail}
+     * @return the current instance of {@link AiServices} for chaining further configurations.
+     */
+    public <I extends InputGuardrail> AiServices<T> inputGuardrailClasses(Class<? extends I>... guardrailClasses) {
+        context.guardrailServiceBuilder.inputGuardrailClasses(guardrailClasses);
+        return this;
+    }
+
+    /**
+     * Sets the input guardrails to be used by the guardrail service builder in the current context.
+     * <p>
+     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
+     *     annotation at the class level. Using the annotation takes precedence.
+     * </p>
+     * <p>
+     *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
+     *     that the input is safe and meets the expectations of the model. It does not replace a moderation model, but it can
+     *     be used to add additional checks (i.e. prompt injection, etc).
+     * </p>
+     * <p>
+     *     Unlike for output guardrails, the input guardrails do not support retry or reprompt. The failure is passed directly
+     *     to the caller, wrapped into a {@link dev.langchain4j.guardrail.GuardrailException GuardrailException}.
+     * </p>
+     * <p>
+     *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in the order
+     *     they are listed.
+     * </p>
+     *
+     * @param guardrails a list of input guardrails, or null if no guardrails are to be set
+     * @return the current instance of {@link AiServices} for method chaining
+     */
+    public <I extends InputGuardrail> AiServices<T> inputGuardrails(List<I> guardrails) {
+        context.guardrailServiceBuilder.inputGuardrails(guardrails);
+        return this;
+    }
+
+    /**
+     * Adds the specified input guardrails to the context's guardrail service builder.
+     * <p>
+     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
+     *     annotation at the class level. Using the annotation takes precedence.
+     * </p>
+     * <p>
+     *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
+     *     that the input is safe and meets the expectations of the model. It does not replace a moderation model, but it can
+     *     be used to add additional checks (i.e. prompt injection, etc).
+     * </p>
+     * <p>
+     *     Unlike for output guardrails, the input guardrails do not support retry or reprompt. The failure is passed directly
+     *     to the caller, wrapped into a {@link dev.langchain4j.guardrail.GuardrailException GuardrailException}.
+     * </p>
+     * <p>
+     *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in the order
+     *     they are listed.
+     * </p>
+     *
+     * @param guardrails an array of input guardrails to set, may be null
+     * @return the current instance of {@link AiServices} for chaining
+     */
+    public <I extends InputGuardrail> AiServices<T> inputGuardrails(I... guardrails) {
+        context.guardrailServiceBuilder.inputGuardrails(guardrails);
+        return this;
+    }
+
+    /**
+     * Configures the output guardrail classes for the AI services.
+     * <p>
+     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
+     *     annotation at the class level. Using the annotation takes precedence.
+     * </p>
+     * <p>
+     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     certain expectations.
+     * </p>
+     * <p>
+     *     When a validation fails, the result can indicate whether the request should be retried as-is, or to provide a
+     *     {@code reprompt} message to append to the prompt.
+     * </p>
+     * <p>
+     *     In the case of re-prompting, the reprompt message is added to the LLM context and the request is then retried.
+     * </p>
+     * <p>
+     *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in
+     *     the order they are listed.
+     * </p>
+     * <p>
+     *     When several {@link OutputGuardrail}s are applied, if any guardrail forces a retry or reprompt, then all of the
+     *     guardrails will be re-applied to the new response.
+     * </p>
+     *
+     * @param guardrailClasses a list of {@link OutputGuardrail} classes. These classes
+     *                         define the output guardrails to be applied. Can be null.
+     * @param <O> The type of {@link OutputGuardrail}
+     * @return the current instance of {@link AiServices}.
+     */
+    public <O extends OutputGuardrail> AiServices<T> outputGuardrailClasses(List<Class<? extends O>> guardrailClasses) {
+        context.guardrailServiceBuilder.outputGuardrailClasses(guardrailClasses);
+        return this;
+    }
+
+    /**
+     * Sets the output guardrail classes to be used in the guardrail service.
+     * <p>
+     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
+     *     annotation at the class level. Using the annotation takes precedence.
+     * </p>
+     * <p>
+     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     certain expectations.
+     * </p>
+     * <p>
+     *     When a validation fails, the result can indicate whether the request should be retried as-is, or to provide a
+     *     {@code reprompt} message to append to the prompt.
+     * </p>
+     * <p>
+     *     In the case of re-prompting, the reprompt message is added to the LLM context and the request is then retried.
+     * </p>
+     * <p>
+     *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in
+     *     the order they are listed.
+     * </p>
+     * <p>
+     *     When several {@link OutputGuardrail}s are applied, if any guardrail forces a retry or reprompt, then all of the
+     *     guardrails will be re-applied to the new response.
+     * </p>
+     *
+     * @param guardrailClasses A list of {@link OutputGuardrail} classes.
+     *                         These classes define the guardrails for output behavior.
+     *                         Nullable, meaning guardrails can be omitted.
+     * @param <O> The type of {@link OutputGuardrail}
+     * @return The current instance of {@link AiServices}, enabling method chaining.
+     */
+    public <O extends OutputGuardrail> AiServices<T> outputGuardrailClasses(Class<? extends O>... guardrailClasses) {
+        context.guardrailServiceBuilder.outputGuardrailClasses(guardrailClasses);
+        return this;
+    }
+
+    /**
+     * Configures the output guardrails for the AI service.
+     * <p>
+     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
+     *     annotation at the class level. Using the annotation takes precedence.
+     * </p>
+     * <p>
+     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     certain expectations.
+     * </p>
+     * <p>
+     *     When a validation fails, the result can indicate whether the request should be retried as-is, or to provide a
+     *     {@code reprompt} message to append to the prompt.
+     * </p>
+     * <p>
+     *     In the case of re-prompting, the reprompt message is added to the LLM context and the request is then retried.
+     * </p>
+     * <p>
+     *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in
+     *     the order they are listed.
+     * </p>
+     * <p>
+     *     When several {@link OutputGuardrail}s are applied, if any guardrail forces a retry or reprompt, then all of the
+     *     guardrails will be re-applied to the new response.
+     * </p>
+     *
+     * @param guardrails a list of output guardrails to be applied; can be {@code null}
+     * @return the current instance of {@link AiServices} for method chaining
+     */
+    public <O extends OutputGuardrail> AiServices<T> outputGuardrails(List<O> guardrails) {
+        context.guardrailServiceBuilder.outputGuardrails(guardrails);
+        return this;
+    }
+
+    /**
+     * Configures output guardrails for the AI services.
+     * <p>
+     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
+     *     annotation at the class level. Using the annotation takes precedence.
+     * </p>
+     * <p>
+     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     certain expectations.
+     * </p>
+     * <p>
+     *     When a validation fails, the result can indicate whether the request should be retried as-is, or to provide a
+     *     {@code reprompt} message to append to the prompt.
+     * </p>
+     * <p>
+     *     In the case of re-prompting, the reprompt message is added to the LLM context and the request is then retried.
+     * </p>
+     * <p>
+     *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in
+     *     the order they are listed.
+     * </p>
+     * <p>
+     *     When several {@link OutputGuardrail}s are applied, if any guardrail forces a retry or reprompt, then all of the
+     *     guardrails will be re-applied to the new response.
+     * </p>
+     *
+     * @param guardrails an array of output guardrails to be applied; can be {@code null}
+     *                   or contain multiple instances of OutputGuardrail
+     * @return the current instance of {@link AiServices} with the specified guardrails applied
+     */
+    public <O extends OutputGuardrail> AiServices<T> outputGuardrails(O... guardrails) {
+        context.guardrailServiceBuilder.outputGuardrails(guardrails);
         return this;
     }
 
@@ -433,7 +689,7 @@ public abstract class AiServices<T> {
 
     protected void performBasicValidation() {
         if (context.chatModel == null && context.streamingChatModel == null) {
-            throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
+            throw illegalConfiguration("Please specify either chatModel or streamingChatModel");
         }
     }
 

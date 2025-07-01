@@ -113,9 +113,5 @@ public class EmbeddingSearchRequest {
         public EmbeddingSearchRequest build() {
             return new EmbeddingSearchRequest(this.queryEmbedding, this.maxResults, this.minScore, this.filter);
         }
-
-        public String toString() {
-            return "EmbeddingSearchRequest.EmbeddingSearchRequestBuilder(queryEmbedding=" + this.queryEmbedding + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter=" + this.filter + ")";
-        }
     }
 }

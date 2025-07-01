@@ -33,9 +33,8 @@ public interface ModerationModel {
      * @param message the chat message to moderate.
      * @return the moderation {@code Response}.
      */
-    @SuppressWarnings("deprecation")
     default Response<Moderation> moderate(ChatMessage message) {
-        return moderate(message.text());
+        return moderate(List.of(message));
     }
 
     /**

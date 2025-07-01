@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+@Disabled("TODO: configure custom model")
 class VertexAiChatModelIT {
 
     @Test
@@ -22,7 +24,7 @@ class VertexAiChatModelIT {
                 .maxOutputTokens(50)
                 .topK(0)
                 .topP(0.0)
-                .maxRetries(3)
+                .maxRetries(2)
                 .build();
 
         ChatResponse response = vertexAiChatModel.chat(UserMessage.from("hi, how are you doing?"));

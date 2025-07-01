@@ -1,17 +1,16 @@
 package dev.langchain4j.http.client;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import static dev.langchain4j.http.client.HttpMethod.GET;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.http.client.HttpMethod.GET;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class HttpRequestTest {
 
@@ -20,7 +19,8 @@ class HttpRequestTest {
     void should_correctly_concatenate_baseUrl_and_path(String baseUrl, String path, String expectedUrl) {
 
         // when
-        String result = HttpRequest.builder().method(GET).url(baseUrl, path).build().url();
+        String result =
+                HttpRequest.builder().method(GET).url(baseUrl, path).build().url();
 
         // then
         assertThat(result).isEqualTo(expectedUrl);
@@ -33,8 +33,7 @@ class HttpRequestTest {
                 Arguments.of("http://example.com", "api", "http://example.com/api"),
                 Arguments.of("http://example.com/", "api", "http://example.com/api"),
                 Arguments.of("http://example.com/v1", "/api", "http://example.com/v1/api"),
-                Arguments.of("http://example.com/v1/", "/api", "http://example.com/v1/api")
-        );
+                Arguments.of("http://example.com/v1/", "/api", "http://example.com/v1/api"));
     }
 
     @Test
@@ -75,8 +74,7 @@ class HttpRequestTest {
         builder.addHeader("Content-Type", "application/json");
 
         // then
-        assertThat(builder.build().headers())
-                .containsEntry("Content-Type", List.of("application/json"));
+        assertThat(builder.build().headers()).containsEntry("Content-Type", List.of("application/json"));
     }
 
     @Test
@@ -89,8 +87,7 @@ class HttpRequestTest {
         builder.addHeader("Accept", "application/json", "application/xml");
 
         // then
-        assertThat(builder.build().headers())
-                .containsEntry("Accept", List.of("application/json", "application/xml"));
+        assertThat(builder.build().headers()).containsEntry("Accept", List.of("application/json", "application/xml"));
     }
 
     @Test
@@ -118,8 +115,7 @@ class HttpRequestTest {
         HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com");
         Map<String, String> headers = Map.of(
                 "Content-Type", "application/json",
-                "Accept", "text/plain"
-        );
+                "Accept", "text/plain");
 
         // when
         builder.addHeaders(headers);
@@ -170,8 +166,7 @@ class HttpRequestTest {
         HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com");
 
         // when
-        builder.addHeader(singleHeaderName, singleHeaderValues)
-                .addHeaders(mapHeaders);
+        builder.addHeader(singleHeaderName, singleHeaderValues).addHeaders(mapHeaders);
 
         // then
         assertThat(builder.build().headers()).containsExactlyInAnyOrderEntriesOf(expectedHeaders);
@@ -181,35 +176,27 @@ class HttpRequestTest {
         return Stream.of(
                 Arguments.of(
                         "Content-Type",
-                        new String[]{"application/json"},
+                        new String[] {"application/json"},
                         Map.of("Accept", "text/plain"),
                         Map.of(
                                 "Content-Type", List.of("application/json"),
-                                "Accept", List.of("text/plain")
-                        )
-                ),
+                                "Accept", List.of("text/plain"))),
                 Arguments.of(
                         "Accept",
-                        new String[]{"application/json", "application/xml"},
+                        new String[] {"application/json", "application/xml"},
                         Map.of("Content-Type", "application/json"),
                         Map.of(
                                 "Accept", List.of("application/json", "application/xml"),
-                                "Content-Type", List.of("application/json")
-                        )
-                ),
+                                "Content-Type", List.of("application/json"))),
                 Arguments.of(
                         "X-Custom-Header",
-                        new String[]{"value1"},
+                        new String[] {"value1"},
                         Map.of(
                                 "X-Custom-Header", "value2",
-                                "Accept", "application/json"
-                        ),
+                                "Accept", "application/json"),
                         Map.of(
                                 "X-Custom-Header", List.of("value2"),
-                                "Accept", List.of("application/json")
-                        )
-                )
-        );
+                                "Accept", List.of("application/json"))));
     }
 
     @Test
@@ -219,11 +206,9 @@ class HttpRequestTest {
         HttpRequest.Builder builder = HttpRequest.builder().method(GET).url("http://example.com");
 
         // when
-        builder.addHeader("Accept", "application/json")
-                .addHeaders(Map.of("Accept", "text/plain"));
+        builder.addHeader("Accept", "application/json").addHeaders(Map.of("Accept", "text/plain"));
 
         // then
-        assertThat(builder.build().headers())
-                .containsEntry("Accept", List.of("text/plain"));
+        assertThat(builder.build().headers()).containsEntry("Accept", List.of("text/plain"));
     }
 }

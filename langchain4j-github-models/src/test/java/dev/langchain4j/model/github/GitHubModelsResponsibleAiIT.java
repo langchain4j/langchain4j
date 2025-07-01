@@ -5,8 +5,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.concurrent.CompletableFuture;
 
@@ -37,7 +37,7 @@ class GitHubModelsResponsibleAiIT {
     @Test
     void chat_message_should_trigger_content_filter_for_violence() {
 
-        ChatLanguageModel model = GitHubModelsChatModel.builder()
+        ChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(CHAT_MODEL)
                 .logRequestsAndResponses(true)
@@ -51,7 +51,7 @@ class GitHubModelsResponsibleAiIT {
     @Test
     void chat_message_should_trigger_content_filter_for_self_harm() {
 
-        ChatLanguageModel model = GitHubModelsChatModel.builder()
+        ChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(CHAT_MODEL)
                 .logRequestsAndResponses(true)
@@ -68,7 +68,7 @@ class GitHubModelsResponsibleAiIT {
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
+        StreamingChatModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(CHAT_MODEL)
                 .logRequestsAndResponses(true)
@@ -108,7 +108,7 @@ class GitHubModelsResponsibleAiIT {
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
+        StreamingChatModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(CHAT_MODEL)
                 .logRequestsAndResponses(true)

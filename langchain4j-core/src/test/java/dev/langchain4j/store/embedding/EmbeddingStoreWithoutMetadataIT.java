@@ -37,66 +37,59 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     @Test
     void should_add_embedding() {
+        
         // given
         Embedding embedding = embeddingModel().embed("hello").content();
         String id = embeddingStore().add(embedding);
-
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+
         // when
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
         // then
         assertThat(id).isNotBlank();
-        assertThat(relevant).hasSize(1);
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        
+        assertThat(searchResult.matches()).hasSize(1);
+        EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
         assertThat(match.score()).isCloseTo(1, percentage());
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
             assertThat(match.embedding()).isEqualTo(embedding);
         }
         assertThat(match.embedded()).isNull();
-
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(embedding)
-                                .maxResults(10)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant);
     }
 
     @Test
     void should_add_embedding_with_id() {
+        
         // given
         String id = randomUUID();
         Embedding embedding = embeddingModel().embed("hello").content();
         embeddingStore().add(id, embedding);
-
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+        
         // when
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
         // then
-        assertThat(relevant).hasSize(1);
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(searchResult.matches()).hasSize(1);
+        EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
         assertThat(match.score()).isCloseTo(1, percentage());
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
             assertThat(match.embedding()).isEqualTo(embedding);
         }
         assertThat(match.embedded()).isNull();
-
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(embedding)
-                                .maxResults(10)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant);
     }
 
     @Test
@@ -105,31 +98,26 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         TextSegment segment = TextSegment.from("hello");
         Embedding embedding = embeddingModel().embed(segment.text()).content();
         String id = embeddingStore().add(embedding, segment);
-
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+
         // when
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
         // then
         assertThat(id).isNotBlank();
-        assertThat(relevant).hasSize(1);
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(searchResult.matches()).hasSize(1);
+        EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
         assertThat(match.score()).isCloseTo(1, percentage());
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
             assertThat(match.embedding()).isEqualTo(embedding);
         }
         assertThat(match.embedded()).isEqualTo(segment);
-
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(embedding)
-                                .maxResults(10)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant);
     }
 
     @Test
@@ -138,11 +126,15 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         Embedding firstEmbedding = embeddingModel().embed("hello").content();
         Embedding secondEmbedding = embeddingModel().embed("hi").content();
         List<String> ids = embeddingStore().addAll(asList(firstEmbedding, secondEmbedding));
-
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build();
+
         // when
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
         // then
         assertThat(ids).hasSize(2);
@@ -150,8 +142,8 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(ids.get(1)).isNotBlank();
         assertThat(ids.get(0)).isNotEqualTo(ids.get(1));
 
-        assertThat(relevant).hasSize(2);
-        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
+        assertThat(searchResult.matches()).hasSize(2);
+        EmbeddingMatch<TextSegment> firstMatch = searchResult.matches().get(0);
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
         if (assertEmbedding()) {
@@ -159,7 +151,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         }
         assertThat(firstMatch.embedded()).isNull();
 
-        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
+        EmbeddingMatch<TextSegment> secondMatch = searchResult.matches().get(1);
         assertThat(secondMatch.score())
                 .isCloseTo(
                         RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
@@ -170,15 +162,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                     .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
         }
         assertThat(secondMatch.embedded()).isNull();
-
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(firstEmbedding)
-                                .maxResults(10)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant);
     }
 
     @Test
@@ -192,11 +175,15 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         List<String> ids =
                 embeddingStore().addAll(asList(firstEmbedding, secondEmbedding), asList(firstSegment, secondSegment));
-
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build();
+
         // when
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
         // then
         assertThat(ids).hasSize(2);
@@ -204,8 +191,8 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(ids.get(1)).isNotBlank();
         assertThat(ids.get(0)).isNotEqualTo(ids.get(1));
 
-        assertThat(relevant).hasSize(2);
-        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
+        assertThat(searchResult.matches()).hasSize(2);
+        EmbeddingMatch<TextSegment> firstMatch = searchResult.matches().get(0);
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
         if (assertEmbedding()) {
@@ -213,7 +200,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
-        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
+        EmbeddingMatch<TextSegment> secondMatch = searchResult.matches().get(1);
         assertThat(secondMatch.score())
                 .isCloseTo(
                         RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
@@ -224,15 +211,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                     .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
         }
         assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
-
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(firstEmbedding)
-                                .maxResults(10)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant);
     }
 
     @Test
@@ -250,20 +228,24 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         embeddingStore()
                 .addAll(asList(id1, id2), asList(firstEmbedding, secondEmbedding), asList(firstSegment, secondSegment));
-
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build();
+
         // when
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
         // then
-        assertThat(relevant).hasSize(2);
-        assertThat(relevant.get(0)).isNotNull();
-        assertThat(relevant.get(1)).isNotNull();
-        assertThat(relevant.get(0).embeddingId()).isEqualTo(id1);
-        assertThat(relevant.get(1).embeddingId()).isEqualTo(id2);
+        assertThat(searchResult.matches()).hasSize(2);
+        assertThat(searchResult.matches().get(0)).isNotNull();
+        assertThat(searchResult.matches().get(1)).isNotNull();
+        assertThat(searchResult.matches().get(0).embeddingId()).isEqualTo(id1);
+        assertThat(searchResult.matches().get(1).embeddingId()).isEqualTo(id2);
 
-        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
+        EmbeddingMatch<TextSegment> firstMatch = searchResult.matches().get(0);
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(id1);
         if (assertEmbedding()) {
@@ -271,7 +253,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
-        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
+        EmbeddingMatch<TextSegment> secondMatch = searchResult.matches().get(1);
         assertThat(secondMatch.score())
                 .isCloseTo(
                         RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
@@ -282,19 +264,11 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                     .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
         }
         assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
-
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(firstEmbedding)
-                                .maxResults(10)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant);
     }
 
     @Test
     void should_find_with_min_score() {
+
         // given
         String firstId = randomUUID();
         Embedding firstEmbedding = embeddingModel().embed("hello").content();
@@ -303,121 +277,108 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         String secondId = randomUUID();
         Embedding secondEmbedding = embeddingModel().embed("hi").content();
         embeddingStore().add(secondId, secondEmbedding);
-
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build();
+
         // when
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
         // then
-        assertThat(relevant).hasSize(2);
-        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
+        List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
+        assertThat(matches).hasSize(2);
+
+        EmbeddingMatch<TextSegment> firstMatch = matches.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
         assertThat(firstMatch.embeddingId()).isEqualTo(firstId);
-        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
+
+        EmbeddingMatch<TextSegment> secondMatch = matches.get(1);
         assertThat(secondMatch.score())
                 .isCloseTo(
                         RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
                         percentage());
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
 
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(firstEmbedding)
-                                .maxResults(10)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant);
+
+        // given
+        EmbeddingSearchRequest searchRequest2 = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .minScore(secondMatch.score() - 0.01)
+                .build();
 
         // when
-        List<EmbeddingMatch<TextSegment>> relevant2 =
-                embeddingStore().findRelevant(firstEmbedding, 10, secondMatch.score() - 0.01);
+        EmbeddingSearchResult<TextSegment> searchResult2 = embeddingStore().search(searchRequest2);
+        List<EmbeddingMatch<TextSegment>> matches2 = searchResult2.matches();
 
         // then
-        assertThat(relevant2).hasSize(2);
-        assertThat(relevant2.get(0).embeddingId()).isEqualTo(firstId);
-        assertThat(relevant2.get(1).embeddingId()).isEqualTo(secondId);
+        assertThat(matches2).hasSize(2);
+        assertThat(matches2.get(0).embeddingId()).isEqualTo(firstId);
+        assertThat(matches2.get(1).embeddingId()).isEqualTo(secondId);
 
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(firstEmbedding)
-                                .maxResults(10)
-                                .minScore(secondMatch.score() - 0.01)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant2);
+
+        // given
+        EmbeddingSearchRequest searchRequest3 = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .minScore(secondMatch.score())
+                .build();
 
         // when
-        List<EmbeddingMatch<TextSegment>> relevant3 =
-                embeddingStore().findRelevant(firstEmbedding, 10, secondMatch.score());
+        EmbeddingSearchResult<TextSegment> searchResult3 = embeddingStore().search(searchRequest3);
+        List<EmbeddingMatch<TextSegment>> matches3 = searchResult3.matches();
 
         // then
-        assertThat(relevant3).hasSize(2);
-        assertThat(relevant3.get(0).embeddingId()).isEqualTo(firstId);
-        assertThat(relevant3.get(1).embeddingId()).isEqualTo(secondId);
+        assertThat(matches3).hasSize(2);
+        assertThat(matches3.get(0).embeddingId()).isEqualTo(firstId);
+        assertThat(matches3.get(1).embeddingId()).isEqualTo(secondId);
 
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(firstEmbedding)
-                                .maxResults(10)
-                                .minScore(secondMatch.score())
-                                .build())
-                        .matches())
-                .isEqualTo(relevant3);
+
+        // given
+        EmbeddingSearchRequest searchRequest4 = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .minScore(secondMatch.score() + 0.01)
+                .build();
 
         // when
-        List<EmbeddingMatch<TextSegment>> relevant4 =
-                embeddingStore().findRelevant(firstEmbedding, 10, secondMatch.score() + 0.01);
+        EmbeddingSearchResult<TextSegment> searchResult4 = embeddingStore().search(searchRequest4);
+        List<EmbeddingMatch<TextSegment>> matches4 = searchResult4.matches();
 
         // then
-        assertThat(relevant4).hasSize(1);
-        assertThat(relevant4.get(0).embeddingId()).isEqualTo(firstId);
-
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(firstEmbedding)
-                                .maxResults(10)
-                                .minScore(secondMatch.score() + 0.01)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant4);
+        assertThat(matches4).hasSize(1);
+        assertThat(matches4.get(0).embeddingId()).isEqualTo(firstId);
     }
 
     @Test
     void should_return_correct_score() {
         // given
         Embedding embedding = embeddingModel().embed("hello").content();
-
         String id = embeddingStore().add(embedding);
-        assertThat(id).isNotBlank();
-
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
 
         Embedding referenceEmbedding = embeddingModel().embed("hi").content();
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(1)
+                .build();
+
         // when
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(referenceEmbedding, 1);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
         // then
-        assertThat(relevant).hasSize(1);
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(id).isNotBlank();
+
+        assertThat(searchResult.matches()).hasSize(1);
+        EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
         assertThat(match.score())
                 .isCloseTo(
                         RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
                         percentage());
-
-        // new API
-        assertThat(embeddingStore()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(referenceEmbedding)
-                                .maxResults(1)
-                                .build())
-                        .matches())
-                .isEqualTo(relevant);
     }
 
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {

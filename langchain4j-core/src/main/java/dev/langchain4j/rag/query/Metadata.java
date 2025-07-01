@@ -3,12 +3,13 @@ package dev.langchain4j.rag.query;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.RetrievalAugmentor;
 
 import java.util.List;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -16,21 +17,21 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class Metadata {
 
-    private final UserMessage userMessage;
+    private final ChatMessage chatMessage;
     private final Object chatMemoryId;
     private final List<ChatMessage> chatMemory;
 
-    public Metadata(UserMessage userMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
-        this.userMessage = ensureNotNull(userMessage, "userMessage");
+    public Metadata(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+        this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
         this.chatMemoryId = chatMemoryId;
-        this.chatMemory = copyIfNotNull(chatMemory);
+        this.chatMemory = copy(chatMemory);
     }
 
     /**
-     * @return an original {@link UserMessage} passed to the {@link RetrievalAugmentor#augment(UserMessage, Metadata)}.
+     * @return an original {@link ChatMessage} passed to the {@link RetrievalAugmentor#augment(AugmentationRequest)}.
      */
-    public UserMessage userMessage() {
-        return userMessage;
+    public ChatMessage chatMessage() {
+        return chatMessage;
     }
 
     /**
@@ -54,26 +55,26 @@ public class Metadata {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Metadata that = (Metadata) o;
-        return Objects.equals(this.userMessage, that.userMessage)
+        return Objects.equals(this.chatMessage, that.chatMessage)
                 && Objects.equals(this.chatMemoryId, that.chatMemoryId)
                 && Objects.equals(this.chatMemory, that.chatMemory);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userMessage, chatMemoryId, chatMemory);
+        return Objects.hash(chatMessage, chatMemoryId, chatMemory);
     }
 
     @Override
     public String toString() {
         return "Metadata {" +
-                " userMessage = " + userMessage +
+                " chatMessage = " + chatMessage +
                 ", chatMemoryId = " + chatMemoryId +
                 ", chatMemory = " + chatMemory +
                 " }";
     }
 
-    public static Metadata from(UserMessage userMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
-        return new Metadata(userMessage, chatMemoryId, chatMemory);
+    public static Metadata from(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+        return new Metadata(chatMessage, chatMemoryId, chatMemory);
     }
 }

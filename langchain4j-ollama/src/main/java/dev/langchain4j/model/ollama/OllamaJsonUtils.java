@@ -3,9 +3,11 @@ package dev.langchain4j.model.ollama;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.Internal;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
+@Internal
 class OllamaJsonUtils {
 
     private OllamaJsonUtils() throws InstantiationException {

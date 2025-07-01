@@ -85,6 +85,7 @@ class CollectionRequestBuilder {
                 .withExpr(buildQueryExpression(rowIds, fieldDefinition.getIdFieldName()))
                 .withConsistencyLevel(consistencyLevel)
                 .withOutFields(singletonList(fieldDefinition.getVectorFieldName()))
+                .withLimit((long) rowIds.size())
                 .build();
     }
 

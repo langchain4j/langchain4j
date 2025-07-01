@@ -1,16 +1,15 @@
 package dev.langchain4j.service.tool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 
 class ToolExecutionRequestUtilTest implements WithAssertions {
 
@@ -39,6 +38,84 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
                 .containsEntry("foo", "bar")
                 .containsEntry("qux", 12);
+    }
+
+    @Test
+    void argument_leading_trailing_quotes() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments("\"{\"foo\":\"bar\"}\"")
+                .build();
+
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments())).containsEntry("foo", "bar");
+    }
+
+    @Test
+    void argumentsAsMap_should_parse_arguments_containing_escaped_double_quotes_1() {
+
+        // given JSON containing escaped double quotes (\")
+        String arguments = """
+                {"arg0":"SELECT COUNT(A) FROM \\"Samples\\".\\"samples.example.com\\".\\"zip_lookup.csv\\""}
+                """;
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments(arguments)
+                .build();
+
+        // when
+        Map<String, Object> argumentsMap = ToolExecutionRequestUtil.argumentsAsMap(request.arguments());
+
+        // then result does not contain escaping
+        assertThat(argumentsMap).containsEntry("arg0", """
+                SELECT COUNT(A) FROM "Samples"."samples.example.com"."zip_lookup.csv"
+                """.trim());
+    }
+
+    @Test
+    void argumentsAsMap_should_parse_arguments_containing_escaped_double_quotes_2() {
+
+        // given JSON containing escaped double quotes (\")
+        String arguments = """
+                {
+                    "conditionalTaskCreation":{
+                        "firstNameInput":"${$context.personal_info.first_name}",
+                        "lastNameInput":"${$context.personal_info.last_name}",
+                        "conditionInput":"${($context.personal_info.first_name | startswith(\\"d\\"))}"
+                    }
+                }
+                """;
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments(arguments)
+                .build();
+
+        // when
+        Map<String, Object> argumentsMap = ToolExecutionRequestUtil.argumentsAsMap(request.arguments());
+
+        // then result does not contain escaping
+        assertThat(argumentsMap).containsEntry("conditionalTaskCreation", Map.of(
+                "firstNameInput", "${$context.personal_info.first_name}",
+                "lastNameInput", "${$context.personal_info.last_name}",
+                "conditionInput", """
+                        ${($context.personal_info.first_name | startswith("d"))}
+                        """.trim()
+        ));
+    }
+
+    @Test
+    void argument_leading_trailing_and_escaped_quotes() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments("\"{\\\"foo\\\":\\\"bar\\\"}\"")
+                .build();
+
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments())).containsEntry("foo", "bar");
     }
 
     @Test

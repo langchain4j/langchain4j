@@ -1,5 +1,8 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
+
+@Internal
 class ShortOutputParser implements OutputParser<Short> {
 
     @Override

@@ -4,7 +4,8 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -56,9 +57,11 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -169,23 +172,18 @@ class InternalGitHubModelHelper {
     }
 
     private static RetryOptions getRetryOptions(Integer maxRetries) {
-        maxRetries = getOrDefault(maxRetries, 3);
+        maxRetries = getOrDefault(maxRetries, 2);
         ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
         exponentialBackoffOptions.setMaxRetries(maxRetries);
         return new RetryOptions(exponentialBackoffOptions);
     }
 
     private static KeyCredential getCredential(String gitHubToken) {
-        if (gitHubToken != null) {
-            return new AzureKeyCredential(gitHubToken);
-        } else {
-            throw new IllegalArgumentException(
-                    "GitHub token is a mandatory parameter for connecting to GitHub models.");
-        }
+        ensureNotNull(gitHubToken, "%s", "GitHub token is a mandatory parameter for connecting to GitHub models.");
+        return new AzureKeyCredential(gitHubToken);
     }
 
     public static List<ChatRequestMessage> toAzureAiMessages(List<ChatMessage> messages) {
-
         return messages.stream()
                 .map(InternalGitHubModelHelper::toAzureAiMessage)
                 .collect(toList());
@@ -219,10 +217,7 @@ class InternalGitHubModelHelper {
                                 return new ChatMessageTextContentItem(text);
                             } else if (content instanceof ImageContent) {
                                 ImageContent imageContent = (ImageContent) content;
-                                if (imageContent.image().url() == null) {
-                                    throw new IllegalArgumentException(
-                                            "Image URL is not present. Base64 encoded images are not supported at the moment.");
-                                }
+                                ensureNotNull(imageContent.image().url(), "%s" , "Image URL is not present. Base64 encoded images are not supported at the moment.");
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(
                                         imageContent.image().url().toString());
                                 imageUrl.setDetail(ChatMessageImageDetailLevel.fromString(
@@ -402,30 +397,34 @@ class InternalGitHubModelHelper {
         return exceptionFinishReason;
     }
 
-    static ChatModelRequest createModelListenerRequest(
+    static ChatRequest createListenerRequest(
             ChatCompletionsOptions options, List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-                .model(options.getModel())
-                .temperature(options.getTemperature())
-                .topP(options.getTopP())
-                .maxTokens(options.getMaxTokens())
+        return ChatRequest.builder()
                 .messages(messages)
-                .toolSpecifications(toolSpecifications)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(options.getModel())
+                        .temperature(options.getTemperature())
+                        .topP(options.getTopP())
+                        .maxOutputTokens(options.getMaxTokens())
+                        .toolSpecifications(toolSpecifications)
+                        .build())
                 .build();
     }
 
-    static ChatModelResponse createModelListenerResponse(
+    static ChatResponse createListenerResponse(
             String responseId, String responseModel, Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
 
-        return ChatModelResponse.builder()
-                .id(responseId)
-                .model(responseModel)
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
+        return ChatResponse.builder()
                 .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .id(responseId)
+                        .modelName(responseModel)
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
                 .build();
     }
 }

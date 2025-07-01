@@ -23,7 +23,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class ChatModelListenerTest {
 
-    static class TestChatModel implements ChatLanguageModel {
+    static class TestChatModel implements ChatModel {
 
         private final List<ChatModelListener> listeners;
 

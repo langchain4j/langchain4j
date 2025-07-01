@@ -355,7 +355,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
                     .metadata(embedded == null ? null : Optional.ofNullable(embedded.get(i).metadata())
-                            .map(Metadata::asMap)
+                            .map(Metadata::toMap)
                             .orElse(null))
                     .build();
             bulkBuilder.operations(op -> op.index(

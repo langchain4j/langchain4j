@@ -1,7 +1,5 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.Experimental;
-
 /**
  * A base interface for a JSON schema element.
  *
@@ -10,12 +8,13 @@ import dev.langchain4j.Experimental;
  * @see JsonBooleanSchema
  * @see JsonEnumSchema
  * @see JsonIntegerSchema
+ * @see JsonNullSchema
  * @see JsonNumberSchema
  * @see JsonObjectSchema
  * @see JsonReferenceSchema
  * @see JsonStringSchema
  */
-@Experimental
 public interface JsonSchemaElement {
 
+    String description();
 }

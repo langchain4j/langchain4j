@@ -3,14 +3,15 @@ package dev.langchain4j.data.document.splitter;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -152,13 +153,13 @@ class DocumentBySentenceSplitterTest {
         );
 
         int maxSegmentSize = 26;
-        OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
-        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0, tokenizer);
+        TokenCountEstimator countEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
+        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0, countEstimator);
 
         List<TextSegment> segments = splitter.split(document);
 
         segments.forEach(segment ->
-                assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
+                assertThat(countEstimator.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
                 textSegment(s1 + " " + s2, metadata("index", "0").put("document", "0")),
                 textSegment(s3 + " " + s4, metadata("index", "1").put("document", "0")),

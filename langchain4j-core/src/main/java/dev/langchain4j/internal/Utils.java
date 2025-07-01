@@ -1,7 +1,12 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.Internal;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -10,9 +15,12 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -26,7 +34,9 @@ import static java.util.Collections.unmodifiableSet;
 /**
  * Utility methods.
  */
+@Internal
 public class Utils {
+
   private Utils() {}
 
   /**
@@ -154,17 +164,6 @@ public class Utils {
    * */
   public static boolean isNullOrEmpty(Map<?, ?> map) {
       return map == null || map.isEmpty();
-  }
-
-  /**
-   * @deprecated Use {@link #isNullOrEmpty(Collection)} instead.
-   * @param collection The collection to check.
-   * @return {@code true} if the collection is {@code null} or empty, {@code false} otherwise.
-   */
-  @SuppressWarnings("DeprecatedIsStillUsed")
-  @Deprecated(forRemoval = true)
-  public static boolean isCollectionEmpty(Collection<?> collection) {
-    return isNullOrEmpty(collection);
   }
 
   /**
@@ -310,6 +309,22 @@ public class Utils {
         return unmodifiableSet(set);
     }
 
+    /**
+     * Returns an (unmodifiable) copy of the provided set.
+     * Returns an empty set if the provided set is <code>null</code>.
+     *
+     * @param set The set to copy.
+     * @param <T>  Generic type of the set.
+     * @return The copy of the provided set or an empty set.
+     */
+    public static <T> Set<T> copy(Set<T> set) {
+        if (set == null) {
+            return Set.of();
+        }
+
+        return unmodifiableSet(set);
+    }
+
   /**
    * Returns an (unmodifiable) copy of the provided list.
    * Returns <code>null</code> if the provided list is <code>null</code>.
@@ -326,6 +341,21 @@ public class Utils {
     return unmodifiableList(list);
   }
 
+    /**
+     * Returns an (unmodifiable) copy of the provided list.
+     * Returns an empty list if the provided list is <code>null</code>.
+     *
+     * @param list The list to copy.
+     * @param <T>  Generic type of the list.
+     * @return The copy of the provided list or an empty list.
+     */
+    public static <T> List<T> copy(List<T> list) {
+        if (list == null) {
+            return List.of();
+        }
+
+        return unmodifiableList(list);
+    }
 
   /**
    * Returns an (unmodifiable) copy of the provided map.
@@ -341,4 +371,63 @@ public class Utils {
 
     return unmodifiableMap(map);
   }
+
+    /**
+     * Returns an (unmodifiable) copy of the provided map.
+     * Returns an empty map if the provided map is <code>null</code>.
+     *
+     * @param map The map to copy.
+     * @return The copy of the provided map or an empty map.
+     */
+    public static <K,V> Map<K,V> copy(Map<K,V> map) {
+        if (map == null) {
+            return Map.of();
+        }
+
+        return unmodifiableMap(map);
+    }
+
+    public static Map<String, String> toStringValueMap(Map<String, Object> map) {
+        if (map == null) {
+            return null;
+        }
+
+        Map<String, String> stringValueMap = new HashMap<>();
+        for (String key : map.keySet()) {
+            Object value = map.get(key);
+            String stringValue = Objects.toString(value, null);
+            stringValueMap.put(key, stringValue);
+        }
+        return stringValueMap;
+    }
+
+    /**
+     * Returns the method eventually annotated with the given annotation.
+     * It could be the method itself or, if the method belongs to a proxy,
+     * a method from one of the interfaces implemented by the proxy.
+     *
+     * @param method The method to check for the annotation.
+     * @param annotation The annotation to look for.
+     * @return An {@link Optional} containing the method having the given annotation,
+     *         or an empty {@link Optional} if there isn't any.
+     */
+    public static Optional<Method> getAnnotatedMethod(Method method, Class<? extends Annotation> annotation) {
+        if (method.isAnnotationPresent(annotation)) {
+            return Optional.of(method);
+        }
+
+        if (Proxy.isProxyClass(method.getDeclaringClass())) {
+            for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
+                try {
+                    Method interfaceMethod = iface.getDeclaredMethod(method.getName(), method.getParameterTypes());
+                    if (interfaceMethod.isAnnotationPresent(annotation)) {
+                        return Optional.of(interfaceMethod);
+                    }
+                } catch (NoSuchMethodException e) {
+                    // Ignore and continue searching in the next interface
+                }
+            }
+        }
+        return Optional.empty();
+    }
 }

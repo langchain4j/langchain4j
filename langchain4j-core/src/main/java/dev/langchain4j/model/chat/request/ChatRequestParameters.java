@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
 import java.util.List;
@@ -11,7 +10,6 @@ import java.util.List;
  *
  * @see DefaultChatRequestParameters
  */
-@Experimental
 public interface ChatRequestParameters {
 
     String modelName();
@@ -35,10 +33,6 @@ public interface ChatRequestParameters {
     ToolChoice toolChoice();
 
     ResponseFormat responseFormat();
-
-    static DefaultChatRequestParameters.Builder<?> builder() { // TODO
-        return new DefaultChatRequestParameters.Builder<>();
-    }
 
     /**
      * Creates a new {@link ChatRequestParameters} by combining the current parameters with the specified ones.
@@ -65,4 +59,8 @@ public interface ChatRequestParameters {
      * @return a new {@link ChatRequestParameters} instance combining both sets of parameters
      */
     ChatRequestParameters overrideWith(ChatRequestParameters parameters);
+
+    static DefaultChatRequestParameters.Builder<?> builder() {
+        return new DefaultChatRequestParameters.Builder<>();
+    }
 }

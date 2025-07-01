@@ -10,6 +10,7 @@ import java.sql.*;
 import java.util.*;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
@@ -83,7 +84,7 @@ class JSONMetadataHandler implements MetadataHandler {
     public void setMetadata(PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata) {
         try {
             upsertStmt.setObject(parameterInitialIndex,
-                    OBJECT_MAPPER.writeValueAsString(metadata.asMap()), Types.OTHER);
+                    OBJECT_MAPPER.writeValueAsString(toStringValueMap(metadata.toMap())), Types.OTHER);
         } catch (SQLException | JsonProcessingException e) {
             throw new RuntimeException(e);
         }

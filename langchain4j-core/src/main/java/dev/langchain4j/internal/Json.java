@@ -1,5 +1,6 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.spi.json.JsonCodecFactory;
 
 import java.lang.reflect.Type;
@@ -9,6 +10,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 /**
  * JSON helper class. It is supposed to be used by "tools" and "structured output" functionalities.
  */
+@Internal
 public class Json {
 
     private Json() {
@@ -17,6 +19,7 @@ public class Json {
     /**
      * The abstract JSON codec interface.
      */
+    @Internal
     public interface JsonCodec {
 
         /**

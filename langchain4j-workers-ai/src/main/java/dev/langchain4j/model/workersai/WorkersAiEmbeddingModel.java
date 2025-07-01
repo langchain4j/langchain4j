@@ -8,12 +8,16 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse;
 import dev.langchain4j.model.workersai.spi.WorkersAiEmbeddingModelBuilderFactory;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -21,8 +25,9 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * WorkerAI Embedding model.
  * <a href="https://developers.cloudflare.com/api/operations/workers-ai-post-run-model">...</a>
  */
-@Slf4j
 public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements EmbeddingModel {
+
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(WorkersAiEmbeddingModel.class);
 
     /**
      * Constructor with Builder.
