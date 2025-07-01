@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai.internal;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -14,15 +12,15 @@ public class ParsedAndRawResponse<R> {
     private final ServerSentEvent rawEvent;
 
     ParsedAndRawResponse(R parsedResponse, SuccessfulHttpResponse rawResponse) {
-        this.parsedResponse = ensureNotNull(parsedResponse, "parsedResponse");
-        this.rawResponse = ensureNotNull(rawResponse, "rawResponse");
+        this.parsedResponse = parsedResponse;
+        this.rawResponse = rawResponse;
         this.rawEvent = null;
     }
 
     ParsedAndRawResponse(R parsedResponse, ServerSentEvent rawEvent) {
-        this.parsedResponse = ensureNotNull(parsedResponse, "parsedResponse");
+        this.parsedResponse = parsedResponse;
         this.rawResponse = null;
-        this.rawEvent = ensureNotNull(rawEvent, "rawEvent");
+        this.rawEvent = rawEvent;
     }
 
     public R parsedResponse() {
