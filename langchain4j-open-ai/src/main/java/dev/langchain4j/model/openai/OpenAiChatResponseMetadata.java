@@ -25,7 +25,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         this.serviceTier = builder.serviceTier;
         this.systemFingerprint = builder.systemFingerprint;
         this.rawResponse = builder.rawResponse;
-        this.rawEvents = copyIfNotNull(builder.rawEvents);
+        this.rawEvents = copyIfNotNull(builder.rawEvents); // TODO
     }
 
     @Override

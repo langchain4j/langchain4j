@@ -72,8 +72,8 @@ public class OpenAiModerationModel implements ModerationModel {
                 .input(inputs)
                 .build();
 
-        ModerationResponse response = withRetryMappingExceptions(() ->
-                client.moderation(request).execute().response(), maxRetries);
+        ModerationResponse response =
+                withRetryMappingExceptions(() -> client.moderation(request).execute().response(), maxRetries);
 
         int i = 0;
         for (ModerationResult moderationResult : response.results()) {

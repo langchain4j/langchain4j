@@ -180,7 +180,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 metadata(getOrDefault(openAiParameters.metadata(), metadata));
                 serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
                 reasoningEffort(getOrDefault(openAiParameters.reasoningEffort(), reasoningEffort));
-                customParameters(copyIfNotNull(getOrDefault(openAiParameters.customParameters(), customParameters)));
+                customParameters(getOrDefault(openAiParameters.customParameters(), customParameters));
             }
             return this;
         }

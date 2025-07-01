@@ -649,14 +649,14 @@ class OpenAiStreamingChatModelIT {
                 .parameters(OpenAiChatRequestParameters.builder()
                         .modelName("gpt-4o-mini-search-preview")
                         .customParameters(customParameters)
+                        .maxOutputTokens(20) // to save tokens
                         .build())
                 .build();
 
-        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+        StreamingChatModel model = OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .maxTokens(20) // to save tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();

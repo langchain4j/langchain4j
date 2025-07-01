@@ -101,7 +101,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
-                .customParameters(openAiParameters.customParameters())
+                .customParameters(openAiParameters.customParameters()) // TODO check in all places
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
