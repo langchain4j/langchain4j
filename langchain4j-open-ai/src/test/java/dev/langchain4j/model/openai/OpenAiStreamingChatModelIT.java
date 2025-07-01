@@ -1,36 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-import org.junitpioneer.jupiter.RetryingTest;
-
-import java.util.Base64;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -47,6 +16,34 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.TokenUsage;
+import java.util.Base64;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelIT {
@@ -134,8 +131,7 @@ class OpenAiStreamingChatModelIT {
         model.chat("Tell me a long story", new StreamingChatResponseHandler() {
 
             @Override
-            public void onPartialResponse(String partialResponse) {
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
@@ -179,8 +175,7 @@ class OpenAiStreamingChatModelIT {
         model.chat("Tell me a long story", new StreamingChatResponseHandler() {
 
             @Override
-            public void onPartialResponse(String partialResponse) {
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
@@ -221,7 +216,8 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                Exception e = new IllegalStateException("onPartialResponse() should never be called when tool is executed");
+                Exception e =
+                        new IllegalStateException("onPartialResponse() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
@@ -264,8 +260,7 @@ class OpenAiStreamingChatModelIT {
         model.chat(messages, new StreamingChatResponseHandler() {
 
             @Override
-            public void onPartialResponse(String partialResponse) {
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
@@ -311,7 +306,8 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                Exception e = new IllegalStateException("onPartialResponse() should never be called when tool is executed");
+                Exception e =
+                        new IllegalStateException("onPartialResponse() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
@@ -354,8 +350,7 @@ class OpenAiStreamingChatModelIT {
         model.chat(messages, new StreamingChatResponseHandler() {
 
             @Override
-            public void onPartialResponse(String partialResponse) {
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
@@ -408,7 +403,8 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                Exception e = new IllegalStateException("onPartialResponse() should never be called when tool is executed");
+                Exception e =
+                        new IllegalStateException("onPartialResponse() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
@@ -457,8 +453,7 @@ class OpenAiStreamingChatModelIT {
         model.chat(messages, new StreamingChatResponseHandler() {
 
             @Override
-            public void onPartialResponse(String partialResponse) {
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
@@ -488,8 +483,7 @@ class OpenAiStreamingChatModelIT {
 
         // given
         @JsonIgnoreProperties(ignoreUnknown = true) // to ignore the "joke" field
-        record Person(String name, String surname) {
-        }
+        record Person(String name, String surname) {}
 
         String responseFormat = "json_object";
 
@@ -608,12 +602,12 @@ class OpenAiStreamingChatModelIT {
             value = OpenAiChatModelName.class,
             mode = EXCLUDE,
             names = {
-                    "GPT_4_32K", // don't have access
-                    "GPT_4_32K_0613", // don't have access
-                    "O1", // don't have access
-                    "O1_2024_12_17", // don't have access
-                    "O3", // don't have access
-                    "O3_2025_04_16", // don't have access
+                "GPT_4_32K", // don't have access
+                "GPT_4_32K_0613", // don't have access
+                "O1", // don't have access
+                "O1_2024_12_17", // don't have access
+                "O3", // don't have access
+                "O3_2025_04_16", // don't have access
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
