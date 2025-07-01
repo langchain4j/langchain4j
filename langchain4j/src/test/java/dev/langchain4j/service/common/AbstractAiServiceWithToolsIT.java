@@ -812,7 +812,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_execute_normal_tool_with_primitive_parameters() {
+    protected void should_execute_normal_tool_with_primitive_parameters(ChatModel chatModel) {
         checkSingleToolExecution(ReturnBehavior.TO_LLM);
     }
 
