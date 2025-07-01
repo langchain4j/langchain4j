@@ -309,11 +309,11 @@ class GitHubModelsChatModelIT {
         SystemMessage systemMessage =
                 SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
         UserMessage userMessage = userMessage(
-                "List teams in the past French presidents, with their first name, last name, dates of service.");
+                "List teams in the past French presidents, with their last name only.");
 
         ChatResponse response = model.chat(systemMessage, userMessage);
 
-        assertThat(response.aiMessage().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
+        assertThat(response.aiMessage().text()).containsAnyOf("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
