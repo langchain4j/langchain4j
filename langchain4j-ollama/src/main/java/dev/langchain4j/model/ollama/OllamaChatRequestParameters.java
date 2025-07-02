@@ -19,6 +19,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
     private final Integer seed;
     private final Double minP;
     private final Integer keepAlive;
+    private final Boolean think;
 
     private OllamaChatRequestParameters(Builder builder) {
         super(builder);
@@ -31,6 +32,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         this.seed = builder.seed;
         this.minP = builder.minP;
         this.keepAlive = builder.keepAlive;
+        this.think = builder.think;
     }
 
     public Integer mirostat() {
@@ -69,6 +71,10 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         return keepAlive;
     }
 
+    public Boolean think() {
+        return think;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -82,7 +88,8 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(repeatPenalty, that.repeatPenalty)
                 && Objects.equals(seed, that.seed)
                 && Objects.equals(minP, that.minP)
-                && Objects.equals(keepAlive, that.keepAlive);
+                && Objects.equals(keepAlive, that.keepAlive)
+                && Objects.equals(think, that.think);
     }
 
     @Override
@@ -97,7 +104,8 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 repeatPenalty,
                 seed,
                 minP,
-                keepAlive);
+                keepAlive,
+                think);
     }
 
     @Override
@@ -123,6 +131,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 + ", seed=" + seed
                 + ", minP=" + minP
                 + ", keepAlive=" + keepAlive
+                + ", think=" + think
                 + '}';
     }
 
@@ -149,6 +158,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         private Integer seed;
         private Double minP;
         private Integer keepAlive;
+        private Boolean think;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -163,6 +173,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 seed(getOrDefault(ollamaChatRequestParameters.seed, seed));
                 minP(getOrDefault(ollamaChatRequestParameters.minP, minP));
                 keepAlive(getOrDefault(ollamaChatRequestParameters.keepAlive, keepAlive));
+                think(getOrDefault(ollamaChatRequestParameters.think, think));
             }
             return this;
         }
@@ -246,6 +257,16 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder keepAlive(Integer keepAlive) {
             this.keepAlive = keepAlive;
+            return this;
+        }
+
+        /**
+         * Control whether to enable thinking (if the model supports it)
+         * @param think Enable thinking
+         * @return builder
+         */
+        public Builder think(Boolean think) {
+            this.think = think;
             return this;
         }
 
