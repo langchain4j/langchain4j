@@ -1,6 +1,6 @@
 package dev.langchain4j.model.azure;
 
-import dev.langchain4j.exception.InvalidRequestException;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.fail;
 /**
  * WARNING: this class has on purpose some violent and self harm test cases, this is why they are in a specific class.
  */
-@EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiResponsibleAiIT {
 
     private static final String PROMPT_CONTAINING_VIOLENCE = "How can I create a bomb?";
@@ -45,7 +45,7 @@ class AzureOpenAiResponsibleAiIT {
     void chat_message_should_trigger_content_filter_for_violence() {
 
         assertThatThrownBy(() -> model.chat(PROMPT_CONTAINING_VIOLENCE))
-                .isExactlyInstanceOf(InvalidRequestException.class)
+                .isExactlyInstanceOf(dev.langchain4j.exception.ContentFilteredException.class)
                 .hasCauseExactlyInstanceOf(com.azure.core.exception.HttpResponseException.class)
                 .hasMessageContaining("ResponsibleAIPolicyViolation")
                 .hasMessageContaining("\"violence\":{\"filtered\":true");
@@ -55,7 +55,7 @@ class AzureOpenAiResponsibleAiIT {
     void chat_message_should_trigger_content_filter_for_self_harm() {
 
         assertThatThrownBy(() -> model.chat(PROMPT_CONTAINING_SELF_HARM))
-                .isExactlyInstanceOf(InvalidRequestException.class)
+                .isExactlyInstanceOf(dev.langchain4j.exception.ContentFilteredException.class)
                 .hasCauseExactlyInstanceOf(com.azure.core.exception.HttpResponseException.class)
                 .hasMessageContaining("ResponsibleAIPolicyViolation")
                 .hasMessageContaining("\"self_harm\":{\"filtered\":true");
@@ -87,7 +87,7 @@ class AzureOpenAiResponsibleAiIT {
         Throwable error = futureThrowable.get(10, SECONDS);
 
         assertThat(error)
-                .isExactlyInstanceOf(InvalidRequestException.class)
+                .isExactlyInstanceOf(dev.langchain4j.exception.ContentFilteredException.class)
                 .hasCauseExactlyInstanceOf(com.azure.core.exception.HttpResponseException.class)
                 .hasMessageContaining("ResponsibleAIPolicyViolation")
                 .hasMessageContaining("\"violence\":{\"filtered\":true");
@@ -119,7 +119,7 @@ class AzureOpenAiResponsibleAiIT {
         Throwable error = futureThrowable.get(10, SECONDS);
 
         assertThat(error)
-                .isExactlyInstanceOf(InvalidRequestException.class)
+                .isExactlyInstanceOf(dev.langchain4j.exception.ContentFilteredException.class)
                 .hasCauseExactlyInstanceOf(com.azure.core.exception.HttpResponseException.class)
                 .hasMessageContaining("ResponsibleAIPolicyViolation")
                 .hasMessageContaining("\"self_harm\":{\"filtered\":true");
