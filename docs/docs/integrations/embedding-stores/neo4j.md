@@ -335,11 +335,11 @@ langchain4j.community.neo4j.awaitIndexTimeout=<awaitIndexTimeout>
 ```
 Configuring the Starter allows us to create a simple Spring Boot project like the following:
 ```java
-@Spring BootApplication
+@SpringBootApplication
 public class Spring BootExample {
 
     public static void main(String[] args) {
-        SpringApplication.run(Spring BootExample.class, args);
+        SpringApplication.run(SpringBootExample.class, args);
     }
 
     @Bean
