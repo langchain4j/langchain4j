@@ -2,18 +2,20 @@ package dev.langchain4j.mcp.client.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
+import dev.langchain4j.mcp.client.McpRoot;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Internal
-public class McpPingResponse extends McpClientMessage {
+public class McpRootsListResponse extends McpClientMessage {
 
-    // has to be an empty object
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private final Map<String, Object> result = new HashMap<>();
 
-    public McpPingResponse(final Long id) {
+    public McpRootsListResponse(Long id, List<McpRoot> roots) {
         super(id);
+        result.put("roots", roots);
     }
 
     public Map<String, Object> getResult() {
