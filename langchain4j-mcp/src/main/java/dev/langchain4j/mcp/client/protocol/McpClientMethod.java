@@ -2,7 +2,7 @@ package dev.langchain4j.mcp.client.protocol;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public enum ClientMethod {
+public enum McpClientMethod {
     @JsonProperty("initialize")
     INITIALIZE,
     @JsonProperty("tools/call")
@@ -26,5 +26,5 @@ public enum ClientMethod {
     @JsonProperty("prompts/get")
     PROMPTS_GET,
     @JsonProperty("notifications/roots/list_changed")
-    NOTIFICATION_ROOT_LIST_CHANGED
+    NOTIFICATION_ROOTS_LIST_CHANGED
 }

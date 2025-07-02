@@ -14,10 +14,10 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
-import dev.langchain4j.mcp.client.protocol.CancellationNotification;
-import dev.langchain4j.mcp.client.protocol.InitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.McpCancellationNotification;
 import dev.langchain4j.mcp.client.protocol.McpGetPromptRequest;
+import dev.langchain4j.mcp.client.protocol.McpInitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListPromptsRequest;
 import dev.langchain4j.mcp.client.protocol.McpListResourceTemplatesRequest;
@@ -25,7 +25,7 @@ import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.client.protocol.McpPingRequest;
 import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
-import dev.langchain4j.mcp.client.protocol.RootListChangedNotification;
+import dev.langchain4j.mcp.client.protocol.McpRootsListChangedNotification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
@@ -138,7 +138,7 @@ public class DefaultMcpClient implements McpClient {
         transport.start(messageHandler);
         long operationId = idGenerator.getAndIncrement();
         McpInitializeRequest request = new McpInitializeRequest(operationId);
-        InitializeParams params = createInitializeParams();
+        McpInitializeParams params = createInitializeParams();
         request.setParams(params);
         try {
             JsonNode capabilities =
@@ -151,17 +151,17 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
-    private InitializeParams createInitializeParams() {
-        InitializeParams params = new InitializeParams();
+    private McpInitializeParams createInitializeParams() {
+        McpInitializeParams params = new McpInitializeParams();
         params.setProtocolVersion(protocolVersion);
 
-        InitializeParams.ClientInfo clientInfo = new InitializeParams.ClientInfo();
+        McpInitializeParams.ClientInfo clientInfo = new McpInitializeParams.ClientInfo();
         clientInfo.setName(clientName);
         clientInfo.setVersion(clientVersion);
         params.setClientInfo(clientInfo);
 
-        InitializeParams.Capabilities capabilities = new InitializeParams.Capabilities();
-        InitializeParams.Capabilities.Roots roots = new InitializeParams.Capabilities.Roots();
+        McpInitializeParams.Capabilities capabilities = new McpInitializeParams.Capabilities();
+        McpInitializeParams.Capabilities.Roots roots = new McpInitializeParams.Capabilities.Roots();
         roots.setListChanged(true);
         capabilities.setRoots(roots);
         params.setCapabilities(capabilities);
@@ -223,7 +223,7 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = transport.executeOperationWithResponse(operation);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeout) {
-            transport.executeOperationWithoutResponse(new CancellationNotification(operationId, "Timeout"));
+            transport.executeOperationWithoutResponse(new McpCancellationNotification(operationId, "Timeout"));
             return ToolExecutionHelper.extractResult(RESULT_TIMEOUT);
         } catch (ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -308,7 +308,7 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public void setRoots(final List<McpRoot> roots) {
         this.mcpRoots.set(roots);
-        transport.executeOperationWithoutResponse(new RootListChangedNotification());
+        transport.executeOperationWithoutResponse(new McpRootsListChangedNotification());
     }
 
     @Override

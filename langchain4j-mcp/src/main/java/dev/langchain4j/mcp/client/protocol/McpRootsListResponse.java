@@ -1,11 +1,13 @@
 package dev.langchain4j.mcp.client.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.langchain4j.Internal;
 import dev.langchain4j.mcp.client.McpRoot;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Internal
 public class McpRootsListResponse extends McpClientMessage {
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
