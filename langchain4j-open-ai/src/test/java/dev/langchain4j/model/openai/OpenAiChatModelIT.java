@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,8 +29,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -589,10 +588,15 @@ class OpenAiChatModelIT {
         // given
         String city = "Munich";
 
-        Map<String, Object> customParameters = Map.of("web_search_options", Map.of("user_location", Map.of(
-                "type", "approximate",
-                "approximate", Map.of("city", city)
-        )));
+        record ApproximateLocation(String city) {
+        }
+        record UserLocation(String type, ApproximateLocation approximate) {
+        }
+        record WebSearchOptions(@JsonProperty("user_location") UserLocation userLocation) {
+        }
+
+        WebSearchOptions webSearchOptions = new WebSearchOptions(new UserLocation("approximate", new ApproximateLocation(city)));
+        Map<String, Object> customParameters = Map.of("web_search_options", webSearchOptions);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Where can I buy good coffee?"))
