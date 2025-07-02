@@ -13,6 +13,8 @@ import java.util.Objects;
 @Experimental
 public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParameters {
 
+    public static final OpenAiOfficialChatRequestParameters EMPTY = OpenAiOfficialChatRequestParameters.builder().build();
+
     private final Integer maxCompletionTokens;
     private final Map<String, Integer> logitBias;
     private final Boolean parallelToolCalls;

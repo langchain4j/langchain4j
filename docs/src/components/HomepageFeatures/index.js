@@ -17,7 +17,7 @@ const FeatureList = [
         Svg: require('@site/static/img/framework-logos.svg').default,
         description: (
             <>
-                Smooth integration into your Java applications is made possible thanks to Quarkus and Spring Boot integrations. There is two-way integration between LLMs and Java: you can call LLMs from Java and allow LLMs to call your Java code in return.
+                Smooth integration into your Java applications is made possible thanks to Quarkus, Spring Boot and Helidon integrations. There is two-way integration between LLMs and Java: you can call LLMs from Java and allow LLMs to call your Java code in return.
             </>
         ),
     },

@@ -1,7 +1,9 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
+@Internal
 class AnthropicToolExecutionRequestBuilder {
 
     private final String id;
