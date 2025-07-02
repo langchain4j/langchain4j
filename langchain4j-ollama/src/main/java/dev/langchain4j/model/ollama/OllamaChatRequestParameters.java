@@ -5,12 +5,12 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-
 import java.util.Objects;
 
 public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
 
-    public static final OllamaChatRequestParameters EMPTY = OllamaChatRequestParameters.builder().build();
+    public static final OllamaChatRequestParameters EMPTY =
+            OllamaChatRequestParameters.builder().build();
 
     private final Integer mirostat;
     private final Double mirostatEta;
