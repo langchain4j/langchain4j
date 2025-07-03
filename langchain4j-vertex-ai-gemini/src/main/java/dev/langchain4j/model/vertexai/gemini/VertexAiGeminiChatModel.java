@@ -316,7 +316,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.maxRetries = getOrDefault(maxRetries, 2);
 
         this.logRequests = Objects.requireNonNullElse(logRequests, false);
-        this.logResponses = Objects.requireNonNullElse(logResponses, false);
+        this.logResponses = getOrDefault(logResponses, false);
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copy(supportedCapabilities);
