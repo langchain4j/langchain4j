@@ -28,6 +28,9 @@ on:
 jobs:
   java_build:
     runs-on: ubuntu-latest
+    needs:
+      - spotless
+      - compliance
     continue-on-error: ${{ !matrix.integration_tests }}
     strategy:
       fail-fast: false
@@ -72,14 +75,13 @@ jobs:
 
       - name: Setup JBang
         uses: jbangdev/setup-jbang@main
-        if: matrix.integration_tests
+        if:  ${{ matrix.integration_tests == true }}
 
       - name: Integration test with JDK ${{ matrix.java_version }}
-
         ## The step or job will only run if the `integration_tests` variable
         ## in the matrix is true
         ## and the OPENAI_API_KEY secret is available and not empty.
-        if: ${{ matrix.integration_tests && env.OPENAI_API_KEY != '' }}
+        if: ${{ matrix.integration_tests == true && env.OPENAI_API_KEY != '' }}
         run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
