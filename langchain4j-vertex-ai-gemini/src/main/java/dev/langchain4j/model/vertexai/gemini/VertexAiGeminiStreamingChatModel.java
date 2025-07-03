@@ -21,7 +21,6 @@ import com.google.common.annotations.VisibleForTesting;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.internal.VirtualThreadUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -46,6 +45,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +57,8 @@ import org.slf4j.LoggerFactory;
 public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Closeable {
 
     private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiStreamingChatModel.class);
+
+    private static final Executor DEFAULT_EXECUTOR = Executors.newCachedThreadPool();
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
@@ -74,7 +77,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
     private final List<ChatModelListener> listeners;
 
-    private final Executor executor = VirtualThreadUtils.createVirtualThreadExecutor();
+    private final Executor executor;
 
     public VertexAiGeminiStreamingChatModel(VertexAiGeminiStreamingChatModelBuilder builder) {
         ensureNotBlank(builder.modelName, "modelName");
@@ -171,6 +174,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
+        this.executor = Objects.requireNonNullElse(builder.executor, DEFAULT_EXECUTOR);
     }
 
     /**
@@ -298,6 +302,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = Objects.requireNonNullElse(logResponses, false);
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        this.executor = DEFAULT_EXECUTOR;
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
@@ -316,6 +321,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logRequests = false;
         this.logResponses = false;
         this.listeners = Collections.emptyList();
+        this.executor = DEFAULT_EXECUTOR;
     }
 
     @Override
@@ -478,6 +484,12 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         if (this.vertexAI != null) {
             this.vertexAI.close();
         }
+
+        if (this.executor != null) {
+            if (executor instanceof ExecutorService) {
+                ((ExecutorService) executor).shutdown();
+            }
+        }
     }
 
     @Override
@@ -499,6 +511,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     }
 
     public static class VertexAiGeminiStreamingChatModelBuilder {
+        private Executor executor;
         private String project;
         private String location;
         private String modelName;
@@ -521,6 +534,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         public VertexAiGeminiStreamingChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public VertexAiGeminiStreamingChatModelBuilder executor(Executor executor) {
+            this.executor = executor;
+            return this;
         }
 
         public VertexAiGeminiStreamingChatModelBuilder project(String project) {
