@@ -1,7 +1,7 @@
 package dev.langchain4j.service.output;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.JsonParsingUtils;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.structured.Description;
 
@@ -14,9 +14,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
@@ -25,8 +24,6 @@ import static java.lang.String.format;
 
 @Internal
 class PojoOutputParser<T> implements OutputParser<T> {
-
-    private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile("(?s)\\{.*\\}|\\[.*\\]");
 
     private final Class<T> type;
 
@@ -40,16 +37,9 @@ class PojoOutputParser<T> implements OutputParser<T> {
             throw outputParsingException(text, type);
         }
 
-        try {
-            return Json.fromJson(text, type);
-        } catch (Exception ignored) {
-            try {
-                String jsonBlock = extractJsonBlock(text);
-                return Json.fromJson(jsonBlock, type);
-            } catch (Exception innerException) {
-                throw outputParsingException(text, type.getName(), innerException);
-            }
-        }
+        return extractAndParseJson(text, type)
+                .map(JsonParsingUtils.ParsedJson::value)
+                .orElseThrow(() -> outputParsingException(text, type));
     }
 
     @Override
@@ -141,14 +131,6 @@ class PojoOutputParser<T> implements OutputParser<T> {
             case "java.time.LocalDateTime" -> "date-time string (2023-12-31T23:59:59)";
             default -> type.getTypeName();
         };
-    }
-
-    private String extractJsonBlock(String text) {
-        Matcher matcher = JSON_BLOCK_PATTERN.matcher(text);
-        if (matcher.find()) {
-            return matcher.group();
-        }
-        return text;
     }
 
     private void validateJsonStructure(String jsonStructure, Type returnType) {
