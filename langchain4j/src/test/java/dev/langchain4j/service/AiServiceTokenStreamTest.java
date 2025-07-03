@@ -4,13 +4,13 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.BeforeToolExecutionContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +26,8 @@ class AiServiceTokenStreamTest {
 
     static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
 
-    static Consumer<ToolExecutionRequest> DUMMY_TOOL_BEFORE_EXECUTION_HANDLER = (toolExecutionRequest) -> {};
+    static Consumer<BeforeToolExecutionContext> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER =
+            (beforeToolExecutionContext) -> {};
 
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
 
@@ -77,26 +78,26 @@ class AiServiceTokenStreamTest {
     }
 
     @Test
-    void start_onToolBeforeExecutionInvoked_shouldNotThrowException() {
+    void start_beforeToolExecutionInvoked_shouldNotThrowException() {
         tokenStream
                 .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
-                .onToolBeforeExecution(DUMMY_TOOL_BEFORE_EXECUTION_HANDLER)
+                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
                 .ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
     }
 
     @Test
-    void start_onToolBeforeExecutionInvokedMultipleTimes_shouldThrowException() {
+    void start_beforeToolExecutionInvokedMultipleTimes_shouldThrowException() {
         tokenStream
                 .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
-                .onToolBeforeExecution(DUMMY_TOOL_BEFORE_EXECUTION_HANDLER)
-                .onToolBeforeExecution(DUMMY_TOOL_BEFORE_EXECUTION_HANDLER)
+                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
+                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
                 .ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("onToolBeforeExecution can be invoked on TokenStream at most 1 time");
+                .hasMessage("beforeToolExecution can be invoked on TokenStream at most 1 time");
     }
 
     @Test
