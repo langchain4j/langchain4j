@@ -13,9 +13,11 @@ import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonObject;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -311,7 +313,10 @@ class GitHubModelsChatModelIT {
 
         ChatResponse response = model.chat(systemMessage, userMessage);
 
-        assertThat(response.aiMessage().text()).containsAnyOf("Chirac", "Sarkozy", "Hollande", "Macron");
+        final var jsonResponse = response.aiMessage().text();
+        //noinspection unchecked
+        assertThat(Json.fromJson(jsonResponse, Object.class)).isNotNull();
+        assertThat(jsonResponse).containsAnyOf("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
