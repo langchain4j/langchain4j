@@ -21,6 +21,7 @@ import com.google.common.annotations.VisibleForTesting;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.VirtualThreadUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -42,7 +43,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +55,7 @@ import org.slf4j.LoggerFactory;
  */
 public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Closeable {
 
-    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
+    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiStreamingChatModel.class);
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
@@ -70,6 +73,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     private final Boolean logResponses;
 
     private final List<ChatModelListener> listeners;
+
+    private final Executor executor = VirtualThreadUtils.createVirtualThreadExecutor();
 
     public VertexAiGeminiStreamingChatModel(VertexAiGeminiStreamingChatModelBuilder builder) {
         ensureNotBlank(builder.modelName, "modelName");
@@ -120,9 +125,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         }
         if (builder.toolCallingMode != null) {
             // only a subset of functions allowed to be used by the model
-            if (builder.toolCallingMode == ToolCallingMode.ANY
-                    && allowedFunctionNames != null
-                    && !allowedFunctionNames.isEmpty()) {
+            if (builder.toolCallingMode == ToolCallingMode.ANY && !allowedFunctionNames.isEmpty()) {
                 this.toolConfig = ToolConfig.newBuilder()
                         .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
                                 .setMode(FunctionCallingConfig.Mode.ANY)
@@ -291,16 +294,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.generativeModel = new GenerativeModel(modelName, vertexAI)
                 .withGenerationConfig(generationConfig);
 
-        if (logRequests != null) {
-            this.logRequests = logRequests;
-        } else {
-            this.logRequests = false;
-        }
-        if (logResponses != null) {
-            this.logResponses = logResponses;
-        } else {
-            this.logResponses = false;
-        }
+        this.logRequests = Objects.requireNonNullElse(logRequests, false);
+        this.logResponses = Objects.requireNonNullElse(logResponses, false);
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
@@ -371,105 +366,106 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             List<ChatMessage> messages,
             List<ToolSpecification> toolSpecifications,
             StreamingResponseHandler<AiMessage> handler) {
-        String modelName = generativeModel.getModelName();
+        executor.execute(() -> {
+            String modelName = generativeModel.getModelName();
 
-        List<Tool> tools = new ArrayList<>();
-        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
-            tools.add(tool);
-        }
-
-        if (this.googleSearch != null) {
-            tools.add(this.googleSearch);
-        }
-        if (this.vertexSearch != null) {
-            tools.add(this.vertexSearch);
-        }
-
-        GenerativeModel model = this.generativeModel.withTools(tools).withToolConfig(this.toolConfig);
-
-        ContentsMapper.InstructionAndContent instructionAndContent =
-                ContentsMapper.splitInstructionAndContent(messages);
-
-        if (instructionAndContent.systemInstruction != null) {
-            model = model.withSystemInstruction(instructionAndContent.systemInstruction);
-        }
-
-        if (!this.safetySettings.isEmpty()) {
-            model = model.withSafetySettings(SafetySettingsMapper.mapSafetySettings(this.safetySettings));
-        }
-
-        if (this.logRequests && logger.isDebugEnabled()) {
-            logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
-        }
-
-        ChatRequest listenerRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .modelName(modelName)
-                        .temperature((double) generationConfig.getTemperature())
-                        .topP((double) generationConfig.getTopP())
-                        .maxOutputTokens(generationConfig.getMaxOutputTokens())
-                        .toolSpecifications(toolSpecifications)
-                        .build())
-                .build();
-        ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
-        listeners.forEach((listener) -> {
-            try {
-                listener.onRequest(chatModelRequestContext);
-            } catch (Exception e) {
-                logger.warn("Exception while calling model listener (onRequest)", e);
+            List<Tool> tools = new ArrayList<>();
+            if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+                Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+                tools.add(tool);
             }
-        });
 
-        StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
+            if (this.googleSearch != null) {
+                tools.add(this.googleSearch);
+            }
+            if (this.vertexSearch != null) {
+                tools.add(this.vertexSearch);
+            }
 
-        try {
-            model.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
-                if (partialResponse.getCandidatesCount() > 0) {
-                    responseBuilder.append(partialResponse);
-                    handler.onNext(ResponseHandler.getText(partialResponse));
-                }
-            });
-            Response<AiMessage> fullResponse = responseBuilder.build();
-            handler.onComplete(fullResponse);
+            GenerativeModel model = this.generativeModel.withTools(tools).withToolConfig(this.toolConfig);
 
-            ChatResponse listenerResponse = ChatResponse.builder()
-                    .aiMessage(fullResponse.content())
-                    .metadata(ChatResponseMetadata.builder()
+            ContentsMapper.InstructionAndContent instructionAndContent =
+                    ContentsMapper.splitInstructionAndContent(messages);
+
+            if (instructionAndContent.systemInstruction != null) {
+                model = model.withSystemInstruction(instructionAndContent.systemInstruction);
+            }
+
+            if (!this.safetySettings.isEmpty()) {
+                model = model.withSafetySettings(SafetySettingsMapper.mapSafetySettings(this.safetySettings));
+            }
+
+            if (this.logRequests && logger.isDebugEnabled()) {
+                logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
+            }
+
+            ChatRequest listenerRequest = ChatRequest.builder()
+                    .messages(messages)
+                    .parameters(ChatRequestParameters.builder()
                             .modelName(modelName)
-                            .tokenUsage(fullResponse.tokenUsage())
-                            .finishReason(fullResponse.finishReason())
+                            .temperature((double) generationConfig.getTemperature())
+                            .topP((double) generationConfig.getTopP())
+                            .maxOutputTokens(generationConfig.getMaxOutputTokens())
+                            .toolSpecifications(toolSpecifications)
                             .build())
                     .build();
-            ChatModelResponseContext chatModelResponseContext =
-                    new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), listenerAttributes);
+            ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
+            ChatModelRequestContext chatModelRequestContext =
+                    new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
             listeners.forEach((listener) -> {
                 try {
-                    listener.onResponse(chatModelResponseContext);
+                    listener.onRequest(chatModelRequestContext);
                 } catch (Exception e) {
-                    logger.warn("Exception while calling model listener (onResponse)", e);
+                    logger.warn("Exception while calling model listener (onRequest)", e);
                 }
             });
 
-            if (this.logResponses && logger.isDebugEnabled()) {
-                logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
+            StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
+
+            try {
+                model.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
+                    if (partialResponse.getCandidatesCount() > 0) {
+                        responseBuilder.append(partialResponse);
+                        handler.onNext(ResponseHandler.getText(partialResponse));
+                    }
+                });
+                Response<AiMessage> fullResponse = responseBuilder.build();
+                handler.onComplete(fullResponse);
+
+                ChatResponse listenerResponse = ChatResponse.builder()
+                        .aiMessage(fullResponse.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .modelName(modelName)
+                                .tokenUsage(fullResponse.tokenUsage())
+                                .finishReason(fullResponse.finishReason())
+                                .build())
+                        .build();
+                ChatModelResponseContext chatModelResponseContext =
+                        new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), listenerAttributes);
+                listeners.forEach((listener) -> {
+                    try {
+                        listener.onResponse(chatModelResponseContext);
+                    } catch (Exception e) {
+                        logger.warn("Exception while calling model listener (onResponse)", e);
+                    }
+                });
+
+                if (this.logResponses && logger.isDebugEnabled()) {
+                    logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
+                }
+            } catch (Exception exception) {
+                listeners.forEach((listener) -> {
+                    try {
+                        ChatModelErrorContext chatModelErrorContext =
+                                new ChatModelErrorContext(exception, listenerRequest, provider(), listenerAttributes);
+                        listener.onError(chatModelErrorContext);
+                    } catch (Exception t) {
+                        logger.warn("Exception while calling model listener (onError)", t);
+                    }
+                });
+                handler.onError(exception);
             }
-        } catch (Exception exception) {
-            listeners.forEach((listener) -> {
-                try {
-                    ChatModelErrorContext chatModelErrorContext =
-                            new ChatModelErrorContext(exception, listenerRequest, provider(), listenerAttributes);
-                    listener.onError(chatModelErrorContext);
-                } catch (Exception t) {
-                    logger.warn("Exception while calling model listener (onError)", t);
-                }
-            });
-
-            handler.onError(exception);
-        }
+        });
     }
 
     @VisibleForTesting
