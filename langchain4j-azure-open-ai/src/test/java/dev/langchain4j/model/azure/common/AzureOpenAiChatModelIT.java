@@ -35,7 +35,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
         AzureOpenAiChatModel.Builder chatModelBuilder = AzureModelBuilders.chatModelBuilder()
                 .defaultRequestParameters(parameters)
                 .deploymentName(null)
-                .logRequestsAndResponses(true);
+                .maxTokens(null);
         if (parameters.modelName() == null) {
             chatModelBuilder.deploymentName(AzureModelBuilders.DEFAULT_CHAT_MODEL);
         }
