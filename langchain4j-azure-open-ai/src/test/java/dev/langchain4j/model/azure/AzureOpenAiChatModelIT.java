@@ -41,7 +41,6 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -320,8 +319,7 @@ class AzureOpenAiChatModelIT {
         final var jsonResponse = response.aiMessage().text();
         //noinspection unchecked
         assertThat(Json.fromJson(jsonResponse, Object.class)).isNotNull();
-        assertThat(jsonResponse)
-                .containsAnyOf("Chirac", "Sarkozy", "Hollande", "Macron");
+        assertThat(jsonResponse).containsAnyOf("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
