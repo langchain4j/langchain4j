@@ -1,8 +1,11 @@
-package dev.langchain4j.store.embedding.hybrid;
+package dev.langchain4j.store.embedding.inmemory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -18,12 +21,15 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class HybridEmbeddingStoreTest {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @TempDir
     Path temporaryDirectory;
@@ -423,5 +429,336 @@ class HybridEmbeddingStoreTest {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> embeddingStore.addAll(ids, embeddings, segments))
                 .withMessageContaining("same size");
+    }
+
+    @Test
+    void should_serialize_with_correct_json_structure() throws JsonProcessingException {
+        // given
+        String text = "Test serialization structure";
+        TextSegment segment = TextSegment.from(text, Metadata.from("key", "value"));
+        embeddingStore.add(embeddingModel.embed(text).content(), segment);
+
+        // when
+        String json = embeddingStore.serializeToJson();
+
+        // then
+        assertThat(json).isNotNull().isNotEmpty();
+
+        // Parse JSON and validate structure
+        JsonNode rootNode = OBJECT_MAPPER.readTree(json);
+
+        // Verify top-level structure has exactly the expected keys
+        assertThat(rootNode.has("parentData")).isTrue();
+        assertThat(rootNode.has("hybridData")).isTrue();
+        assertThat(rootNode.size()).isEqualTo(2); // Should only have these two keys
+
+        // Verify parentData is a string (serialized JSON from parent)
+        assertThat(rootNode.get("parentData").isTextual()).isTrue();
+
+        // Verify hybridData is an object with expected structure
+        JsonNode hybridDataNode = rootNode.get("hybridData");
+        assertThat(hybridDataNode.isObject()).isTrue();
+        assertThat(hybridDataNode.has("entryToFileMapping")).isTrue();
+        assertThat(hybridDataNode.has("chunkStorageDirectory")).isTrue();
+        assertThat(hybridDataNode.has("cacheSize")).isTrue();
+
+        // Verify entryToFileMapping is an object
+        assertThat(hybridDataNode.get("entryToFileMapping").isObject()).isTrue();
+
+        // Verify chunkStorageDirectory is a string
+        assertThat(hybridDataNode.get("chunkStorageDirectory").isTextual()).isTrue();
+
+        // Verify cacheSize is a number
+        assertThat(hybridDataNode.get("cacheSize").isNumber()).isTrue();
+        assertThat(hybridDataNode.get("cacheSize").asInt()).isEqualTo(0); // Default cache size
+    }
+
+    @Test
+    void should_deserialize_from_json_with_correct_structure() {
+        // given
+        String text = "Test deserialization structure";
+        Metadata metadata = Metadata.from("category", "test");
+        TextSegment segment = TextSegment.from(text, metadata);
+        Embedding embedding = embeddingModel.embed(text).content();
+        String id = embeddingStore.add(embedding, segment);
+
+        String json = embeddingStore.serializeToJson();
+
+        // when
+        HybridEmbeddingStore<TextSegment> deserializedStore = HybridEmbeddingStore.fromJson(json);
+
+        // then
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(1)
+                .minScore(0.0)
+                .build();
+        EmbeddingSearchResult<TextSegment> result = deserializedStore.search(request);
+
+        assertThat(result.matches()).hasSize(1);
+        assertThat(result.matches().get(0).embedded().text()).isEqualTo(text);
+        assertThat(result.matches().get(0).embedded().metadata().getString("category"))
+                .isEqualTo("test");
+    }
+
+    @Test
+    void should_round_trip_serialize_and_deserialize_preserving_data() {
+        // given
+        String text1 = "First document for serialization test";
+        String text2 = "Second document for serialization test";
+
+        Metadata metadata1 = Metadata.from(Map.of("type", "doc", "priority", "high"));
+        Metadata metadata2 = Metadata.from(Map.of("type", "note", "priority", "low"));
+
+        TextSegment segment1 = TextSegment.from(text1, metadata1);
+        TextSegment segment2 = TextSegment.from(text2, metadata2);
+
+        Embedding embedding1 = embeddingModel.embed(text1).content();
+        Embedding embedding2 = embeddingModel.embed(text2).content();
+
+        embeddingStore.add("custom-id-1", embedding1, segment1);
+        embeddingStore.add("custom-id-2", embedding2, segment2);
+
+        // when - serialize and deserialize
+        String json = embeddingStore.serializeToJson();
+        HybridEmbeddingStore<TextSegment> newStore = HybridEmbeddingStore.fromJson(json);
+
+        // then - verify all data is preserved
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding1)
+                .maxResults(10)
+                .minScore(0.0)
+                .build();
+        EmbeddingSearchResult<TextSegment> result = newStore.search(request);
+
+        assertThat(result.matches()).hasSize(2);
+
+        // Verify metadata is preserved
+        Filter highPriorityFilter =
+                MetadataFilterBuilder.metadataKey("priority").isEqualTo("high");
+        EmbeddingSearchRequest filteredRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding1)
+                .filter(highPriorityFilter)
+                .maxResults(10)
+                .minScore(0.0)
+                .build();
+        EmbeddingSearchResult<TextSegment> filteredResult = newStore.search(filteredRequest);
+
+        assertThat(filteredResult.matches()).hasSize(1);
+        assertThat(filteredResult.matches().get(0).embedded().text()).isEqualTo(text1);
+    }
+
+    @Test
+    void should_serialize_file_and_deserialize_from_file() throws IOException {
+        // given
+        String text = "File serialization test";
+        TextSegment segment = TextSegment.from(text, Metadata.from("source", "file"));
+        Embedding embedding = embeddingModel.embed(text).content();
+        embeddingStore.add(embedding, segment);
+
+        Path serializedFile = temporaryDirectory.resolve("hybrid-store.json");
+
+        // when
+        embeddingStore.serializeToFile(serializedFile);
+        HybridEmbeddingStore<TextSegment> loadedStore = HybridEmbeddingStore.fromFile(serializedFile);
+
+        // then
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(1)
+                .minScore(0.0)
+                .build();
+        EmbeddingSearchResult<TextSegment> result = loadedStore.search(request);
+
+        assertThat(result.matches()).hasSize(1);
+        assertThat(result.matches().get(0).embedded().text()).isEqualTo(text);
+        assertThat(result.matches().get(0).embedded().metadata().getString("source"))
+                .isEqualTo("file");
+    }
+
+    @Test
+    void should_serialize_with_different_cache_sizes() throws JsonProcessingException {
+        // given
+        HybridEmbeddingStore<TextSegment> storeCacheSize5 = new HybridEmbeddingStore<>(temporaryDirectory, 5);
+        HybridEmbeddingStore<TextSegment> storeCacheSize10 = new HybridEmbeddingStore<>(temporaryDirectory, 10);
+
+        String text = "Cache size test";
+        TextSegment segment = TextSegment.from(text);
+        Embedding embedding = embeddingModel.embed(text).content();
+
+        storeCacheSize5.add(embedding, segment);
+        storeCacheSize10.add(embedding, segment);
+
+        // when
+        String json5 = storeCacheSize5.serializeToJson();
+        String json10 = storeCacheSize10.serializeToJson();
+
+        // then - Parse JSON and verify cache size values
+        JsonNode rootNode5 = OBJECT_MAPPER.readTree(json5);
+        JsonNode rootNode10 = OBJECT_MAPPER.readTree(json10);
+
+        JsonNode hybridData5 = rootNode5.get("hybridData");
+        JsonNode hybridData10 = rootNode10.get("hybridData");
+
+        assertThat(hybridData5.get("cacheSize").asInt()).isEqualTo(5);
+        assertThat(hybridData10.get("cacheSize").asInt()).isEqualTo(10);
+
+        // Verify deserialization preserves cache size
+        HybridEmbeddingStore<TextSegment> restored5 = HybridEmbeddingStore.fromJson(json5);
+        HybridEmbeddingStore<TextSegment> restored10 = HybridEmbeddingStore.fromJson(json10);
+
+        // Both should work correctly regardless of cache size
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(1)
+                .minScore(0.0)
+                .build();
+
+        EmbeddingSearchResult<TextSegment> result5 = restored5.search(request);
+        EmbeddingSearchResult<TextSegment> result10 = restored10.search(request);
+
+        assertThat(result5.matches()).hasSize(1);
+        assertThat(result10.matches()).hasSize(1);
+    }
+
+    @Test
+    void should_handle_serialization_with_empty_store() throws JsonProcessingException {
+        // given - empty store
+
+        // when
+        String json = embeddingStore.serializeToJson();
+
+        // then
+        assertThat(json).isNotNull().isNotEmpty();
+
+        // Parse JSON and validate structure for empty store
+        JsonNode rootNode = OBJECT_MAPPER.readTree(json);
+
+        assertThat(rootNode.has("parentData")).isTrue();
+        assertThat(rootNode.has("hybridData")).isTrue();
+
+        JsonNode hybridDataNode = rootNode.get("hybridData");
+        assertThat(hybridDataNode.has("entryToFileMapping")).isTrue();
+        assertThat(hybridDataNode.has("chunkStorageDirectory")).isTrue();
+        assertThat(hybridDataNode.has("cacheSize")).isTrue();
+
+        // Verify empty store has empty entryToFileMapping
+        JsonNode entryToFileMappingNode = hybridDataNode.get("entryToFileMapping");
+        assertThat(entryToFileMappingNode.isObject()).isTrue();
+        assertThat(entryToFileMappingNode.size()).isEqualTo(0);
+
+        // Verify empty store can be deserialized
+        HybridEmbeddingStore<TextSegment> deserializedStore = HybridEmbeddingStore.fromJson(json);
+
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel.embed("any query").content())
+                .maxResults(10)
+                .minScore(0.0)
+                .build();
+        EmbeddingSearchResult<TextSegment> result = deserializedStore.search(request);
+
+        assertThat(result.matches()).isEmpty();
+    }
+
+    @Test
+    void should_validate_complete_json_structure_and_parentData_format() throws JsonProcessingException {
+        // given
+        String text1 = "First test document";
+        String text2 = "Second test document";
+
+        Metadata metadata1 = Metadata.from("category", "test1");
+        Metadata metadata2 = Metadata.from("category", "test2");
+
+        TextSegment segment1 = TextSegment.from(text1, metadata1);
+        TextSegment segment2 = TextSegment.from(text2, metadata2);
+
+        embeddingStore.add("id1", embeddingModel.embed(text1).content(), segment1);
+        embeddingStore.add("id2", embeddingModel.embed(text2).content(), segment2);
+
+        // when
+        String json = embeddingStore.serializeToJson();
+
+        // then
+        JsonNode rootNode = OBJECT_MAPPER.readTree(json);
+
+        // Validate top-level structure
+        assertThat(rootNode.isObject()).isTrue();
+        assertThat(rootNode.size()).isEqualTo(2);
+        assertThat(rootNode.has("parentData")).isTrue();
+        assertThat(rootNode.has("hybridData")).isTrue();
+
+        // Validate parentData is valid JSON string
+        String parentDataJson = rootNode.get("parentData").asText();
+        assertThat(parentDataJson).isNotNull().isNotEmpty();
+
+        // Parse parentData to ensure it's valid JSON
+        JsonNode parentDataNode = OBJECT_MAPPER.readTree(parentDataJson);
+        assertThat(parentDataNode.isObject()).isTrue();
+        assertThat(parentDataNode.has("entries")).isTrue();
+
+        // Validate parentData entries structure
+        JsonNode entriesNode = parentDataNode.get("entries");
+        assertThat(entriesNode.isArray()).isTrue();
+        assertThat(entriesNode.size()).isEqualTo(2);
+
+        // Validate hybridData structure
+        JsonNode hybridDataNode = rootNode.get("hybridData");
+        assertThat(hybridDataNode.isObject()).isTrue();
+        assertThat(hybridDataNode.size()).isEqualTo(3);
+
+        // Validate entryToFileMapping
+        JsonNode entryToFileMappingNode = hybridDataNode.get("entryToFileMapping");
+        assertThat(entryToFileMappingNode.isObject()).isTrue();
+        assertThat(entryToFileMappingNode.size()).isEqualTo(2);
+        assertThat(entryToFileMappingNode.has("id1")).isTrue();
+        assertThat(entryToFileMappingNode.has("id2")).isTrue();
+        assertThat(entryToFileMappingNode.get("id1").asText()).endsWith(".json");
+        assertThat(entryToFileMappingNode.get("id2").asText()).endsWith(".json");
+
+        // Validate chunkStorageDirectory
+        JsonNode chunkStorageDirNode = hybridDataNode.get("chunkStorageDirectory");
+        assertThat(chunkStorageDirNode.isTextual()).isTrue();
+        assertThat(chunkStorageDirNode.asText()).isNotEmpty();
+
+        // Validate cacheSize
+        JsonNode cacheSizeNode = hybridDataNode.get("cacheSize");
+        assertThat(cacheSizeNode.isNumber()).isTrue();
+        assertThat(cacheSizeNode.asInt()).isEqualTo(0);
+    }
+
+    @Test
+    void should_ensure_parentData_and_hybridData_constants_are_used_consistently() throws JsonProcessingException {
+        // given
+        embeddingStore.add(embeddingModel.embed("test").content(), TextSegment.from("test"));
+
+        // when
+        String json = embeddingStore.serializeToJson();
+
+        // then - Parse as generic JSON to verify exact key names
+        JsonNode rootNode = OBJECT_MAPPER.readTree(json);
+
+        // Verify the exact keys match our constants (not just that they contain the strings)
+        String[] actualKeys = new String[rootNode.size()];
+        int index = 0;
+        for (String fieldName : (Iterable<String>) () -> rootNode.fieldNames()) {
+            actualKeys[index++] = fieldName;
+        }
+
+        assertThat(actualKeys).containsExactlyInAnyOrder("parentData", "hybridData");
+
+        // Test deserialization to ensure the constants work both ways
+        HybridEmbeddingStore<TextSegment> deserializedStore = HybridEmbeddingStore.fromJson(json);
+        assertThat(deserializedStore).isNotNull();
+
+        // Verify functionality is preserved
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel.embed("test").content())
+                .maxResults(1)
+                .minScore(0.0)
+                .build();
+        EmbeddingSearchResult<TextSegment> result = deserializedStore.search(request);
+
+        assertThat(result.matches()).hasSize(1);
+        assertThat(result.matches().get(0).embedded().text()).isEqualTo("test");
     }
 }
