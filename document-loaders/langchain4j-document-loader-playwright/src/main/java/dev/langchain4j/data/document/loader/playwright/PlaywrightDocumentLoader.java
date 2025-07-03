@@ -6,8 +6,7 @@ import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.LoadState;
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentParser;
-import java.io.ByteArrayInputStream;
+import dev.langchain4j.data.document.Metadata;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,12 +29,10 @@ public class PlaywrightDocumentLoader implements AutoCloseable {
      * Loads a document from the specified URL.
      *
      * @param url            The URL of the file. Must not be null.
-     * @param documentParser The parser to be used for parsing text from the URL. Must not be null.
      * @return document
      */
-    public Document load(String url, DocumentParser documentParser) {
+    public Document load(String url) {
         requireNonNull(url, "url must not be null");
-        requireNonNull(documentParser, "documentParser must not be null");
         logger.info("Loading document from URL: {}", url);
         String pageContent;
         try {
@@ -49,12 +46,9 @@ public class PlaywrightDocumentLoader implements AutoCloseable {
             logger.debug("Waiting webpage fully loaded: {}", url);
             pageContent = page.content();
         } catch (Exception e) {
-            logger.error("Failed to load document from URL: {}", url, e);
             throw new RuntimeException("Failed to load document from URL: " + url, e);
         }
-        Document parsedDocument = documentParser.parse(new ByteArrayInputStream(pageContent.getBytes()));
-        parsedDocument.metadata().put(Document.URL, url);
-        return parsedDocument;
+        return Document.from(pageContent, Metadata.from(Document.URL, url));
     }
 
     /**
