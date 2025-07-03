@@ -1,13 +1,15 @@
 package dev.langchain4j.mcp.client.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.langchain4j.Internal;
 import java.util.HashMap;
 import java.util.Map;
 
+@Internal
 public class McpGetPromptRequest extends McpClientMessage {
 
     @JsonInclude
-    public final ClientMethod method = ClientMethod.PROMPTS_GET;
+    public final McpClientMethod method = McpClientMethod.PROMPTS_GET;
 
     @JsonInclude
     private Map<String, Object> params;
