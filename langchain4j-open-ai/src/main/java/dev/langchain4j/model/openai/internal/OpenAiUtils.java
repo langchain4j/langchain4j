@@ -315,7 +315,7 @@ public class OpenAiUtils {
         }
 
         String refusal = assistantMessage.refusal();
-        if (isNullOrBlank(text) && isNotNullOrBlank(refusal)) {
+        if (isNotNullOrBlank(refusal)) {
             throw new ContentFilteredException(refusal);
         }
 
