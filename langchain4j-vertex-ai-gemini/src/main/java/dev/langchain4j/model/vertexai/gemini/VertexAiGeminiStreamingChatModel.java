@@ -383,64 +383,66 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             List<ChatMessage> messages,
             List<ToolSpecification> toolSpecifications,
             StreamingResponseHandler<AiMessage> handler) {
-        executor.execute(() -> {
-            String modelName = generativeModel.getModelName();
+        String modelName = generativeModel.getModelName();
 
-            List<Tool> tools = new ArrayList<>();
-            if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-                Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
-                tools.add(tool);
-            }
+        List<Tool> tools = new ArrayList<>();
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+            tools.add(tool);
+        }
 
-            if (this.googleSearch != null) {
-                tools.add(this.googleSearch);
-            }
-            if (this.vertexSearch != null) {
-                tools.add(this.vertexSearch);
-            }
+        if (this.googleSearch != null) {
+            tools.add(this.googleSearch);
+        }
+        if (this.vertexSearch != null) {
+            tools.add(this.vertexSearch);
+        }
 
-            GenerativeModel model = this.generativeModel.withTools(tools).withToolConfig(this.toolConfig);
+        GenerativeModel model = this.generativeModel.withTools(tools).withToolConfig(this.toolConfig);
 
-            ContentsMapper.InstructionAndContent instructionAndContent =
-                    ContentsMapper.splitInstructionAndContent(messages);
+        ContentsMapper.InstructionAndContent instructionAndContent =
+                ContentsMapper.splitInstructionAndContent(messages);
 
-            if (instructionAndContent.systemInstruction != null) {
-                model = model.withSystemInstruction(instructionAndContent.systemInstruction);
-            }
+        if (instructionAndContent.systemInstruction != null) {
+            model = model.withSystemInstruction(instructionAndContent.systemInstruction);
+        }
 
-            if (!this.safetySettings.isEmpty()) {
-                model = model.withSafetySettings(SafetySettingsMapper.mapSafetySettings(this.safetySettings));
-            }
+        if (!this.safetySettings.isEmpty()) {
+            model = model.withSafetySettings(SafetySettingsMapper.mapSafetySettings(this.safetySettings));
+        }
 
-            if (this.logRequests && logger.isDebugEnabled()) {
-                logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
-            }
+        if (this.logRequests && logger.isDebugEnabled()) {
+            logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
+        }
 
-            ChatRequest listenerRequest = ChatRequest.builder()
-                    .messages(messages)
-                    .parameters(ChatRequestParameters.builder()
-                            .modelName(modelName)
-                            .temperature((double) generationConfig.getTemperature())
-                            .topP((double) generationConfig.getTopP())
-                            .maxOutputTokens(generationConfig.getMaxOutputTokens())
-                            .toolSpecifications(toolSpecifications)
-                            .build())
-                    .build();
-            ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-            ChatModelRequestContext chatModelRequestContext =
-                    new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
-            listeners.forEach((listener) -> {
-                try {
-                    listener.onRequest(chatModelRequestContext);
-                } catch (Exception e) {
-                    logger.warn("Exception while calling model listener (onRequest)", e);
-                }
-            });
-
-            StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
-
+        ChatRequest listenerRequest = ChatRequest.builder()
+                .messages(messages)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(modelName)
+                        .temperature((double) generationConfig.getTemperature())
+                        .topP((double) generationConfig.getTopP())
+                        .maxOutputTokens(generationConfig.getMaxOutputTokens())
+                        .toolSpecifications(toolSpecifications)
+                        .build())
+                .build();
+        ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext chatModelRequestContext =
+                new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
+        listeners.forEach((listener) -> {
             try {
-                model.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
+                listener.onRequest(chatModelRequestContext);
+            } catch (Exception e) {
+                logger.warn("Exception while calling model listener (onRequest)", e);
+            }
+        });
+
+        StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
+
+        final GenerativeModel finalModel = model;
+
+        executor.execute(() -> {
+            try {
+                finalModel.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
                     if (partialResponse.getCandidatesCount() > 0) {
                         responseBuilder.append(partialResponse);
                         handler.onNext(ResponseHandler.getText(partialResponse));
