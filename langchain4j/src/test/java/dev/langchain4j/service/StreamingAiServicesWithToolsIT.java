@@ -321,8 +321,8 @@ class StreamingAiServicesWithToolsIT {
         assistant
                 .chat(userMessage)
                 .onPartialResponse(ignored -> {})
-                .beforeToolExecution(beforeToolExecutionContext ->
-                        toolExecutionRequests.addAll(beforeToolExecutionContext.toolExecutionRequests()))
+                .beforeToolsExecution(beforeToolsExecutionContext ->
+                        toolExecutionRequests.addAll(beforeToolsExecutionContext.toolExecutionRequests()))
                 .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();

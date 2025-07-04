@@ -17,7 +17,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.service.tool.BeforeToolExecutionContext;
+import dev.langchain4j.service.tool.BeforeToolsExecutionContext;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
@@ -42,7 +42,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final Object methodKey;
 
     private final Consumer<String> partialResponseHandler;
-    private final Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler;
+    private final Consumer<BeforeToolsExecutionContext> beforeToolsExecutionHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
 
@@ -61,7 +61,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             AiServiceContext context,
             Object memoryId,
             Consumer<String> partialResponseHandler,
-            Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler,
+            Consumer<BeforeToolsExecutionContext> beforeToolsExecutionHandler,
             Consumer<ToolExecution> toolExecutionHandler,
             Consumer<ChatResponse> completeResponseHandler,
             Consumer<Throwable> errorHandler,
@@ -78,7 +78,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.partialResponseHandler = ensureNotNull(partialResponseHandler, "partialResponseHandler");
         this.completeResponseHandler = completeResponseHandler;
-        this.beforeToolExecutionHandler = beforeToolExecutionHandler;
+        this.beforeToolsExecutionHandler = beforeToolsExecutionHandler;
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
 
@@ -107,16 +107,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         addToMemory(aiMessage);
 
         if (aiMessage.hasToolExecutionRequests()) {
-            if (beforeToolExecutionHandler != null) {
-                BeforeToolExecutionContext beforeToolExecutionContext = BeforeToolExecutionContext.builder()
+            if (beforeToolsExecutionHandler != null) {
+                BeforeToolsExecutionContext beforeToolsExecutionContext = BeforeToolsExecutionContext.builder()
                         .toolExecutionRequests(aiMessage.toolExecutionRequests())
                         .build();
-                beforeToolExecutionHandler.accept(beforeToolExecutionContext);
+                beforeToolsExecutionHandler.accept(beforeToolsExecutionContext);
             }
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                 String toolName = toolExecutionRequest.name();
                 ToolExecutor toolExecutor = toolExecutors.get(toolName);
-
                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                 ToolExecutionResultMessage toolExecutionResultMessage =
                         ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutionResult);
@@ -141,7 +140,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     context,
                     memoryId,
                     partialResponseHandler,
-                    beforeToolExecutionHandler,
+                    beforeToolsExecutionHandler,
                     toolExecutionHandler,
                     completeResponseHandler,
                     errorHandler,

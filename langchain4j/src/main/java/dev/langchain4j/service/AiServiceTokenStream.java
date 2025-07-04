@@ -15,7 +15,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.service.tool.BeforeToolExecutionContext;
+import dev.langchain4j.service.tool.BeforeToolsExecutionContext;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
@@ -36,7 +36,7 @@ public class AiServiceTokenStream implements TokenStream {
 
     private Consumer<String> partialResponseHandler;
     private Consumer<List<Content>> contentsHandler;
-    private Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler;
+    private Consumer<BeforeToolsExecutionContext> beforeToolsExecutionHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<ChatResponse> completeResponseHandler;
     private Consumer<Throwable> errorHandler;
@@ -44,7 +44,7 @@ public class AiServiceTokenStream implements TokenStream {
     private int onPartialResponseInvoked;
     private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
-    private int beforeToolExecutionInvoked;
+    private int beforeToolsExecutionInvoked;
     private int onToolExecutedInvoked;
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
@@ -82,9 +82,9 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream beforeToolExecution(Consumer<BeforeToolExecutionContext> beforeToolExecutionHandler) {
-        this.beforeToolExecutionHandler = beforeToolExecutionHandler;
-        this.beforeToolExecutionInvoked++;
+    public TokenStream beforeToolsExecution(Consumer<BeforeToolsExecutionContext> beforeToolsExecutionHandler) {
+        this.beforeToolsExecutionHandler = beforeToolsExecutionHandler;
+        this.beforeToolsExecutionInvoked++;
         return this;
     }
 
@@ -135,7 +135,7 @@ public class AiServiceTokenStream implements TokenStream {
                 context,
                 memoryId,
                 partialResponseHandler,
-                beforeToolExecutionHandler,
+                beforeToolsExecutionHandler,
                 toolExecutionHandler,
                 completeResponseHandler,
                 errorHandler,
@@ -163,8 +163,9 @@ public class AiServiceTokenStream implements TokenStream {
         if (onRetrievedInvoked > 1) {
             throw new IllegalConfigurationException("onRetrieved can be invoked on TokenStream at most 1 time");
         }
-        if (beforeToolExecutionInvoked > 1) {
-            throw new IllegalConfigurationException("beforeToolExecution can be invoked on TokenStream at most 1 time");
+        if (beforeToolsExecutionInvoked > 1) {
+            throw new IllegalConfigurationException(
+                    "beforeToolsExecution can be invoked on TokenStream at most 1 time");
         }
         if (onToolExecutedInvoked > 1) {
             throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");

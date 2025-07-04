@@ -1,17 +1,19 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Context for the BeforeToolExecutionHandler that is passed to the handler before executing one or multiple tools.
+ * Context for the BeforeToolsExecutionHandler that is passed to the handler before executing one or multiple tools.
  * It contains a list of tool execution requests that are about to be executed.
  */
 public class BeforeToolsExecutionContext {
     private final List<ToolExecutionRequest> toolExecutionRequests;
 
-    private BeforeToolExecutionContext(Builder builder) {
+    private BeforeToolsExecutionContext(Builder builder) {
         this.toolExecutionRequests = copy(builder.toolExecutionRequests);
     }
 
@@ -28,13 +30,13 @@ public class BeforeToolsExecutionContext {
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
-        BeforeToolExecutionContext that = (BeforeToolExecutionContext) obj;
+        BeforeToolsExecutionContext that = (BeforeToolsExecutionContext) obj;
         return Objects.equals(toolExecutionRequests, that.toolExecutionRequests);
     }
 
     @Override
     public String toString() {
-        return "BeforeToolExecutionContext {" + " toolExecutionRequests = " + toolExecutionRequests + " }";
+        return "BeforeToolsExecutionContext {" + " toolExecutionRequests = " + toolExecutionRequests + " }";
     }
 
     @Override
@@ -58,8 +60,8 @@ public class BeforeToolsExecutionContext {
             return this;
         }
 
-        public BeforeToolExecutionContext build() {
-            return new BeforeToolExecutionContext(this);
+        public BeforeToolsExecutionContext build() {
+            return new BeforeToolsExecutionContext(this);
         }
     }
 }

@@ -10,7 +10,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.service.tool.BeforeToolExecutionContext;
+import dev.langchain4j.service.tool.BeforeToolsExecutionContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +26,8 @@ class AiServiceTokenStreamTest {
 
     static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
 
-    static Consumer<BeforeToolExecutionContext> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER =
-            (beforeToolExecutionContext) -> {};
+    static Consumer<BeforeToolsExecutionContext> DUMMY_BEFORE_TOOLS_EXECUTION_HANDLER =
+            (beforeToolsExecutionContext) -> {};
 
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
 
@@ -78,26 +78,26 @@ class AiServiceTokenStreamTest {
     }
 
     @Test
-    void start_beforeToolExecutionInvoked_shouldNotThrowException() {
+    void start_beforeToolsExecutionInvoked_shouldNotThrowException() {
         tokenStream
                 .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
-                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
+                .beforeToolsExecution(DUMMY_BEFORE_TOOLS_EXECUTION_HANDLER)
                 .ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
     }
 
     @Test
-    void start_beforeToolExecutionInvokedMultipleTimes_shouldThrowException() {
+    void start_beforeToolsExecutionInvokedMultipleTimes_shouldThrowException() {
         tokenStream
                 .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
-                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
-                .beforeToolExecution(DUMMY_BEFORE_TOOL_EXECUTION_HANDLER)
+                .beforeToolsExecution(DUMMY_BEFORE_TOOLS_EXECUTION_HANDLER)
+                .beforeToolsExecution(DUMMY_BEFORE_TOOLS_EXECUTION_HANDLER)
                 .ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("beforeToolExecution can be invoked on TokenStream at most 1 time");
+                .hasMessage("beforeToolsExecution can be invoked on TokenStream at most 1 time");
     }
 
     @Test
