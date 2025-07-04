@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.exception.AuthenticationException;
-import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.InvalidRequestException;
@@ -105,6 +104,7 @@ class OpenAiChatModelErrorsTest {
         MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
             res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
             // copied from https://platform.openai.com/docs/guides/structured-outputs/refusals?api-mode=chat#refusals
+            // language=json
             res.setBody("""
                     {
                       "id": "chatcmpl-9nYAG9LPNonX8DAyrkwYfemr3C8HC",
