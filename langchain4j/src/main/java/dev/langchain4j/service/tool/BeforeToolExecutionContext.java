@@ -5,14 +5,14 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Context for the BeforeToolExecutionHandler that is passed to the handler before executing a tool.
+ * Context for the BeforeToolExecutionHandler that is passed to the handler before executing one or multiple tools.
  * It contains a list of tool execution requests that are about to be executed.
  */
-public class BeforeToolExecutionContext {
+public class BeforeToolsExecutionContext {
     private final List<ToolExecutionRequest> toolExecutionRequests;
 
     private BeforeToolExecutionContext(Builder builder) {
-        this.toolExecutionRequests = builder.toolExecutionRequests;
+        this.toolExecutionRequests = copy(builder.toolExecutionRequests);
     }
 
     /**
