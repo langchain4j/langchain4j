@@ -13,7 +13,7 @@
     <description>Jlama: LLM Inference Engine for Java - Requires Java 20+</description>
 
     <properties>
-        <jlama.version>0.8.3</jlama.version>
+        <jlama.version>0.8.4</jlama.version>
         <java.version>21</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
     </properties>
