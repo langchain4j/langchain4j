@@ -4,20 +4,20 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
-
 import java.util.function.Function;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,20 +31,28 @@ public class McpToolProvider implements ToolProvider {
     private final AtomicReference<BiPredicate<McpClient, ToolSpecification>> mcpToolsFilter;
     private final Function<ToolExecutor, ToolExecutor> toolWrapper;
     private static final Logger log = LoggerFactory.getLogger(McpToolProvider.class);
+    private final boolean exposeResourcesAsTools;
 
     private McpToolProvider(Builder builder) {
-        this(builder.mcpClients, Utils.getOrDefault(builder.failIfOneServerFails, false), builder.mcpToolsFilter, builder.toolWrapper);
+        this(
+                builder.mcpClients,
+                Utils.getOrDefault(builder.failIfOneServerFails, false),
+                builder.mcpToolsFilter,
+                builder.toolWrapper,
+                Utils.getOrDefault(builder.exposeResourcesAsTools, false));
     }
 
-    protected McpToolProvider(List<McpClient> mcpClients, boolean failIfOneServerFails, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
-        this(Objects.requireNonNull(mcpClients), failIfOneServerFails, mcpToolsFilter, Function.identity());
-    }
-
-    protected McpToolProvider(List<McpClient> mcpClients, boolean failIfOneServerFails, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter, Function<ToolExecutor, ToolExecutor> toolWrapper) {
+    protected McpToolProvider(
+            List<McpClient> mcpClients,
+            boolean failIfOneServerFails,
+            BiPredicate<McpClient, ToolSpecification> mcpToolsFilter,
+            Function<ToolExecutor, ToolExecutor> toolWrapper,
+            boolean exposeResourcesAsTools) {
         this.mcpClients = new CopyOnWriteArrayList<>(mcpClients);
         this.failIfOneServerFails = failIfOneServerFails;
         this.mcpToolsFilter = new AtomicReference<>(mcpToolsFilter);
         this.toolWrapper = toolWrapper;
+        this.exposeResourcesAsTools = exposeResourcesAsTools;
     }
 
     /**
@@ -104,15 +112,17 @@ public class McpToolProvider implements ToolProvider {
         return provideTools(request, mcpToolsFilter.get());
     }
 
-    protected ToolProviderResult provideTools(ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
+    protected ToolProviderResult provideTools(
+            ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         for (McpClient mcpClient : mcpClients) {
             var defaultToolExecutor = new DefaultToolExecutor(mcpClient);
             try {
-                mcpClient.listTools().stream().filter(tool -> mcpToolsFilter.test(mcpClient, tool))
+                mcpClient.listTools().stream()
+                        .filter(tool -> mcpToolsFilter.test(mcpClient, tool))
                         .forEach(toolSpecification -> {
-                    builder.add(toolSpecification, toolWrapper.apply(defaultToolExecutor));
-                });
+                            builder.add(toolSpecification, toolWrapper.apply(defaultToolExecutor));
+                        });
             } catch (IllegalConfigurationException e) {
                 throw e;
             } catch (Exception e) {
@@ -122,6 +132,29 @@ public class McpToolProvider implements ToolProvider {
                     log.warn("Failed to retrieve tools from MCP server", e);
                 }
             }
+        }
+        if (exposeResourcesAsTools) {
+            List<McpClient> mcpClientsUnmodifiable = Collections.unmodifiableList(mcpClients);
+            ToolSpecification listResourcesToolSpec = ToolSpecification.builder()
+                    .name("list_resources")
+                    .description(
+                            "Lists all available resources. The result is in JSON format. When a resource description"
+                                    + "contains uriTemplate instead of uri, then the URI is a template and placeholders (in curly brackets) need to be substituted with an actual value")
+                    .parameters(JsonObjectSchema.builder().build())
+                    .build();
+            builder.add(
+                    listResourcesToolSpec, toolWrapper.apply(new ListResourcesToolExecutor(mcpClientsUnmodifiable)));
+
+            ToolSpecification getResourceToolSpec = ToolSpecification.builder()
+                    .name("get_resource")
+                    .description("Retrieves a resource identified by the MCP server name and the resource URI."
+                            + "The 'list_resources' tool should be called before this one to obtain the list.")
+                    .parameters(JsonObjectSchema.builder()
+                            .addStringProperty("mcpServer", "The name of the MCP server to get the resource from.")
+                            .addStringProperty("uri", "The URI of the resource to get.")
+                            .build())
+                    .build();
+            builder.add(getResourceToolSpec, toolWrapper.apply(new GetResourceToolExecutor(mcpClientsUnmodifiable)));
         }
         return builder.build();
     }
@@ -136,6 +169,7 @@ public class McpToolProvider implements ToolProvider {
         private Boolean failIfOneServerFails;
         private BiPredicate<McpClient, ToolSpecification> mcpToolsFilter = (mcp, tool) -> true;
         private Function<ToolExecutor, ToolExecutor> toolWrapper = Function.identity();
+        private Boolean exposeResourcesAsTools;
 
         /**
          * The list of MCP clients to use for retrieving tools.
@@ -181,6 +215,15 @@ public class McpToolProvider implements ToolProvider {
          */
         public McpToolProvider.Builder toolWrapper(Function<ToolExecutor, ToolExecutor> toolWrapper) {
             this.toolWrapper = toolWrapper;
+            return this;
+        }
+
+        /**
+         * If this is true, the tool provider will add two extra tools: "read_resource" and "list_resources".
+         * These tools allow accessing resources from the MCP servers.
+         */
+        public McpToolProvider.Builder exposeResourcesAsTools(boolean exposeResourcesAsTools) {
+            this.exposeResourcesAsTools = exposeResourcesAsTools;
             return this;
         }
 
