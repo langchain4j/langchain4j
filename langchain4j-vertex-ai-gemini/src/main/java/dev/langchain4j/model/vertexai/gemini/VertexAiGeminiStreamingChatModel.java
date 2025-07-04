@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_GEMINI;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.FunctionCallingConfig;
@@ -46,7 +47,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +59,6 @@ import org.slf4j.LoggerFactory;
 public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Closeable {
 
     private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiStreamingChatModel.class);
-
-    private static final Executor DEFAULT_EXECUTOR = Executors.newCachedThreadPool();
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
@@ -174,7 +174,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
-        this.executor = Objects.requireNonNullElse(builder.executor, DEFAULT_EXECUTOR);
+        this.executor = getOrDefault(builder.executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
     }
 
     /**
@@ -199,7 +199,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             Boolean logRequests,
             Boolean logResponses,
             List<ChatModelListener> listeners,
-            final Map<String, String> customHeaders) {
+            final Map<String, String> customHeaders,
+            Executor executor) {
         ensureNotBlank(modelName, "modelName");
 
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
@@ -302,10 +303,12 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = Objects.requireNonNullElse(logResponses, false);
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        this.executor = DEFAULT_EXECUTOR;
+        this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
     }
 
-    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
+    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
+                                            GenerationConfig generationConfig,
+                                            Executor executor) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.vertexAI = null;
@@ -321,7 +324,15 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logRequests = false;
         this.logResponses = false;
         this.listeners = Collections.emptyList();
-        this.executor = DEFAULT_EXECUTOR;
+        this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
+    }
+
+    private static ExecutorService createDefaultExecutor() {
+        return new ThreadPoolExecutor(
+            0, Integer.MAX_VALUE,
+            1, SECONDS,
+            new SynchronousQueue<>()
+        );
     }
 
     @Override
