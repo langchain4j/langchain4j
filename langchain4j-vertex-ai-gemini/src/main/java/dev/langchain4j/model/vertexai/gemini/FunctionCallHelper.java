@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 class FunctionCallHelper {
 
     private static final Gson GSON = new Gson();
@@ -26,7 +28,7 @@ class FunctionCallHelper {
         Struct.Builder structBuilder = Struct.newBuilder();
         try {
             String toolArguments = toolExecutionRequest.arguments();
-            String arguments = (toolArguments == null || toolArguments.isBlank()) ? "{}" : toolArguments;
+            String arguments = isNullOrBlank(toolArguments) ? "{}" : toolArguments;
             JsonFormat.parser().merge(arguments, structBuilder);
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
