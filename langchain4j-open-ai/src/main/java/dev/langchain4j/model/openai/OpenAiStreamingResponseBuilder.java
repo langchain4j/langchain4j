@@ -40,6 +40,7 @@ public class OpenAiStreamingResponseBuilder {
     private final StringBuffer toolNameBuilder = new StringBuffer();
     private final StringBuffer toolArgumentsBuilder = new StringBuffer();
 
+    // TODO replace with new tool request builder?
     private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
 
     private final AtomicReference<String> id = new AtomicReference<>();
@@ -113,24 +114,28 @@ public class OpenAiStreamingResponseBuilder {
             }
         }
 
-        if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
-            ToolCall toolCall = delta.toolCalls().get(0);
+        if (delta.toolCalls() != null) {
+            System.out.println("OLOLO " + delta.toolCalls()); // TODO
 
-            ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                    toolCall.index(),
-                    idx -> new ToolExecutionRequestBuilder()
-            );
+            for (ToolCall toolCall : delta.toolCalls()) {
 
-            if (toolCall.id() != null) {
-                builder.idBuilder.append(toolCall.id());
-            }
+                ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                        toolCall.index(),
+                        idx -> new ToolExecutionRequestBuilder()
+                );
 
-            FunctionCall functionCall = toolCall.function();
-            if (functionCall.name() != null) {
-                builder.nameBuilder.append(functionCall.name());
-            }
-            if (functionCall.arguments() != null) {
-                builder.argumentsBuilder.append(functionCall.arguments());
+                if (toolCall.id() != null) {
+                    builder.idBuilder.append(toolCall.id());
+                }
+
+                FunctionCall functionCall = toolCall.function();
+                if (functionCall.name() != null) {
+                    builder.nameBuilder.append(functionCall.name());
+                }
+
+                if (functionCall.arguments() != null) {
+                    builder.argumentsBuilder.append(functionCall.arguments());
+                }
             }
         }
     }

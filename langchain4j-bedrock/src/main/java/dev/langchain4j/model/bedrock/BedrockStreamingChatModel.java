@@ -63,6 +63,8 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                                 } catch (Exception e) {
                                     withLoggingExceptions(() -> handler.onError(e));
                                 }
+                            } else if (chunk.delta().type().equals(ContentBlockDelta.Type.TOOL_USE)) {
+                                System.out.println("OLOLO " + chunk);
                             }
                             responseBuilder.append(chunk);
                         })

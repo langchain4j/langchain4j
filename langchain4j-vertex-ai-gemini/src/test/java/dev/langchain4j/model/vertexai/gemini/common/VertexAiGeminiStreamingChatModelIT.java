@@ -16,7 +16,9 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 VertexAiGeminiStreamingChatModel.builder()
                         .project(System.getenv("GCP_PROJECT_ID"))
                         .location(System.getenv("GCP_LOCATION"))
-                        .modelName("gemini-2.0-flash")
+                        .modelName("gemini-1.5-pro")
+                        .logRequests(true)
+                        .logResponses(true)
                         .build()
                 // TODO add more model configs, see OpenAiChatModelIT
         );

@@ -211,6 +211,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         }
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
+                    System.out.print("OLOLO");
+                    System.out.print(" id=" + data.contentBlock.id);
+                    System.out.print(" name=" + data.contentBlock.name);
+                    System.out.print(" input=" + data.contentBlock.input);
+                    System.out.println();
                     toolExecutionRequestBuilderMap.putIfAbsent(
                             data.index,
                             new AnthropicToolExecutionRequestBuilder(data.contentBlock.id, data.contentBlock.name)
@@ -236,6 +241,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
+                        System.out.println("OLOLO " + partialJson);
                         Integer toolExecutionsIndex = data.index;
                         if (toolExecutionsIndex != null) {
                             AnthropicToolExecutionRequestBuilder toolExecutionRequestBuilder = toolExecutionRequestBuilderMap.get(toolExecutionsIndex);

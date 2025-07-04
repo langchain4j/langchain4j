@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.common;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -10,8 +11,10 @@ import org.junit.jupiter.api.TestInstance;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -201,6 +204,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
+        Queue<IndexAndToolRequest> partialToolExecutionRequests = new ConcurrentLinkedQueue<>();
+        Queue<IndexAndToolRequest> completeToolExecutionRequests = new ConcurrentLinkedQueue<>();
         AtomicInteger timesOnPartialResponseWasCalled = new AtomicInteger();
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
@@ -215,7 +220,22 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
+            public void onPartialToolExecutionRequest(int index, ToolExecutionRequest partialToolExecutionRequest) {
+                System.out.println("OLOLO!!! TOOL PARTIAL " + index + " - " + partialToolExecutionRequest); // TODO
+                partialToolExecutionRequests.add(new IndexAndToolRequest(index, partialToolExecutionRequest));
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
+            public void onCompleteToolExecutionRequest(int index, ToolExecutionRequest completeToolExecutionRequest) {
+                System.out.println("OLOLO!!! TOOL COMPLETE " + index + " - " + completeToolExecutionRequest); // TODO
+                completeToolExecutionRequests.add(new IndexAndToolRequest(index, completeToolExecutionRequest));
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
+                System.out.println("OLOLO!!! COMPLETE " + completeResponse); // TODO
                 futureChatResponse.complete(completeResponse);
                 timesOnCompleteResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
@@ -234,6 +254,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             StreamingMetadata metadata = new StreamingMetadata(
                     concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
                     timesOnPartialResponseWasCalled.get(),
+                    new ArrayList<>(partialToolExecutionRequests),
+                    new ArrayList<>(completeToolExecutionRequests),
                     timesOnCompleteResponseWasCalled.get(),
                     threads
             );

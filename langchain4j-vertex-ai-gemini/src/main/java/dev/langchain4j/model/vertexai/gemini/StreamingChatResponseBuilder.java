@@ -39,6 +39,7 @@ class StreamingChatResponseBuilder {
                 .collect(Collectors.toList());
 
         if (!functionCalls.isEmpty()) {
+            System.out.println("OLOLO " + functionCalls);
             this.functionCalls.addAll(functionCalls);
         } else {
             contentBuilder.append(ResponseHandler.getText(partialResponse));

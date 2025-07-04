@@ -69,6 +69,16 @@ class InternalAzureOpenAiStreamingResponseBuilder {
         }
 
         if (delta.getToolCalls() != null && !delta.getToolCalls().isEmpty()) {
+            System.out.print("OLOLO");
+            for (ChatCompletionsToolCall toolCall : delta.getToolCalls()) {
+                System.out.print(" id=" + toolCall.getId());
+                if (toolCall instanceof ChatCompletionsFunctionToolCall functionToolCall) {
+                    System.out.print(" name=" + functionToolCall.getFunction().getName());
+                    System.out.print(" arguments=" + functionToolCall.getFunction().getArguments());
+                }
+                System.out.println();
+            }
+
             for (ChatCompletionsToolCall toolCall : delta.getToolCalls()) {
                 ToolExecutionRequestBuilder toolExecutionRequestBuilder;
                 if (toolCall.getId() != null) {

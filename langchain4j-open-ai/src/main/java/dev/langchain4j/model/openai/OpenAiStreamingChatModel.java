@@ -1,7 +1,9 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ToolExecutionRequestBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -16,6 +18,7 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 
@@ -26,6 +29,7 @@ import java.util.Map;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
@@ -127,13 +131,23 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                         .build();
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
+        ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder();
 
         client.chatCompletion(openAiRequest)
                 .onPartialResponse(partialResponse -> {
                     openAiResponseBuilder.append(partialResponse);
-                    handle(partialResponse, handler);
+                    handle(partialResponse, toolBuilder, handler);
                 })
                 .onComplete(() -> {
+
+                    if (toolBuilder.hasToolExecutionRequests()) {
+                        try {
+                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.currentTool());
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        }
+                    }
+
                     ChatResponse chatResponse = openAiResponseBuilder.build();
                     try {
                         handler.onCompleteResponse(chatResponse);
@@ -149,6 +163,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     private static void handle(ChatCompletionResponse partialResponse,
+                               ToolExecutionRequestBuilder toolBuilder,
                                StreamingChatResponseHandler handler) {
         if (partialResponse == null) {
             return;
@@ -175,6 +190,42 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 handler.onPartialResponse(content);
             } catch (Exception e) {
                 withLoggingExceptions(() -> handler.onError(e));
+            }
+        }
+
+//      delta.functionCall() // TODO
+
+        List<ToolCall> toolCalls = delta.toolCalls();
+        if (toolCalls != null) {
+            for (ToolCall toolCall : toolCalls) {
+
+                if (toolBuilder.currentIndex() != toolCall.index()) {
+                    try {
+                        handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.currentTool());
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
+                }
+
+                int index = toolBuilder.updateCurrentIndex(toolCall.index());
+                String id = toolBuilder.updateId(toolCall.id());
+                String name = toolBuilder.updateName(toolCall.function().name());
+
+                String partialArguments = toolCall.function().arguments();
+                if (isNotNullOrEmpty(partialArguments)) {
+                    toolBuilder.appendArguments(partialArguments);
+
+                    ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
+                            .id(id)
+                            .name(name)
+                            .arguments(partialArguments)
+                            .build();
+                    try {
+                        handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
+                }
             }
         }
     }
