@@ -17,6 +17,7 @@ import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.OpenAIServiceVersion;
+import com.azure.ai.openai.models.ChatChoice;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinition;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinitionFunction;
@@ -56,6 +57,7 @@ import com.azure.core.http.policy.RetryOptions;
 import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
+import com.fasterxml.jackson.databind.JsonSerializable;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -67,6 +69,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -74,6 +77,7 @@ import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
@@ -359,6 +363,14 @@ class InternalAzureOpenAiHelper {
         public void setRequired(List<String> required) {
             this.required = required;
         }
+    }
+
+    static AiMessage aiMessageFrom(ChatChoice chatChoice) {
+        if (isNullOrEmpty(chatChoice.getMessage().getToolCalls()) || chatChoice.getMessage().getContent() == null &&
+                chatChoice.getFinishReason().equals(CompletionsFinishReason.CONTENT_FILTERED)) {
+          throw new ContentFilteredException("Content has been filtered", chatChoice.getContentFilterResults().toString());
+        }
+        return aiMessageFrom(chatChoice.getMessage());
     }
 
     static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
