@@ -26,7 +26,7 @@ class FunctionCallHelper {
         Struct.Builder structBuilder = Struct.newBuilder();
         try {
             String toolArguments = toolExecutionRequest.arguments();
-            String arguments = toolArguments.isBlank() ? "{}" : toolArguments;
+            String arguments = (toolArguments == null || toolArguments.isBlank()) ? "{}" : toolArguments;
             JsonFormat.parser().merge(arguments, structBuilder);
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
