@@ -37,6 +37,7 @@
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
         <module>langchain4j-onnx-scoring</module>
+        <module>langchain4j-onnx-genai</module>
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-open-ai-official</module>
