@@ -45,7 +45,6 @@ import static io.milvus.common.clientenum.ConsistencyLevelEnum.EVENTUALLY;
 import static io.milvus.param.IndexType.FLAT;
 import static io.milvus.param.MetricType.COSINE;
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -232,7 +231,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             return;
         }
         List<InsertParam.Field> fields = new ArrayList<>();

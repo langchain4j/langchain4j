@@ -1,15 +1,16 @@
 package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
-import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.internal.Json;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.internal.Json;
 
 /**
  * Utility class for {@link ToolExecutionRequest}.
@@ -67,7 +68,7 @@ class ToolExecutionRequestUtil {
      * @return the corrected JSON string
      */
     static String removeTrailingComma(String json) {
-        if (json == null || json.isEmpty()) {
+        if (isNullOrEmpty(json)) {
             return json;
         }
         Matcher matcher = TRAILING_COMMA_PATTERN.matcher(json);
@@ -81,7 +82,7 @@ class ToolExecutionRequestUtil {
      * @return the normalized JSON string
      */
     static String normalizeJsonString(String arguments) {
-        if (arguments == null || arguments.isEmpty()) {
+        if (isNullOrEmpty(arguments)) {
             return arguments;
         }
 

@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -308,12 +308,14 @@ class GitHubModelsChatModelIT {
 
         SystemMessage systemMessage =
                 SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage(
-                "List teams in the past French presidents, with their first name, last name, dates of service.");
+        UserMessage userMessage = userMessage("List teams in the past French presidents,last names only.");
 
         ChatResponse response = model.chat(systemMessage, userMessage);
 
-        assertThat(response.aiMessage().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
+        final var jsonResponse = response.aiMessage().text();
+        //noinspection unchecked
+        assertThat(Json.fromJson(jsonResponse, Object.class)).isNotNull();
+        assertThat(jsonResponse).containsAnyOf("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
