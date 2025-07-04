@@ -25,6 +25,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.net.Proxy;
 import java.time.Duration;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -110,6 +111,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
                         @Override
                         public void onNext(ChatCompletionChunk completion) {
+                            System.out.println("onNext - " + Thread.currentThread() + " - " + LocalTime.now());
                             manageChatCompletionChunks(
                                     completion,
                                     parameters,
@@ -184,6 +186,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 handler.onPartialResponse(choice.delta().content().get());
             }
             if (choice.delta().toolCalls().isPresent()) {
+                System.out.println("OLOLO " + choice.delta());
                 choice.delta().toolCalls().get().forEach(toolCall -> {
                     if (toolCall.function().isPresent()) {
                         final ChatCompletionChunk.Choice.Delta.ToolCall.Function function =

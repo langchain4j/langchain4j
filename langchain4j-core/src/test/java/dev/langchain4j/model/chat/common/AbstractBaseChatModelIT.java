@@ -30,6 +30,8 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
@@ -60,10 +62,20 @@ public abstract class AbstractBaseChatModelIT<M> {
     static final String DICE_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
-    static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
-            .name("getWeather")
-            .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
-            .build();
+//    static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
+//            .name("print_a_long_summary_of_the_city")
+//            .parameters(JsonObjectSchema.builder()
+//                    .addStringProperty("city")
+//                    .addStringProperty("country")
+//                    .addStringProperty("short_introduction")
+//                    .addStringProperty("long_summary")
+//                    .required("city", "country", "short_introduction", "long_summary")
+//                    .build())
+//            .build();
+static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
+        .name("getWeather")
+        .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
+        .build();
 
     static final ResponseFormat RESPONSE_FORMAT = ResponseFormat.builder()
             .type(ResponseFormatType.JSON)
@@ -108,10 +120,11 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
+                .messages(UserMessage.from("Tell me a long story about Java"))
                 .build();
 
         // when
+        System.out.println("right before request - " + Thread.currentThread() + " - " + LocalTime.now());
         ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
         ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
@@ -141,6 +154,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            assertThat(streamingMetadata.partialToolExecutionRequests()).isEmpty();
+            assertThat(streamingMetadata.completeToolExecutionRequests()).isEmpty();
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
                 Set<Thread> threads = streamingMetadata.threads();
@@ -317,6 +332,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
+            assertThat(streamingMetadata.partialToolExecutionRequests()).isEmpty();
+            assertThat(streamingMetadata.completeToolExecutionRequests()).isEmpty();
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
                 Set<Thread> threads = streamingMetadata.threads();
@@ -361,6 +378,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
+            assertThat(streamingMetadata.partialToolExecutionRequests()).isEmpty();
+            assertThat(streamingMetadata.completeToolExecutionRequests()).isEmpty();
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
                 Set<Thread> threads = streamingMetadata.threads();
@@ -577,6 +596,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
+//        UserMessage userMessage = UserMessage.from("Print long summaries of cities by calling the print_a_long_summary_of_the_city for cities Munich, Berlin, Porto and Paris. Write summaries yourself.");
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
@@ -586,6 +606,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
+        System.out.println("right before request - " + Thread.currentThread() + " - " + LocalTime.now()); // TODO
         ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
         ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
@@ -608,10 +629,32 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
                 assertThat(aiMessage.text()).isNull();
             }
+
+            assertThat(streamingMetadata.partialToolExecutionRequests()).hasSizeGreaterThanOrEqualTo(1);
+            StringBuilder arguments = new StringBuilder();
+            IndexAndToolRequest prev = null;
+            for (IndexAndToolRequest curr : streamingMetadata.partialToolExecutionRequests()) {
+                assertThat(curr.index()).isEqualTo(0);
+//                assertThat(curr.toolRequest().id()).isNotBlank(); TODO ollama
+                assertThat(curr.toolRequest().name()).isNotBlank();
+                assertThat(curr.toolRequest().arguments()).isNotBlank();
+                arguments.append(curr.toolRequest().arguments());
+                if (prev != null) {
+                    assertThat(curr.toolRequest().id()).isEqualTo(prev.toolRequest().id());
+                    assertThat(curr.toolRequest().name()).isEqualTo(prev.toolRequest().name());
+                }
+                prev = curr;
+            }
+            assertThat(arguments.toString()).isEqualTo(toolExecutionRequest.arguments());
+
+            assertThat(streamingMetadata.completeToolExecutionRequests()).hasSize(1);
+            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequest);
+
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
                 Set<Thread> threads = streamingMetadata.threads();
@@ -651,6 +694,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             if (assertTimesOnPartialResponseWasCalled()) {
                 assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
             }
+            assertThat(streamingMetadata2.partialToolExecutionRequests()).isEmpty();
+            assertThat(streamingMetadata2.completeToolExecutionRequests()).isEmpty();
             assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
                 Set<Thread> threads = streamingMetadata2.threads();
@@ -658,6 +703,156 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsSupportingTools")
+    @EnabledIf("supportsParallelTools")
+    protected void should_execute_multiple_tools_in_parallel_then_answer(M model) {
+
+        // given
+        UserMessage userMessage = UserMessage.from("What is the weather in Munich and Paris?");
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL)
+                        .build())
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+        assertThat(toolExecutionRequests).hasSize(2);
+        assertThat(toolExecutionRequests.get(0).name()).isEqualTo(WEATHER_TOOL.name());
+        assertThat(toolExecutionRequests.get(0).arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+        assertThat(toolExecutionRequests.get(1).name()).isEqualTo(WEATHER_TOOL.name());
+        assertThat(toolExecutionRequests.get(1).arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Paris\"}");
+
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
+        }
+
+        if (model instanceof StreamingChatModel) {
+            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+
+            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
+                assertThat(aiMessage.text()).isNull();
+            }
+
+            assertThat(streamingMetadata.partialToolExecutionRequests().size()).isGreaterThanOrEqualTo(2);
+            assertThat(streamingMetadata.partialToolExecutionRequests().get(0).index()).isEqualTo(0);
+            assertThat(streamingMetadata.partialToolExecutionRequests().get(streamingMetadata.partialToolExecutionRequests().size() - 1).index()).isEqualTo(1);
+            List<List<ToolExecutionRequest>> partialToolPartitions = partitionByIndex(streamingMetadata.partialToolExecutionRequests());
+            assertThat(partialToolPartitions).hasSize(2);
+
+            for (int i = 0; i < partialToolPartitions.size(); i++) {
+                List<ToolExecutionRequest> toolPartition = partialToolPartitions.get(i);
+                StringBuilder arguments = new StringBuilder();
+                ToolExecutionRequest prev = null;
+                for (ToolExecutionRequest curr : toolPartition) {
+//                    assertThat(curr.id()).isNotBlank(); TODO ollama
+                    assertThat(curr.name()).isNotBlank();
+                    assertThat(curr.arguments()).isNotBlank();
+                    arguments.append(curr.arguments());
+                    if (prev != null) {
+                        assertThat(curr.id()).isEqualTo(prev.id());
+                        assertThat(curr.name()).isEqualTo(prev.name());
+                    }
+                    prev = curr;
+                }
+                assertThat(arguments.toString()).isEqualTo(toolExecutionRequests.get(i).arguments());
+            }
+
+            assertThat(streamingMetadata.completeToolExecutionRequests()).hasSize(2);
+            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequests.get(0));
+            assertThat(streamingMetadata.completeToolExecutionRequests().get(1).toolRequest()).isEqualTo(toolExecutionRequests.get(1));
+
+            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
+        }
+
+        // given
+        ChatRequest chatRequest2 = ChatRequest.builder()
+                .messages(
+                        userMessage,
+                        aiMessage,
+                        ToolExecutionResultMessage.from(toolExecutionRequests.get(0), "foggy"),
+                        ToolExecutionResultMessage.from(toolExecutionRequests.get(1), "sunny")
+                )
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL)
+                        .build())
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata2 = chat(model, chatRequest2);
+        ChatResponse chatResponse2 = chatResponseAndStreamingMetadata2.chatResponse();
+
+        // then
+        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        assertThat(aiMessage2.text()).containsIgnoringCase("fog").containsIgnoringCase("sun");
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
+
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse2.metadata(), model);
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
+        }
+
+        if (model instanceof StreamingChatModel) {
+            StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
+            assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
+            if (assertTimesOnPartialResponseWasCalled()) {
+                assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            }
+            assertThat(streamingMetadata2.partialToolExecutionRequests()).isEmpty();
+            assertThat(streamingMetadata2.completeToolExecutionRequests()).isEmpty();
+            assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata2.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
+        }
+    }
+
+    private static List<List<ToolExecutionRequest>> partitionByIndex(List<IndexAndToolRequest> toolExecutionRequests) {
+        List<List<ToolExecutionRequest>> result = new ArrayList<>();
+        List<ToolExecutionRequest> currentPartition = new ArrayList<>();
+        int currentIndex = -1;
+
+        for (IndexAndToolRequest request : toolExecutionRequests) {
+            if (currentIndex == -1 || request.index() != currentIndex) {
+                if (!currentPartition.isEmpty()) {
+                    result.add(currentPartition);
+                    currentPartition = new ArrayList<>();
+                }
+                currentIndex = request.index();
+            }
+            currentPartition.add(request.toolRequest());
+        }
+
+        if (!currentPartition.isEmpty()) {
+            result.add(currentPartition);
+        }
+
+        return result;
     }
 
     @ParameterizedTest
@@ -1187,6 +1382,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected boolean supportsTools() {
         return true;
+    }
+
+    protected boolean supportsParallelTools() {
+        return supportsTools();
     }
 
     protected boolean supportsToolChoiceRequired() {

@@ -200,6 +200,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .setUser(user)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
+                .setParallelToolCalls(true)
                 .setSeed(seed);
 
         if (!parameters.toolSpecifications().isEmpty()) {

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.response;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 
@@ -18,6 +19,28 @@ public interface StreamingChatResponseHandler {
      * @param partialResponse The partial response (usually a single token), which is a part of the complete response.
      */
     void onPartialResponse(String partialResponse);
+
+    /**
+     * TODO
+     * TODO this callback is called as soon as partial tool is available
+     * TODO can be called multiple times
+     * TODO can be called for multiple tool executions,
+     * TODO give example of how this and other callback can be called
+     * @param index TODO
+     * @param partialToolExecutionRequest TODO
+     */
+    default void onPartialToolExecutionRequest(int index, ToolExecutionRequest partialToolExecutionRequest) {
+    }
+
+    /**
+     * TODO
+     * TODO this callback is called as soon as a single tool execution request is complete
+     * TODO can be called multiple times
+     * @param index TODO
+     * @param completeToolExecutionRequest TODO
+     */
+    default void onCompleteToolExecutionRequest(int index, ToolExecutionRequest completeToolExecutionRequest) {
+    }
 
     /**
      * Invoked when the model has finished streaming a response.

@@ -6,6 +6,7 @@ import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -15,6 +16,7 @@ import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static java.lang.Boolean.TRUE;
 import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -24,6 +26,7 @@ import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ToolExecutionRequestBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -31,6 +34,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 class OllamaClient {
@@ -145,6 +149,7 @@ class OllamaClient {
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
             final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder();
+            final ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder();
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -152,7 +157,12 @@ class OllamaClient {
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
                 responseBuilder.append(ollamaChatResponse);
 
-                String content = ollamaChatResponse.getMessage().getContent();
+                Message message = ollamaChatResponse.getMessage();
+                if (message == null) {
+                    return;
+                }
+
+                String content = message.getContent();
                 if (!isNullOrEmpty(content)) {
                     try {
                         handler.onPartialResponse(content);
@@ -161,7 +171,50 @@ class OllamaClient {
                     }
                 }
 
+                List<ToolCall> toolCalls = message.getToolCalls();
+                if (toolCalls != null) {
+                    for (ToolCall toolCall : toolCalls) {
+
+                        int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
+
+                        if (toolBuilder.currentIndex() != index) {
+                            try {
+                                handler.onCompleteToolExecutionRequest(index, toolBuilder.currentTool());
+                            } catch (Exception e) {
+                                withLoggingExceptions(() -> handler.onError(e));
+                            }
+                        }
+
+                        toolBuilder.updateCurrentIndex(index);
+                        String name = toolBuilder.updateName(toolCall.getFunction().getName());
+
+                        String partialArguments = toJson(toolCall.getFunction().getArguments());
+                        if (isNotNullOrEmpty(partialArguments)) {
+                            toolBuilder.appendArguments(partialArguments);
+
+                            ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
+                                    .name(name)
+                                    .arguments(partialArguments)
+                                    .build();
+                            try {
+                                handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
+                            } catch (Exception e) {
+                                withLoggingExceptions(() -> handler.onError(e));
+                            }
+                        }
+                    }
+                }
+
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
+
+                    if (toolBuilder.hasToolExecutionRequests()) {
+                        try {
+                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.currentTool());
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        }
+                    }
+
                     ChatResponse response = responseBuilder.build(ollamaChatResponse);
                     try {
                         handler.onCompleteResponse(response);

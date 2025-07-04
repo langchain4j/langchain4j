@@ -428,6 +428,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
         try {
             model.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
+                System.out.println("OLOLO!!!");
                 if (partialResponse.getCandidatesCount() > 0) {
                     responseBuilder.append(partialResponse);
                     handler.onNext(ResponseHandler.getText(partialResponse));
