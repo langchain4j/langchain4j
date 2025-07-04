@@ -1,12 +1,17 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureEq;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.rag.content.ContentMetadata.RERANKED_SCORE;
+import static java.util.Collections.emptyList;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -14,12 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.rag.content.ContentMetadata.RERANKED_SCORE;
-import static java.util.Collections.emptyList;
 
 /**
  * A {@link ContentAggregator} that performs re-ranking using a {@link ScoringModel}, such as Cohere.
@@ -52,11 +51,10 @@ public class ReRankingContentAggregator implements ContentAggregator {
             (queryToContents) -> {
                 if (queryToContents.size() > 1) {
                     throw illegalArgument(
-                            "The 'queryToContents' contains %s queries, making the re-ranking ambiguous. " +
-                                    "Because there are multiple queries, it is unclear which one should be " +
-                                    "used for re-ranking. Please provide a 'querySelector' in the constructor/builder.",
-                            queryToContents.size()
-                    );
+                            "The 'queryToContents' contains %s queries, making the re-ranking ambiguous. "
+                                    + "Because there are multiple queries, it is unclear which one should be "
+                                    + "used for re-ranking. Please provide a 'querySelector' in the constructor/builder.",
+                            queryToContents.size());
                 }
                 return queryToContents.keySet().iterator().next();
             };
@@ -70,16 +68,18 @@ public class ReRankingContentAggregator implements ContentAggregator {
         this(scoringModel, DEFAULT_QUERY_SELECTOR, null);
     }
 
-    public ReRankingContentAggregator(ScoringModel scoringModel,
-                                      Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
-                                      Double minScore) {
+    public ReRankingContentAggregator(
+            ScoringModel scoringModel,
+            Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
+            Double minScore) {
         this(scoringModel, querySelector, minScore, null);
     }
 
-    public ReRankingContentAggregator(ScoringModel scoringModel,
-                                      Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
-                                      Double minScore,
-                                      Integer maxResults) {
+    public ReRankingContentAggregator(
+            ScoringModel scoringModel,
+            Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
+            Double minScore,
+            Integer maxResults) {
         this.scoringModel = ensureNotNull(scoringModel, "scoringModel");
         this.querySelector = getOrDefault(querySelector, DEFAULT_QUERY_SELECTOR);
         this.minScore = minScore;
@@ -125,21 +125,28 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
     protected List<Content> reRankAndFilter(List<Content> contents, Query query) {
 
-        List<TextSegment> segments = contents.stream()
-                .map(Content::textSegment)
-                .collect(Collectors.toList());
+        List<TextSegment> segments = contents.stream().map(Content::textSegment).collect(Collectors.toList());
 
         List<Double> scores = scoringModel.scoreAll(segments, query.text()).content();
 
+        final var segmentCount = segments.size();
+        final var scoreCount = scores.size();
+        ensureEq(
+                scoreCount,
+                segmentCount,
+                "ScoringModel has returned %d scores for %d segments",
+                scoreCount,
+                segmentCount);
+
         Map<TextSegment, Double> segmentToScore = new HashMap<>();
-        for (int i = 0; i < segments.size(); i++) {
+        for (int i = 0; i < segmentCount; i++) {
             segmentToScore.put(segments.get(i), scores.get(i));
         }
 
         return segmentToScore.entrySet().stream()
                 .filter(entry -> minScore == null || entry.getValue() >= minScore)
                 .sorted(Map.Entry.<TextSegment, Double>comparingByValue().reversed())
-                .map(entry ->  Content.from(entry.getKey(), Map.of(RERANKED_SCORE, entry.getValue())))
+                .map(entry -> Content.from(entry.getKey(), Map.of(RERANKED_SCORE, entry.getValue())))
                 .limit(maxResults)
                 .collect(Collectors.toList());
     }
@@ -150,15 +157,15 @@ public class ReRankingContentAggregator implements ContentAggregator {
         private Double minScore;
         private Integer maxResults;
 
-        ReRankingContentAggregatorBuilder() {
-        }
+        ReRankingContentAggregatorBuilder() {}
 
         public ReRankingContentAggregatorBuilder scoringModel(ScoringModel scoringModel) {
             this.scoringModel = scoringModel;
             return this;
         }
 
-        public ReRankingContentAggregatorBuilder querySelector(Function<Map<Query, Collection<List<Content>>>, Query> querySelector) {
+        public ReRankingContentAggregatorBuilder querySelector(
+                Function<Map<Query, Collection<List<Content>>>, Query> querySelector) {
             this.querySelector = querySelector;
             return this;
         }
@@ -174,7 +181,8 @@ public class ReRankingContentAggregator implements ContentAggregator {
         }
 
         public ReRankingContentAggregator build() {
-            return new ReRankingContentAggregator(this.scoringModel, this.querySelector, this.minScore, this.maxResults);
+            return new ReRankingContentAggregator(
+                    this.scoringModel, this.querySelector, this.minScore, this.maxResults);
         }
     }
 }
