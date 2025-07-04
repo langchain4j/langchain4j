@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
@@ -24,8 +25,10 @@ import org.jspecify.annotations.Nullable;
 
 class GeminiService {
 
-    static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
+    private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
     private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
+    private static final Duration DEFAULT_CONNECT_TIMEOUT = ofSeconds(15);
+    private static final Duration DEFAULT_READ_TIMEOUT = ofSeconds(60);
 
     private final HttpClient httpClient;
     private final String baseUrl;
@@ -38,11 +41,11 @@ class GeminiService {
             final boolean logRequestsAndResponses,
             final Duration timeout) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.baseUrl = ensureNotBlank(baseUrl, "baseUrl");
+        this.baseUrl = getOrDefault(baseUrl, GeminiService.GEMINI_AI_ENDPOINT);
         final var builder = getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
         HttpClient httpClient = builder.connectTimeout(
-                        getOrDefault(getOrDefault(timeout, builder.connectTimeout()), ofSeconds(15)))
-                .readTimeout(getOrDefault(getOrDefault(timeout, builder.readTimeout()), ofSeconds(60)))
+                        firstNotNull("connectTimeout", timeout, builder.connectTimeout(), DEFAULT_CONNECT_TIMEOUT))
+                .readTimeout(firstNotNull("readTimeout", timeout, builder.readTimeout(), DEFAULT_READ_TIMEOUT))
                 .build();
 
         if (logRequestsAndResponses) {

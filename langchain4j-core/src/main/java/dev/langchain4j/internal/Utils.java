@@ -1,5 +1,7 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.unmodifiableList;
@@ -29,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -40,11 +43,33 @@ public class Utils {
     private Utils() {}
 
     /**
+     * Returns the first non-null value from the provided array of values.
+     * If all values are null, an IllegalArgumentException is thrown.
+     *
+     * @param name   A non-null string representing the name associated with the values.
+     * @param values An array of potentially nullable values to search through.
+     * @return The first non-null value in the array.
+     * @throws IllegalArgumentException If all values are null or if the array is empty.
+     */
+    @SafeVarargs
+    @NonNull
+    public static <T> T firstNotNull(@NonNull String name, @Nullable T... values) {
+        ensureNotEmpty(values, name + " values");
+        for (T value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        throw illegalArgument("At least one of the given '%s' values must be not null", name);
+    }
+
+    /**
      * Returns the given value if it is not {@code null}, otherwise returns the given default value.
-     * @param value The value to return if it is not {@code null}.
+     *
+     * @param value        The value to return if it is not {@code null}.
      * @param defaultValue The value to return if the value is {@code null}.
+     * @param <T>          The type of the value.
      * @return the given value if it is not {@code null}, otherwise returns the given default value.
-     * @param <T> The type of the value.
      */
     public static <T> T getOrDefault(T value, T defaultValue) {
         return value != null ? value : defaultValue;
@@ -75,10 +100,11 @@ public class Utils {
 
     /**
      * Returns the given value if it is not {@code null}, otherwise returns the value returned by the given supplier.
-     * @param value The value to return if it is not {@code null}.
+     *
+     * @param value                The value to return if it is not {@code null}.
      * @param defaultValueSupplier The supplier to call if the value is {@code null}.
+     * @param <T>                  The type of the value.
      * @return the given value if it is not {@code null}, otherwise returns the value returned by the given supplier.
-     * @param <T> The type of the value.
      */
     public static <T> T getOrDefault(@Nullable T value, Supplier<T> defaultValueSupplier) {
         return value != null ? value : defaultValueSupplier.get();
@@ -86,6 +112,7 @@ public class Utils {
 
     /**
      * Is the given string {@code null} or blank?
+     *
      * @param string The string to check.
      * @return true if the string is {@code null} or blank.
      */
@@ -95,6 +122,7 @@ public class Utils {
 
     /**
      * Is the given string {@code null} or empty ("")?
+     *
      * @param string The string to check.
      * @return true if the string is {@code null} or empty.
      */
@@ -104,6 +132,7 @@ public class Utils {
 
     /**
      * Is the given string not {@code null} and not blank?
+     *
      * @param string The string to check.
      * @return true if there's something in the string.
      */
@@ -113,6 +142,7 @@ public class Utils {
 
     /**
      * Is the given string not {@code null} and not empty ("")?
+     *
      * @param string The string to check.
      * @return true if the given string is not {@code null} and not empty ("")?
      */
@@ -122,6 +152,7 @@ public class Utils {
 
     /**
      * Are all the given strings not {@code null} and not blank?
+     *
      * @param strings The strings to check.
      * @return {@code true} if every string is non-{@code null} and non-empty.
      */
@@ -141,6 +172,7 @@ public class Utils {
 
     /**
      * Is the collection {@code null} or empty?
+     *
      * @param collection The collection to check.
      * @return {@code true} if the collection is {@code null} or {@link Collection#isEmpty()}, otherwise {@code false}.
      */
@@ -150,6 +182,7 @@ public class Utils {
 
     /**
      * Is the iterable object {@code null} or empty?
+     *
      * @param iterable The iterable object to check.
      * @return {@code true} if the iterable object is {@code null} or there are no objects to iterate over, otherwise {@code false}.
      */
@@ -159,9 +192,10 @@ public class Utils {
 
     /**
      * Is the map object {@code null} or empty?
+     *
      * @param map The iterable object to check.
      * @return {@code true} if the map object is {@code null} or empty map, otherwise {@code false}.
-     * */
+     */
     public static boolean isNullOrEmpty(@Nullable Map<?, ?> map) {
         return map == null || map.isEmpty();
     }
@@ -183,6 +217,7 @@ public class Utils {
 
     /**
      * Returns a random UUID.
+     *
      * @return a UUID.
      */
     public static String randomUUID() {
@@ -191,6 +226,7 @@ public class Utils {
 
     /**
      * Internal method to get a SHA-256 instance of {@link MessageDigest}.
+     *
      * @return a {@link MessageDigest}.
      */
     @JacocoIgnoreCoverageGenerated
@@ -204,6 +240,7 @@ public class Utils {
 
     /**
      * Generates a UUID from a hash of the given input string.
+     *
      * @param input The input string.
      * @return A UUID.
      */
@@ -298,7 +335,7 @@ public class Utils {
      * Returns <code>null</code> if the provided set is <code>null</code>.
      *
      * @param set The set to copy.
-     * @param <T>  Generic type of the set.
+     * @param <T> Generic type of the set.
      * @return The copy of the provided set.
      */
     public static <T> Set<T> copyIfNotNull(Set<T> set) {
@@ -314,7 +351,7 @@ public class Utils {
      * Returns an empty set if the provided set is <code>null</code>.
      *
      * @param set The set to copy.
-     * @param <T>  Generic type of the set.
+     * @param <T> Generic type of the set.
      * @return The copy of the provided set or an empty set.
      */
     public static <T> Set<T> copy(Set<T> set) {
@@ -406,10 +443,10 @@ public class Utils {
      * It could be the method itself or, if the method belongs to a proxy,
      * a method from one of the interfaces implemented by the proxy.
      *
-     * @param method The method to check for the annotation.
+     * @param method     The method to check for the annotation.
      * @param annotation The annotation to look for.
      * @return An {@link Optional} containing the method having the given annotation,
-     *         or an empty {@link Optional} if there isn't any.
+     * or an empty {@link Optional} if there isn't any.
      */
     public static Optional<Method> getAnnotatedMethod(Method method, Class<? extends Annotation> annotation) {
         if (method.isAnnotationPresent(annotation)) {

@@ -66,7 +66,9 @@ abstract class BaseGeminiChatModel {
             GeminiThinkingConfig thinkingConfig,
             ChatRequestParameters defaultRequestParameters) {
         ensureNotBlank(apiKey, "apiKey");
-        ensureNotBlank(baseUrl, "baseUrl");
+        this.geminiService = new GeminiService(
+                httpClientBuilder, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), timeout);
+
         this.functionCallingConfig = functionCallingConfig;
         this.allowCodeExecution = getOrDefault(allowCodeExecution, false);
         this.includeCodeExecutionOutput = getOrDefault(includeCodeExecutionOutput, false);
@@ -78,8 +80,6 @@ abstract class BaseGeminiChatModel {
         this.responseLogprobs = getOrDefault(responseLogprobs, false);
         this.enableEnhancedCivicAnswers = getOrDefault(enableEnhancedCivicAnswers, false);
         this.logprobs = logprobs;
-        this.geminiService = new GeminiService(
-                httpClientBuilder, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), timeout);
 
         ChatRequestParameters parameters;
         if (defaultRequestParameters != null) {

@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.GeminiService.GEMINI_AI_ENDPOINT;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -204,7 +203,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
-        private String baseUrl = GEMINI_AI_ENDPOINT;
+        private String baseUrl;
         private String modelName;
         private Integer maxRetries;
         private Double temperature;

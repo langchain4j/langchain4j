@@ -3,7 +3,6 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.googleai.GeminiService.GEMINI_AI_ENDPOINT;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -154,7 +153,7 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private HttpClientBuilder httpClientBuilder;
         private String modelName;
         private String apiKey;
-        private String baseUrl = GEMINI_AI_ENDPOINT;
+        private String baseUrl;
         private Integer maxRetries;
         private TaskType taskType;
         private String titleMetadataKey;

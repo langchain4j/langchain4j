@@ -133,7 +133,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
-        private String baseUrl = GeminiService.GEMINI_AI_ENDPOINT;
+        private String baseUrl;
         private String modelName;
         private Double temperature;
         private Integer topK;

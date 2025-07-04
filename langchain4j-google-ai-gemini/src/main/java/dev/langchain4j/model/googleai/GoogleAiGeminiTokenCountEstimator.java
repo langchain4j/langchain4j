@@ -104,7 +104,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         private String modelName;
         private String apiKey;
 
-        private String baseUrl = GeminiService.GEMINI_AI_ENDPOINT;
+        private String baseUrl;
         private Boolean logRequestsAndResponses;
         private Duration timeout;
         private Integer maxRetries;
