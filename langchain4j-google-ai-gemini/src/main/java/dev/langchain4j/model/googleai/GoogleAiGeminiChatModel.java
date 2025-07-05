@@ -39,6 +39,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         super(
                 builder.httpClientBuilder,
                 builder.apiKey,
+                builder.baseUrl,
                 builder.modelName,
                 builder.temperature,
                 builder.topK,
@@ -71,6 +72,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public GoogleAiGeminiChatModel(
             String apiKey,
+            String baseUrl,
             String modelName,
             Integer maxRetries,
             Double temperature,
@@ -93,6 +95,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         super(
                 null,
                 apiKey,
+                baseUrl,
                 modelName,
                 temperature,
                 topK,
@@ -134,7 +137,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
 
         GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
-                () -> geminiService.generateContent(chatRequest.modelName(), apiKey, request), maxRetries);
+                () -> geminiService.generateContent(chatRequest.modelName(), request), maxRetries);
 
         return processResponse(geminiResponse);
     }
@@ -200,6 +203,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
+        private String baseUrl;
         private String modelName;
         private Integer maxRetries;
         private Double temperature;
@@ -251,6 +255,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         public GoogleAiGeminiChatModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
             return this;
         }
 

@@ -101,6 +101,13 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>me.kpavlov.aimocks</groupId>
+            <artifactId>ai-mocks-gemini-jvm</artifactId>
+            <version>${ai-mocks.version}</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

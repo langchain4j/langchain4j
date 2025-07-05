@@ -28,7 +28,10 @@ on:
 jobs:
   java_build:
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.experimental }}
+    needs:
+      - spotless
+      - compliance
+    continue-on-error: ${{ !matrix.integration_tests }}
     strategy:
       fail-fast: false
       matrix:
@@ -39,13 +42,13 @@ jobs:
         include:
           - java_version: 17
             mvn_opts: ''
-            experimental: false
+            integration_tests: false
           - java_version: 21
             mvn_opts: ''
-            experimental: false
+            integration_tests: true
           - java_version: 24
             mvn_opts: ''
-            experimental: true
+            integration_tests: false
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
@@ -69,13 +72,16 @@ jobs:
         run: |
           mvn -B -U -T8C test javadoc:aggregate \
             ${{ matrix.mvn_opts }}
+
       - name: Setup JBang
         uses: jbangdev/setup-jbang@main
+        if:  ${{ matrix.integration_tests == true }}
+
       - name: Integration test with JDK ${{ matrix.java_version }}
-        ## The step or job will only run if the `experimental` variable
-        ## in the matrix is false (not set to true)
+        ## The step or job will only run if the `integration_tests` variable
+        ## in the matrix is true
         ## and the OPENAI_API_KEY secret is available and not empty.
-        if: ${{ !matrix.experimental && env.OPENAI_API_KEY != '' }}
+        if: ${{ matrix.integration_tests == true && env.OPENAI_API_KEY != '' }}
         run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
