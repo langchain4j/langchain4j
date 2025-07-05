@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
-import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -38,7 +37,7 @@ class AzureOpenAiOfficialImageModelIT {
     }
 
     @Test
-    void should_generate_image_in_base64() throws IOException {
+    void should_generate_image_in_base64() {
         for (ImageModel model : modelsBase64()) {
             Response<Image> response = model.generate("A croissant in Paris, France");
 

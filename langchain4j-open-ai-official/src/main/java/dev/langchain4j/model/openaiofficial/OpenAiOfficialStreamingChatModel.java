@@ -30,9 +30,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.jspecify.annotations.NonNull;
 
-public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel
-        implements StreamingChatModel {
+public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel implements StreamingChatModel {
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 
@@ -120,7 +120,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         }
 
                         @Override
-                        public void onComplete(Optional<Throwable> error) {
+                        public void onComplete(@NonNull Optional<Throwable> error) {
                             if (error.isPresent()) {
                                 handler.onError(error.get());
                             } else {

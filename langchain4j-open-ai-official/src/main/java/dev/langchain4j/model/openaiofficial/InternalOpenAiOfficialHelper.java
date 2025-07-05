@@ -639,7 +639,7 @@ class InternalOpenAiOfficialHelper {
         // OpenAI-specific parameters
         ChatCompletionCreateParams.Builder builder =
                 ChatCompletionCreateParams.builder().model(parameters.modelName());
-        
+
         if (parameters.maxCompletionTokens() != null) {
             builder.maxCompletionTokens(parameters.maxCompletionTokens());
         } else if (parameters.maxOutputTokens() != null) {

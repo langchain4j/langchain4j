@@ -28,7 +28,6 @@ import java.util.Objects;
 public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAIClient client;
-    private InternalOpenAiOfficialHelper.ModelHost modelHost;
     private final String modelName;
     private final Integer dimensions;
     private final String user;
@@ -36,7 +35,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public OpenAiOfficialEmbeddingModel(Builder builder) {
 
-        this.modelHost = detectModelHost(
+        final var modelHost = detectModelHost(
                 builder.isAzure,
                 builder.isGitHubModels,
                 builder.baseUrl,
@@ -50,7 +49,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
                 builder.azureDeploymentName,
                 builder.azureOpenAIServiceVersion,
                 builder.organizationId,
-                this.modelHost,
+                modelHost,
                 builder.openAIClient,
                 builder.modelName,
                 builder.timeout,
