@@ -5,7 +5,7 @@ sidebar_position: 17
 
 # OpenAI-Compatible Language Models
 
-Many services and tools expose OpenAI-compatible APIs. The general approach to using them with Langchain4j is:
+Many services and tools expose OpenAI-compatible APIs. The general approach to using them with LangChain4j is:
 
 1.  **Identify the Base URL:** Find the API endpoint for the service. This often ends in `/v1`.
 2.  **Obtain an API Key:** If the service requires authentication, get an API key. If the service is local and doesn't require a key, put a placeholder as the `apiKey` parameter.
@@ -34,7 +34,7 @@ Below we provide specific examples for popular OpenAI-compatible APIs, including
 
 ## Prerequisites for Using OpenAI-Compatible Language Models
 
-Langchain4j's OpenAI module can be used with various OpenAI-compatible APIs, including local and cloud-based solutions. For each of the models below, we show how to create a `ChatModel` that you can then use to chat with the model, just like in the [standard OpenAI examples](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiChatModelExamples.java).
+LangChain4j's OpenAI module can be used with various OpenAI-compatible APIs, including local and cloud-based solutions. For each of the models below, we show how to create a `ChatModel` that you can then use to chat with the model, just like in the [standard OpenAI examples](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiChatModelExamples.java).
 
 First, make sure you have the OpenAI module in your `pom.xml` or Gradle build file:
 
@@ -58,16 +58,14 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 
 ## Groq
 
-**Deployment:** SaaS
-
-**Key Required:** Yes (API Key)
+**Deployment:** SaaS (Key Required)
 
 **Description:** Groq offers very fast inference for LLMs.
 
 **Setup:**
 To use Groq, you'll need an API key from [GroqCloud](https://console.groq.com/keys).
 
-Configure Langchain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
+Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
 ```java
 ChatModel model = OpenAiChatModel.builder()
         .baseUrl("https://api.groq.com/openai/v1")
@@ -81,8 +79,6 @@ You can find available model names on the [Groq models page](https://console.gro
 ## Docker Model Runner
 
 **Deployment:** Local
-
-**Key Required:** No (local model, but fill out a dummy key because the parameter is mandatory)
 
 **Description:** Docker Model Runner allows you to run LLMs locally using Docker desktop (uses `llama.cpp` under the hood and can use your CPU). This is useful for development, testing, or offline use. Works on Mac and Windows.
 
@@ -98,7 +94,6 @@ Example for `ai/qwen3` (more info about the model [here](https://hub.docker.com/
 ```java
 ChatModel model = OpenAiChatModel.builder()
         .baseUrl("http://localhost:12434/engines/llama.cpp/v1")
-        .apiKey("not needed") // parameter needs to be set, no real key needed
         .modelName("ai/qwen3")
         .build();
 ```
@@ -108,31 +103,26 @@ Some models support tool calling, see details on the docker model page.
 
 **Deployment:** Local
 
-**Key Required:** No (but API key parameter might be mandatory)
-
 **Description:** GPT4All provides a desktop application to run open-source LLMs locally on your machine. It can also expose an OpenAI-compatible API.
 
 **Setup:**
 1. Download and install GPT4All from [https://gpt4all.io/](https://gpt4all.io/).
-2. Launch GPT4All and download the desired model(s) through its UI.
-3. Enable the "Web Server" mode in GPT4All settings (usually under the "Settings" or "Server" tab). This will start a local server.
+2. Launch GPT4All and download the desired model(s) through its UI, eg. `llama-3.2-1b-instruct`.
+3. Enable the "Web Server" mode in GPT4All settings ("Settings" > "Application" > under Advanced: "Enable Local API Server").
 4. Note the IP address and port displayed in GPT4All (typically `http://localhost:4891/v1`).
-5. Configure Langchain4j:
+5. Configure LangChain4j:
 ```java
 ChatModel model = OpenAiChatModel.builder()
-        .baseUrl("http://localhost:4891/v1") // Default GPT4All API endpoint
-        .apiKey("not needed") // parameter needs to be set, no real key needed
-        // .modelName("...") // The model name might be derived from the model loaded in GPT4All UI or configurable. Check GPT4All docs.
+        .baseUrl("http://localhost:4891/v1")
+        .modelName("llama-3.2-1b-instruct") // The model name might be derived from the model loaded in GPT4All UI or configurable. Check GPT4All docs.
         .build();
 ```
 
 ## Ollama
 
-While Langchain4j has a dedicated `langchain4j-ollama` module (see [Ollama docs](./ollama.md)), you can also use the OpenAI module to connect to Ollama's OpenAI-compatible endpoint as shown above.
+While LangChain4j has a dedicated `langchain4j-ollama` module (see [Ollama docs](./ollama.md)), you can also use the OpenAI module to connect to Ollama's OpenAI-compatible endpoint as shown above.
 
 **Deployment:** Local
-
-**Key Required:** No
 
 **Description:** Ollama allows you to run open-source large language models, such as Llama 3, Mistral, and others, locally. It provides an OpenAI-compatible API endpoint.
 
@@ -140,11 +130,10 @@ While Langchain4j has a dedicated `langchain4j-ollama` module (see [Ollama docs]
 1. Install Ollama from [https://ollama.ai/](https://ollama.ai/).
 2. Pull a model using the command line: `ollama pull <model_name>` (e.g., `ollama pull gemma3`).
 3. Ensure Ollama is running. It serves an OpenAI-compatible API at `http://localhost:11434/v1/`.
-4. Configure Langchain4j:
+4. Configure LangChain4j:
 ```java
 ChatModel model = OpenAiChatModel.builder()
         .baseUrl("http://localhost:11434/v1/")
-        .apiKey("not needed") // parameter needs to be set, no real key needed
         .modelName("gemma3")
         .build();
 ```
@@ -158,24 +147,18 @@ ChatModel model = OpenAiChatModel.builder()
 
 **Deployment:** Local
 
-**Key Required:** No
-
 **Description:** LM Studio provides a UI to discover, download, and run local LLMs. It also features an OpenAI-compatible local server.
 
 **Setup:**
 1. Download and install LM Studio from [https://lmstudio.ai/](https://lmstudio.ai/).
-2. Download your desired model(s) through the LM Studio UI (Search tab).
-3. Go to the "Local Server" tab (usually an icon like `<->` on the left).
-4. Select a model to load from the dropdown at the top.
-5. Click "Start Server". Note the address and port the server is running on (e.g., `http://localhost:1234/v1`).
-6. Configure Langchain4j:
+2. Download your desired model(s) through the LM Studio UI (Search tab), for example `smollm2-135m-instruct`.
+3. Go to the "Developer" tab (icon like `>_` on the left) and toggle the server status on to 'running'
+4. When the server runs, you get to see the address on the top right (e.g., `http://127.0.0.1:1234`). Alternatively, the cURL call will give you the full URL.
+5. Configure LangChain4j:
 ```java
 ChatModel model = OpenAiChatModel.builder()
-        .baseUrl("http://localhost:1234/v1/") // Use the address from LM Studio server tab
-        .apiKey("not needed") // parameter needs to be set, no real key needed
-        // .modelName("...") // Model is typically selected in LM Studio UI before starting the server.
-                           // The server endpoint might reflect the loaded model or be generic.
-                           // Check LM Studio documentation if a specific model name is needed here.
+        .baseUrl("http://localhost:1234/v1")
+        .modelName("smollm2-135m-instruct")
         .build();
 ```
 
