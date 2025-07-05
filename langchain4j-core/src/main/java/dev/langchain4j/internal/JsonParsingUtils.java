@@ -50,7 +50,7 @@ public class JsonParsingUtils {
 
     private static int findJsonEnd(String text, int fromIndex) {
         int jsonMapEnd = text.lastIndexOf('}', fromIndex);
-        int jsonListEnd = text.indexOf(']', fromIndex);
+        int jsonListEnd = text.lastIndexOf(']', fromIndex);
         return Math.max(jsonMapEnd, jsonListEnd);
     }
 
