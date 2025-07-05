@@ -434,14 +434,13 @@ class InternalOpenAiOfficialHelper {
                 parametersBuilder.putAdditionalProperty(
                         "$defs", JsonValue.from(toMap(parameters.definitions(), strict)));
             }
-            return parametersBuilder.build();
         } else {
             parametersBuilder.putAdditionalProperty("properties", JsonValue.from(toMap(new HashMap<>(), strict)));
             if (strict) {
                 parametersBuilder.putAdditionalProperty("additionalProperties", JsonValue.from(false));
             }
-            return parametersBuilder.build();
         }
+        return parametersBuilder.build();
     }
 
     static AiMessage aiMessageFrom(ChatCompletion chatCompletion) {
@@ -640,12 +639,11 @@ class InternalOpenAiOfficialHelper {
         // OpenAI-specific parameters
         ChatCompletionCreateParams.Builder builder =
                 ChatCompletionCreateParams.builder().model(parameters.modelName());
-
-        if (parameters.maxOutputTokens() != null && parameters.maxCompletionTokens() == null) {
-            builder.maxTokens(parameters.maxOutputTokens());
-        }
+        
         if (parameters.maxCompletionTokens() != null) {
             builder.maxCompletionTokens(parameters.maxCompletionTokens());
+        } else if (parameters.maxOutputTokens() != null) {
+            builder.maxCompletionTokens(parameters.maxOutputTokens());
         }
 
         if (!parameters.logitBias().isEmpty()) {
