@@ -63,9 +63,8 @@ class VespaEmbeddingStoreTest {
         String expectedUrl = "https://test.vespa.ai";
 
         // When
-        VespaEmbeddingStore store = VespaEmbeddingStore.builder()
-                .url(expectedUrl)
-                .build();
+        VespaEmbeddingStore store =
+                VespaEmbeddingStore.builder().url(expectedUrl).build();
 
         // Then - verify defaults are used
         assertThat(store).isNotNull();
