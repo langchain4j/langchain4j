@@ -13,7 +13,7 @@
 
     <properties>
         <ai.djl.version>0.31.1</ai.djl.version>
-        <onnxruntime.version>1.20.0</onnxruntime.version>
+        <onnxruntime.version>1.22.0</onnxruntime.version>
     </properties>
 
     <dependencies>
