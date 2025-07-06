@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.milvus;
 
-
 class FieldDefinition {
 
     String idFieldName;
@@ -14,7 +13,12 @@ class FieldDefinition {
     // sparse vector
     String sparseVectorFieldName;
 
-    public FieldDefinition(String idFieldName, String textFieldName, String metadataFieldName, String vectorFieldName, String sparseVectorFieldName) {
+    public FieldDefinition(
+            String idFieldName,
+            String textFieldName,
+            String metadataFieldName,
+            String vectorFieldName,
+            String sparseVectorFieldName) {
         this.idFieldName = idFieldName;
         this.textFieldName = textFieldName;
         this.metadataFieldName = metadataFieldName;
@@ -41,5 +45,4 @@ class FieldDefinition {
     public String getSparseVectorFieldName() {
         return sparseVectorFieldName;
     }
-
 }
