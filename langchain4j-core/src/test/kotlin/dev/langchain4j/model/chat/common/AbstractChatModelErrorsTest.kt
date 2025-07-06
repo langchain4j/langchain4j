@@ -11,10 +11,10 @@ import dev.langchain4j.exception.RateLimitException
 import dev.langchain4j.exception.TimeoutException
 import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.chat.request.ChatRequest
+import io.kotest.matchers.shouldBe
 import io.ktor.http.HttpStatusCode
 import me.kpavlov.aimocks.core.AbstractBuildingStep
 import me.kpavlov.aimocks.core.AbstractMockLlm
-import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -31,6 +31,20 @@ import kotlin.time.Duration.Companion.seconds
 
 private val TIMEOUT: Duration = 1.seconds
 
+/**
+ * Abstract base test class for validating the behavior of chat models when encountering errors.
+ *
+ * This class is a part of "Model Compatibility Kit" tests
+ * and provides a framework to simulate various error scenarios
+ * and ensures that the implementations of `ChatModel` handle those scenarios correctly.
+ *
+ * It leverages parameterized tests for verifying error handling across multiple HTTP status codes
+ * and includes specific tests for timeout scenarios.
+ *
+ * @param MODEL The type of the chat model being tested.
+ * @param MOCK The mock LLM (Large Language Model) type used for simulations in the tests.
+ * @constructor Accepts a mock LLM instance required for simulating various scenarios.
+ */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Execution(ExecutionMode.CONCURRENT)
 public abstract class AbstractChatModelErrorsTest<
@@ -52,11 +66,11 @@ public abstract class AbstractChatModelErrorsTest<
         mock.verifyNoUnmatchedRequests()
     }
 
-    @ParameterizedTest(name="{argumentSetName}({0}) -> {1}")
+    @ParameterizedTest(name = "{argumentSetName}({0}) -> {1}")
     @MethodSource("errors")
     public fun should_handle_error_responses(
         httpStatusCode: Int,
-        exception: Class<LangChain4jException>
+        expectedException: Class<LangChain4jException>
     ) {
         // given
         val temperature = Random.nextDouble(0.1, 1.0) // ⚠️ Must be unique per execution!
@@ -81,11 +95,11 @@ public abstract class AbstractChatModelErrorsTest<
                     .build()
             )
         }
-            .isExactlyInstanceOf(exception)
+            .isExactlyInstanceOf(expectedException)
             .satisfies({ ex: Throwable ->
-                assertThat((ex.cause as HttpException).statusCode())
-                    .`as`("statusCode")
-                    .isEqualTo(httpStatusCode)
+                ex.javaClass shouldBe expectedException
+                ex.cause?.javaClass shouldBe HttpException::class.java
+                (ex.cause as HttpException).statusCode() shouldBe httpStatusCode
             })
     }
 
