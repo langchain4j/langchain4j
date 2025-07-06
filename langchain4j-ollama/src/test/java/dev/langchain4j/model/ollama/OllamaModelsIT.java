@@ -93,4 +93,15 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(runningOllamaModel.getDigest()).isNotBlank();
         assertThat(runningOllamaModel.getExpiresAt()).isNotNull();
     }
+
+    @Test
+    void should_return_ollama_model_capability() {
+        // when
+        OllamaModel ollamaModel = OllamaModel.builder().name(TINY_DOLPHIN_MODEL).build();
+
+        Response<OllamaModelCard> response = ollamaModels.modelCard(ollamaModel);
+
+        assertThat(response.content().getCapabilities()).isNotEmpty();
+        assertThat(response.content().getCapabilities()).contains(OllamaCapability.COMPLETION);
+    }
 }
