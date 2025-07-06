@@ -1,16 +1,15 @@
 package dev.langchain4j.internal;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 /**
  * Comprehensive unit tests for JsonParsingUtils.extractAndParseJson method.
- * These tests cover various scenarios including nested JSON structures, 
+ * These tests cover various scenarios including nested JSON structures,
  * text with noise, multiple JSON blocks, and edge cases.
  */
 class JsonParsingUtilsTest {
@@ -24,14 +23,20 @@ class JsonParsingUtilsTest {
         public int age;
         public List<String> tags;
         public Map<String, Object> extra;
+
         public MyPojo() {}
-        public MyPojo(String name, int age) { this.name = name; this.age = age; }
-        @Override public boolean equals(Object o) {
+
+        public MyPojo(String name, int age) {
+            this.name = name;
+            this.age = age;
+        }
+
+        @Override
+        public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             MyPojo myPojo = (MyPojo) o;
-            return age == myPojo.age &&
-                    java.util.Objects.equals(name, myPojo.name);
+            return age == myPojo.age && java.util.Objects.equals(name, myPojo.name);
         }
     }
 
@@ -70,7 +75,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_array() {
         String json = "[{\"name\":\"A\",\"age\":1},{\"name\":\"B\",\"age\":2}]";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo[]>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo[]>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
         assertThat(result).isPresent();
         assertThat(result.get().value().length).isEqualTo(2);
         assertThat(result.get().value()[0].name).isEqualTo("A");
@@ -85,7 +91,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_array_with_noise() {
         String json = "abc [{\"name\":\"A\",\"age\":1},{\"name\":\"B\",\"age\":2}] xyz";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo[]>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo[]>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
         assertThat(result).isPresent();
         assertThat(result.get().value().length).isEqualTo(2);
     }
@@ -99,7 +106,8 @@ class JsonParsingUtilsTest {
     @Test
     void extract_nested_array() {
         String json = "[[{\"name\":\"A\",\"age\":1}],[{\"name\":\"B\",\"age\":2}]]";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo[][]>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[][].class);
+        Optional<JsonParsingUtils.ParsedJson<MyPojo[][]>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo[][].class);
         assertThat(result).isPresent();
         assertThat(result.get().value().length).isEqualTo(2);
         assertThat(result.get().value()[0][0].name).isEqualTo("A");
@@ -181,9 +189,11 @@ class JsonParsingUtilsTest {
      */
     @Test
     void extract_json_array_with_nested_objects_and_arrays() {
-        String json = "[{\"name\":\"Tom\",\"age\":18,\"tags\":[\"a\",\"b\"]},{\"name\":\"Jerry\",\"age\":20,\"tags\":[\"x\",\"y\"]}]";
-        Optional<JsonParsingUtils.ParsedJson<MyPojo[]>> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        String json =
+                "[{\"name\":\"Tom\",\"age\":18,\"tags\":[\"a\",\"b\"]},{\"name\":\"Jerry\",\"age\":20,\"tags\":[\"x\",\"y\"]}]";
+        Optional<JsonParsingUtils.ParsedJson<MyPojo[]>> result =
+                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
         assertThat(result).isPresent();
         assertThat(result.get().value()[1].tags).containsExactly("x", "y");
     }
-} 
+}
