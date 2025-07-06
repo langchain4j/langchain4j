@@ -17,16 +17,14 @@ import me.kpavlov.aimocks.core.AbstractMockLlm
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
-import org.junit.jupiter.params.provider.Arguments.of
+import org.junit.jupiter.params.provider.Arguments.argumentSet
 import org.junit.jupiter.params.provider.MethodSource
-import java.util.stream.Stream
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -42,8 +40,6 @@ public abstract class AbstractChatModelErrorsTest<
     protected val mock: MOCK
 ) {
 
-    protected var temperature: Double = -1.0
-
     protected abstract fun createModel(temperature: Double, timeout: Duration? = null): MODEL
 
     protected abstract fun whenMockMatched(question: String, temperature: Double): AbstractBuildingStep<*, *>
@@ -51,18 +47,19 @@ public abstract class AbstractChatModelErrorsTest<
     // language=json
     protected open fun errorResponseBody(message: String): String = ""
 
-    @BeforeEach
-    public fun beforeEach() {
-        temperature = Random.nextDouble(0.1, 1.0)
+    @AfterEach
+    public fun afterEach() {
+        mock.verifyNoUnmatchedRequests()
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name="{argumentSetName}({0}) -> {1}")
     @MethodSource("errors")
     public fun should_handle_error_responses(
         httpStatusCode: Int,
         exception: Class<LangChain4jException>
     ) {
         // given
+        val temperature = Random.nextDouble(0.1, 1.0) // ⚠️ Must be unique per execution!
 
         val question = "Return error: $httpStatusCode"
         val message = "Error : $httpStatusCode"
@@ -95,6 +92,8 @@ public abstract class AbstractChatModelErrorsTest<
     @Test
     public fun should_handle_timeout() {
         // given
+        val temperature = Random.nextDouble(0.1, 1.0) // ⚠️ Must be unique per execution!
+
         val model = createModel(temperature, timeout = TIMEOUT)
 
         val question = "Simulate timeout"
@@ -117,45 +116,47 @@ public abstract class AbstractChatModelErrorsTest<
         }.isExactlyInstanceOf(TimeoutException::class.java)
     }
 
-    @AfterEach
-    public fun afterEach() {
-        mock.verifyNoUnmatchedRequests()
-    }
-
-    protected open fun errors(): Stream<Arguments?> {
-        return Stream.of<Arguments?>(
-            of(
-                400,
-                InvalidRequestException::class.java
-            ),
-            of(
-                401,
-                AuthenticationException::class.java
-            ),
-            of(
-                403,
-                AuthenticationException::class.java
-            ),
-            of(
-                404,
-                ModelNotFoundException::class.java
-            ),
-            of(
-                413,
-                InvalidRequestException::class.java
-            ),
-            of(
-                429,
-                RateLimitException::class.java
-            ),
-            of(
-                500,
-                InternalServerException::class.java
-            ),
-            of(
-                503,
-                InternalServerException::class.java
-            )
+    protected open fun errors(): List<Arguments> = listOf(
+        argumentSet(
+            "Bad request",
+            400,
+            InvalidRequestException::class.java
+        ),
+        argumentSet(
+            "Unauthenticated",
+            401,
+            AuthenticationException::class.java
+        ),
+        argumentSet(
+            "Unauthorized",
+            403,
+            AuthenticationException::class.java
+        ),
+        argumentSet(
+            "Not found",
+            404,
+            ModelNotFoundException::class.java
+        ),
+        argumentSet(
+            "Request entity too large",
+            413,
+            InvalidRequestException::class.java
+        ),
+        argumentSet(
+            "Too many requests",
+            429,
+            RateLimitException::class.java
+        ),
+        argumentSet(
+            "Internal server error",
+            500,
+            InternalServerException::class.java
+        ),
+        argumentSet(
+            "Service unavailable",
+            503,
+            InternalServerException::class.java
         )
-    }
+    )
 }
+
