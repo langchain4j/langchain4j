@@ -1,11 +1,12 @@
 package dev.langchain4j.model.bedrock;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.Internal;
 
 /**
- * Bedrock Cohere embedding response
  * See more details <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-embed.html">here</a>.
  */
+@Internal
 class BedrockCohereEmbeddingResponse {
 
     static class Embeddings {

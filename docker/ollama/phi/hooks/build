@@ -1,5 +1,0 @@
-#!/bin/bash
-docker buildx build --push --no-cache --platform=linux/amd64 -f $DOCKERFILE_PATH -t ${IMAGE_NAME}_amd64 .
-docker buildx build --push --no-cache --platform=linux/arm64 -f $DOCKERFILE_PATH -t ${IMAGE_NAME}_arm64 .
-docker manifest create ${IMAGE_NAME} --amend ${IMAGE_NAME}_amd64 --amend ${IMAGE_NAME}_arm64
-docker manifest push ${IMAGE_NAME}

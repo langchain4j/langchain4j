@@ -361,7 +361,7 @@ interface PersonExtractor {
 ChatModel chatModel = OpenAiChatModel.builder() // see [1] below
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
-        .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA)) // see [2] below
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [2] below
         .strictJsonSchema(true) // see [2] below
         .logRequests(true)
         .logResponses(true)
@@ -372,14 +372,14 @@ ChatModel chatModel = AzureOpenAiChatModel.builder() // see [1] below
         .apiKey(System.getenv("AZURE_OPENAI_API_KEY"))
         .deploymentName("gpt-4o-mini")
         .strictJsonSchema(true)
-        .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA)) // see [3] below
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [3] below
         .logRequestsAndResponses(true)
         .build();
 // OR
 ChatModel chatModel = GoogleAiGeminiChatModel.builder() // see [1] below
         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
         .modelName("gemini-1.5-flash")
-        .responseFormat(ResponseFormat.JSON) // see [4] below
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [4] below
         .logRequestsAndResponses(true)
         .build();
 // OR

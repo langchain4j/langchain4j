@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterEach;
 import static java.util.Collections.singletonList;
 
 class GoogleAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
+
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
     @Override
@@ -29,15 +30,9 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatMo
     }
 
     @Override
-    protected boolean assertResponseId() {
-        return false;
-    }
-
-    @Override
     protected StreamingChatModel createFailingModel(ChatModelListener listener) {
         return GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("banana")
+                .apiKey("banana")
                 .listeners(singletonList(listener))
                 .logRequestsAndResponses(true)
                 .build();
@@ -45,9 +40,8 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatMo
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return dev.langchain4j.exception.InvalidRequestException.class;
     }
-
 
     @AfterEach
     void afterEach() throws InterruptedException {

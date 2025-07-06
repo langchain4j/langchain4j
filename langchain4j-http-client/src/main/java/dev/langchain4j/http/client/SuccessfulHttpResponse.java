@@ -1,11 +1,10 @@
 package dev.langchain4j.http.client;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+
+import java.util.List;
+import java.util.Map;
 
 public class SuccessfulHttpResponse {
 
@@ -41,8 +40,7 @@ public class SuccessfulHttpResponse {
         private Map<String, List<String>> headers;
         private String body;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         public Builder statusCode(int statusCode) {
             this.statusCode = statusCode;

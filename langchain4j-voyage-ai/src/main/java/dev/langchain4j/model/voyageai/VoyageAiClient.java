@@ -1,118 +1,110 @@
 package dev.langchain4j.model.voyageai;
 
-import dev.langchain4j.internal.Utils;
-import okhttp3.Interceptor;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import org.jetbrains.annotations.NotNull;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.voyageai.VoyageAiJsonUtils.fromJson;
+import static dev.langchain4j.model.voyageai.VoyageAiJsonUtils.toJson;
+import static java.time.Duration.ofSeconds;
 
-import java.io.IOException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
 import java.time.Duration;
-
-import static dev.langchain4j.model.voyageai.VoyageAiJsonUtils.getObjectMapper;
+import java.util.HashMap;
+import java.util.Map;
 
 class VoyageAiClient {
 
-    private final VoyageAiApi voyageAiApi;
+    public static final String DEFAULT_BASE_URL = "https://api.voyageai.com/v1/";
 
-    VoyageAiClient(
-            String baseUrl,
-            Duration timeout,
-            String apiKey,
-            Boolean logRequests,
-            Boolean logResponses
-    ) {
-        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout);
+    private final HttpClient httpClient;
+    private final String baseUrl;
+    private final Map<String, String> defaultHeaders;
 
-        okHttpClientBuilder.addInterceptor(new AuthorizationInterceptor(apiKey));
-        if (logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor());
-        }
-        if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
-        }
+    VoyageAiClient(Builder builder) {
+        HttpClientBuilder httpClientBuilder =
+                getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
-                .client(okHttpClientBuilder.build())
-                .addConverterFactory(JacksonConverterFactory.create(getObjectMapper()))
+        HttpClient httpClient = httpClientBuilder
+                .connectTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
+                .readTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
 
-        this.voyageAiApi = retrofit.create(VoyageAiApi.class);
+        if (builder.logRequests != null && builder.logRequests
+                || builder.logResponses != null && builder.logResponses) {
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+        } else {
+            this.httpClient = httpClient;
+        }
+
+        this.baseUrl = ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl"));
+
+        Map<String, String> defaultHeaders = new HashMap<>();
+        if (builder.apiKey != null) {
+            defaultHeaders.put("Authorization", "Bearer " + builder.apiKey);
+        }
+        if (builder.customHeaders != null) {
+            defaultHeaders.putAll(builder.customHeaders);
+        }
+        this.defaultHeaders = defaultHeaders;
     }
 
     EmbeddingResponse embed(EmbeddingRequest request) {
-        try {
-            Response<EmbeddingResponse> retrofitResponse = voyageAiApi.embed(request).execute();
 
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "embeddings")
+                .body(toJson(request))
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeaders(defaultHeaders)
+                .build();
+
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+
+        return fromJson(successfulHttpResponse.body(), EmbeddingResponse.class);
     }
 
     RerankResponse rerank(RerankRequest request) {
-        try {
-            Response<RerankResponse> retrofitResponse = voyageAiApi.rerank(request).execute();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "rerank")
+                .body(toJson(request))
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeaders(defaultHeaders)
+                .build();
 
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
-    private RuntimeException toException(retrofit2.Response<?> response) throws IOException {
-        int code = response.code();
-        String body = response.errorBody().string();
-        String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+        return fromJson(successfulHttpResponse.body(), RerankResponse.class);
     }
 
     static Builder builder() {
         return new Builder();
     }
 
-    static class AuthorizationInterceptor implements Interceptor {
-
-        private final String apiKey;
-
-        AuthorizationInterceptor(String apiKey) {
-            this.apiKey = apiKey;
-        }
-
-        @NotNull
-        @Override
-        public okhttp3.Response intercept(Chain chain) throws IOException {
-            Request.Builder builder = chain.request().newBuilder();
-
-            builder.addHeader("Authorization", "Bearer " + apiKey);
-
-            return chain.proceed(builder.build());
-        }
-    }
-
     static class Builder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private Duration timeout;
         private String apiKey;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Map<String, String> customHeaders;
+
+        Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -139,8 +131,13 @@ class VoyageAiClient {
             return this;
         }
 
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
         VoyageAiClient build() {
-            return new VoyageAiClient(baseUrl, timeout, apiKey, logRequests, logResponses);
+            return new VoyageAiClient(this);
         }
     }
 }

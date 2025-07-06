@@ -1,18 +1,27 @@
 package dev.langchain4j.model.googleai;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 import java.util.List;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class GeminiFunctionCallingConfig {
+
+    @JsonProperty
     private GeminiMode mode;
+    @JsonProperty
     private List<String> allowedFunctionNames;
 
-    @JsonCreator
-    public GeminiFunctionCallingConfig(@JsonProperty("mode") GeminiMode mode, @JsonProperty("allowedFunctionNames") List<String> allowedFunctionNames) {
+    public GeminiFunctionCallingConfig(GeminiFunctionCallingConfigBuilder builder) {
+        this.mode = builder.mode;
+        this.allowedFunctionNames = builder.allowedFunctionNames;
+    }
+
+    public GeminiFunctionCallingConfig(GeminiMode mode, List<String> allowedFunctionNames) {
         this.mode = mode;
         this.allowedFunctionNames = allowedFunctionNames;
     }
@@ -37,40 +46,8 @@ public class GeminiFunctionCallingConfig {
         this.allowedFunctionNames = allowedFunctionNames;
     }
 
-    public boolean equals(final Object o) {
-        if (o == this) return true;
-        if (!(o instanceof GeminiFunctionCallingConfig)) return false;
-        final GeminiFunctionCallingConfig other = (GeminiFunctionCallingConfig) o;
-        if (!other.canEqual((Object) this)) return false;
-        final Object this$mode = this.getMode();
-        final Object other$mode = other.getMode();
-        if (this$mode == null ? other$mode != null : !this$mode.equals(other$mode)) return false;
-        final Object this$allowedFunctionNames = this.getAllowedFunctionNames();
-        final Object other$allowedFunctionNames = other.getAllowedFunctionNames();
-        if (this$allowedFunctionNames == null ? other$allowedFunctionNames != null : !this$allowedFunctionNames.equals(other$allowedFunctionNames))
-            return false;
-        return true;
-    }
-
-    protected boolean canEqual(final Object other) {
-        return other instanceof GeminiFunctionCallingConfig;
-    }
-
-    public int hashCode() {
-        final int PRIME = 59;
-        int result = 1;
-        final Object $mode = this.getMode();
-        result = result * PRIME + ($mode == null ? 43 : $mode.hashCode());
-        final Object $allowedFunctionNames = this.getAllowedFunctionNames();
-        result = result * PRIME + ($allowedFunctionNames == null ? 43 : $allowedFunctionNames.hashCode());
-        return result;
-    }
-
-    public String toString() {
-        return "GeminiFunctionCallingConfig(mode=" + this.getMode() + ", allowedFunctionNames=" + this.getAllowedFunctionNames() + ")";
-    }
-
     public static class GeminiFunctionCallingConfigBuilder {
+
         private GeminiMode mode;
         private List<String> allowedFunctionNames;
 
@@ -88,11 +65,7 @@ public class GeminiFunctionCallingConfig {
         }
 
         public GeminiFunctionCallingConfig build() {
-            return new GeminiFunctionCallingConfig(this.mode, this.allowedFunctionNames);
-        }
-
-        public String toString() {
-            return "GeminiFunctionCallingConfig.GeminiFunctionCallingConfigBuilder(mode=" + this.mode + ", allowedFunctionNames=" + this.allowedFunctionNames + ")";
+            return new GeminiFunctionCallingConfig(this);
         }
     }
 }

@@ -28,7 +28,7 @@ class VoyageAiEmbeddingModelIT {
                 .modelName(VoyageAiEmbeddingModelName.VOYAGE_3_LITE)
                 .timeout(Duration.ofSeconds(60))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         // when
@@ -55,7 +55,7 @@ class VoyageAiEmbeddingModelIT {
                 .timeout(Duration.ofSeconds(60))
                 .encodingFormat("base64")
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         // when
@@ -81,7 +81,7 @@ class VoyageAiEmbeddingModelIT {
                 .timeout(Duration.ofSeconds(60))
                 .inputType("query")
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");
@@ -117,7 +117,7 @@ class VoyageAiEmbeddingModelIT {
                 .modelName(VoyageAiEmbeddingModelName.VOYAGE_3_LITE)
                 .timeout(Duration.ofSeconds(60))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .maxSegmentsPerBatch(96)
                 .build();
 

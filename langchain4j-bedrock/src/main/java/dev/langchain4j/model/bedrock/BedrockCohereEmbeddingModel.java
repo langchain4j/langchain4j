@@ -2,7 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -20,8 +20,8 @@ import java.util.Map;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.bedrock.internal.Json.fromJson;
-import static dev.langchain4j.model.bedrock.internal.Json.toJson;
+import static dev.langchain4j.model.bedrock.Json.fromJson;
+import static dev.langchain4j.model.bedrock.Json.toJson;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 import static software.amazon.awssdk.regions.Region.US_EAST_1;
@@ -33,7 +33,7 @@ import static software.amazon.awssdk.regions.Region.US_EAST_1;
  * See more details <a href="https://docs.cohere.com/v2/docs/amazon-bedrock">here</a> and
  * <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-embed.html">here</a>.
  */
-public class BedrockCohereEmbeddingModel implements EmbeddingModel {
+public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final BedrockRuntimeClient client;
     private final String model;
@@ -63,7 +63,8 @@ public class BedrockCohereEmbeddingModel implements EmbeddingModel {
         Map<String, Object> requestParameters = toRequestParameters(textSegments);
         String requestJson = toJson(requestParameters);
 
-        InvokeModelResponse invokeModelResponse = withRetryMappingExceptions(() -> invoke(requestJson), maxRetries);
+        InvokeModelResponse invokeModelResponse = withRetryMappingExceptions(() ->
+                invoke(requestJson), maxRetries, BedrockExceptionMapper.INSTANCE);
 
         String responseJson = invokeModelResponse.body().asUtf8String();
         BedrockCohereEmbeddingResponse embeddingResponse = fromJson(responseJson, BedrockCohereEmbeddingResponse.class);

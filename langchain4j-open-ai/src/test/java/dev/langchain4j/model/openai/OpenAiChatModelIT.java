@@ -9,10 +9,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -24,6 +26,8 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -548,5 +552,31 @@ class OpenAiChatModelIT {
                 .outputTokensDetails()
                 .reasoningTokens();
         assertThat(lowReasoningTokens).isLessThan(mediumReasoningTokens);
+    }
+
+    @Test
+    void should_accept_pdf_file_content() throws Exception {
+
+        // given
+        Path file = Paths.get(getClass().getClassLoader().getResource("sample.pdf").toURI());
+        String pdfBase64 = Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+        PdfFile pdfFile = PdfFile.builder()
+                .base64Data(pdfBase64)
+                .mimeType("application/pdf")
+                .build();
+
+        UserMessage userMessage = UserMessage.builder()
+                .addContent(TextContent.from("What information is in the attached PDF? Return only the exacted text."))
+                .addContent(PdfFileContent.from(pdfFile))
+                .build();
+
+        // when
+        ChatResponse response = model.chat(userMessage);
+
+        // then
+        assertThat(response.aiMessage().text())
+                .containsIgnoringCase("Berlin")
+                .containsIgnoringCase("capital")
+                .containsIgnoringCase("Germany");
     }
 }

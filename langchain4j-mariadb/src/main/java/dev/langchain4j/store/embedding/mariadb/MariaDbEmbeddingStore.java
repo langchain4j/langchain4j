@@ -83,7 +83,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private String validateAndEnquoteIdentifier(String value, String defaultValue) {
-        return value == null || value.isEmpty()
+        return isNullOrEmpty(value)
                 ? defaultValue
                 : MariaDbValidator.validateAndEnquoteIdentifier(value, false);
     }

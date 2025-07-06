@@ -3,9 +3,9 @@ package dev.langchain4j.service;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecutor;
-
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +21,8 @@ public class AiServiceTokenStreamParameters {
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
+    private final GuardrailRequestParams commonGuardrailParams;
+    private final Object methodKey;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
@@ -29,6 +31,8 @@ public class AiServiceTokenStreamParameters {
         this.retrievedContents = builder.retrievedContents;
         this.context = builder.context;
         this.memoryId = builder.memoryId;
+        this.commonGuardrailParams = builder.commonGuardrailParams;
+        this.methodKey = builder.methodKey;
     }
 
     /**
@@ -74,6 +78,26 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
+     * Retrieves the common parameters shared across guardrail checks for validating interactions
+     * between a user and a language model, if available.
+     *
+     * @return the {@link GuardrailRequestParams} containing chat memory, user message template,
+     * and additional variables required for guardrail processing, or null if not set.
+     */
+    public GuardrailRequestParams commonGuardrailParams() {
+        return commonGuardrailParams;
+    }
+
+    /**
+     * Retrieves the method key associated with this instance.
+     *
+     * @return the method key as an Object
+     */
+    public Object methodKey() {
+        return methodKey;
+    }
+
+    /**
      * Creates a new builder for {@link AiServiceTokenStreamParameters}.
      *
      * @return a new builder
@@ -93,9 +117,10 @@ public class AiServiceTokenStreamParameters {
         private List<Content> retrievedContents;
         private AiServiceContext context;
         private Object memoryId;
+        private GuardrailRequestParams commonGuardrailParams;
+        private Object methodKey;
 
-        protected Builder() {
-        }
+        protected Builder() {}
 
         /**
          * Sets the messages.
@@ -160,6 +185,30 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder memoryId(Object memoryId) {
             this.memoryId = memoryId;
+            return this;
+        }
+
+        /**
+         * Sets the common guardrail parameters for validating interactions between a user and a language model.
+         *
+         * @param commonGuardrailParams an instance of {@link GuardrailRequestParams} containing the shared parameters
+         *                              required for guardrail checks, such as chat memory, user message template,
+         *                              and additional variables.
+         * @return this builder instance.
+         */
+        public Builder commonGuardrailParams(GuardrailRequestParams commonGuardrailParams) {
+            this.commonGuardrailParams = commonGuardrailParams;
+            return this;
+        }
+
+        /**
+         * Sets the method key.
+         *
+         * @param methodKey the method key
+         * @return this builder
+         */
+        public Builder methodKey(Object methodKey) {
+            this.methodKey = methodKey;
             return this;
         }
 

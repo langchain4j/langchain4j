@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 
@@ -21,7 +22,9 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -95,27 +98,30 @@ class InternalOllamaHelper {
         }
     }
 
-    static FinishReason toFinishReason(String reason) {
-        if (reason == null) {
+    static FinishReason toFinishReason(OllamaChatResponse ollamaChatResponse) {
+        if (ollamaChatResponse.getMessage() != null
+                && !isNullOrEmpty(ollamaChatResponse.getMessage().getToolCalls())) {
+            return FinishReason.TOOL_EXECUTION;
+        }
+
+        String doneReason = ollamaChatResponse.getDoneReason();
+        if (doneReason == null) {
             return null;
         }
 
-        return switch (reason) {
+        return switch (doneReason) {
             case "stop" -> FinishReason.STOP;
             case "length" -> FinishReason.LENGTH;
             default -> FinishReason.OTHER;
         };
     }
 
-    static void validate(OllamaChatRequestParameters parameters) {
-        if (parameters.frequencyPenalty() != null) {
-            throw new IllegalArgumentException("'frequencyPenalty' parameter is not supported by Ollama");
+    static void validate(ChatRequestParameters chatRequestParameters) {
+        if (chatRequestParameters.frequencyPenalty() != null) {
+            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by Ollama");
         }
-        if (parameters.presencePenalty() != null) {
-            throw new IllegalArgumentException("'presencePenalty' parameter is not supported by Ollama");
-        }
-        if (parameters.toolChoice() != null) {
-            throw new IllegalArgumentException("'toolChoice' parameter is not supported by Ollama");
+        if (chatRequestParameters.presencePenalty() != null) {
+            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by Ollama");
         }
     }
 
@@ -129,7 +135,7 @@ class InternalOllamaHelper {
     static ChatResponseMetadata chatResponseMetadataFrom(OllamaChatResponse ollamaChatResponse) {
         return chatResponseMetadataFrom(
                 ollamaChatResponse.getModel(),
-                toFinishReason(ollamaChatResponse.getDoneReason()),
+                toFinishReason(ollamaChatResponse),
                 new TokenUsage(ollamaChatResponse.getPromptEvalCount(), ollamaChatResponse.getEvalCount()));
     }
 
@@ -175,7 +181,7 @@ class InternalOllamaHelper {
                 userMessage.contents().stream().collect(Collectors.groupingBy(Content::type));
 
         if (groupedContents.get(TEXT).size() != 1) {
-            throw new RuntimeException("Expecting single text content, but got: " + userMessage.contents());
+            throw new IllegalArgumentException("Expecting single text content, but got: " + userMessage.contents());
         }
 
         String text = ((TextContent) groupedContents.get(TEXT).get(0)).text();

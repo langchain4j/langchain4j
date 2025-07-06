@@ -5,7 +5,7 @@ import java.net.InetSocketAddress;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.CassandraContainer;
+import org.testcontainers.cassandra.CassandraContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
@@ -16,7 +16,7 @@ import org.testcontainers.utility.DockerImageName;
 class CassandraChatMemoryStoreDockerIT extends CassandraChatMemoryStoreTestSupport {
     static final String DATACENTER = "datacenter1";
     static final DockerImageName CASSANDRA_IMAGE = DockerImageName.parse("cassandra:5.0");
-    static CassandraContainer<?> cassandraContainer;
+    static CassandraContainer cassandraContainer;
 
     @BeforeAll
     static void ensureDockerIsRunning() {
@@ -26,7 +26,7 @@ class CassandraChatMemoryStoreDockerIT extends CassandraChatMemoryStoreTestSuppo
     @Override
     @SuppressWarnings("resource")
     void createDatabase() {
-        cassandraContainer = new CassandraContainer<>(CASSANDRA_IMAGE)
+        cassandraContainer = new CassandraContainer(CASSANDRA_IMAGE)
                 .withEnv("CLUSTER_NAME", "langchain4j")
                 .withEnv("DC", DATACENTER);
         cassandraContainer.start();

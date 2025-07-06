@@ -862,4 +862,82 @@ class AiServicesWithToolsIT {
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);
     }
+
+
+    interface RouterAgent {
+
+        @dev.langchain4j.service.UserMessage("""
+            Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
+            then forward the request as it is to the corresponding expert provided as a tool.
+            Finally return the answer that you received from the expert without any modification.
+
+            The user request is: '{{it}}'.
+            """)
+        String askToExpert(String request);
+    }
+
+    interface MedicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a medical expert.
+            Analyze the following user request under a medical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A medical expert")
+        String medicalRequest(String request);
+    }
+
+    interface LegalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a legal expert.
+            Analyze the following user request under a legal point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A legal expert")
+        String legalRequest(String request);
+    }
+
+    interface TechnicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a technical expert.
+            Analyze the following user request under a technical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A technical expert")
+        String technicalRequest(String request);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void tools_as_agents_tests(ChatModel model) {
+        MedicalExpert medicalExpert = spy(AiServices.builder(MedicalExpert.class)
+                .chatModel(model)
+                .build());
+        LegalExpert legalExpert = spy(AiServices.builder(LegalExpert.class)
+                .chatModel(model)
+                .build());
+        TechnicalExpert technicalExpert = spy(AiServices.builder(TechnicalExpert.class)
+                .chatModel(model)
+                .build());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
+                .chatModel(model)
+                .chatMemory(chatMemory)
+                .tools(medicalExpert, legalExpert, technicalExpert)
+                .build();
+
+        routerAgent.askToExpert("I broke my leg what should I do");
+        verify(medicalExpert).medicalRequest("I broke my leg what should I do");
+        verifyNoInteractions(legalExpert, technicalExpert);
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+        assertThat(messages.get(0)).isInstanceOf(UserMessage.class); // user prompt
+        assertThat(messages.get(1)).isInstanceOf(AiMessage.class); // ai message to invoke the tool
+        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class); // tool response
+        assertThat(messages.get(3)).isInstanceOf(AiMessage.class); // final ai message
+    }
 }

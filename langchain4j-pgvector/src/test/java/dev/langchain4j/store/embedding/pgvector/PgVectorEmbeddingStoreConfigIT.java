@@ -1,13 +1,21 @@
 package dev.langchain4j.store.embedding.pgvector;
 
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import dev.langchain4j.store.embedding.filter.Filter;
 import java.sql.SQLException;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -72,5 +80,32 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
     @Override
     protected boolean supportsContains() {
         return true;
+    }
+
+    @Test
+    void sqlInjectionShouldBePrevented() {
+
+        Embedding embedding = embeddingModel().embed("hello").content();
+        embeddingStore().add(embedding);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
+        Embedding referenceEmbedding = embeddingModel().embed("hi").content();
+
+        Filter filter = metadataKey("key").isEqualTo("foo'; DROP TABLE " + TABLE_NAME + "; --");
+
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(1)
+                .filter(filter)
+                .build();
+
+        try {
+            embeddingStore().search(searchRequest);
+        } catch (Exception e) {
+            // ignore failure
+        }
+
+        // make sure table and embeddings are still there
+        assertThat(getAllEmbeddings()).isNotEmpty();
     }
 }

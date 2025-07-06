@@ -1,9 +1,11 @@
 package dev.langchain4j.mcp.client.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.langchain4j.Internal;
 import java.util.HashMap;
 import java.util.Map;
 
+@Internal
 public class McpPingResponse extends McpClientMessage {
 
     // has to be an empty object
@@ -12,5 +14,9 @@ public class McpPingResponse extends McpClientMessage {
 
     public McpPingResponse(final Long id) {
         super(id);
+    }
+
+    public Map<String, Object> getResult() {
+        return result;
     }
 }

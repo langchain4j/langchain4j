@@ -22,7 +22,7 @@ class GitHubModelsEmbeddingModelIT {
     EmbeddingModel model = GitHubModelsEmbeddingModel.builder()
             .gitHubToken(System.getenv("GITHUB_TOKEN"))
             .modelName(TEXT_EMBEDDING_3_SMALL)
-            .logRequestsAndResponses(true)
+            .logRequestsAndResponses(false) // embeddings are huge in logs
             .build();
 
     @Test
@@ -72,7 +72,7 @@ class GitHubModelsEmbeddingModelIT {
         EmbeddingModel model = GitHubModelsEmbeddingModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName.toString())
-                .logRequestsAndResponses(true)
+                .logRequestsAndResponses(false) // embeddings are huge in logs
                 .build();
 
         // when
@@ -92,7 +92,7 @@ class GitHubModelsEmbeddingModelIT {
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(TEXT_EMBEDDING_3_SMALL)
                 .dimensions(dimensions)
-                .logRequestsAndResponses(true)
+                .logRequestsAndResponses(false) // embeddings are huge in logs
                 .build();
 
         // when

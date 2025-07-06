@@ -15,7 +15,7 @@ public class AnthropicThinking {
     @JsonProperty
     private final Integer budgetTokens;
 
-    private AnthropicThinking(Builder builder) {
+    public AnthropicThinking(Builder builder) {
         this.type = builder.type;
         this.budgetTokens = builder.budgetTokens;
     }

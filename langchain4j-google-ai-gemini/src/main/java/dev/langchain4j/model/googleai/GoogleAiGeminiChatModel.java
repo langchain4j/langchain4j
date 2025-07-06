@@ -1,59 +1,125 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.Experimental;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Arrays.asList;
+
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
-
-@Experimental
 public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements ChatModel {
 
+    private final Set<Capability> supportedCapabilities;
+
+    public GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder builder) {
+        super(
+                builder.httpClientBuilder,
+                builder.apiKey,
+                builder.baseUrl,
+                builder.modelName,
+                builder.temperature,
+                builder.topK,
+                builder.seed,
+                builder.topP,
+                builder.frequencyPenalty,
+                builder.presencePenalty,
+                builder.maxOutputTokens,
+                builder.logprobs,
+                builder.timeout,
+                builder.responseFormat,
+                builder.stopSequences,
+                builder.functionCallingConfig,
+                builder.allowCodeExecution,
+                builder.includeCodeExecutionOutput,
+                builder.logRequestsAndResponses,
+                builder.responseLogprobs,
+                builder.enableEnhancedCivicAnswers,
+                builder.safetySettings,
+                builder.listeners,
+                builder.maxRetries,
+                builder.thinkingConfig,
+                builder.defaultRequestParameters);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
+    }
+
+    /**
+     * @deprecated please use {@link #GoogleAiGeminiChatModel(GoogleAiGeminiChatModelBuilder)} instead
+     */
+    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public GoogleAiGeminiChatModel(
-            String apiKey, String modelName,
+            String apiKey,
+            String baseUrl,
+            String modelName,
             Integer maxRetries,
-            Double temperature, Integer topK, Double topP,
-            Integer maxOutputTokens, Duration timeout,
+            Double temperature,
+            Integer topK,
+            Integer seed,
+            Double topP,
+            Integer maxOutputTokens,
+            Integer logprobs,
+            Duration timeout,
             ResponseFormat responseFormat,
-            List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
-            Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
+            List<String> stopSequences,
+            GeminiFunctionCallingConfig toolConfig,
+            Boolean allowCodeExecution,
+            Boolean includeCodeExecutionOutput,
             Boolean logRequestsAndResponses,
+            Boolean responseLogprobs,
+            Boolean enableEnhancedCivicAnswers,
             List<GeminiSafetySetting> safetySettings,
-            List<ChatModelListener> listeners
-    ) {
-        super(apiKey, modelName, temperature, topK, topP, maxOutputTokens, timeout,
-                responseFormat, stopSequences, toolConfig, allowCodeExecution,
-                includeCodeExecutionOutput, logRequestsAndResponses, safetySettings,
-                listeners, maxRetries);
+            List<ChatModelListener> listeners) {
+        super(
+                null,
+                apiKey,
+                baseUrl,
+                modelName,
+                temperature,
+                topK,
+                seed,
+                topP,
+                null,
+                null,
+                maxOutputTokens,
+                logprobs,
+                timeout,
+                responseFormat,
+                stopSequences,
+                toolConfig,
+                allowCodeExecution,
+                includeCodeExecutionOutput,
+                logRequestsAndResponses,
+                responseLogprobs,
+                enableEnhancedCivicAnswers,
+                safetySettings,
+                listeners,
+                maxRetries,
+                null,
+                null);
+        this.supportedCapabilities = Set.of();
     }
 
     public static GoogleAiGeminiChatModelBuilder builder() {
@@ -61,86 +127,46 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     }
 
     @Override
-    public ChatResponse chat(ChatRequest chatRequest) {
-
-        ChatRequestParameters parameters = chatRequest.parameters();
-        validate(parameters);
-        ChatRequestValidationUtils.validate(parameters.toolChoice());
-
-        GeminiGenerateContentRequest request = createGenerateContentRequest(
-                chatRequest.messages(),
-                parameters.toolSpecifications(),
-                getOrDefault(parameters.responseFormat(), this.responseFormat),
-                chatRequest.parameters()
-        );
-
-        ChatRequest listenerRequest = createListenerRequest(
-                parameters.modelName(),
-                chatRequest.messages(),
-                parameters.toolSpecifications(),
-                chatRequest.parameters()
-        );
-
-        ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        notifyListenersOnRequest(new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes));
-
-        try {
-            GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
-                    () -> this.geminiService.generateContent(this.modelName, this.apiKey, request),
-                    this.maxRetries
-            );
-
-            return processResponse(geminiResponse, listenerRequest, listenerAttributes);
-        } catch (RuntimeException e) {
-            notifyListenersOnError(e, listenerRequest, provider(), listenerAttributes);
-            throw e;
-        }
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
-    private static void validate(ChatRequestParameters parameters) {
-        if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by Google AI Gemini");
-        }
-        if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by Google AI Gemini");
-        }
+    @Override
+    public ChatResponse doChat(ChatRequest chatRequest) {
+
+        GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
+
+        GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
+                () -> geminiService.generateContent(chatRequest.modelName(), request), maxRetries);
+
+        return processResponse(geminiResponse);
     }
 
-    private ChatResponse processResponse(
-            GeminiGenerateContentResponse geminiResponse,
-            ChatRequest listenerRequest,
-            ConcurrentHashMap<Object, Object> listenerAttributes
-    ) {
-        if (geminiResponse == null) {
-            throw new RuntimeException("Gemini response was null");
-        }
-
+    private ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
         GeminiCandidate firstCandidate = geminiResponse.getCandidates().get(0);
-        GeminiUsageMetadata tokenCounts = geminiResponse.getUsageMetadata();
+        AiMessage aiMessage = createAiMessage(firstCandidate);
 
         FinishReason finishReason = fromGFinishReasonToFinishReason(firstCandidate.getFinishReason());
-        AiMessage aiMessage = createAiMessage(firstCandidate, finishReason);
-        TokenUsage tokenUsage = createTokenUsage(tokenCounts);
-
-        Response<AiMessage> response = Response.from(aiMessage, tokenUsage, finishReason);
-        notifyListenersOnResponse(response, listenerRequest, provider(), listenerAttributes);
+        if (aiMessage != null && aiMessage.hasToolExecutionRequests()) {
+            finishReason = TOOL_EXECUTION;
+        }
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder()
-                        // TODO take actual modelName from response or return null?
-                        .modelName(listenerRequest.parameters().modelName())
+                        .id(geminiResponse.getResponseId())
+                        .modelName(geminiResponse.getModelVersion())
+                        .tokenUsage(createTokenUsage(geminiResponse.getUsageMetadata()))
                         .finishReason(finishReason)
-                        .tokenUsage(tokenUsage)
                         .build())
                 .build();
     }
 
-    private AiMessage createAiMessage(GeminiCandidate candidate, FinishReason finishReason) {
-        if (candidate.getContent() == null) {
-            return AiMessage.from("No text was returned by the model. " +
-                    "The model finished generating because of the following reason: " + finishReason);
+    private AiMessage createAiMessage(GeminiCandidate candidate) {
+        if (candidate == null || candidate.getContent() == null) {
+            return null;
         }
+
         return fromGPartsToAiMessage(candidate.getContent().getParts(), this.includeCodeExecutionOutput);
     }
 
@@ -148,15 +174,15 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         return new TokenUsage(
                 tokenCounts.getPromptTokenCount(),
                 tokenCounts.getCandidatesTokenCount(),
-                tokenCounts.getTotalTokenCount()
-        );
+                tokenCounts.getTotalTokenCount());
     }
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        Set<Capability> capabilities = new HashSet<>();
+        Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
         // when response format is not null, it's JSON, either application/json or text/x.enum
-        if (this.responseFormat != null && ResponseFormatType.JSON.equals(this.responseFormat.type())) {
+        ResponseFormat responseFormat = this.defaultRequestParameters.responseFormat();
+        if (responseFormat != null && ResponseFormatType.JSON.equals(responseFormat.type())) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
@@ -173,40 +199,67 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     }
 
     public static class GoogleAiGeminiChatModelBuilder {
+
+        private HttpClientBuilder httpClientBuilder;
+        private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
+        private String baseUrl;
         private String modelName;
         private Integer maxRetries;
         private Double temperature;
         private Integer topK;
+        private Integer seed;
         private Double topP;
+        private Double frequencyPenalty;
+        private Double presencePenalty;
         private Integer maxOutputTokens;
         private Duration timeout;
         private ResponseFormat responseFormat;
         private List<String> stopSequences;
-        private GeminiFunctionCallingConfig toolConfig;
+        private GeminiFunctionCallingConfig functionCallingConfig;
         private Boolean allowCodeExecution;
         private Boolean includeCodeExecutionOutput;
         private Boolean logRequestsAndResponses;
+        private Boolean responseLogprobs;
+        private Boolean enableEnhancedCivicAnswers;
         private List<GeminiSafetySetting> safetySettings;
+        private GeminiThinkingConfig thinkingConfig;
+        private Integer logprobs;
         private List<ChatModelListener> listeners;
+        private Set<Capability> supportedCapabilities;
 
-        GoogleAiGeminiChatModelBuilder() {
-        }
+        GoogleAiGeminiChatModelBuilder() {}
 
-        public GoogleAiGeminiChatModelBuilder toolConfig(GeminiMode mode, String... allowedFunctionNames) {
-            this.toolConfig = new GeminiFunctionCallingConfig(mode, Arrays.asList(allowedFunctionNames));
+        public GoogleAiGeminiChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 
-        public GoogleAiGeminiChatModelBuilder safetySettings(Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
+        public GoogleAiGeminiChatModelBuilder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder toolConfig(GeminiMode mode, String... allowedFunctionNames) {
+            this.functionCallingConfig = new GeminiFunctionCallingConfig(mode, Arrays.asList(allowedFunctionNames));
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder safetySettings(
+                Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
             this.safetySettings = safetySettingMap.entrySet().stream()
-                    .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue())
-                    ).collect(Collectors.toList());
+                    .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue()))
+                    .collect(Collectors.toList());
             return this;
         }
 
         public GoogleAiGeminiChatModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
             return this;
         }
 
@@ -230,8 +283,23 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return this;
         }
 
+        public GoogleAiGeminiChatModelBuilder seed(Integer seed) {
+            this.seed = seed;
+            return this;
+        }
+
         public GoogleAiGeminiChatModelBuilder topP(Double topP) {
             this.topP = topP;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
             return this;
         }
 
@@ -256,7 +324,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         }
 
         public GoogleAiGeminiChatModelBuilder toolConfig(GeminiFunctionCallingConfig toolConfig) {
-            this.toolConfig = toolConfig;
+            this.functionCallingConfig = toolConfig;
             return this;
         }
 
@@ -280,13 +348,42 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             return this;
         }
 
+        public GoogleAiGeminiChatModelBuilder thinkingConfig(GeminiThinkingConfig thinkingConfig) {
+            this.thinkingConfig = thinkingConfig;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder responseLogprobs(Boolean responseLogprobs) {
+            this.responseLogprobs = responseLogprobs;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers) {
+            this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder logprobs(Integer logprobs) {
+            this.logprobs = logprobs;
+            return this;
+        }
+
         public GoogleAiGeminiChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
+        public GoogleAiGeminiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
+        public GoogleAiGeminiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
+        }
+
         public GoogleAiGeminiChatModel build() {
-            return new GoogleAiGeminiChatModel(this.apiKey, this.modelName, this.maxRetries, this.temperature, this.topK, this.topP, this.maxOutputTokens, this.timeout, this.responseFormat, this.stopSequences, this.toolConfig, this.allowCodeExecution, this.includeCodeExecutionOutput, this.logRequestsAndResponses, this.safetySettings, this.listeners);
+            return new GoogleAiGeminiChatModel(this);
         }
     }
 }

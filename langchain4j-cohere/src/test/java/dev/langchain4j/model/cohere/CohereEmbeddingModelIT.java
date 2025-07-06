@@ -45,7 +45,7 @@ class CohereEmbeddingModelIT {
                 .inputType("search_document")
                 .timeout(Duration.ofSeconds(60))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");
@@ -81,7 +81,7 @@ class CohereEmbeddingModelIT {
                 .inputType("search_document")
                 .timeout(Duration.ofSeconds(60))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         List<TextSegment> segments = new ArrayList<>();

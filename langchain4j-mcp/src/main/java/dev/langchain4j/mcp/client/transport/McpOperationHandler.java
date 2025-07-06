@@ -1,11 +1,15 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.mcp.client.McpRoot;
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
 import dev.langchain4j.mcp.client.protocol.McpPingResponse;
+import dev.langchain4j.mcp.client.protocol.McpRootsListResponse;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,9 +26,11 @@ public class McpOperationHandler {
     private final McpTransport transport;
     private final Consumer<McpLogMessage> logMessageConsumer;
     private final Runnable onToolListUpdate;
+    private final Supplier<List<McpRoot>> roots;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
+            Supplier<List<McpRoot>> roots,
             McpTransport transport,
             Consumer<McpLogMessage> logMessageConsumer,
             Runnable onToolListUpdate) {
@@ -32,19 +38,29 @@ public class McpOperationHandler {
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
         this.onToolListUpdate = onToolListUpdate;
+        this.roots = roots;
     }
 
     public void handle(JsonNode message) {
         if (message.has("id")) {
             long messageId = message.get("id").asLong();
-            CompletableFuture<JsonNode> op = pendingOperations.remove(messageId);
-            if (op != null) {
-                op.complete(message);
+            if (message.has("result") || message.has("error")) {
+                // if there is a result or error, we assume that this is related to a client-initiated operation
+                CompletableFuture<JsonNode> op = pendingOperations.remove(messageId);
+                if (op != null) {
+                    op.complete(message);
+                } else {
+                    log.warn("Received response for unknown message id: {}", messageId);
+                }
             } else {
+                // this is a server-initiated operation, the pendingOperations map is not relevant
                 if (message.has("method")) {
                     String method = message.get("method").asText();
                     if (method.equals("ping")) {
                         transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
+                        return;
+                    } else if (method.equals("roots/list")) {
+                        transport.executeOperationWithoutResponse(new McpRootsListResponse(messageId, roots.get()));
                         return;
                     }
                 }

@@ -2,13 +2,15 @@ package dev.langchain4j.mcp.client.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.langchain4j.Internal;
 import java.util.HashMap;
 import java.util.Map;
 
+@Internal
 public class McpCallToolRequest extends McpClientMessage {
 
     @JsonInclude
-    public final ClientMethod method = ClientMethod.TOOLS_CALL;
+    public final McpClientMethod method = McpClientMethod.TOOLS_CALL;
 
     @JsonInclude
     private Map<String, Object> params;

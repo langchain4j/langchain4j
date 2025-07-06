@@ -5,13 +5,13 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import dev.langchain4j.data.message.UserMessage.userMessage
 import dev.langchain4j.internal.VirtualThreadUtils
-import dev.langchain4j.kotlin.model.chat.chat
-import dev.langchain4j.kotlin.model.chat.chatAsync
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -123,4 +123,23 @@ internal class ChatModelExtensionsTest {
             assertThat(chatRequestCaptor.value.messages()).containsExactly(userMessage)
             response shouldBe chatResponse
         }
+
+    @Test
+    fun `defaultCoroutineContext() should return dispatcher based on virtual thread support`() {
+        val context = defaultCoroutineContext()
+
+        if (VirtualThreadUtils.isVirtualThreadsSupported()) {
+            // On Java 21+, should return a virtual thread dispatcher;
+            // We can verify this by checking if a thread created by this dispatcher is a virtual thread
+            runTest {
+                val isVirtualThread: Boolean = withContext(context) {
+                    VirtualThreadUtils.isVirtualThread()
+                }
+                isVirtualThread shouldBe true
+            }
+        } else {
+            // On Java 20 or lower, should return Dispatchers.IO
+            context shouldBe Dispatchers.IO
+        }
+    }
 }

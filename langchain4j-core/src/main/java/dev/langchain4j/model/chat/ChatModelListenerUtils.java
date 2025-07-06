@@ -1,5 +1,7 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -26,7 +28,7 @@ class ChatModelListenerUtils {
                           ModelProvider modelProvider,
                           Map<Object, Object> attributes,
                           List<ChatModelListener> listeners) {
-        if (listeners == null || listeners.isEmpty()) {
+        if (isNullOrEmpty(listeners)) {
             return;
         }
         ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, modelProvider, attributes);
@@ -45,7 +47,7 @@ class ChatModelListenerUtils {
                            ModelProvider modelProvider,
                            Map<Object, Object> attributes,
                            List<ChatModelListener> listeners) {
-        if (listeners == null || listeners.isEmpty()) {
+        if (isNullOrEmpty(listeners)) {
             return;
         }
         ChatModelResponseContext responseContext = new ChatModelResponseContext(
@@ -65,7 +67,7 @@ class ChatModelListenerUtils {
                         ModelProvider modelProvider,
                         Map<Object, Object> attributes,
                         List<ChatModelListener> listeners) {
-        if (listeners == null || listeners.isEmpty()) {
+        if (isNullOrEmpty(listeners)) {
             return;
         }
         ChatModelErrorContext errorContext = new ChatModelErrorContext(error, chatRequest, modelProvider, attributes);

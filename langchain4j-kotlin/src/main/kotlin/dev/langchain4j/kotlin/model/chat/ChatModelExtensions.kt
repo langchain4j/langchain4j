@@ -1,10 +1,12 @@
 package dev.langchain4j.kotlin.model.chat
 
-import dev.langchain4j.model.chat.request.ChatRequest
+import dev.langchain4j.internal.VirtualThreadUtils
 import dev.langchain4j.kotlin.model.chat.request.ChatRequestBuilder
 import dev.langchain4j.kotlin.model.chat.request.chatRequest
+import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 
@@ -110,10 +112,16 @@ public suspend fun dev.langchain4j.model.chat.ChatModel.chat(block: ChatRequestB
  * Provides the default [CoroutineContext] for executing asynchronous operations.
  *
  * This method attempts to create a coroutine dispatcher backed by a virtual thread
- * executor, if virtual threads are available on the current platform (Java 21+).
+ *  executor if virtual threads are available on the current platform (Java 21+).
  * If virtual threads are not supported, it defaults to using [Dispatchers.IO].
  *
  * @return A [CoroutineContext] appropriate for executing background tasks,
  *         defaulting to a virtual thread dispatcher when available or [Dispatchers.IO] otherwise.
  */
-internal fun defaultCoroutineContext(): CoroutineContext = Dispatchers.IO
+internal fun defaultCoroutineContext(): CoroutineContext =
+    if (VirtualThreadUtils.isVirtualThreadsSupported()) {
+        VirtualThreadUtils.createVirtualThreadExecutor().asCoroutineDispatcher()
+    } else {
+        Dispatchers.IO
+    }
+

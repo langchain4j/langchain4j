@@ -5,6 +5,8 @@ import static java.util.Objects.nonNull;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import dev.langchain4j.Internal;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDeltaEvent;
@@ -18,7 +20,9 @@ import software.amazon.awssdk.services.bedrockruntime.model.MessageStartEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.MessageStopEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
+@Internal
 class ConverseResponseFromStreamBuilder {
+
     private final ConverseResponse.Builder converseResponseBuilder = ConverseResponse.builder();
     private Message.Builder messageBuilder = Message.builder();
     private final StringBuilder stringBuilder = new StringBuilder();

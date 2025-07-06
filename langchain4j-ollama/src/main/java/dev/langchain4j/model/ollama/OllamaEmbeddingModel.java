@@ -7,6 +7,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.ollama.spi.OllamaEmbeddingModelBuilderFactory;
@@ -25,25 +26,17 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    public OllamaEmbeddingModel(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            String modelName,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses,
-            Map<String, String> customHeaders) {
+    public OllamaEmbeddingModel(OllamaEmbeddingModelBuilder builder) {
         this.client = OllamaClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(baseUrl)
-                .timeout(timeout)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .customHeaders(customHeaders)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(builder.baseUrl)
+                .timeout(builder.timeout)
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .customHeaders(builder.customHeaders)
                 .build();
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxRetries = getOrDefault(maxRetries, 2);
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     public static OllamaEmbeddingModelBuilder builder() {
@@ -83,11 +76,10 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         /**
-         * TODO
-         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
-         *
-         * @param httpClientBuilder
-         * @return
+         * Sets the {@link HttpClientBuilder} that will be used to create the {@link HttpClient}
+         * that will be used to communicate with Ollama.
+         * <p>
+         * NOTE: {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}.
          */
         public OllamaEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -130,15 +122,7 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public OllamaEmbeddingModel build() {
-            return new OllamaEmbeddingModel(
-                    httpClientBuilder,
-                    baseUrl,
-                    modelName,
-                    timeout,
-                    maxRetries,
-                    logRequests,
-                    logResponses,
-                    customHeaders);
+            return new OllamaEmbeddingModel(this);
         }
     }
 }

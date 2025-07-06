@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.vespa;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.vespa.Record.Fields.Vector;
@@ -226,7 +227,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
                 QueryResponse parsedResponse = response.body();
                 List<Record> children = parsedResponse.root().children();
                 return new EmbeddingSearchResult<>(
-                        children == null || children.isEmpty()
+                        isNullOrEmpty(children)
                                 ? new ArrayList<>()
                                 : children.stream()
                                         .map(VespaEmbeddingStore::toEmbeddingMatch)
@@ -421,8 +422,8 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
                     timeout,
                     namespace,
                     documentType,
-                    rankProfile,
                     clusterName,
+                    rankProfile,
                     targetHits,
                     avoidDups,
                     logRequests,

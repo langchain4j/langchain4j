@@ -19,6 +19,7 @@ import io.milvus.v2.client.ConnectConfig;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.common.ConsistencyLevel;
 import java.util.Arrays;
+import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -29,10 +30,12 @@ import org.testcontainers.milvus.MilvusContainer;
 @Testcontainers
 class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
+    static final String MILVUS_DOCKER_IMAGE = "milvusdb/milvus:v2.5.10";
+
     private static final String COLLECTION_NAME = "test_collection";
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.5.8");
+    private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(milvus.getEndpoint())
@@ -333,5 +336,24 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         assertThat(denseResult.matches().get(0).score()).isGreaterThan(0);
         assertThat(sparseResult.matches().get(0).score()).isGreaterThan(0);
         assertThat(hybridResult.matches().get(0).score()).isGreaterThan(0);
+    }
+  
+    @Test
+    void escapeCharacterShouldBeUsed() {
+        Embedding embedding = embeddingModel().embed("hello").content();
+        embeddingStore().add(embedding);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
+        Embedding referenceEmbedding = embeddingModel().embed("hi").content();
+
+        Filter filter = metadataKey("key").isEqualTo("foo\"");
+
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(1)
+                .filter(filter)
+                .build();
+
+        embeddingStore().search(searchRequest);
     }
 }

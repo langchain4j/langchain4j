@@ -65,7 +65,7 @@ class ChatRequestTest {
 
         assertThatThrownBy(() -> ChatRequest.builder()
                 .messages(UserMessage.from("hi"))
-                .parameters(ChatRequestParameters.builder().build())
+                .parameters(DefaultChatRequestParameters.EMPTY)
                 .responseFormat(ResponseFormat.JSON)
                 .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
@@ -77,7 +77,7 @@ class ChatRequestTest {
 
         assertThatThrownBy(() -> ChatRequest.builder()
                 .messages(UserMessage.from("hi"))
-                .parameters(ChatRequestParameters.builder().build())
+                .parameters(DefaultChatRequestParameters.EMPTY)
                 .toolSpecifications(ToolSpecification.builder().name("tool").build())
                 .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)

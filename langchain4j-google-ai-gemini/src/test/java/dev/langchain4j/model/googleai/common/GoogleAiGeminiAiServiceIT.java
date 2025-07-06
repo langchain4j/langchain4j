@@ -17,6 +17,6 @@ class GoogleAiGeminiAiServiceIT extends AbstractAiServiceIT {
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return false; // TODO fix
+        return false; // Gemini does not support tools and response format simultaneously
     }
 }

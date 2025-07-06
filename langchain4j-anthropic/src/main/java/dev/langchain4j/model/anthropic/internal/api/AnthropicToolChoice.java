@@ -23,11 +23,16 @@ public class AnthropicToolChoice {
         this.name = builder.name;
     }
 
+    public static AnthropicToolChoice from(AnthropicToolChoiceType type) {
+        return new Builder().type(type).build();
+    }
+
     public static AnthropicToolChoice from(String functionName) {
         return new Builder().name(functionName).type(TOOL).build();
     }
 
     public static final class Builder {
+
         private AnthropicToolChoiceType type;
         private String name;
 

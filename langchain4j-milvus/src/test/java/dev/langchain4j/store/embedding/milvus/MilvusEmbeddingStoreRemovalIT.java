@@ -10,6 +10,8 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingSearchMode;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+
+import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStoreIT.MILVUS_DOCKER_IMAGE;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import io.milvus.v2.common.ConsistencyLevel;
@@ -23,7 +25,7 @@ import org.testcontainers.milvus.MilvusContainer;
 class MilvusEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.5.8");
+    static MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(milvus.getEndpoint())

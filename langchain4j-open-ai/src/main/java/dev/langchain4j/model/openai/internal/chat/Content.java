@@ -23,12 +23,15 @@ public final class Content {
     private final ImageUrl imageUrl;
     @JsonProperty
     private final InputAudio inputAudio;
+    @JsonProperty
+    private final PdfFile file;
 
     public Content(Builder builder) {
         this.type = builder.type;
         this.text = builder.text;
         this.imageUrl = builder.imageUrl;
         this.inputAudio = builder.inputAudio;
+        this.file = builder.file;
     }
 
     public ContentType type() {
@@ -47,6 +50,10 @@ public final class Content {
         return inputAudio;
     }
 
+    public PdfFile file() {
+        return file;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
@@ -58,7 +65,8 @@ public final class Content {
         return Objects.equals(type, another.type)
                 && Objects.equals(text, another.text)
                 && Objects.equals(imageUrl, another.imageUrl)
-                && Objects.equals(inputAudio, another.inputAudio);
+                && Objects.equals(inputAudio, another.inputAudio)
+                && Objects.equals(file, another.file);
     }
 
     @Override
@@ -68,6 +76,7 @@ public final class Content {
         h += (h << 5) + Objects.hashCode(text);
         h += (h << 5) + Objects.hashCode(imageUrl);
         h += (h << 5) + Objects.hashCode(inputAudio);
+        h += (h << 5) + Objects.hashCode(file);
         return h;
     }
 
@@ -78,6 +87,7 @@ public final class Content {
                 ", text=" + text +
                 ", imageUrl=" + imageUrl +
                 ", inputAudio=" + inputAudio +
+                ", file=" + file +
                 "}";
     }
 
@@ -94,6 +104,7 @@ public final class Content {
         private String text;
         private ImageUrl imageUrl;
         private InputAudio inputAudio;
+        private PdfFile file;
 
         public Builder type(ContentType type) {
             this.type = type;
@@ -112,6 +123,11 @@ public final class Content {
 
         public Builder inputAudio(InputAudio inputAudio) {
             this.inputAudio = inputAudio;
+            return this;
+        }
+
+        public Builder file(PdfFile file) {
+            this.file = file;
             return this;
         }
 

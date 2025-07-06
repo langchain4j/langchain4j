@@ -80,6 +80,26 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
     }
 
     @Test
+    void should_load_documents_from_multiple_subdirs() {
+        // given
+        var resourceDirectory = "%s/anotherDir/".formatted(CLASSPATH_CHECK_DIRECTORY);
+
+        // when
+        var documents = loadDocuments(resourceDirectory, new TextDocumentParser());
+
+        // then
+        var fileNames = documents.stream()
+                .map(document -> document.metadata().getString(Document.FILE_NAME))
+                .toList();
+
+        assertThat(fileNames).singleElement().isEqualTo("file2.txt");
+
+        // when-then
+        assertThat(loadDocuments(resourceDirectory, new TextDocumentParser())).isEqualTo(documents);
+        assertThat(loadDocuments(resourceDirectory)).isEqualTo(documents);
+    }
+
+    @Test
     void should_load_documents_including_unknown_document_types_from_filesystem() {
         // given
         var resourceDirectory = CLASSPATH_ROOT;

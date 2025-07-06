@@ -12,6 +12,11 @@ import java.util.Map;
 public interface McpClient extends AutoCloseable {
 
     /**
+     * Returns the unique key of this client.
+     */
+    String key();
+
+    /**
      * Obtains a list of tools from the MCP server.
      */
     List<ToolSpecification> listTools();
@@ -54,4 +59,10 @@ public interface McpClient extends AutoCloseable {
      * the health of this MCP client is considered degraded.
      */
     void checkHealth();
+
+    /**
+     * Sets the roots that are made available to the server upon its request.
+     * After calling this method, the client also sends a `notifications/roots/list_changed` message to the server.
+     */
+    void setRoots(List<McpRoot> roots);
 }

@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 class OllamaOpenAiChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     ChatModel model = OpenAiChatModel.builder()
-            .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
+            .baseUrl(ollamaBaseUrl(ollama) + "/v1")
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .logRequests(true)

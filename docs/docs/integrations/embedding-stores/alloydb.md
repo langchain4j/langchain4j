@@ -10,7 +10,7 @@ This module implements `EmbeddingStore` backed by an AlloyDB for PostgreSQL data
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artificatId>langchain4j-community-alloydb-pg</artificatId>
-    <version>1.0.0-beta4</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 

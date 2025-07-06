@@ -20,7 +20,7 @@ public class Exceptions {
      * @return the constructed exception.
      */
     public static IllegalArgumentException illegalArgument(String format, Object... args) {
-        return new IllegalArgumentException(String.format(format, args));
+        return new IllegalArgumentException(format.formatted(args));
     }
 
     /**
@@ -33,6 +33,6 @@ public class Exceptions {
      * @return the constructed exception.
      */
     public static RuntimeException runtime(String format, Object... args) {
-        return new RuntimeException(String.format(format, args));
+        return new RuntimeException(format.formatted(args));
     }
 }

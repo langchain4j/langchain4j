@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.azure.cosmos.nosql.MappingUtils.toNoSqlDbDocument;
 import static java.util.Collections.singletonList;
@@ -76,10 +77,7 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
         this.cosmosVectorIndexes = cosmosVectorIndexes;
         this.containerProperties = containerProperties;
 
-        if (cosmosClient == null) {
-            throw new IllegalArgumentException(
-                    "cosmosClient cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
-        }
+        ensureNotNull(cosmosClient, "%s", "cosmosClient cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
 
         if (isNullOrBlank(databaseName) || isNullOrBlank(containerName)) {
             throw new IllegalArgumentException("databaseName and containerName needs to be provided.");
@@ -92,7 +90,7 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
                     "cosmosVectorEmbeddingPolicy cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
         }
 
-        if (cosmosVectorIndexes == null || cosmosVectorIndexes.isEmpty()) {
+        if (isNullOrEmpty(cosmosVectorIndexes)) {
             throw new IllegalArgumentException(
                     "cosmosVectorIndexes cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
         }
