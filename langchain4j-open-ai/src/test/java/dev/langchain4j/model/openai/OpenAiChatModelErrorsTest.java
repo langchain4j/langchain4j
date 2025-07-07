@@ -17,11 +17,15 @@ import java.time.Duration;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@Execution(ExecutionMode.CONCURRENT)
 class OpenAiChatModelErrorsTest {
 
     private static final MockOpenai MOCK = new MockOpenai();
@@ -141,5 +145,10 @@ class OpenAiChatModelErrorsTest {
         assertThatThrownBy(() -> model.chat(userMessage))
                 .isExactlyInstanceOf(dev.langchain4j.exception.ContentFilteredException.class)
                 .hasMessage("I'm sorry, I cannot assist with that request.");
+    }
+
+    @AfterEach
+    void afterEach() {
+        MOCK.verifyNoUnmatchedRequests();
     }
 }
