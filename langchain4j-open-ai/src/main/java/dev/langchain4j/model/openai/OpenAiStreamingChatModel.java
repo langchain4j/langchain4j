@@ -142,7 +142,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
                     if (toolBuilder.hasToolExecutionRequests()) {
                         try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.currentTool());
+                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.buildCurrentTool());
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }
@@ -201,7 +201,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
                 if (toolBuilder.currentIndex() != toolCall.index()) {
                     try {
-                        handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.currentTool());
+                        handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.buildCurrentTool());
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
                     }

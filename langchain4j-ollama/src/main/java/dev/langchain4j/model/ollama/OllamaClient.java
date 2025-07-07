@@ -179,7 +179,7 @@ class OllamaClient {
 
                         if (toolBuilder.currentIndex() != index) {
                             try {
-                                handler.onCompleteToolExecutionRequest(index, toolBuilder.currentTool());
+                                handler.onCompleteToolExecutionRequest(index, toolBuilder.buildCurrentTool());
                             } catch (Exception e) {
                                 withLoggingExceptions(() -> handler.onError(e));
                             }
@@ -209,7 +209,7 @@ class OllamaClient {
 
                     if (toolBuilder.hasToolExecutionRequests()) {
                         try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.currentTool());
+                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.buildCurrentTool());
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }

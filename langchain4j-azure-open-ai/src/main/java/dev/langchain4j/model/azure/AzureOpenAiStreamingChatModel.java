@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
@@ -22,13 +23,17 @@ import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
 import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
 import com.azure.ai.openai.models.ChatChoice;
 import com.azure.ai.openai.models.ChatCompletions;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatCompletionsToolCall;
 import com.azure.ai.openai.models.ChatResponseMessage;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.ToolExecutionRequestBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.TokenCountEstimator;
@@ -215,7 +220,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             inputTokenCount = tokenCountEstimator.estimateTokenCountInMessages(request.messages());
         }
 
-        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount);
+        ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder(-1);
+        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount, toolBuilder);
 
         Flux<ChatCompletions> chatCompletionsStream = client.getChatCompletionsStream(parameters.modelName(), options);
 
@@ -225,7 +231,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         chatCompletionsStream.subscribe(
                 chatCompletion -> {
                     responseBuilder.append(chatCompletion);
-                    handle(chatCompletion, handler);
+                    handle(chatCompletion, toolBuilder, handler);
 
                     if (isNotNullOrBlank(chatCompletion.getId())) {
                         responseId.set(chatCompletion.getId());
@@ -239,6 +245,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     withLoggingExceptions(() -> handler.onError(mappedError));
                 },
                 () -> {
+                    if (toolBuilder.hasToolExecutionRequests()) {
+                        try {
+                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.buildCurrentTool());
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        }
+                    }
+
                     Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
 
                     ChatResponse chatResponse = ChatResponse.builder()
@@ -259,7 +273,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 });
     }
 
-    private static void handle(ChatCompletions chatCompletions, StreamingChatResponseHandler handler) {
+    private static void handle(ChatCompletions chatCompletions,
+                               ToolExecutionRequestBuilder toolBuilder,
+                               StreamingChatResponseHandler handler) {
         List<ChatChoice> choices = chatCompletions.getChoices();
         if (isNullOrEmpty(choices)) {
             return;
@@ -278,6 +294,49 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 withLoggingExceptions(() -> handler.onError(e));
             }
         }
+
+        List<ChatCompletionsToolCall> toolCalls = delta.getToolCalls();
+        if (toolCalls != null) {
+            for (ChatCompletionsToolCall toolCall : toolCalls) {
+                if (toolCall instanceof ChatCompletionsFunctionToolCall functionToolCall) {
+
+                    int index = toolBuilder.currentIndex();
+                    if (startOfNewToolCall(toolCall)) {
+                        if (index > -1) {
+                            try {
+                                handler.onCompleteToolExecutionRequest(index, toolBuilder.buildCurrentTool());
+                            } catch (Exception e) {
+                                withLoggingExceptions(() -> handler.onError(e));
+                            }
+                        }
+                        index = toolBuilder.updateCurrentIndex(index + 1);
+                    }
+
+                    String id = toolBuilder.updateId(toolCall.getId());
+                    String name = toolBuilder.updateName(functionToolCall.getFunction().getName());
+
+                    String partialArguments = functionToolCall.getFunction().getArguments();
+                    if (isNotNullOrEmpty(partialArguments)) {
+                        toolBuilder.appendArguments(partialArguments);
+
+                        ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
+                                .id(id)
+                                .name(name)
+                                .arguments(partialArguments)
+                                .build();
+                        try {
+                            handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean startOfNewToolCall(ChatCompletionsToolCall toolCall) {
+        return toolCall.getId() != null; // Azure OpenAI includes ID only at the start of a tool call
     }
 
     @Override

@@ -2,6 +2,8 @@ package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,11 +15,20 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 // TODO name
 public class ToolExecutionRequestBuilder {
 
-    private final AtomicInteger currentIndex = new AtomicInteger(0);
+    private final AtomicInteger currentIndex;
     // TODO are maps really needed?
     private final Map<Integer, String> indexToId = new ConcurrentHashMap<>();
     private final Map<Integer, String> indexToName = new ConcurrentHashMap<>();
     private final StringBuffer arguments = new StringBuffer();
+    private final List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+
+    public ToolExecutionRequestBuilder() {
+        this(0);
+    }
+
+    public ToolExecutionRequestBuilder(int currentIndex) {
+        this.currentIndex = new AtomicInteger(currentIndex);
+    }
 
     public int currentIndex() {
         return currentIndex.get();
@@ -53,13 +64,19 @@ public class ToolExecutionRequestBuilder {
         }
     }
 
-    public ToolExecutionRequest currentTool() {
+    public ToolExecutionRequest buildCurrentTool() {
         // TODO store it till complete response?
-        return ToolExecutionRequest.builder()
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                 .id(indexToId.get(currentIndex.get()))
                 .name(indexToName.get(currentIndex.get()))
                 .arguments(arguments.toString())
                 .build();
+        toolExecutionRequests.add(toolExecutionRequest); // TODO method name, rethink
+        return toolExecutionRequest;
+    }
+
+    public List<ToolExecutionRequest> allToolExecutionRequests() {
+        return toolExecutionRequests;
     }
 
     public boolean hasToolExecutionRequests() {
