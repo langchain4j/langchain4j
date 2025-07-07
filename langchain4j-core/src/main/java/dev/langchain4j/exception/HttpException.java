@@ -9,6 +9,16 @@ public class HttpException extends LangChain4jException {
         this.statusCode = statusCode;
     }
 
+    public HttpException(int statusCode, String message, Throwable cause) {
+        super(message, cause);
+        this.statusCode = statusCode;
+    }
+
+    public HttpException(int statusCode, Throwable cause) {
+        super("HttpException(" + statusCode + ")", cause);
+        this.statusCode = statusCode;
+    }
+
     public int statusCode() {
         return statusCode;
     }

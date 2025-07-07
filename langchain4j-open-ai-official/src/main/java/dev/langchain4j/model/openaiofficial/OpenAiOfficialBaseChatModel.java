@@ -24,8 +24,12 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 abstract class OpenAiOfficialBaseChatModel {
+
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     protected OpenAIClient client;
     protected OpenAIClientAsync asyncClient;
@@ -38,6 +42,7 @@ abstract class OpenAiOfficialBaseChatModel {
     protected TokenCountEstimator tokenCountEstimator;
     protected List<ChatModelListener> listeners;
     protected Set<Capability> supportedCapabilities;
+    protected int maxRetries = 2;
 
     public void init(
             String baseUrl,
@@ -139,7 +144,8 @@ abstract class OpenAiOfficialBaseChatModel {
                 .stopSequences(getOrDefault(stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
+                .responseFormat(
+                        getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(logitBias, openAiParameters.logitBias()))
@@ -168,6 +174,7 @@ abstract class OpenAiOfficialBaseChatModel {
 
         this.listeners = copy(listeners);
         this.supportedCapabilities = copy(capabilities);
+        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public OpenAiOfficialChatRequestParameters defaultRequestParameters() {

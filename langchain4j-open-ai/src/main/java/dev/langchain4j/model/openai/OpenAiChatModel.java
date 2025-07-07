@@ -1,25 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
-import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
-
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -37,20 +17,39 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.Capability;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
- * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
+ * You can find a description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
 public class OpenAiChatModel implements ChatModel {
 
     private final OpenAiClient client;
-    private final Integer maxRetries;
+    private final int maxRetries;
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
     private final String responseFormat;
     private final Set<Capability> supportedCapabilities;
-    private final Boolean strictJsonSchema;
-    private final Boolean strictTools;
+    private final boolean strictJsonSchema;
+    private final boolean strictTools;
 
     private final List<ChatModelListener> listeners;
 
@@ -80,9 +79,9 @@ public class OpenAiChatModel implements ChatModel {
         }
 
         OpenAiChatRequestParameters openAiParameters =
-                builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters ?
-                        openAiChatRequestParameters :
-                        OpenAiChatRequestParameters.EMPTY;
+                builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters
+                        ? openAiChatRequestParameters
+                        : OpenAiChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
@@ -95,7 +94,8 @@ public class OpenAiChatModel implements ChatModel {
                 .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(
+                        fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
@@ -134,11 +134,12 @@ public class OpenAiChatModel implements ChatModel {
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
-        ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
+        ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
+                        chatRequest, parameters, strictTools, strictJsonSchema)
+                .build();
 
-        ChatCompletionResponse openAiResponse = withRetryMappingExceptions(() ->
-                client.chatCompletion(openAiRequest).execute(), maxRetries);
+        ChatCompletionResponse openAiResponse = withRetryMappingExceptions(
+                () -> client.chatCompletion(openAiRequest).execute(), maxRetries);
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
