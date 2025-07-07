@@ -1,3 +1,7 @@
+---
+sidebar_position: 31
+---
+
 # JSON Codec
 
 LangChain4j ships an internal JSON serializer (defaults to Jackson) that is used by "tools" and "structured output" functionalities.
