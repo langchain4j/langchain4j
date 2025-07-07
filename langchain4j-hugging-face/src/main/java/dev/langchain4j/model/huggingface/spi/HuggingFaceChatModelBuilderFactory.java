@@ -7,5 +7,6 @@ import java.util.function.Supplier;
 /**
  * A factory for building {@link HuggingFaceChatModel.Builder} instances.
  */
+@Deprecated(forRemoval = true, since = "1.2.0-beta8")
 public interface HuggingFaceChatModelBuilderFactory extends Supplier<HuggingFaceChatModel.Builder> {
 }
