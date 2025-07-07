@@ -271,6 +271,7 @@ You can create a `Document` from a `String`, but a simpler method is to use one 
 - `GitHubDocumentLoader` from the `langchain4j-document-loader-github` module
 - `GoogleCloudStorageDocumentLoader` from the `langchain4j-document-loader-google-cloud-storage` module
 - `SeleniumDocumentLoader` from the `langchain4j-document-loader-selenium` module
+- `PlaywrightDocumentLoader` from the `langchain4j-document-loader-playwright` module
 - `TencentCosDocumentLoader` from the `langchain4j-document-loader-tencent-cos` module
 
 
