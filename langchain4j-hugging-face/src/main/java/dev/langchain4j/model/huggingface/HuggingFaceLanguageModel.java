@@ -15,7 +15,7 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 
 /**
- * @deprecated Please use {@code OpenAiChatModel} or {@code OpenAiLanguageModel} from the {@code langchain4j-open-ai} module instead:
+ * @deprecated Please use {@code OpenAiChatModel} from the {@code langchain4j-open-ai} module instead:
  * <pre>
  * String modelName = "meta-llama/Llama-3.2-11B-Vision-Instruct";
  * String baseUrl = String.format("https://router.huggingface.co/hf-inference/models/%s/v1", modelName);
