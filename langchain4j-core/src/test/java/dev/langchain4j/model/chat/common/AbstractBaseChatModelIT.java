@@ -30,7 +30,6 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -62,20 +61,10 @@ public abstract class AbstractBaseChatModelIT<M> {
     static final String DICE_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
-//    static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
-//            .name("print_a_long_summary_of_the_city")
-//            .parameters(JsonObjectSchema.builder()
-//                    .addStringProperty("city")
-//                    .addStringProperty("country")
-//                    .addStringProperty("short_introduction")
-//                    .addStringProperty("long_summary")
-//                    .required("city", "country", "short_introduction", "long_summary")
-//                    .build())
-//            .build();
-static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
-        .name("getWeather")
-        .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
-        .build();
+    static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
+            .name("getWeather")
+            .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
+            .build();
 
     static final ResponseFormat RESPONSE_FORMAT = ResponseFormat.builder()
             .type(ResponseFormatType.JSON)
@@ -120,11 +109,10 @@ static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story about Java"))
+                .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
         // when
-        System.out.println("right before request - " + Thread.currentThread() + " - " + LocalTime.now());
         ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
         ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
@@ -596,7 +584,6 @@ static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
 
         // given
         UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
-//        UserMessage userMessage = UserMessage.from("Print long summaries of cities by calling the print_a_long_summary_of_the_city for cities Munich, Berlin, Porto and Paris. Write summaries yourself.");
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
@@ -606,7 +593,6 @@ static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
                 .build();
 
         // when
-        System.out.println("right before request - " + Thread.currentThread() + " - " + LocalTime.now()); // TODO
         ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
         ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
