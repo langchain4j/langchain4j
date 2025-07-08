@@ -290,7 +290,6 @@ ChatRequest chatRequest = ChatRequest.builder()
 ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .logRequests(true)
-        .logResponses(true)
         .build();
 
 ChatResponse chatResponse = model.chat(chatRequest);
