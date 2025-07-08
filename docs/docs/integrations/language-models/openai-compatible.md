@@ -162,7 +162,7 @@ ChatModel model = OpenAiChatModel.builder()
     <version>1.1.0</version>
 </dependency>
 ```
-6. Configure LangChain4j and include the HttpBuilder
+6. Configure LangChain4j and specify the `httpClientBuilder`
 ```java
 import java.net.http.HttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
