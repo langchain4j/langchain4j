@@ -13,6 +13,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 import static java.lang.Boolean.TRUE;
 import static java.time.Duration.ofSeconds;
 
@@ -187,7 +188,7 @@ class OllamaClient {
 
                         String name = toolBuilder.updateName(toolCall.getFunction().getName());
 
-                        String partialArguments = toJson(toolCall.getFunction().getArguments());
+                        String partialArguments = toJsonWithoutIdent(toolCall.getFunction().getArguments());
                         if (isNotNullOrEmpty(partialArguments)) {
                             toolBuilder.appendArguments(partialArguments);
 

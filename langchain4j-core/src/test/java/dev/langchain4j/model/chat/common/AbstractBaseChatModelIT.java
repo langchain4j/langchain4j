@@ -7,7 +7,10 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -29,6 +32,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -41,6 +45,7 @@ import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 
 /**
  * Contains all the common tests that every {@link ChatModel}
@@ -600,8 +605,10 @@ public abstract class AbstractBaseChatModelIT<M> {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        if (assertToolId()) {
+            assertThat(toolExecutionRequest.id()).isNotBlank();
+        }
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
@@ -626,8 +633,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             IndexAndToolRequest prev = null;
             for (IndexAndToolRequest curr : streamingMetadata.partialToolExecutionRequests()) {
                 assertThat(curr.index()).isEqualTo(0);
-//                assertThat(curr.toolRequest().id()).isNotBlank(); TODO ollama
-                assertThat(curr.toolRequest().name()).isNotBlank();
+                assertThat(curr.toolRequest().id()).isEqualTo(toolExecutionRequest.id());
+                assertThat(curr.toolRequest().name()).isEqualTo(toolExecutionRequest.name());
                 assertThat(curr.toolRequest().arguments()).isNotBlank();
                 arguments.append(curr.toolRequest().arguments());
                 if (prev != null) {
@@ -640,6 +647,12 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             assertThat(streamingMetadata.completeToolExecutionRequests()).hasSize(1);
             assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequest);
+
+            StreamingChatResponseHandler handler = streamingMetadata.handler();
+            InOrder inOrder = inOrder(handler);
+            verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id());
+            inOrder.verify(handler).onCompleteResponse(any());
+            inOrder.verifyNoMoreInteractions();
 
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
@@ -691,18 +704,27 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        fail("please override this method");
+    }
+
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
     @EnabledIf("supportsParallelTools")
     protected void should_execute_multiple_tools_in_parallel_then_answer(M model) {
 
         // given
-        UserMessage userMessage = UserMessage.from("What is the weather in Munich and Paris?");
+        UserMessage userMessage = UserMessage.from("What is the weather in Munich and time in France?");
+
+        ToolSpecification timeTool = ToolSpecification.builder()
+                .name("getTime")
+                .parameters(JsonObjectSchema.builder().addStringProperty("country").build())
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
                 .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL)
+                        .toolSpecifications(WEATHER_TOOL, timeTool)
                         .build())
                 .build();
 
@@ -714,10 +736,20 @@ public abstract class AbstractBaseChatModelIT<M> {
         AiMessage aiMessage = chatResponse.aiMessage();
         List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
         assertThat(toolExecutionRequests).hasSize(2);
+
+        if (assertToolId()) {
+            assertThat(toolExecutionRequests.get(0).id()).isNotBlank();
+        }
         assertThat(toolExecutionRequests.get(0).name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequests.get(0).arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
-        assertThat(toolExecutionRequests.get(1).name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequests.get(1).arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Paris\"}");
+
+        if (assertToolId()) {
+            assertThat(toolExecutionRequests.get(1).id())
+                    .isNotBlank()
+                    .isNotEqualTo(toolExecutionRequests.get(0).id());
+        }
+        assertThat(toolExecutionRequests.get(1).name()).isEqualTo(timeTool.name());
+        assertThat(toolExecutionRequests.get(1).arguments()).isEqualToIgnoringWhitespace("{\"country\":\"France\"}");
 
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), model);
@@ -746,8 +778,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 StringBuilder arguments = new StringBuilder();
                 ToolExecutionRequest prev = null;
                 for (ToolExecutionRequest curr : toolPartition) {
-//                    assertThat(curr.id()).isNotBlank(); TODO ollama
-                    assertThat(curr.name()).isNotBlank();
+                    assertThat(curr.id()).isEqualTo(toolExecutionRequests.get(i).id());
+                    assertThat(curr.name()).isEqualTo(toolExecutionRequests.get(i).name());
                     assertThat(curr.arguments()).isNotBlank();
                     arguments.append(curr.arguments());
                     if (prev != null) {
@@ -763,6 +795,12 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequests.get(0));
             assertThat(streamingMetadata.completeToolExecutionRequests().get(1).toolRequest()).isEqualTo(toolExecutionRequests.get(1));
 
+            StreamingChatResponseHandler handler = streamingMetadata.handler();
+            InOrder inOrder = inOrder(handler);
+            verifyToolCallbacks(handler, inOrder, toolExecutionRequests.get(0).id(), toolExecutionRequests.get(1).id()); // TODO do the same for a single tool
+            inOrder.verify(handler).onCompleteResponse(any());
+            inOrder.verifyNoMoreInteractions();
+
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
                 Set<Thread> threads = streamingMetadata.threads();
@@ -776,8 +814,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .messages(
                         userMessage,
                         aiMessage,
-                        ToolExecutionResultMessage.from(toolExecutionRequests.get(0), "foggy"),
-                        ToolExecutionResultMessage.from(toolExecutionRequests.get(1), "sunny")
+                        ToolExecutionResultMessage.from(toolExecutionRequests.get(0), "sunny"),
+                        ToolExecutionResultMessage.from(toolExecutionRequests.get(1), "14:35")
                 )
                 .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
@@ -790,7 +828,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).containsIgnoringCase("fog").containsIgnoringCase("sun");
+        assertThat(aiMessage2.text()).containsIgnoringCase("sun").contains("14", "35");
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -816,6 +854,18 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
+    }
+
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        fail("please override this method");
+    }
+
+    protected static ToolExecutionRequest tool(String id, String name, String args) {
+        return ToolExecutionRequest.builder()
+                .id(id)
+                .name(name)
+                .arguments(args)
+                .build();
     }
 
     private static List<List<ToolExecutionRequest>> partitionByIndex(List<IndexAndToolRequest> toolExecutionRequests) {
@@ -1370,7 +1420,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return true;
     }
 
-    protected boolean supportsParallelTools() {
+    protected boolean supportsParallelTools() { // TODO remove?
         return supportsTools();
     }
 
@@ -1431,6 +1481,10 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected boolean assertFinishReason() {
+        return true;
+    }
+
+    protected boolean assertToolId() {
         return true;
     }
 

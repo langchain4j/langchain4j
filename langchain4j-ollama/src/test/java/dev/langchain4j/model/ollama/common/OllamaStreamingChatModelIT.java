@@ -17,6 +17,7 @@ import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatRequestParameters;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 
 class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
@@ -226,6 +228,11 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean assertToolId() {
+        return false; // Ollama does not return tool ID via Ollama API, only via OpenAI API
+    }
+
+    @Override
     protected boolean assertTimesOnPartialResponseWasCalled() {
         return false; // Ollama responds with a single SSE event for some reason (perhaps due to tools)
     }
@@ -263,5 +270,20 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
         } else {
             throw new IllegalStateException("Unknown model type: " + streamingChatModel.getClass());
         }
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id, "getWeather", "{\"city\":\"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id1, "getWeather", "{\"city\":\"Munich\"}"));
+
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "{\"country\":\"France\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(1, tool(id2, "getTime", "{\"country\":\"France\"}"));
     }
 }

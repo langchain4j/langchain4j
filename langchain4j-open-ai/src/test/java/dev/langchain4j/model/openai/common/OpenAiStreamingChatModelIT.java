@@ -5,11 +5,13 @@ import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import org.mockito.InOrder;
 
 import java.util.List;
 
@@ -85,6 +87,33 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return defaultStreamingModelBuilder()
                 .listeners(List.of(listener))
                 .build();
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "{\""));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "city"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "\":\""));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "Mun"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "ich"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id, "getWeather", "{\"city\":\"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "{\"ci"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "ty\": "));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "\"Munic"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "h\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id1, "getWeather", "{\"city\": \"Munich\"}"));
+
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "{\"co"));
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "untry"));
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "\": \"Fr"));
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "ance"));
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(1, tool(id2, "getTime", "{\"country\": \"France\"}"));
     }
 
     // TODO OpenAI-specific tests

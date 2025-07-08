@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -210,7 +211,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
 
-        chatModel.chat(chatRequest, new StreamingChatResponseHandler() {
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
 
             @Override
             public void onPartialResponse(String partialResponse) {
@@ -246,7 +247,10 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 futureChatResponse.completeExceptionally(error);
                 threads.add(Thread.currentThread());
             }
-        });
+        };
+
+        StreamingChatResponseHandler spyHandler = spy(handler);
+        chatModel.chat(chatRequest, spyHandler);
 
         try {
             ChatResponse chatResponse = futureChatResponse.get(120, SECONDS);
@@ -257,7 +261,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                     new ArrayList<>(partialToolExecutionRequests),
                     new ArrayList<>(completeToolExecutionRequests),
                     timesOnCompleteResponseWasCalled.get(),
-                    threads
+                    threads,
+                    spyHandler
             );
             return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
         } catch (Exception e) {

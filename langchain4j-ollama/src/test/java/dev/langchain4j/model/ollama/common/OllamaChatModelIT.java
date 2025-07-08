@@ -227,6 +227,11 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean assertToolId() {
+        return false; // Ollama does not return tool ID via Ollama API, only via OpenAI API
+    }
+
+    @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel chatModel) {
         if (chatModel instanceof OpenAiChatModel) {
             return OpenAiChatResponseMetadata.class;
