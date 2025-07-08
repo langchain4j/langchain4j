@@ -8,30 +8,30 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 public class ParsedAndRawResponse<R> {
 
     private final R parsedResponse;
-    private final SuccessfulHttpResponse rawResponse;
-    private final ServerSentEvent rawEvent;
+    private final SuccessfulHttpResponse rawHttpResponse;
+    private final ServerSentEvent rawServerSentEvent;
 
-    ParsedAndRawResponse(R parsedResponse, SuccessfulHttpResponse rawResponse) {
+    ParsedAndRawResponse(R parsedResponse, SuccessfulHttpResponse rawHttpResponse) {
         this.parsedResponse = parsedResponse;
-        this.rawResponse = rawResponse;
-        this.rawEvent = null;
+        this.rawHttpResponse = rawHttpResponse;
+        this.rawServerSentEvent = null;
     }
 
-    ParsedAndRawResponse(R parsedResponse, ServerSentEvent rawEvent) {
+    ParsedAndRawResponse(R parsedResponse, ServerSentEvent rawServerSentEvent) {
         this.parsedResponse = parsedResponse;
-        this.rawResponse = null;
-        this.rawEvent = rawEvent;
+        this.rawHttpResponse = null;
+        this.rawServerSentEvent = rawServerSentEvent;
     }
 
     public R parsedResponse() {
         return parsedResponse;
     }
 
-    public SuccessfulHttpResponse rawResponse() {
-        return rawResponse;
+    public SuccessfulHttpResponse rawHttpResponse() {
+        return rawHttpResponse;
     }
 
-    public ServerSentEvent rawEvent() {
-        return rawEvent;
+    public ServerSentEvent rawServerSentEvent() {
+        return rawServerSentEvent;
     }
 }

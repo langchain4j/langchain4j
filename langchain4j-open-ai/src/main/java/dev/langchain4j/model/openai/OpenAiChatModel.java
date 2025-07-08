@@ -152,7 +152,7 @@ public class OpenAiChatModel implements ChatModel {
                 .created(openAiResponse.created())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
-                .rawResponse(parsedAndRawResponse.rawResponse())
+                .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
                 .build();
 
         return ChatResponse.builder()

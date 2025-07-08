@@ -54,10 +54,10 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<String> systemFingerprint = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
-    private final Queue<ServerSentEvent> rawEvents = new ConcurrentLinkedQueue<>();
+    private final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
 
     public void append(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {
-        rawEvents.add(parsedAndRawResponse.rawEvent());
+        rawServerSentEvents.add(parsedAndRawResponse.rawServerSentEvent());
         append(parsedAndRawResponse.parsedResponse());
     }
 
@@ -187,7 +187,7 @@ public class OpenAiStreamingResponseBuilder {
                 .created(created.get())
                 .serviceTier(serviceTier.get())
                 .systemFingerprint(systemFingerprint.get())
-                .rawEvents(new ArrayList<>(rawEvents))
+                .rawServerSentEvents(new ArrayList<>(rawServerSentEvents))
                 .build();
 
         String text = contentBuilder.toString();

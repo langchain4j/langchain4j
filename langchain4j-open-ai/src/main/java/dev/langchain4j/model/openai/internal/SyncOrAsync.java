@@ -9,8 +9,8 @@ public interface SyncOrAsync<ResponseContent> {
 
     default ParsedAndRawResponse<ResponseContent> executeRaw() {
         ResponseContent parsedResponse = execute();
-        SuccessfulHttpResponse rawResponse = null;
-        return new ParsedAndRawResponse(parsedResponse, rawResponse);
+        SuccessfulHttpResponse rawHttpResponse = null;
+        return new ParsedAndRawResponse<>(parsedResponse, rawHttpResponse);
     }
 
     AsyncResponseHandling onResponse(Consumer<ResponseContent> responseHandler);

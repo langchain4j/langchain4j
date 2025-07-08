@@ -669,7 +669,7 @@ class OpenAiStreamingChatModelIT {
         // then
         assertThat(chatResponse.aiMessage().text()).contains(city);
 
-        List<ServerSentEvent> rawEvents = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawEvents();
+        List<ServerSentEvent> rawEvents = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
         assertThat(rawEvents.stream().filter(event -> event.data().contains("url_citation"))).isNotEmpty();
     }
 

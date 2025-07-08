@@ -621,7 +621,7 @@ class OpenAiChatModelIT {
         // then
         assertThat(chatResponse.aiMessage().text()).contains(city);
 
-        SuccessfulHttpResponse rawResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawResponse();
+        SuccessfulHttpResponse rawResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
         JsonNode jsonNode = new ObjectMapper().readTree(rawResponse.body());
         assertThat(jsonNode.get("choices").get(0).get("message").get("annotations").get(0).get("type").asText())
                 .isEqualTo("url_citation");

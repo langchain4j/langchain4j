@@ -14,16 +14,16 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
     private final Long created;
     private final String serviceTier;
     private final String systemFingerprint;
-    private final SuccessfulHttpResponse rawResponse;
-    private final List<ServerSentEvent> rawEvents;
+    private final SuccessfulHttpResponse rawHttpResponse;
+    private final List<ServerSentEvent> rawServerSentEvents;
 
     private OpenAiChatResponseMetadata(Builder builder) {
         super(builder);
         this.created = builder.created;
         this.serviceTier = builder.serviceTier;
         this.systemFingerprint = builder.systemFingerprint;
-        this.rawResponse = builder.rawResponse;
-        this.rawEvents = copy(builder.rawEvents);
+        this.rawHttpResponse = builder.rawHttpResponse;
+        this.rawServerSentEvents = copy(builder.rawServerSentEvents);
     }
 
     @Override
@@ -43,12 +43,12 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return systemFingerprint;
     }
 
-    public SuccessfulHttpResponse rawResponse() {
-        return rawResponse;
+    public SuccessfulHttpResponse rawHttpResponse() {
+        return rawHttpResponse;
     }
 
-    public List<ServerSentEvent> rawEvents() {
-        return rawEvents;
+    public List<ServerSentEvent> rawServerSentEvents() {
+        return rawServerSentEvents;
     }
 
     @Override
@@ -57,8 +57,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 .created(created)
                 .serviceTier(serviceTier)
                 .systemFingerprint(systemFingerprint)
-                .rawResponse(rawResponse)
-                .rawEvents(rawEvents);
+                .rawHttpResponse(rawHttpResponse)
+                .rawServerSentEvents(rawServerSentEvents);
     }
 
     @Override
@@ -70,8 +70,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return Objects.equals(created, that.created)
                 && Objects.equals(serviceTier, that.serviceTier)
                 && Objects.equals(systemFingerprint, that.systemFingerprint)
-                && Objects.equals(rawResponse, that.rawResponse)
-                && Objects.equals(rawEvents, that.rawEvents);
+                && Objects.equals(rawHttpResponse, that.rawHttpResponse)
+                && Objects.equals(rawServerSentEvents, that.rawServerSentEvents);
     }
 
     @Override
@@ -81,8 +81,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 created,
                 serviceTier,
                 systemFingerprint,
-                rawResponse,
-                rawEvents
+                rawHttpResponse,
+                rawServerSentEvents
         );
     }
 
@@ -96,8 +96,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 ", created=" + created +
                 ", serviceTier='" + serviceTier + '\'' +
                 ", systemFingerprint='" + systemFingerprint + '\'' +
-                ", rawResponse=" + rawResponse +
-                ", rawEvents=" + rawEvents +
+                ", rawHttpResponse=" + rawHttpResponse +
+                ", rawServerSentEvents=" + rawServerSentEvents +
                 '}';
     }
 
@@ -110,8 +110,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         private Long created;
         private String serviceTier;
         private String systemFingerprint;
-        private SuccessfulHttpResponse rawResponse;
-        private List<ServerSentEvent> rawEvents;
+        private SuccessfulHttpResponse rawHttpResponse;
+        private List<ServerSentEvent> rawServerSentEvents;
 
         public Builder created(Long created) {
             this.created = created;
@@ -128,13 +128,13 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
             return this;
         }
 
-        public Builder rawResponse(SuccessfulHttpResponse rawResponse) {
-            this.rawResponse = rawResponse;
+        public Builder rawHttpResponse(SuccessfulHttpResponse rawHttpResponse) {
+            this.rawHttpResponse = rawHttpResponse;
             return this;
         }
 
-        public Builder rawEvents(List<ServerSentEvent> rawEvents) {
-            this.rawEvents = rawEvents;
+        public Builder rawServerSentEvents(List<ServerSentEvent> rawServerSentEvents) {
+            this.rawServerSentEvents = rawServerSentEvents;
             return this;
         }
 

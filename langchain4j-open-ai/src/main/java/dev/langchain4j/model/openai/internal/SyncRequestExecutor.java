@@ -17,8 +17,8 @@ class SyncRequestExecutor<Response> {
     }
 
     ParsedAndRawResponse<Response> execute() {
-        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
-        Response parsedResponse = Json.fromJson(rawResponse.body(), responseClass);
-        return new ParsedAndRawResponse<>(parsedResponse, rawResponse);
+        SuccessfulHttpResponse rawHttpResponse = httpClient.execute(httpRequest);
+        Response parsedResponse = Json.fromJson(rawHttpResponse.body(), responseClass);
+        return new ParsedAndRawResponse<>(parsedResponse, rawHttpResponse);
     }
 }
