@@ -1,6 +1,8 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
@@ -15,9 +17,12 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -50,6 +55,12 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<String> systemFingerprint = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+    private final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
+
+    public void append(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {
+        rawServerSentEvents.add(parsedAndRawResponse.rawServerSentEvent());
+        append(parsedAndRawResponse.parsedResponse());
+    }
 
     public void append(ChatCompletionResponse partialResponse) {
         if (partialResponse == null) {
@@ -181,6 +192,7 @@ public class OpenAiStreamingResponseBuilder {
                 .created(created.get())
                 .serviceTier(serviceTier.get())
                 .systemFingerprint(systemFingerprint.get())
+                .rawServerSentEvents(new ArrayList<>(rawServerSentEvents))
                 .build();
 
         String text = contentBuilder.toString();
