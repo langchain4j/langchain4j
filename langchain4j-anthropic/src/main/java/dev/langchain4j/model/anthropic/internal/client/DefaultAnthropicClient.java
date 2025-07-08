@@ -12,6 +12,7 @@ import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ToolExecutionRequestBuilder;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -28,8 +29,6 @@ import dev.langchain4j.model.output.FinishReason;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -47,7 +46,6 @@ import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 @Internal
 public class DefaultAnthropicClient extends AnthropicClient {
@@ -111,7 +109,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
             volatile StringBuffer currentContentBuilder = new StringBuffer();
 
             final AtomicReference<AnthropicContentBlockType> currentContentBlockStartType = new AtomicReference<>();
-            final Map<Integer, AnthropicToolExecutionRequestBuilder> toolExecutionRequestBuilderMap = new ConcurrentHashMap<>();
+
+            final ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder(-1);
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
@@ -211,15 +210,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         }
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
-                    System.out.print("OLOLO");
+                    System.out.print("OLOLO"); // TODO
                     System.out.print(" id=" + data.contentBlock.id);
                     System.out.print(" name=" + data.contentBlock.name);
                     System.out.print(" input=" + data.contentBlock.input);
                     System.out.println();
-                    toolExecutionRequestBuilderMap.putIfAbsent(
-                            data.index,
-                            new AnthropicToolExecutionRequestBuilder(data.contentBlock.id, data.contentBlock.name)
-                    );
+
+                    toolBuilder.updateIndex(toolBuilder.index() + 1);
+                    toolBuilder.updateId(data.contentBlock.id);
+                    toolBuilder.updateName(data.contentBlock.name);
                 }
             }
 
@@ -242,18 +241,35 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
                         System.out.println("OLOLO " + partialJson);
-                        Integer toolExecutionsIndex = data.index;
-                        if (toolExecutionsIndex != null) {
-                            AnthropicToolExecutionRequestBuilder toolExecutionRequestBuilder = toolExecutionRequestBuilderMap.get(toolExecutionsIndex);
-                            toolExecutionRequestBuilder.appendArguments(partialJson);
+
+                        ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
+                                .id(toolBuilder.id())
+                                .name(toolBuilder.name())
+                                .arguments(partialJson)
+                                .build();
+
+                        try {
+                            handler.onPartialToolExecutionRequest(toolBuilder.index(), partialToolExecutionRequest);
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
                         }
+
+                        toolBuilder.appendArguments(partialJson);
                     }
                 }
             }
 
             private void handleContentBlockStop() {
-                contents.add(currentContentBuilder().toString());
-                setCurrentContentBuilder(new StringBuffer());
+                if (currentContentBlockStartType.get() == TEXT) {
+                    contents.add(currentContentBuilder().toString());
+                    setCurrentContentBuilder(new StringBuffer());
+                } else if (currentContentBlockStartType.get() == TOOL_USE) {
+                    try {
+                        handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
+                }
             }
 
             private void handleMessageDelta(AnthropicStreamingData data) {
@@ -294,16 +310,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 ChatResponseMetadata metadata = createMetadata(tokenUsage, finishReason);
 
-                if (toolExecutionRequestBuilderMap.isEmpty()) {
-                    return ChatResponse.builder()
-                            .aiMessage(AiMessage.from(text))
-                            .metadata(metadata)
-                            .build();
-                } else {
-                    List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderMap
-                            .values().stream()
-                            .map(AnthropicToolExecutionRequestBuilder::build)
-                            .collect(toList());
+                if (toolBuilder.hasToolExecutionRequests()) {
+                    List<ToolExecutionRequest> toolExecutionRequests = toolBuilder.allToolExecutionRequests();
 
                     AiMessage aiMessage = isNullOrBlank(text)
                             ? AiMessage.from(toolExecutionRequests)
@@ -311,6 +319,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                     return ChatResponse.builder()
                             .aiMessage(aiMessage)
+                            .metadata(metadata)
+                            .build();
+                } else {
+                    return ChatResponse.builder()
+                            .aiMessage(AiMessage.from(text))
                             .metadata(metadata)
                             .build();
                 }

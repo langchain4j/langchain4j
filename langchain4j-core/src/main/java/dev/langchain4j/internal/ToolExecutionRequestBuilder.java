@@ -15,6 +15,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 public class ToolExecutionRequestBuilder {
 
     private final AtomicReference<Integer> index;
+
     private final AtomicReference<String> id = new AtomicReference<>();
     private final AtomicReference<String> name = new AtomicReference<>();
     private final StringBuffer arguments = new StringBuffer();
@@ -40,11 +41,19 @@ public class ToolExecutionRequestBuilder {
         return this.index.get();
     }
 
+    public String id() {
+        return id.get();
+    }
+
     public String updateId(String id) {
         if (isNotNullOrBlank(id)) {
             this.id.set(id);
         }
         return this.id.get();
+    }
+
+    public String name() {
+        return name.get();
     }
 
     public String updateName(String name) {
@@ -73,7 +82,6 @@ public class ToolExecutionRequestBuilder {
     }
 
     private void reset() {
-        index.set(null);
         id.set(null);
         name.set(null);
         arguments.setLength(0);

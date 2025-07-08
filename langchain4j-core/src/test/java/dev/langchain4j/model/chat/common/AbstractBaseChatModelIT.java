@@ -714,7 +714,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_execute_multiple_tools_in_parallel_then_answer(M model) {
 
         // given
-        UserMessage userMessage = UserMessage.from("What is the weather in Munich and time in France?");
+        UserMessage userMessage = UserMessage.from("What is the weather in Munich and time in France? " +
+                "Call tools simultaneously (in parallel)");
 
         ToolSpecification timeTool = ToolSpecification.builder()
                 .name("getTime")
@@ -818,7 +819,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                         ToolExecutionResultMessage.from(toolExecutionRequests.get(1), "14:35")
                 )
                 .parameters(ChatRequestParameters.builder()
-                        .toolSpecifications(WEATHER_TOOL)
+                        .toolSpecifications(WEATHER_TOOL, timeTool)
                         .build())
                 .build();
 
