@@ -143,7 +143,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
                     if (toolBuilder.hasToolExecutionRequests()) {
                         try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.buildCurrentTool());
+                            handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }
@@ -194,21 +194,20 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             }
         }
 
-//      delta.functionCall() // TODO
-
         List<ToolCall> toolCalls = delta.toolCalls();
         if (toolCalls != null) {
             for (ToolCall toolCall : toolCalls) {
 
-                if (toolBuilder.currentIndex() != toolCall.index()) {
+                int index = toolCall.index();
+                if (toolBuilder.index() != index) {
                     try {
-                        handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.buildCurrentTool());
+                        handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
                     }
+                    toolBuilder.updateIndex(index);
                 }
 
-                int index = toolBuilder.updateCurrentIndex(toolCall.index());
                 String id = toolBuilder.updateId(toolCall.id());
                 String name = toolBuilder.updateName(toolCall.function().name());
 

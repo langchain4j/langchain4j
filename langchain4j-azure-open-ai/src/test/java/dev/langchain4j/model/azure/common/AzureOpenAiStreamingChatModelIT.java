@@ -20,14 +20,12 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL =
             AzureModelBuilders.streamingChatModelBuilder()
-                    .deploymentName("gpt-4.1-mini")
                     .logRequestsAndResponses(false) // images are huge in logs
                     .timeout(ofSeconds(120))
                     .build();
 
     static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA =
             AzureModelBuilders.streamingChatModelBuilder()
-                    .deploymentName("gpt-4.1-mini")
                     .logRequestsAndResponses(false) // images are huge in logs
                     .strictJsonSchema(true)
                     .build();

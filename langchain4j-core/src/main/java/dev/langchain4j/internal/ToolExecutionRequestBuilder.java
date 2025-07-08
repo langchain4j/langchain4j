@@ -1,12 +1,11 @@
 package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
@@ -15,71 +14,76 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 // TODO name
 public class ToolExecutionRequestBuilder {
 
-    private final AtomicInteger currentIndex;
-    // TODO are maps really needed?
-    private final Map<Integer, String> indexToId = new ConcurrentHashMap<>();
-    private final Map<Integer, String> indexToName = new ConcurrentHashMap<>();
+    private final AtomicReference<Integer> index;
+    private final AtomicReference<String> id = new AtomicReference<>();
+    private final AtomicReference<String> name = new AtomicReference<>();
     private final StringBuffer arguments = new StringBuffer();
-    private final List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+
+    private final List<ToolExecutionRequest> allToolExecutionRequests = new ArrayList<>();
 
     public ToolExecutionRequestBuilder() {
         this(0);
     }
 
-    public ToolExecutionRequestBuilder(int currentIndex) {
-        this.currentIndex = new AtomicInteger(currentIndex);
+    public ToolExecutionRequestBuilder(int index) {
+        this.index = new AtomicReference(index);
     }
 
-    public int currentIndex() {
-        return currentIndex.get();
+    public int index() {
+        return index.get();
     }
 
-    public int updateCurrentIndex(Integer index) {
+    public int updateIndex(Integer index) {
         if (index != null) {
-            if (index != currentIndex.get()) {
-                arguments.setLength(0);
-            }
-            currentIndex.set(index);
+            this.index.set(index);
         }
-        return currentIndex.get();
+        return this.index.get();
     }
 
     public String updateId(String id) {
         if (isNotNullOrBlank(id)) {
-            indexToId.put(currentIndex.get(), id);
+            this.id.set(id);
         }
-        return indexToId.get(currentIndex.get());
+        return this.id.get();
     }
 
     public String updateName(String name) {
         if (isNotNullOrBlank(name)) {
-            indexToName.put(currentIndex.get(), name);
+            this.name.set(name);
         }
-        return indexToName.get(currentIndex.get());
+        return this.name.get();
     }
 
     public void appendArguments(String partialArguments) {
-        if (partialArguments != null) {
+        if (isNotNullOrEmpty(partialArguments)) {
             arguments.append(partialArguments);
         }
     }
 
-    public ToolExecutionRequest buildCurrentTool() {
+    public ToolExecutionRequest build() {
         // TODO store it till complete response?
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .id(indexToId.get(currentIndex.get()))
-                .name(indexToName.get(currentIndex.get()))
+                .id(id.get())
+                .name(name.get())
                 .arguments(arguments.toString())
                 .build();
-        toolExecutionRequests.add(toolExecutionRequest); // TODO method name, rethink
+        allToolExecutionRequests.add(toolExecutionRequest); // TODO method name, rethink
+        reset();
         return toolExecutionRequest;
     }
 
-    public List<ToolExecutionRequest> allToolExecutionRequests() {
-        return toolExecutionRequests;
+    private void reset() {
+        index.set(null);
+        id.set(null);
+        name.set(null);
+        arguments.setLength(0);
     }
 
     public boolean hasToolExecutionRequests() {
-        return indexToName.size() > 0;
+        return !allToolExecutionRequests.isEmpty() || name.get() != null;
+    }
+
+    public List<ToolExecutionRequest> allToolExecutionRequests() {
+        return allToolExecutionRequests;
     }
 }

@@ -148,8 +148,8 @@ class OllamaClient {
 
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
-            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder();
-            final ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder();
+            ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder();
+            OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolBuilder);
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -176,16 +176,15 @@ class OllamaClient {
                     for (ToolCall toolCall : toolCalls) {
 
                         int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
-
-                        if (toolBuilder.currentIndex() != index) {
+                        if (toolBuilder.index() != index) {
                             try {
-                                handler.onCompleteToolExecutionRequest(index, toolBuilder.buildCurrentTool());
+                                handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
                             } catch (Exception e) {
                                 withLoggingExceptions(() -> handler.onError(e));
                             }
+                            toolBuilder.updateIndex(index);
                         }
 
-                        toolBuilder.updateCurrentIndex(index);
                         String name = toolBuilder.updateName(toolCall.getFunction().getName());
 
                         String partialArguments = toJson(toolCall.getFunction().getArguments());
@@ -209,7 +208,7 @@ class OllamaClient {
 
                     if (toolBuilder.hasToolExecutionRequests()) {
                         try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.buildCurrentTool());
+                            handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }

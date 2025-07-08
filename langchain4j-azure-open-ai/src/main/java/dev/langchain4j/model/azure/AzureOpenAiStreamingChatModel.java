@@ -205,7 +205,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .setUser(user)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
-                .setParallelToolCalls(true)
                 .setSeed(seed);
 
         if (!parameters.toolSpecifications().isEmpty()) {
@@ -247,7 +246,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 () -> {
                     if (toolBuilder.hasToolExecutionRequests()) {
                         try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.currentIndex(), toolBuilder.buildCurrentTool());
+                            handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }
@@ -300,16 +299,17 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             for (ChatCompletionsToolCall toolCall : toolCalls) {
                 if (toolCall instanceof ChatCompletionsFunctionToolCall functionToolCall) {
 
-                    int index = toolBuilder.currentIndex();
+                    int index = toolBuilder.index();
                     if (startOfNewToolCall(toolCall)) {
                         if (index > -1) {
                             try {
-                                handler.onCompleteToolExecutionRequest(index, toolBuilder.buildCurrentTool());
+                                handler.onCompleteToolExecutionRequest(index, toolBuilder.build());
                             } catch (Exception e) {
                                 withLoggingExceptions(() -> handler.onError(e));
                             }
                         }
-                        index = toolBuilder.updateCurrentIndex(index + 1);
+                        index++;
+                        toolBuilder.updateIndex(index);
                     }
 
                     String id = toolBuilder.updateId(toolCall.getId());
