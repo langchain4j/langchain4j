@@ -154,11 +154,32 @@ ChatModel model = OpenAiChatModel.builder()
 2. Download your desired model(s) through the LM Studio UI (Search tab), for example `smollm2-135m-instruct`.
 3. Go to the "Developer" tab (icon like `>_` on the left) and toggle the server status on to 'running'
 4. When the server runs, you get to see the address on the top right (e.g., `http://127.0.0.1:1234`). Alternatively, the cURL call will give you the full URL.
-5. Configure LangChain4j:
+5. LMStudio as for now does not support HTTP2, hence we need to enforce the use of HTTP1.1. For that, we need to add the correct maven or gradle dependency:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-http-client-jdk</artifactId>
+    <version>1.1.0</version>
+</dependency>
+```
+6. Configure LangChain4j and specify the `httpClientBuilder`
 ```java
+import java.net.http.HttpClient;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
+
+...
+
+HttpClient.Builder httpClientBuilder = HttpClient.newBuilder()
+        .version(HttpClient.Version.HTTP_1_1) ;
+
+JdkHttpClientBuilder jdkHttpClientBuilder = JdkHttpClient.builder()
+        .httpClientBuilder(httpClientBuilder);
+
 ChatModel model = OpenAiChatModel.builder()
-        .baseUrl("http://localhost:1234/v1")
+        .baseUrl("http://127.0.0.1:1234/v1")
         .modelName("smollm2-135m-instruct")
+        .httpClientBuilder(jdkHttpClientBuilder)
         .build();
 ```
 
