@@ -2,9 +2,12 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.internal.ToolExecutionRequestBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -14,11 +17,13 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
+import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStart;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamResponseHandler;
@@ -52,23 +57,58 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
 
         ConverseResponseFromStreamBuilder responseBuilder = ConverseResponseFromStreamBuilder.builder();
+        ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder(-1);
+        AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
 
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .subscriber(ConverseStreamResponseHandler.Visitor.builder()
-                        .onContentBlockStart(responseBuilder::append)
+                        .onContentBlockStart(event -> {
+                            if (event.start().type() == ContentBlockStart.Type.TOOL_USE) {
+                                toolBuilder.updateIndex(toolBuilder.index() + 1);
+                                toolBuilder.updateId(event.start().toolUse().toolUseId());
+                                toolBuilder.updateName(event.start().toolUse().name());
+                            }
+                            responseBuilder.append(event);
+                        })
                         .onContentBlockDelta(chunk -> {
-                            if (chunk.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
+                            currentContentType.set(chunk.delta().type());
+                            if (currentContentType.get() == ContentBlockDelta.Type.TEXT) {
                                 try {
                                     handler.onPartialResponse(chunk.delta().text());
                                 } catch (Exception e) {
                                     withLoggingExceptions(() -> handler.onError(e));
                                 }
-                            } else if (chunk.delta().type().equals(ContentBlockDelta.Type.TOOL_USE)) {
-                                System.out.println("OLOLO " + chunk);
+                            } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
+                                System.out.println("OLOLO " + chunk); // TODO
+
+                                String input = chunk.delta().toolUse().input();
+                                if (isNotNullOrEmpty(input)) {
+                                    toolBuilder.appendArguments(input);
+
+                                    ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
+                                            .id(toolBuilder.id())
+                                            .name(toolBuilder.name())
+                                            .arguments(input)
+                                            .build();
+                                    try {
+                                        handler.onPartialToolExecutionRequest(toolBuilder.index(), partialToolExecutionRequest);
+                                    } catch (Exception e) {
+                                        withLoggingExceptions(() -> handler.onError(e));
+                                    }
+                                }
                             }
                             responseBuilder.append(chunk);
                         })
-                        .onContentBlockStop(responseBuilder::append)
+                        .onContentBlockStop(event -> {
+                            if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
+                                try {
+                                    handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                                } catch (Exception e) {
+                                    withLoggingExceptions(() -> handler.onError(e));
+                                }
+                            }
+                            responseBuilder.append(event);
+                        })
                         .onMetadata(chunk -> {
                             responseBuilder.append(chunk);
                             ChatResponse response = responseFrom(responseBuilder.build(), converseStreamRequest.modelId());

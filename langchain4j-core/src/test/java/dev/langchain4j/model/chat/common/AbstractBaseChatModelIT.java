@@ -10,7 +10,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -652,8 +654,9 @@ public abstract class AbstractBaseChatModelIT<M> {
             StreamingChatResponseHandler handler = streamingMetadata.handler();
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id());
-            inOrder.verify(handler).onCompleteResponse(any());
+            inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(handler);
 
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
@@ -769,10 +772,13 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             StreamingChatResponseHandler handler = streamingMetadata.handler();
             InOrder inOrder = inOrder(handler);
+            // Some providers can talk before calling a tool. "atLeast(0)" is meant to ignore it.
+            inOrder.verify(handler, atLeast(0)).onPartialResponse(any());
             inOrder.verify(handler).onPartialToolExecutionRequest(0, toolExecutionRequest);
             inOrder.verify(handler).onCompleteToolExecutionRequest(0, toolExecutionRequest);
-            inOrder.verify(handler).onCompleteResponse(any());
+            inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(handler);
 
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
@@ -916,9 +922,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             StreamingChatResponseHandler handler = streamingMetadata.handler();
             InOrder inOrder = inOrder(handler);
-            verifyToolCallbacks(handler, inOrder, toolExecutionRequests.get(0).id(), toolExecutionRequests.get(1).id()); // TODO do the same for a single tool
-            inOrder.verify(handler).onCompleteResponse(any());
+            verifyToolCallbacks(handler, inOrder, toolExecutionRequests.get(0).id(), toolExecutionRequests.get(1).id());
+            inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(handler);
 
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
