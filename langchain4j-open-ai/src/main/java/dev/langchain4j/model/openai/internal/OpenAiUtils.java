@@ -460,6 +460,7 @@ public class OpenAiUtils {
                 .store(parameters.store())
                 .metadata(parameters.metadata())
                 .serviceTier(parameters.serviceTier())
-                .reasoningEffort(parameters.reasoningEffort());
+                .reasoningEffort(parameters.reasoningEffort())
+                .customParameters(parameters.customParameters());
     }
 }
