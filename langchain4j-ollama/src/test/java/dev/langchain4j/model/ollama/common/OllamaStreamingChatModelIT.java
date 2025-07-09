@@ -280,8 +280,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "{\"city\":\"Munich\"}"));
-        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id1, "getWeather", "{\"city\":\"Munich\"}"));
+        verifyToolCallbacks(handler, io, id1);
 
         io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "{\"country\":\"France\"}"));
         io.verify(handler).onCompleteToolExecutionRequest(1, tool(id2, "getTime", "{\"country\":\"France\"}"));

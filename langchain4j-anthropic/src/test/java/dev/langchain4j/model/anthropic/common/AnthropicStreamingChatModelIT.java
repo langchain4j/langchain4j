@@ -110,14 +110,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        // Anthropic can talk before calling a tool. "atLeast(0)" is meant to ignore it.
-        io.verify(handler, atLeast(0)).onPartialResponse(any());
-
-        io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(eq(0), argThat(tool ->
-                // Anthropic does not output the same tokens consistently, so we can't easilty assert them.
-                tool.id().equals(id1) && tool.name().equals("getWeather") && !tool.arguments().isBlank()
-        ));
-        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id1, "getWeather", "{\"city\": \"Munich\"}"));
+        verifyToolCallbacks(handler, io, id1);
 
         io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(eq(1), argThat(tool ->
                 // Anthropic does not output the same tokens consistently, so we can't easilty assert them.
