@@ -155,14 +155,18 @@ public class AnthropicMapper {
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
             List<ChatMessage> messages, AnthropicCacheType cacheType) {
-        return messages.stream()
+        List<SystemMessage> systemMessages = messages.stream()
                 .filter(message -> message instanceof SystemMessage)
+                .map(message -> (SystemMessage) message)
+                .collect(toList());
+
+        return systemMessages.stream()
                 .map(message -> {
-                    SystemMessage systemMessage = (SystemMessage) message;
-                    if (cacheType != AnthropicCacheType.NO_CACHE) {
-                        return new AnthropicTextContent(systemMessage.text(), cacheType.cacheControl());
+                    boolean isLastItem = message.equals(systemMessages.get(systemMessages.size() - 1));
+                    if (isLastItem && cacheType != AnthropicCacheType.NO_CACHE) {
+                        return new AnthropicTextContent(message.text(), cacheType.cacheControl());
                     }
-                    return new AnthropicTextContent(systemMessage.text());
+                    return new AnthropicTextContent(message.text());
                 })
                 .collect(toList());
     }
@@ -219,7 +223,13 @@ public class AnthropicMapper {
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
         return toolSpecifications.stream()
-                .map(toolSpecification -> toAnthropicTool(toolSpecification, cacheToolsPrompt))
+                .map(toolSpecification -> {
+                    boolean isLastItem = toolSpecification.equals(toolSpecifications.get(toolSpecifications.size() - 1));
+                    if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
+                        return toAnthropicTool(toolSpecification, cacheToolsPrompt);
+                    }
+                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE);
+                })
                 .collect(toList());
     }
 
