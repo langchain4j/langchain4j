@@ -71,10 +71,11 @@ public class ToolExecutionRequestBuilder {
 
     public ToolExecutionRequest build() {
         // TODO store it till complete response?
+        String arguments = this.arguments.toString();
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                 .id(id.get())
                 .name(name.get())
-                .arguments(arguments.toString())
+                .arguments(arguments.isEmpty() ? "{}" : arguments)
                 .build();
         allToolExecutionRequests.add(toolExecutionRequest); // TODO method name, rethink
         reset();

@@ -264,8 +264,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     contents.add(currentContentBuilder().toString());
                     setCurrentContentBuilder(new StringBuffer());
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
+                    ToolExecutionRequest toolExecutionRequest = toolBuilder.build();
+                    if (toolExecutionRequest.arguments().equals("{}")) {
+                        try {
+                            handler.onPartialToolExecutionRequest(toolBuilder.index(), toolExecutionRequest);
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        }
+                    }
                     try {
-                        handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                        handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolExecutionRequest);
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
                     }

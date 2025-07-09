@@ -646,6 +646,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(arguments.toString()).isEqualTo(toolExecutionRequest.arguments());
 
             assertThat(streamingMetadata.completeToolExecutionRequests()).hasSize(1);
+            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).index()).isEqualTo(0);
             assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequest);
 
             StreamingChatResponseHandler handler = streamingMetadata.handler();
@@ -706,6 +707,121 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         fail("please override this method");
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsSupportingTools")
+    @EnabledIf("supportsTools")
+    protected void should_execute_a_tool_without_arguments_then_answer(M model) {
+
+        // given
+        UserMessage userMessage = UserMessage.from("What is the time now?");
+
+        ToolSpecification timeTool = ToolSpecification.builder()
+                .name("get_current_time")
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(timeTool)
+                        .build())
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        if (assertToolId()) {
+            assertThat(toolExecutionRequest.id()).isNotBlank();
+        }
+        assertThat(toolExecutionRequest.name()).isEqualTo(timeTool.name());
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{}");
+
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
+        }
+
+        if (model instanceof StreamingChatModel) {
+            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+
+            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
+                assertThat(aiMessage.text()).isNull();
+            }
+
+            assertThat(streamingMetadata.partialToolExecutionRequests()).hasSize(1);
+            assertThat(streamingMetadata.partialToolExecutionRequests().get(0).index()).isEqualTo(0);
+            assertThat(streamingMetadata.partialToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequest);
+
+            assertThat(streamingMetadata.completeToolExecutionRequests()).hasSize(1);
+            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).index()).isEqualTo(0);
+            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequest);
+
+            StreamingChatResponseHandler handler = streamingMetadata.handler();
+            InOrder inOrder = inOrder(handler);
+            inOrder.verify(handler).onPartialToolExecutionRequest(0, toolExecutionRequest);
+            inOrder.verify(handler).onCompleteToolExecutionRequest(0, toolExecutionRequest);
+            inOrder.verify(handler).onCompleteResponse(any());
+            inOrder.verifyNoMoreInteractions();
+
+            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
+        }
+
+        // given
+        ChatRequest chatRequest2 = ChatRequest.builder()
+                .messages(userMessage, aiMessage, ToolExecutionResultMessage.from(toolExecutionRequest, "10:14"))
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(timeTool)
+                        .build())
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata2 = chat(model, chatRequest2);
+        ChatResponse chatResponse2 = chatResponseAndStreamingMetadata2.chatResponse();
+
+        // then
+        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        assertThat(aiMessage2.text()).contains("10", "14");
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
+
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse2.metadata(), model);
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
+        }
+
+        if (model instanceof StreamingChatModel) {
+            StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
+            assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
+            if (assertTimesOnPartialResponseWasCalled()) {
+                assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            }
+            assertThat(streamingMetadata2.partialToolExecutionRequests()).isEmpty();
+            assertThat(streamingMetadata2.completeToolExecutionRequests()).isEmpty();
+            assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata2.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
+        }
     }
 
     @ParameterizedTest
@@ -793,7 +909,9 @@ public abstract class AbstractBaseChatModelIT<M> {
             }
 
             assertThat(streamingMetadata.completeToolExecutionRequests()).hasSize(2);
+            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).index()).isEqualTo(0);
             assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequests.get(0));
+            assertThat(streamingMetadata.completeToolExecutionRequests().get(1).index()).isEqualTo(1);
             assertThat(streamingMetadata.completeToolExecutionRequests().get(1).toolRequest()).isEqualTo(toolExecutionRequests.get(1));
 
             StreamingChatResponseHandler handler = streamingMetadata.handler();

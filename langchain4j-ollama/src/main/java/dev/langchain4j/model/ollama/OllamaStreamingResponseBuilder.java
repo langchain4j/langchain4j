@@ -50,21 +50,21 @@ class OllamaStreamingResponseBuilder {
     }
 
     ChatResponse build(OllamaChatResponse ollamaChatResponse) {
+        String text = contentBuilder.toString();
+
         if (toolBuilder.hasToolExecutionRequests()) {
             return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(toolBuilder.allToolExecutionRequests()))
+                    .aiMessage(AiMessage.builder()
+                            .text(text.isEmpty() ? null : text)
+                            .toolExecutionRequests(toolBuilder.allToolExecutionRequests())
+                            .build())
                     .metadata(chatResponseMetadataFrom(modelName, TOOL_EXECUTION, tokenUsage))
                     .build();
         }
 
-        String text = contentBuilder.toString();
-        if (text.isEmpty()) {
-            return null;
-        } else {
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(text))
-                    .metadata(chatResponseMetadataFrom(modelName, toFinishReason(ollamaChatResponse), tokenUsage))
-                    .build();
-        }
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.builder().text(text).build())
+                .metadata(chatResponseMetadataFrom(modelName, toFinishReason(ollamaChatResponse), tokenUsage))
+                .build();
     }
 }
