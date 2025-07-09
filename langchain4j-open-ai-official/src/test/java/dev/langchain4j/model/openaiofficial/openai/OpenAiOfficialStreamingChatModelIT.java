@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
@@ -16,6 +17,7 @@ import java.util.List;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -62,5 +64,32 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return null; // TODO implement
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "{\""));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "city"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "\":\""));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "Mun"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "ich"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id, "getWeather", "{\"city\":\"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "{\"ci"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "ty\": "));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "\"Munic"));
+        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "h\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id1, "getWeather", "{\"city\": \"Munich\"}"));
+
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "{\"co"));
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "untry"));
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "\": \"Fr"));
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "ance"));
+        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(1, tool(id2, "getTime", "{\"country\": \"France\"}"));
     }
 }

@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
@@ -15,6 +17,7 @@ import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.ToolExecutionRequestBuilder;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -100,8 +103,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder =
                     OpenAiOfficialChatResponseMetadata.builder();
 
-            StringBuffer text = new StringBuffer();
-            List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+            StringBuffer textBuilder = new StringBuffer();
+            ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder();
 
             asyncClient
                     .chat()
@@ -111,14 +114,13 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
                         @Override
                         public void onNext(ChatCompletionChunk completion) {
-                            System.out.println("onNext - " + Thread.currentThread() + " - " + LocalTime.now());
                             manageChatCompletionChunks(
                                     completion,
                                     parameters,
                                     handler,
                                     responseMetadataBuilder,
-                                    text,
-                                    toolExecutionRequests);
+                                    textBuilder,
+                                    toolBuilder);
                         }
 
                         @Override
@@ -126,21 +128,20 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             if (error.isPresent()) {
                                 handler.onError(error.get());
                             } else {
-                                AiMessage aiMessage;
-                                if (!text.toString().isEmpty()) {
-                                    if (!toolExecutionRequests.isEmpty()) {
-                                        aiMessage = AiMessage.from(text.toString(), toolExecutionRequests);
-                                    } else {
-                                        aiMessage = AiMessage.from(text.toString());
-                                    }
-                                } else {
-                                    if (!toolExecutionRequests.isEmpty()) {
-                                        aiMessage = AiMessage.from(toolExecutionRequests);
-                                    } else {
-                                        throw new IllegalArgumentException(
-                                                "No text or toolExecutionRequests found in the response");
+                                if (toolBuilder.hasToolExecutionRequests()) {
+                                    try {
+                                        handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                                    } catch (Exception e) {
+                                        withLoggingExceptions(() -> handler.onError(e));
                                     }
                                 }
+
+                                String text = textBuilder.toString();
+
+                                AiMessage aiMessage = AiMessage.builder()
+                                        .text(text.isEmpty() ? null : text)
+                                        .toolExecutionRequests(toolBuilder.allToolExecutionRequests())
+                                        .build();
 
                                 ChatResponse chatResponse = ChatResponse.builder()
                                         .aiMessage(aiMessage)
@@ -162,7 +163,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             StreamingChatResponseHandler handler,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,
-            List<ToolExecutionRequest> toolExecutionRequests) {
+            ToolExecutionRequestBuilder toolBuilder) {
 
         responseMetadataBuilder.id(chatCompletionChunk.id());
         responseMetadataBuilder.modelName(chatCompletionChunk.model());
@@ -186,50 +187,39 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 handler.onPartialResponse(choice.delta().content().get());
             }
             if (choice.delta().toolCalls().isPresent()) {
-                System.out.println("OLOLO " + choice.delta());
-                choice.delta().toolCalls().get().forEach(toolCall -> {
+                for (ChatCompletionChunk.Choice.Delta.ToolCall toolCall : choice.delta().toolCalls().get()) {
                     if (toolCall.function().isPresent()) {
-                        final ChatCompletionChunk.Choice.Delta.ToolCall.Function function =
-                                toolCall.function().get();
-                        final String functionId;
-                        final String functionName;
-                        final String functionArguments;
-                        if (toolCall.id().isPresent()) {
-                            functionId = toolCall.id().get();
-                        } else {
-                            functionId = "";
+                        ChatCompletionChunk.Choice.Delta.ToolCall.Function function = toolCall.function().get();
+                        int index = (int) toolCall.index();
+                        if (toolBuilder.index() != index) {
+                            try {
+                                handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                            } catch (Exception e) {
+                                withLoggingExceptions(() -> handler.onError(e));
+                            }
+                            toolBuilder.updateIndex(index);
                         }
-                        if (function.name().isPresent()) {
-                            functionName = function.name().get();
-                        } else {
-                            functionName = "";
-                        }
-                        if (function.arguments().isPresent()) {
-                            functionArguments = function.arguments().get();
-                        } else {
-                            functionArguments = "";
-                        }
-                        if (!functionId.isEmpty()) {
-                            // A new function is called
-                            toolExecutionRequests.add(ToolExecutionRequest.builder()
-                                    .id(functionId)
-                                    .name(functionName)
-                                    .arguments(functionArguments)
-                                    .build());
-                        } else {
-                            // This chunk is part of the previous function call
-                            ToolExecutionRequest lastToolExecutionRequest =
-                                    toolExecutionRequests.get(toolExecutionRequests.size() - 1);
-                            toolExecutionRequests.remove(lastToolExecutionRequest);
-                            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                                    .id(functionId)
-                                    .name(lastToolExecutionRequest.name() + functionName)
-                                    .arguments(lastToolExecutionRequest.arguments() + functionArguments)
+
+                        String id = toolBuilder.updateId(toolCall.id().orElse(null));
+                        String name = toolBuilder.updateName(function.name().orElse(null));
+
+                        String partialArguments = function.arguments().orElse(null);
+                        if (isNotNullOrEmpty(partialArguments)) {
+                            toolBuilder.appendArguments(partialArguments);
+
+                            ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
+                                    .id(id)
+                                    .name(name)
+                                    .arguments(partialArguments)
                                     .build();
-                            toolExecutionRequests.add(toolExecutionRequest);
+                            try {
+                                handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
+                            } catch (Exception e) {
+                                withLoggingExceptions(() -> handler.onError(e));
+                            }
                         }
                     }
-                });
+                }
             }
             if (choice.finishReason().isPresent()) {
                 responseMetadataBuilder.finishReason(
