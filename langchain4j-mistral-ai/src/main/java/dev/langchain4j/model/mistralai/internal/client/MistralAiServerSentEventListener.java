@@ -87,6 +87,20 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
             List<MistralAiToolCall> toolCalls = choice.getDelta().getToolCalls();
             if (!isNullOrEmpty(toolCalls)) {
                 toolExecutionRequests = toToolExecutionRequests(toolCalls);
+
+                for (int i = 0; i < toolExecutionRequests.size(); i++) {
+                    ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(i);
+                    try {
+                        handler.onPartialToolExecutionRequest(i, toolExecutionRequest);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
+                    try {
+                        handler.onCompleteToolExecutionRequest(i, toolExecutionRequest);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
+                }
             }
 
             MistralAiUsage usageInfo = chatCompletionResponse.getUsage();
