@@ -1,19 +1,19 @@
 package dev.langchain4j.model.azure;
 
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static java.util.Collections.singletonList;
-
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {
-        return AzureOpenAiStreamingChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        return AzureModelBuilders.streamingChatModelBuilder()
                 .deploymentName(modelName())
                 .temperature(temperature())
                 .topP(topP())
@@ -26,7 +26,7 @@ class AzureOpenAiStreamingChatModelListenerIT extends AbstractStreamingChatModel
 
     @Override
     protected String modelName() {
-        return "gpt-4o-mini";
+        return AzureModelBuilders.DEFAULT_CHAT_MODEL;
     }
 
     @Override

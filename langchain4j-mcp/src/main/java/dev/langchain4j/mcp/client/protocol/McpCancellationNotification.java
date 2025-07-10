@@ -1,19 +1,21 @@
 package dev.langchain4j.mcp.client.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.langchain4j.Internal;
 import java.util.HashMap;
 import java.util.Map;
 import org.jspecify.annotations.NonNull;
 
-public class CancellationNotification extends McpClientMessage {
+@Internal
+public class McpCancellationNotification extends McpClientMessage {
 
     @JsonInclude
-    public final ClientMethod method = ClientMethod.NOTIFICATION_CANCELLED;
+    public final McpClientMethod method = McpClientMethod.NOTIFICATION_CANCELLED;
 
     @JsonInclude
     private Map<String, Object> params;
 
-    public CancellationNotification(@NonNull Long requestId, String reason) {
+    public McpCancellationNotification(@NonNull Long requestId, String reason) {
         super(null);
         this.params = new HashMap<>();
         this.params.put("requestId", String.valueOf(requestId));
