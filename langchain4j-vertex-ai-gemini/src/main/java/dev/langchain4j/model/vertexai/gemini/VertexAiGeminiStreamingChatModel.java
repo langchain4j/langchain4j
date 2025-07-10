@@ -1,7 +1,7 @@
 package dev.langchain4j.model.vertexai.gemini;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -415,11 +415,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
                     String text = textAndFunctions.text();
                     if (isNotNullOrEmpty(text)) {
-                        try {
-                            handler.onPartialResponse(text);
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
+                        onPartialResponse(handler, text);
                     }
 
                     for (FunctionCall functionCall : textAndFunctions.functionCalls()) {

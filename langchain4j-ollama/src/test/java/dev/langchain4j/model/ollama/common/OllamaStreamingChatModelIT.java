@@ -12,6 +12,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 import static java.time.Duration.ofSeconds;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 
 import java.util.HashMap;
@@ -276,7 +277,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id, StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolExecutionRequest(partial(0, null, "getWeather", "{\"city\":\"Munich\"}"));
+            io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "{\"city\":\"Munich\"}"));
         }
         io.verify(handler).onCompleteToolExecutionRequest(complete(0, null, "getWeather", "{\"city\":\"Munich\"}"));
     }
@@ -284,19 +285,29 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolExecutionRequest(partial(0, null, "get_current_time", "{}"));
+            io.verify(handler).onPartialToolExecutionRequest(argThat(request ->
+                    request.index() == 0
+                            && !request.toolId().isBlank()
+                            && request.toolName().equals("get_current_time")
+                            && request.partialToolArguments().equals("{}")
+            ));
         }
         // Ollama talks in-between for some reason TODO fix in OpenAI?
         io.verify(handler, atLeast(0)).onPartialResponse(any());
-        io.verify(handler).onCompleteToolExecutionRequest(complete(0, null, "get_current_time", "{}"));
+        io.verify(handler).onCompleteToolExecutionRequest(argThat(request ->
+                request.index() == 0
+                        && !request.request().id().isBlank()
+                        && request.request().name().equals("get_current_time")
+                        && request.request().arguments().equals("{}")
+        ));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2, StreamingChatModel model) {
-        verifyToolCallbacks(handler, io, null, model);
+        verifyToolCallbacks(handler, io, id1, model);
 
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolExecutionRequest(partial(1, null, "getTime", "{\"country\":\"France\"}"));
+            io.verify(handler).onPartialToolExecutionRequest(partial(1, id2, "getTime", "{\"country\":\"France\"}"));
         }
         io.verify(handler).onCompleteToolExecutionRequest(complete(1, null, "getTime", "{\"country\":\"France\"}"));
     }

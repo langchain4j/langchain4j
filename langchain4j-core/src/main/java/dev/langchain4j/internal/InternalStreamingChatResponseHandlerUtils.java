@@ -7,6 +7,8 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+
 @Internal
 public class InternalStreamingChatResponseHandlerUtils {
 
@@ -18,6 +20,18 @@ public class InternalStreamingChatResponseHandlerUtils {
         } catch (Exception e) {
             log.warn("An exception occurred during the invocation of StreamingChatResponseHandler.onError(). "
                     + "This exception has been ignored.", e);
+        }
+    }
+
+    public static void onPartialResponse(StreamingChatResponseHandler handler, String partialResponse) {
+        if (isNullOrEmpty(partialResponse)) {
+            return;
+        }
+
+        try {
+            handler.onPartialResponse(partialResponse);
+        } catch (Exception e) {
+            withLoggingExceptions(() -> handler.onError(e));
         }
     }
 
