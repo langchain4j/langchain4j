@@ -461,6 +461,12 @@ public class DefaultMcpClient implements McpClient {
         private Duration autoHealthCheckInterval;
         private List<McpRoot> roots;
 
+        /**
+         * Sets the transport protocol to use for communicating with the
+         * MCP server. This is a mandatory parameter. A successfully
+         * constructed DefaultMcpClient takes over the resource ownership
+         * of this transport and will close it when it itself is closed.
+         */
         public Builder transport(McpTransport transport) {
             this.transport = transport;
             return this;
