@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -102,6 +103,35 @@ public class DefaultMcpClientTest {
 
         // and: transport should be started
         verify(transport).start(any(McpOperationHandler.class));
+        // and: transport should *not* be closed
+        verify(transport, never()).close();
+    }
+
+    @Test
+    public void should_not_react_to_transport_callbacks_if_there_is_no_object() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final var exception = new RuntimeException("apples");
+        final ArgumentCaptor<Runnable> onFailureCaptor = ArgumentCaptor.forClass(Runnable.class);
+        doNothing().when(transport).onFailure(onFailureCaptor.capture());
+        doThrow(exception).when(transport).initialize(any());
+        final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder().transport(transport);
+
+        // and: exception was thrown during initialization (so there is no object)
+        assertThatThrownBy(() -> clientBuilder.build()).isInstanceOf(Throwable.class);
+        // but: some actions have occurred
+        verify(transport).start(any(McpOperationHandler.class));
+        verify(transport).initialize(any());
+
+        // when: onFailure callback is triggered
+        assertThatCode(() -> {
+                    onFailureCaptor.getValue().run();
+                })
+                .doesNotThrowAnyException();
+
+        // then: no further actions should be taken
+        verify(transport, times(1)).start(any(McpOperationHandler.class));
+        verify(transport, times(1)).initialize(any());
         // and: transport should *not* be closed
         verify(transport, never()).close();
     }
