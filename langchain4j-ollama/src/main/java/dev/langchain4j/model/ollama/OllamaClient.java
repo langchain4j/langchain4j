@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -177,11 +178,7 @@ class OllamaClient {
 
                         int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
                         if (toolBuilder.index() != index) {
-                            try {
-                                handler.onCompleteToolExecutionRequest(toolBuilder.build());
-                            } catch (Exception e) {
-                                withLoggingExceptions(() -> handler.onError(e));
-                            }
+                            onCompleteToolExecutionRequest(handler, toolBuilder.build());
                             toolBuilder.updateIndex(index);
                         }
 
@@ -197,11 +194,7 @@ class OllamaClient {
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
 
                     if (toolBuilder.hasToolExecutionRequests()) {
-                        try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.build());
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
+                        onCompleteToolExecutionRequest(handler, toolBuilder.build());
                     }
 
                     ChatResponse response = responseBuilder.build(ollamaChatResponse);

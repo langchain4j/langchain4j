@@ -26,6 +26,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolExecutionRequest;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -142,11 +144,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .onComplete(() -> {
 
                     if (toolBuilder.hasToolExecutionRequests()) {
-                        try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.build());
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
+                        onCompleteToolExecutionRequest(handler, toolBuilder.build());
                     }
 
                     ChatResponse chatResponse = openAiResponseBuilder.build();
@@ -200,11 +198,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
                 int index = toolCall.index();
                 if (toolBuilder.index() != index) {
-                    try {
-                        handler.onCompleteToolExecutionRequest(toolBuilder.build());
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    onCompleteToolExecutionRequest(handler, toolBuilder.build());
                     toolBuilder.updateIndex(index);
                 }
 
@@ -221,11 +215,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                             .toolName(name)
                             .partialToolArguments(partialArguments)
                             .build();
-                    try {
-                        handler.onPartialToolExecutionRequest(partialToolRequest);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    onPartialToolExecutionRequest(handler, partialToolRequest);
                 }
             }
         }

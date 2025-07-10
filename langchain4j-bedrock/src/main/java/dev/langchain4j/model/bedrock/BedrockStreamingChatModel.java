@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -87,11 +88,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         })
                         .onContentBlockStop(event -> {
                             if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
-                                try {
-                                    handler.onCompleteToolExecutionRequest(toolBuilder.build());
-                                } catch (Exception e) {
-                                    withLoggingExceptions(() -> handler.onError(e));
-                                }
+                                onCompleteToolExecutionRequest(handler, toolBuilder.build());
                             }
                             responseBuilder.append(event);
                         })

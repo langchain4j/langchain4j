@@ -36,6 +36,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolExecutionRequest;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -236,19 +238,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
+                        toolBuilder.appendArguments(partialJson);
+
                         PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
                                 .index(toolBuilder.index())
                                 .toolId(toolBuilder.id())
                                 .toolName(toolBuilder.name())
                                 .partialToolArguments(partialJson)
                                 .build();
-                        try {
-                            handler.onPartialToolExecutionRequest(partialToolRequest);
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
-
-                        toolBuilder.appendArguments(partialJson);
+                        onPartialToolExecutionRequest(handler, partialToolRequest);
                     }
                 }
             }
@@ -267,18 +265,10 @@ public class DefaultAnthropicClient extends AnthropicClient {
                                 .toolName(completeToolRequest.request().name())
                                 .partialToolArguments(completeToolRequest.request().arguments())
                                 .build();
-                        try {
-                            handler.onPartialToolExecutionRequest(partialToolRequest);
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
+                        onPartialToolExecutionRequest(handler, partialToolRequest);
                     }
 
-                    try {
-                        handler.onCompleteToolExecutionRequest(completeToolRequest);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    onCompleteToolExecutionRequest(handler, completeToolRequest);
                 }
             }
 

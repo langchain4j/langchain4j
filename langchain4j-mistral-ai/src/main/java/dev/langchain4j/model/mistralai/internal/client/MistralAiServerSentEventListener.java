@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -90,13 +91,9 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
                 toolExecutionRequests = toToolExecutionRequests(toolCalls);
 
                 for (int i = 0; i < toolExecutionRequests.size(); i++) {
-                    CompleteToolExecutionRequest completeToolExecutionRequest =
+                    CompleteToolExecutionRequest completeToolRequest =
                             new CompleteToolExecutionRequest(i, toolExecutionRequests.get(i));
-                    try {
-                        handler.onCompleteToolExecutionRequest(completeToolExecutionRequest);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    onCompleteToolExecutionRequest(handler, completeToolRequest);
                 }
             }
 

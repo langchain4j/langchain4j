@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolExecutionRequest;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
@@ -15,7 +16,6 @@ import com.openai.models.chat.completions.ChatCompletionChunk;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.ToolExecutionRequestBuilder;
@@ -29,8 +29,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.net.Proxy;
 import java.time.Duration;
-import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -130,11 +128,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                 handler.onError(error.get());
                             } else {
                                 if (toolBuilder.hasToolExecutionRequests()) {
-                                    try {
-                                        handler.onCompleteToolExecutionRequest(toolBuilder.build());
-                                    } catch (Exception e) {
-                                        withLoggingExceptions(() -> handler.onError(e));
-                                    }
+                                    onCompleteToolExecutionRequest(handler, toolBuilder.build());
                                 }
 
                                 String text = textBuilder.toString();
@@ -193,11 +187,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         ChatCompletionChunk.Choice.Delta.ToolCall.Function function = toolCall.function().get();
                         int index = (int) toolCall.index();
                         if (toolBuilder.index() != index) {
-                            try {
-                                handler.onCompleteToolExecutionRequest(toolBuilder.build());
-                            } catch (Exception e) {
-                                withLoggingExceptions(() -> handler.onError(e));
-                            }
+                            onCompleteToolExecutionRequest(handler, toolBuilder.build());
                             toolBuilder.updateIndex(index);
                         }
 
@@ -214,11 +204,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                     .toolName(name)
                                     .partialToolArguments(partialArguments)
                                     .build();
-                            try {
-                                handler.onPartialToolExecutionRequest(partialToolRequest);
-                            } catch (Exception e) {
-                                withLoggingExceptions(() -> handler.onError(e));
-                            }
+                            onPartialToolExecutionRequest(handler, partialToolRequest);
                         }
                     }
                 }

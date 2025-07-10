@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -123,11 +124,9 @@ class GeminiService {
                 });
 
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
-                    try {
-                        handler.onCompleteToolExecutionRequest(new CompleteToolExecutionRequest(toolIndex.get(), tool));
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+                    CompleteToolExecutionRequest completeToolRequest =
+                            new CompleteToolExecutionRequest(toolIndex.get(), tool);
+                    onCompleteToolExecutionRequest(handler, completeToolRequest);
                     toolIndex.incrementAndGet();
                 }
             }

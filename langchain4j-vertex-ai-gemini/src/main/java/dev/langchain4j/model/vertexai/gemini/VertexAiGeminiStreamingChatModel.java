@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai.gemini;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -423,13 +424,9 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
                     for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
                         ToolExecutionRequest toolExecutionRequest = fromFunctionCall(functionCall);
-                        try {
-                            CompleteToolExecutionRequest completeToolExecutionRequest =
+                            CompleteToolExecutionRequest completeToolRequest =
                                     new CompleteToolExecutionRequest(currentToolIndex.get(), toolExecutionRequest);
-                            handler.onCompleteToolExecutionRequest(completeToolExecutionRequest);
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
+                        onCompleteToolExecutionRequest(handler, completeToolRequest);
                         currentToolIndex.incrementAndGet();
                     }
                 }

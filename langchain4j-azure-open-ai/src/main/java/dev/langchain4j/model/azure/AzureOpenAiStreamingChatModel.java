@@ -1,5 +1,7 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolExecutionRequest;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
@@ -245,11 +247,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 },
                 () -> {
                     if (toolBuilder.hasToolExecutionRequests()) {
-                        try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.build());
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
+                        onCompleteToolExecutionRequest(handler, toolBuilder.build());
                     }
 
                     Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
@@ -302,11 +300,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     int index = toolBuilder.index();
                     if (startOfNewToolCall(toolCall)) {
                         if (index > -1) {
-                            try {
-                                handler.onCompleteToolExecutionRequest(toolBuilder.build());
-                            } catch (Exception e) {
-                                withLoggingExceptions(() -> handler.onError(e));
-                            }
+                            onCompleteToolExecutionRequest(handler, toolBuilder.build());
                         }
                         index++;
                         toolBuilder.updateIndex(index);
@@ -325,11 +319,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                                 .toolName(name)
                                 .partialToolArguments(partialArguments)
                                 .build();
-                        try {
-                            handler.onPartialToolExecutionRequest(partialToolRequest);
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
+                        onPartialToolExecutionRequest(handler, partialToolRequest);
                     }
                 }
             }
