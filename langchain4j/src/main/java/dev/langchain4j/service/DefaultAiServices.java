@@ -12,11 +12,11 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -84,15 +84,15 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
     }
 
-    public T build() {
-
-        performBasicValidation();
-
+    private void validateContextMemory() {
         if (!context.hasChatMemory() && ChatMemoryAccess.class.isAssignableFrom(context.aiServiceClass)) {
             throw illegalConfiguration(
                     "In order to have a service implementing ChatMemoryAccess, please configure the ChatMemoryProvider on the '%s'.",
                     context.aiServiceClass.getName());
         }
+    }
+
+    private void validateMethods() {
 
         for (Method method : context.aiServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
@@ -120,6 +120,26 @@ class DefaultAiServices<T> extends AiServices<T> {
                 }
             }
         }
+    }
+
+    private void validate() {
+        performBasicValidation();
+        validateContextMemory();
+        validateMethods();
+    }
+
+    private Object handleChatMemoryAccess(Method method, Object[] args) {
+        return switch (method.getName()) {
+            case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
+            case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
+            default ->
+                throw new UnsupportedOperationException(
+                        "Unknown method on ChatMemoryAccess class : " + method.getName());
+        };
+    }
+
+    public T build() {
+        validate();
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
@@ -137,13 +157,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
-                            return switch (method.getName()) {
-                                case "getChatMemory" -> context.chatMemoryService.getChatMemory(args[0]);
-                                case "evictChatMemory" -> context.chatMemoryService.evictChatMemory(args[0]) != null;
-                                default ->
-                                    throw new UnsupportedOperationException(
-                                            "Unknown method on ChatMemoryAccess class : " + method.getName());
-                            };
+                            return handleChatMemoryAccess(method, args);
                         }
 
                         validateParameters(method);
