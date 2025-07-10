@@ -16,8 +16,8 @@ import io.ktor.http.HttpStatusCode;
 import java.time.Duration;
 import java.util.Random;
 import java.util.stream.Stream;
-
 import me.kpavlov.aimocks.anthropic.MockAnthropic;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -123,5 +123,10 @@ class AnthropicChatModelErrorsTest {
         // when-then
         assertThatThrownBy(() -> model.chat(question))
                 .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @AfterEach
+    void afterEach() {
+        MOCK.verifyNoUnmatchedRequests();
     }
 }
