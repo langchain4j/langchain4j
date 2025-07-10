@@ -19,7 +19,7 @@ import java.util.StringJoiner;
 public class MistralAiChatMessage {
 
     private MistralAiRole role;
-    private String content;
+    private List<MistralAiMessageContent> content;
     private String name;
     private List<MistralAiToolCall> toolCalls;
     private String toolCallId;
@@ -36,8 +36,18 @@ public class MistralAiChatMessage {
         return this.role;
     }
 
-    public String getContent() {
+    public List<MistralAiMessageContent> getContent() {
         return this.content;
+    }
+
+    public String asText() {
+        if (content == null || content.isEmpty()) {
+            return "";
+        }
+        if (content.size() > 1) {
+            throw new UnsupportedOperationException("Cannot convert message with multiple content parts to text");
+        }
+        return content.get(0).asText();
     }
 
     public String getName() {
@@ -100,48 +110,41 @@ public class MistralAiChatMessage {
     public static class MistralAiChatMessageBuilder {
 
         private MistralAiRole role;
-        private String content;
+        private List<MistralAiMessageContent> content;
         private String name;
         private String toolCallId;
         private List<MistralAiToolCall> toolCalls;
 
         private MistralAiChatMessageBuilder() {}
 
-        /**
-         * @return {@code this}.
-         */
         public MistralAiChatMessageBuilder role(MistralAiRole role) {
             this.role = role;
             return this;
         }
 
-        /**
-         * @return {@code this}.
-         */
         public MistralAiChatMessageBuilder content(String content) {
+            return content(List.of(new MistralAiTextContent(content)));
+        }
+
+        public MistralAiChatMessageBuilder content(MistralAiMessageContent... content) {
+            return content(List.of(content));
+        }
+
+        public MistralAiChatMessageBuilder content(List<MistralAiMessageContent> content) {
             this.content = content;
             return this;
         }
 
-        /**
-         * @return {@code this}.
-         */
         public MistralAiChatMessageBuilder name(String name) {
             this.name = name;
             return this;
         }
 
-        /**
-         * @return {@code this}.
-         */
         public MistralAiChatMessageBuilder toolCallId(String toolCallId) {
             this.toolCallId = toolCallId;
             return this;
         }
 
-        /**
-         * @return {@code this}.
-         */
         public MistralAiChatMessageBuilder toolCalls(List<MistralAiToolCall> toolCalls) {
             this.toolCalls = toolCalls;
             return this;

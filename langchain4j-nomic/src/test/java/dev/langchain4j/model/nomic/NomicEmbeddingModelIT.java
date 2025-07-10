@@ -49,7 +49,7 @@ class NomicEmbeddingModelIT {
                 .maxSegmentsPerBatch(1)
                 .timeout(ofSeconds(10))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");

@@ -3,7 +3,6 @@ package dev.langchain4j.model.anthropic;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static java.util.Collections.singletonList;
 
-import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -45,6 +44,6 @@ class AnthropicChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return AnthropicHttpException.class;
+        return dev.langchain4j.exception.AuthenticationException.class;
     }
 }

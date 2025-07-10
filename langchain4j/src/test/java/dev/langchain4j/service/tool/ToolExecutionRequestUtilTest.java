@@ -52,6 +52,62 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
     }
 
     @Test
+    void argumentsAsMap_should_parse_arguments_containing_escaped_double_quotes_1() {
+
+        // given JSON containing escaped double quotes (\")
+        String arguments = """
+                {"arg0":"SELECT COUNT(A) FROM \\"Samples\\".\\"samples.example.com\\".\\"zip_lookup.csv\\""}
+                """;
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments(arguments)
+                .build();
+
+        // when
+        Map<String, Object> argumentsMap = ToolExecutionRequestUtil.argumentsAsMap(request.arguments());
+
+        // then result does not contain escaping
+        assertThat(argumentsMap).containsEntry("arg0", """
+                SELECT COUNT(A) FROM "Samples"."samples.example.com"."zip_lookup.csv"
+                """.trim());
+    }
+
+    @Test
+    void argumentsAsMap_should_parse_arguments_containing_escaped_double_quotes_2() {
+
+        // given JSON containing escaped double quotes (\")
+        String arguments = """
+                {
+                    "conditionalTaskCreation":{
+                        "firstNameInput":"${$context.personal_info.first_name}",
+                        "lastNameInput":"${$context.personal_info.last_name}",
+                        "conditionInput":"${($context.personal_info.first_name | startswith(\\"d\\"))}"
+                    }
+                }
+                """;
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments(arguments)
+                .build();
+
+        // when
+        Map<String, Object> argumentsMap = ToolExecutionRequestUtil.argumentsAsMap(request.arguments());
+
+        // then result does not contain escaping
+        assertThat(argumentsMap).containsEntry("conditionalTaskCreation", Map.of(
+                "firstNameInput", "${$context.personal_info.first_name}",
+                "lastNameInput", "${$context.personal_info.last_name}",
+                "conditionInput", """
+                        ${($context.personal_info.first_name | startswith("d"))}
+                        """.trim()
+        ));
+    }
+
+    @Test
     void argument_leading_trailing_and_escaped_quotes() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("id")

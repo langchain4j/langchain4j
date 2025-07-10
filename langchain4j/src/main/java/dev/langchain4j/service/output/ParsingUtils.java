@@ -44,7 +44,7 @@ class ParsingUtils {
                                                                 Supplier<CT> emptyCollectionSupplier,
                                                                 String type) {
         if (text == null) {
-            throw ParsingUtils.outputParsingException(text, type, null);
+            throw outputParsingException(text, type, null);
         }
 
         if (isJson(text)) {
