@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openaiofficial.github;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import java.util.ArrayList;
 import java.util.List;

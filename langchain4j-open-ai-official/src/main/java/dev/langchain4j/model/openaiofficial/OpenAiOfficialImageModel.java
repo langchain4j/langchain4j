@@ -21,7 +21,6 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
     private final OpenAIClient client;
     private final String modelName;
-    private InternalOpenAiOfficialHelper.ModelHost modelHost;
     private final ImageGenerateParams.Size size;
     private final ImageGenerateParams.Quality quality;
     private final ImageGenerateParams.Style style;
@@ -31,7 +30,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
     public OpenAiOfficialImageModel(Builder builder) {
 
-        this.modelHost = detectModelHost(
+        final var modelHost = detectModelHost(
                 builder.isAzure,
                 builder.isGitHubModels,
                 builder.baseUrl,
@@ -45,7 +44,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
                 builder.azureDeploymentName,
                 builder.azureOpenAIServiceVersion,
                 builder.organizationId,
-                this.modelHost,
+                modelHost,
                 builder.openAIClient,
                 builder.modelName,
                 builder.timeout,
