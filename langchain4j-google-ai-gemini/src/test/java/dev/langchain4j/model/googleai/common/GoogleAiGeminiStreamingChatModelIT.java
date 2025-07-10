@@ -81,7 +81,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsPartialToolStreaming() {
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
         return false;
     }
 

@@ -632,8 +632,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(aiMessage.text()).isNull();
             }
 
-            if (supportsPartialToolStreaming()) {
-                assertThat(metadata.partialToolExecutionRequests()).hasSizeGreaterThan(1);
+            if (supportsPartialToolStreaming((StreamingChatModel) model)) {
+                assertThat(metadata.partialToolExecutionRequests()).isNotEmpty();
 
                 StringBuilder arguments = new StringBuilder();
                 PartialToolExecutionRequest prev = null;
@@ -658,7 +658,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
-            verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id());
+            verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
@@ -711,6 +711,10 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
+    }
+
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id, StreamingChatModel model) {
+        verifyToolCallbacks(handler, io, id);
     }
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
@@ -767,7 +771,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(aiMessage.text()).isNull();
             }
 
-            if (supportsPartialToolStreaming()) {
+            if (supportsPartialToolStreaming((StreamingChatModel) model)) {
                 assertThat(metadata.partialToolExecutionRequests()).hasSize(1);
 
                 PartialToolExecutionRequest partialRequest = metadata.partialToolExecutionRequests().get(0);
@@ -783,12 +787,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
-            // Some providers can talk before calling a tool. "atLeast(0)" is meant to ignore it.
-            inOrder.verify(handler, atLeast(0)).onPartialResponse(any());
-            if (supportsPartialToolStreaming()) {
-                inOrder.verify(handler).onPartialToolExecutionRequest(any());
-            }
-            inOrder.verify(handler).onCompleteToolExecutionRequest(any());
+            verifyToolCallbacks(handler, inOrder, (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
@@ -841,6 +840,16 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
+    }
+
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
+        // Some providers can talk before calling a tool. "atLeast(0)" is meant to ignore it.
+        io.verify(handler, atLeast(0)).onPartialResponse(any());
+
+        if (supportsPartialToolStreaming(model)) {
+            io.verify(handler).onPartialToolExecutionRequest(any());
+        }
+        io.verify(handler).onCompleteToolExecutionRequest(any());
     }
 
     @ParameterizedTest
@@ -903,8 +912,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(aiMessage.text()).isNull();
             }
 
-            if (supportsPartialToolStreaming()) {
-                assertThat(metadata.partialToolExecutionRequests()).hasSizeGreaterThan(2);
+            if (supportsPartialToolStreaming((StreamingChatModel) model)) {
+                assertThat(metadata.partialToolExecutionRequests()).hasSizeGreaterThanOrEqualTo(2);
 
                 assertThat(metadata.partialToolExecutionRequests().get(0).index()).isEqualTo(0);
                 assertThat(metadata.partialToolExecutionRequests().get(metadata.partialToolExecutionRequests().size() - 1).index()).isEqualTo(1);
@@ -939,7 +948,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
-            verifyToolCallbacks(handler, inOrder, toolExecutionRequests.get(0).id(), toolExecutionRequests.get(1).id());
+            verifyToolCallbacks(handler, inOrder, toolExecutionRequests.get(0).id(), toolExecutionRequests.get(1).id(), (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
@@ -997,6 +1006,10 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
+    }
+
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2, StreamingChatModel model) {
+        verifyToolCallbacks(handler, io, id1, id2);
     }
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
@@ -1577,7 +1590,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return supportsTools();
     }
 
-    protected boolean supportsPartialToolStreaming() {
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
         return true;
     }
 

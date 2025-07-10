@@ -216,6 +216,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
             @Override
             public void onPartialResponse(String partialResponse) {
+                System.out.println("OLOLO!!! TEXT PARTIAL " + partialResponse); // TODO
                 concatenatedPartialResponsesBuilder.append(partialResponse);
                 timesOnPartialResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());

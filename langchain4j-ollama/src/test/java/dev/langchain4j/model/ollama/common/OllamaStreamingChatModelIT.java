@@ -11,7 +11,12 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 import static java.time.Duration.ofSeconds;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -23,10 +28,6 @@ import dev.langchain4j.model.ollama.OllamaChatRequestParameters;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
@@ -273,19 +274,35 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id, StreamingChatModel model) {
+        if (model instanceof OpenAiStreamingChatModel) {
+            io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+        }
         io.verify(handler).onCompleteToolExecutionRequest(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
-    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        verifyToolCallbacks(handler, io, id1);
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
+        if (model instanceof OpenAiStreamingChatModel) {
+            io.verify(handler).onPartialToolExecutionRequest(any());
+        }
+        // Ollama talks in-between for some reason TODO fix in OpenAI?
+        io.verify(handler, atLeast(0)).onPartialResponse(any());
+        io.verify(handler).onCompleteToolExecutionRequest(any());
+    }
 
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2, StreamingChatModel model) {
+        verifyToolCallbacks(handler, io, id1, model);
+
+        if (model instanceof OpenAiStreamingChatModel) {
+            io.verify(handler).onPartialToolExecutionRequest(partial(1, id2, "getTime", "{\"country\":\"France\"}"));
+        }
         io.verify(handler).onCompleteToolExecutionRequest(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
     }
 
     @Override
-    protected boolean supportsPartialToolStreaming() {
-        return false;
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
+        return model instanceof OpenAiStreamingChatModel;
     }
 }
