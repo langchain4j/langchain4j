@@ -101,16 +101,19 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Bedrock can talk before calling a tool. "atLeast(0)" is meant to ignore it.
         io.verify(handler, atLeast(0)).onPartialResponse(any());
 
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "{\"city\":\"Munich\"}"));
-        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
 
-        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "{\"country\":\"France\"}"));
-        io.verify(handler).onCompleteToolExecutionRequest(1, tool(id2, "getTime", "{\"country\":\"France\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
+    }
+
+    @Override
+    protected boolean supportsPartialToolStreaming() {
+        return false;
     }
 
     // Nova models support StopSequence but have an incoherent behavior, it includes the stopSequence in the

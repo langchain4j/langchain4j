@@ -7,6 +7,7 @@ import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -89,14 +90,10 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
                 toolExecutionRequests = toToolExecutionRequests(toolCalls);
 
                 for (int i = 0; i < toolExecutionRequests.size(); i++) {
-                    ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(i);
+                    CompleteToolExecutionRequest completeToolExecutionRequest =
+                            new CompleteToolExecutionRequest(i, toolExecutionRequests.get(i));
                     try {
-                        handler.onPartialToolExecutionRequest(i, toolExecutionRequest);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
-                    try {
-                        handler.onCompleteToolExecutionRequest(i, toolExecutionRequest);
+                        handler.onCompleteToolExecutionRequest(completeToolExecutionRequest);
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
                     }

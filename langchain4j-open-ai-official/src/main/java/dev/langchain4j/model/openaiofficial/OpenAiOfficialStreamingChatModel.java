@@ -14,6 +14,7 @@ import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletionChunk;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
+import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -130,7 +131,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             } else {
                                 if (toolBuilder.hasToolExecutionRequests()) {
                                     try {
-                                        handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                                        handler.onCompleteToolExecutionRequest(toolBuilder.build());
                                     } catch (Exception e) {
                                         withLoggingExceptions(() -> handler.onError(e));
                                     }
@@ -193,7 +194,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         int index = (int) toolCall.index();
                         if (toolBuilder.index() != index) {
                             try {
-                                handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                                handler.onCompleteToolExecutionRequest(toolBuilder.build());
                             } catch (Exception e) {
                                 withLoggingExceptions(() -> handler.onError(e));
                             }
@@ -207,13 +208,14 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         if (isNotNullOrEmpty(partialArguments)) {
                             toolBuilder.appendArguments(partialArguments);
 
-                            ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
-                                    .id(id)
-                                    .name(name)
-                                    .arguments(partialArguments)
+                            PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
+                                    .index(index)
+                                    .toolId(id)
+                                    .toolName(name)
+                                    .partialToolArguments(partialArguments)
                                     .build();
                             try {
-                                handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
+                                handler.onPartialToolExecutionRequest(partialToolRequest);
                             } catch (Exception e) {
                                 withLoggingExceptions(() -> handler.onError(e));
                             }

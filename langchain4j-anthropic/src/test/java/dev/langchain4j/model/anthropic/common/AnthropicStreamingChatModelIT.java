@@ -4,7 +4,6 @@ import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_
 import static java.lang.System.getenv;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
@@ -101,21 +100,27 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Anthropic can talk before calling a tool. "atLeast(0)" is meant to ignore it.
         io.verify(handler, atLeast(0)).onPartialResponse(any());
 
-        io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(eq(0), argThat(tool ->
+        io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(argThat(request ->
                 // Anthropic does not output the same tokens consistently, so we can't easilty assert them.
-                tool.id().equals(id) && tool.name().equals("getWeather") && !tool.arguments().isBlank()
+                request.index() == 0
+                        && request.toolId().equals(id)
+                        && request.toolName().equals("getWeather")
+                        && !request.partialToolArguments().isBlank()
         ));
-        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id, "getWeather", "{\"city\": \"Munich\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
 
-        io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(eq(1), argThat(tool ->
+        io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(argThat(request ->
                 // Anthropic does not output the same tokens consistently, so we can't easilty assert them.
-                tool.id().equals(id2) && tool.name().equals("getTime") && !tool.arguments().isBlank()
+                request.index() == 1
+                        && request.toolId().equals(id2)
+                        && request.toolName().equals("getTime")
+                        && !request.partialToolArguments().isBlank()
         ));
-        io.verify(handler).onCompleteToolExecutionRequest(1, tool(id2, "getTime", "{\"country\": \"France\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 }

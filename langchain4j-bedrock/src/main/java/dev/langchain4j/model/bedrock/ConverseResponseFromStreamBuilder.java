@@ -36,7 +36,6 @@ class ConverseResponseFromStreamBuilder {
 
     public ConverseResponseFromStreamBuilder append(ContentBlockStartEvent contentBlockStartEvent) {
         if (contentBlockStartEvent.start().type().equals(ContentBlockStart.Type.TOOL_USE)) {
-            System.out.println("OLOLO " + contentBlockStartEvent);
             toolUseBlockBuilder = ToolUseBlock.builder()
                     .toolUseId(contentBlockStartEvent.start().toolUse().toolUseId())
                     .name(contentBlockStartEvent.start().toolUse().name());

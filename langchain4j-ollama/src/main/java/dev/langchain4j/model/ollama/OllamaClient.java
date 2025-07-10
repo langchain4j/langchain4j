@@ -17,7 +17,6 @@ import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 import static java.lang.Boolean.TRUE;
 import static java.time.Duration.ofSeconds;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -179,28 +178,18 @@ class OllamaClient {
                         int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
                         if (toolBuilder.index() != index) {
                             try {
-                                handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                                handler.onCompleteToolExecutionRequest(toolBuilder.build());
                             } catch (Exception e) {
                                 withLoggingExceptions(() -> handler.onError(e));
                             }
                             toolBuilder.updateIndex(index);
                         }
 
-                        String name = toolBuilder.updateName(toolCall.getFunction().getName());
+                        toolBuilder.updateName(toolCall.getFunction().getName());
 
                         String partialArguments = toJsonWithoutIdent(toolCall.getFunction().getArguments());
                         if (isNotNullOrEmpty(partialArguments)) {
                             toolBuilder.appendArguments(partialArguments);
-
-                            ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
-                                    .name(name)
-                                    .arguments(partialArguments)
-                                    .build();
-                            try {
-                                handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
-                            } catch (Exception e) {
-                                withLoggingExceptions(() -> handler.onError(e));
-                            }
                         }
                     }
                 }
@@ -209,7 +198,7 @@ class OllamaClient {
 
                     if (toolBuilder.hasToolExecutionRequests()) {
                         try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                            handler.onCompleteToolExecutionRequest(toolBuilder.build());
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }

@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.ToolExecutionRequestBuilder;
@@ -143,7 +143,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
                     if (toolBuilder.hasToolExecutionRequests()) {
                         try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                            handler.onCompleteToolExecutionRequest(toolBuilder.build());
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }
@@ -201,7 +201,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 int index = toolCall.index();
                 if (toolBuilder.index() != index) {
                     try {
-                        handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                        handler.onCompleteToolExecutionRequest(toolBuilder.build());
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
                     }
@@ -215,13 +215,14 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 if (isNotNullOrEmpty(partialArguments)) {
                     toolBuilder.appendArguments(partialArguments);
 
-                    ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
-                            .id(id)
-                            .name(name)
-                            .arguments(partialArguments)
+                    PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
+                            .index(index)
+                            .toolId(id)
+                            .toolName(name)
+                            .partialToolArguments(partialArguments)
                             .build();
                     try {
-                        handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
+                        handler.onPartialToolExecutionRequest(partialToolRequest);
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
                     }

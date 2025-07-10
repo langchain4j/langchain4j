@@ -91,29 +91,29 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "{\""));
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "city"));
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "\":\""));
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "Mun"));
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "ich"));
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id, "getWeather", "\"}"));
-        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "{\""));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "city"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "\":\""));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "Mun"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "ich"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "{\"ci"));
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "ty\": "));
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "\"Munic"));
-        io.verify(handler).onPartialToolExecutionRequest(0, tool(id1, "getWeather", "h\"}"));
-        io.verify(handler).onCompleteToolExecutionRequest(0, tool(id1, "getWeather", "{\"city\": \"Munich\"}"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id1, "getWeather", "{\"ci"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id1, "getWeather", "ty\": "));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id1, "getWeather", "\"Munic"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(0, id1, "getWeather", "h\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(complete(0, id1, "getWeather", "{\"city\": \"Munich\"}"));
 
-        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "{\"co"));
-        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "untry"));
-        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "\": \"Fr"));
-        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "ance"));
-        io.verify(handler).onPartialToolExecutionRequest(1, tool(id2, "getTime", "\"}"));
-        io.verify(handler).onCompleteToolExecutionRequest(1, tool(id2, "getTime", "{\"country\": \"France\"}"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(1, id2, "getTime", "{\"co"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(1, id2, "getTime", "untry"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(1, id2, "getTime", "\": \"Fr"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(1, id2, "getTime", "ance"));
+        io.verify(handler).onPartialToolExecutionRequest(partial(1, id2, "getTime", "\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 
     // TODO OpenAI-specific tests

@@ -6,7 +6,6 @@ import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.internal.ToolExecutionRequestBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -79,22 +78,9 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                                     withLoggingExceptions(() -> handler.onError(e));
                                 }
                             } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
-                                System.out.println("OLOLO " + chunk); // TODO
-
                                 String input = chunk.delta().toolUse().input();
                                 if (isNotNullOrEmpty(input)) {
                                     toolBuilder.appendArguments(input);
-
-                                    ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
-                                            .id(toolBuilder.id())
-                                            .name(toolBuilder.name())
-                                            .arguments(input)
-                                            .build();
-                                    try {
-                                        handler.onPartialToolExecutionRequest(toolBuilder.index(), partialToolExecutionRequest);
-                                    } catch (Exception e) {
-                                        withLoggingExceptions(() -> handler.onError(e));
-                                    }
                                 }
                             }
                             responseBuilder.append(chunk);
@@ -102,7 +88,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         .onContentBlockStop(event -> {
                             if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
                                 try {
-                                    handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
+                                    handler.onCompleteToolExecutionRequest(toolBuilder.build());
                                 } catch (Exception e) {
                                     withLoggingExceptions(() -> handler.onError(e));
                                 }

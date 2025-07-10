@@ -14,6 +14,8 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
+import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -623,44 +625,47 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
 
         if (model instanceof StreamingChatModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+            StreamingMetadata metadata = chatResponseAndStreamingMetadata.streamingMetadata();
 
-            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
-            if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
+            assertThat(metadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            if (metadata.timesOnPartialResponseWasCalled() == 0) {
                 assertThat(aiMessage.text()).isNull();
             }
 
-            assertThat(streamingMetadata.partialToolExecutionRequests()).hasSizeGreaterThanOrEqualTo(1);
-            StringBuilder arguments = new StringBuilder();
-            IndexAndToolRequest prev = null;
-            for (IndexAndToolRequest curr : streamingMetadata.partialToolExecutionRequests()) {
-                assertThat(curr.index()).isEqualTo(0);
-                assertThat(curr.toolRequest().id()).isEqualTo(toolExecutionRequest.id());
-                assertThat(curr.toolRequest().name()).isEqualTo(toolExecutionRequest.name());
-                assertThat(curr.toolRequest().arguments()).isNotBlank();
-                arguments.append(curr.toolRequest().arguments());
-                if (prev != null) {
-                    assertThat(curr.toolRequest().id()).isEqualTo(prev.toolRequest().id());
-                    assertThat(curr.toolRequest().name()).isEqualTo(prev.toolRequest().name());
+            if (supportsPartialToolStreaming()) {
+                assertThat(metadata.partialToolExecutionRequests()).hasSizeGreaterThan(1);
+
+                StringBuilder arguments = new StringBuilder();
+                PartialToolExecutionRequest prev = null;
+                for (PartialToolExecutionRequest curr : metadata.partialToolExecutionRequests()) {
+                    assertThat(curr.index()).isEqualTo(0);
+                    assertThat(curr.toolId()).isEqualTo(toolExecutionRequest.id());
+                    assertThat(curr.toolName()).isEqualTo(toolExecutionRequest.name());
+                    assertThat(curr.partialToolArguments()).isNotBlank();
+                    arguments.append(curr.partialToolArguments());
+                    if (prev != null) {
+                        assertThat(curr.toolId()).isEqualTo(prev.toolId());
+                        assertThat(curr.toolName()).isEqualTo(prev.toolName());
+                    }
+                    prev = curr;
                 }
-                prev = curr;
+                assertThat(arguments.toString()).isEqualTo(toolExecutionRequest.arguments());
             }
-            assertThat(arguments.toString()).isEqualTo(toolExecutionRequest.arguments());
 
-            assertThat(streamingMetadata.completeToolExecutionRequests()).hasSize(1);
-            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).index()).isEqualTo(0);
-            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequest);
+            assertThat(metadata.completeToolExecutionRequests()).hasSize(1);
+            assertThat(metadata.completeToolExecutionRequests().get(0).index()).isEqualTo(0);
+            assertThat(metadata.completeToolExecutionRequests().get(0).request()).isEqualTo(toolExecutionRequest);
 
-            StreamingChatResponseHandler handler = streamingMetadata.handler();
+            StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id());
             inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
-            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
-                Set<Thread> threads = streamingMetadata.threads();
+                Set<Thread> threads = metadata.threads();
                 assertThat(threads).hasSize(1);
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
@@ -755,34 +760,42 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
 
         if (model instanceof StreamingChatModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+            StreamingMetadata metadata = chatResponseAndStreamingMetadata.streamingMetadata();
 
-            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
-            if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
+            assertThat(metadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            if (metadata.timesOnPartialResponseWasCalled() == 0) {
                 assertThat(aiMessage.text()).isNull();
             }
 
-            assertThat(streamingMetadata.partialToolExecutionRequests()).hasSize(1);
-            assertThat(streamingMetadata.partialToolExecutionRequests().get(0).index()).isEqualTo(0);
-            assertThat(streamingMetadata.partialToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequest);
+            if (supportsPartialToolStreaming()) {
+                assertThat(metadata.partialToolExecutionRequests()).hasSize(1);
 
-            assertThat(streamingMetadata.completeToolExecutionRequests()).hasSize(1);
-            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).index()).isEqualTo(0);
-            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequest);
+                PartialToolExecutionRequest partialRequest = metadata.partialToolExecutionRequests().get(0);
+                assertThat(partialRequest.index()).isEqualTo(0);
+                assertThat(partialRequest.toolId()).isEqualTo(toolExecutionRequest.id());
+                assertThat(partialRequest.toolName()).isEqualTo(toolExecutionRequest.name());
+                assertThat(partialRequest.partialToolArguments()).isEqualTo(toolExecutionRequest.arguments());
+            }
 
-            StreamingChatResponseHandler handler = streamingMetadata.handler();
+            assertThat(metadata.completeToolExecutionRequests()).hasSize(1);
+            assertThat(metadata.completeToolExecutionRequests().get(0).index()).isEqualTo(0);
+            assertThat(metadata.completeToolExecutionRequests().get(0).request()).isEqualTo(toolExecutionRequest);
+
+            StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
             // Some providers can talk before calling a tool. "atLeast(0)" is meant to ignore it.
             inOrder.verify(handler, atLeast(0)).onPartialResponse(any());
-            inOrder.verify(handler).onPartialToolExecutionRequest(0, toolExecutionRequest);
-            inOrder.verify(handler).onCompleteToolExecutionRequest(0, toolExecutionRequest);
+            if (supportsPartialToolStreaming()) {
+                inOrder.verify(handler).onPartialToolExecutionRequest(any());
+            }
+            inOrder.verify(handler).onCompleteToolExecutionRequest(any());
             inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
-            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
-                Set<Thread> threads = streamingMetadata.threads();
+                Set<Thread> threads = metadata.threads();
                 assertThat(threads).hasSize(1);
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
@@ -883,53 +896,57 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
 
         if (model instanceof StreamingChatModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+            StreamingMetadata metadata = chatResponseAndStreamingMetadata.streamingMetadata();
 
-            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
-            if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
+            assertThat(metadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            if (metadata.timesOnPartialResponseWasCalled() == 0) {
                 assertThat(aiMessage.text()).isNull();
             }
 
-            assertThat(streamingMetadata.partialToolExecutionRequests().size()).isGreaterThanOrEqualTo(2);
-            assertThat(streamingMetadata.partialToolExecutionRequests().get(0).index()).isEqualTo(0);
-            assertThat(streamingMetadata.partialToolExecutionRequests().get(streamingMetadata.partialToolExecutionRequests().size() - 1).index()).isEqualTo(1);
-            List<List<ToolExecutionRequest>> partialToolPartitions = partitionByIndex(streamingMetadata.partialToolExecutionRequests());
-            assertThat(partialToolPartitions).hasSize(2);
+            if (supportsPartialToolStreaming()) {
+                assertThat(metadata.partialToolExecutionRequests()).hasSizeGreaterThan(2);
 
-            for (int i = 0; i < partialToolPartitions.size(); i++) {
-                List<ToolExecutionRequest> toolPartition = partialToolPartitions.get(i);
-                StringBuilder arguments = new StringBuilder();
-                ToolExecutionRequest prev = null;
-                for (ToolExecutionRequest curr : toolPartition) {
-                    assertThat(curr.id()).isEqualTo(toolExecutionRequests.get(i).id());
-                    assertThat(curr.name()).isEqualTo(toolExecutionRequests.get(i).name());
-                    assertThat(curr.arguments()).isNotBlank();
-                    arguments.append(curr.arguments());
-                    if (prev != null) {
-                        assertThat(curr.id()).isEqualTo(prev.id());
-                        assertThat(curr.name()).isEqualTo(prev.name());
+                assertThat(metadata.partialToolExecutionRequests().get(0).index()).isEqualTo(0);
+                assertThat(metadata.partialToolExecutionRequests().get(metadata.partialToolExecutionRequests().size() - 1).index()).isEqualTo(1);
+
+                List<List<PartialToolExecutionRequest>> partialToolPartitions = partitionByIndex(metadata.partialToolExecutionRequests());
+                assertThat(partialToolPartitions).hasSize(2);
+
+                for (int i = 0; i < partialToolPartitions.size(); i++) {
+                    List<PartialToolExecutionRequest> toolPartition = partialToolPartitions.get(i);
+                    StringBuilder arguments = new StringBuilder();
+                    PartialToolExecutionRequest prev = null;
+                    for (PartialToolExecutionRequest curr : toolPartition) {
+                        assertThat(curr.toolId()).isEqualTo(toolExecutionRequests.get(i).id());
+                        assertThat(curr.toolName()).isEqualTo(toolExecutionRequests.get(i).name());
+                        assertThat(curr.partialToolArguments()).isNotBlank();
+                        arguments.append(curr.partialToolArguments());
+                        if (prev != null) {
+                            assertThat(curr.toolId()).isEqualTo(prev.toolId());
+                            assertThat(curr.toolName()).isEqualTo(prev.toolName());
+                        }
+                        prev = curr;
                     }
-                    prev = curr;
+                    assertThat(arguments.toString()).isEqualTo(toolExecutionRequests.get(i).arguments());
                 }
-                assertThat(arguments.toString()).isEqualTo(toolExecutionRequests.get(i).arguments());
             }
 
-            assertThat(streamingMetadata.completeToolExecutionRequests()).hasSize(2);
-            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).index()).isEqualTo(0);
-            assertThat(streamingMetadata.completeToolExecutionRequests().get(0).toolRequest()).isEqualTo(toolExecutionRequests.get(0));
-            assertThat(streamingMetadata.completeToolExecutionRequests().get(1).index()).isEqualTo(1);
-            assertThat(streamingMetadata.completeToolExecutionRequests().get(1).toolRequest()).isEqualTo(toolExecutionRequests.get(1));
+            assertThat(metadata.completeToolExecutionRequests()).hasSize(2);
+            assertThat(metadata.completeToolExecutionRequests().get(0).index()).isEqualTo(0);
+            assertThat(metadata.completeToolExecutionRequests().get(0).request()).isEqualTo(toolExecutionRequests.get(0));
+            assertThat(metadata.completeToolExecutionRequests().get(1).index()).isEqualTo(1);
+            assertThat(metadata.completeToolExecutionRequests().get(1).request()).isEqualTo(toolExecutionRequests.get(1));
 
-            StreamingChatResponseHandler handler = streamingMetadata.handler();
+            StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, toolExecutionRequests.get(0).id(), toolExecutionRequests.get(1).id());
             inOrder.verify(handler).onCompleteResponse(chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
-            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
-                Set<Thread> threads = streamingMetadata.threads();
+                Set<Thread> threads = metadata.threads();
                 assertThat(threads).hasSize(1);
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
@@ -986,28 +1003,38 @@ public abstract class AbstractBaseChatModelIT<M> {
         fail("please override this method");
     }
 
-    protected static ToolExecutionRequest tool(String id, String name, String args) {
-        return ToolExecutionRequest.builder()
+    protected static PartialToolExecutionRequest partial(int index, String id, String name, String args) {
+        return PartialToolExecutionRequest.builder()
+                .index(index)
+                .toolId(id)
+                .toolName(name)
+                .partialToolArguments(args)
+                .build();
+    }
+
+    protected static CompleteToolExecutionRequest complete(int index, String id, String name, String args) {
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                 .id(id)
                 .name(name)
                 .arguments(args)
                 .build();
+        return new CompleteToolExecutionRequest(index, toolExecutionRequest);
     }
 
-    private static List<List<ToolExecutionRequest>> partitionByIndex(List<IndexAndToolRequest> toolExecutionRequests) {
-        List<List<ToolExecutionRequest>> result = new ArrayList<>();
-        List<ToolExecutionRequest> currentPartition = new ArrayList<>();
+    private static List<List<PartialToolExecutionRequest>> partitionByIndex(List<PartialToolExecutionRequest> partialRequests) {
+        List<List<PartialToolExecutionRequest>> result = new ArrayList<>();
+        List<PartialToolExecutionRequest> currentPartition = new ArrayList<>();
         int currentIndex = -1;
 
-        for (IndexAndToolRequest request : toolExecutionRequests) {
-            if (currentIndex == -1 || request.index() != currentIndex) {
+        for (PartialToolExecutionRequest partialRequest : partialRequests) {
+            if (currentIndex == -1 || partialRequest.index() != currentIndex) {
                 if (!currentPartition.isEmpty()) {
                     result.add(currentPartition);
                     currentPartition = new ArrayList<>();
                 }
-                currentIndex = request.index();
+                currentIndex = partialRequest.index();
             }
-            currentPartition.add(request.toolRequest());
+            currentPartition.add(partialRequest);
         }
 
         if (!currentPartition.isEmpty()) {
@@ -1548,6 +1575,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected boolean supportsParallelTools() { // TODO remove?
         return supportsTools();
+    }
+
+    protected boolean supportsPartialToolStreaming() {
+        return true;
     }
 
     protected boolean supportsToolChoiceRequired() {

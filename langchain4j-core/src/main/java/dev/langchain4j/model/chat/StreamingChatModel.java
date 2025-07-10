@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
+import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -51,13 +52,13 @@ public interface StreamingChatModel {
             }
 
             @Override
-            public void onPartialToolExecutionRequest(int index, ToolExecutionRequest partialToolExecutionRequest) {
-                handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
+            public void onPartialToolExecutionRequest(PartialToolExecutionRequest partialToolExecutionRequest) {
+                handler.onPartialToolExecutionRequest(partialToolExecutionRequest);
             }
 
             @Override
-            public void onCompleteToolExecutionRequest(int index, ToolExecutionRequest completeToolExecutionRequest) {
-                handler.onCompleteToolExecutionRequest(index, completeToolExecutionRequest);
+            public void onCompleteToolExecutionRequest(CompleteToolExecutionRequest completeToolExecutionRequest) {
+                handler.onCompleteToolExecutionRequest(completeToolExecutionRequest);
             }
 
             @Override

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 @Internal
@@ -69,7 +70,7 @@ public class ToolExecutionRequestBuilder {
         }
     }
 
-    public ToolExecutionRequest build() {
+    public CompleteToolExecutionRequest build() {
         // TODO store it till complete response?
         String arguments = this.arguments.toString();
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
@@ -79,7 +80,7 @@ public class ToolExecutionRequestBuilder {
                 .build();
         allToolExecutionRequests.add(toolExecutionRequest); // TODO method name, rethink
         reset();
-        return toolExecutionRequest;
+        return new CompleteToolExecutionRequest(this.index.get(), toolExecutionRequest);
     }
 
     private void reset() {

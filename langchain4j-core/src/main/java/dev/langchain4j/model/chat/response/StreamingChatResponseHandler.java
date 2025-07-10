@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat.response;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
+import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 
@@ -29,7 +30,7 @@ public interface StreamingChatResponseHandler {
      * @param index TODO
      * @param partialToolExecutionRequest TODO
      */
-    default void onPartialToolExecutionRequest(int index, ToolExecutionRequest partialToolExecutionRequest) {
+    default void onPartialToolExecutionRequest(PartialToolExecutionRequest partialToolExecutionRequest) {
     }
 
     /**
@@ -39,7 +40,7 @@ public interface StreamingChatResponseHandler {
      * @param index TODO
      * @param completeToolExecutionRequest TODO
      */
-    default void onCompleteToolExecutionRequest(int index, ToolExecutionRequest completeToolExecutionRequest) {
+    default void onCompleteToolExecutionRequest(CompleteToolExecutionRequest completeToolExecutionRequest) {
     }
 
     /**

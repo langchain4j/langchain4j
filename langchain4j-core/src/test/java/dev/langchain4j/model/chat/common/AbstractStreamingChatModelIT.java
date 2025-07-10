@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat.common;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
+import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -205,8 +206,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
-        Queue<IndexAndToolRequest> partialToolExecutionRequests = new ConcurrentLinkedQueue<>();
-        Queue<IndexAndToolRequest> completeToolExecutionRequests = new ConcurrentLinkedQueue<>();
+        Queue<PartialToolExecutionRequest> partialToolExecutionRequests = new ConcurrentLinkedQueue<>();
+        Queue<CompleteToolExecutionRequest> completeToolExecutionRequests = new ConcurrentLinkedQueue<>();
         AtomicInteger timesOnPartialResponseWasCalled = new AtomicInteger();
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
@@ -221,16 +222,16 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onPartialToolExecutionRequest(int index, ToolExecutionRequest partialToolExecutionRequest) {
-                System.out.println("OLOLO!!! TOOL PARTIAL " + index + " - " + partialToolExecutionRequest); // TODO
-                partialToolExecutionRequests.add(new IndexAndToolRequest(index, partialToolExecutionRequest));
+            public void onPartialToolExecutionRequest(PartialToolExecutionRequest partialToolExecutionRequest) {
+                System.out.println("OLOLO!!! TOOL PARTIAL " + partialToolExecutionRequest); // TODO
+                partialToolExecutionRequests.add(partialToolExecutionRequest);
                 threads.add(Thread.currentThread());
             }
 
             @Override
-            public void onCompleteToolExecutionRequest(int index, ToolExecutionRequest completeToolExecutionRequest) {
-                System.out.println("OLOLO!!! TOOL COMPLETE " + index + " - " + completeToolExecutionRequest); // TODO
-                completeToolExecutionRequests.add(new IndexAndToolRequest(index, completeToolExecutionRequest));
+            public void onCompleteToolExecutionRequest(CompleteToolExecutionRequest completeToolExecutionRequest) {
+                System.out.println("OLOLO!!! TOOL COMPLETE " + completeToolExecutionRequest); // TODO
+                completeToolExecutionRequests.add(completeToolExecutionRequest);
                 threads.add(Thread.currentThread());
             }
 

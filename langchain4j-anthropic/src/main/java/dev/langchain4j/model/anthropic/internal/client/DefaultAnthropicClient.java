@@ -1,6 +1,8 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
+import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
@@ -210,12 +212,6 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         }
                     }
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
-                    System.out.print("OLOLO"); // TODO
-                    System.out.print(" id=" + data.contentBlock.id);
-                    System.out.print(" name=" + data.contentBlock.name);
-                    System.out.print(" input=" + data.contentBlock.input);
-                    System.out.println();
-
                     toolBuilder.updateIndex(toolBuilder.index() + 1);
                     toolBuilder.updateId(data.contentBlock.id);
                     toolBuilder.updateName(data.contentBlock.name);
@@ -240,16 +236,14 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
-                        System.out.println("OLOLO " + partialJson);
-
-                        ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
-                                .id(toolBuilder.id())
-                                .name(toolBuilder.name())
-                                .arguments(partialJson)
+                        PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
+                                .index(toolBuilder.index())
+                                .toolId(toolBuilder.id())
+                                .toolName(toolBuilder.name())
+                                .partialToolArguments(partialJson)
                                 .build();
-
                         try {
-                            handler.onPartialToolExecutionRequest(toolBuilder.index(), partialToolExecutionRequest);
+                            handler.onPartialToolExecutionRequest(partialToolRequest);
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }
@@ -264,16 +258,24 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     contents.add(currentContentBuilder().toString());
                     setCurrentContentBuilder(new StringBuffer());
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
-                    ToolExecutionRequest toolExecutionRequest = toolBuilder.build();
-                    if (toolExecutionRequest.arguments().equals("{}")) {
+                    CompleteToolExecutionRequest completeToolRequest = toolBuilder.build();
+
+                    if (completeToolRequest.request().arguments().equals("{}")) {
+                        PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
+                                .index(completeToolRequest.index())
+                                .toolId(completeToolRequest.request().id())
+                                .toolName(completeToolRequest.request().name())
+                                .partialToolArguments(completeToolRequest.request().arguments())
+                                .build();
                         try {
-                            handler.onPartialToolExecutionRequest(toolBuilder.index(), toolExecutionRequest);
+                            handler.onPartialToolExecutionRequest(partialToolRequest);
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }
                     }
+
                     try {
-                        handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolExecutionRequest);
+                        handler.onCompleteToolExecutionRequest(completeToolRequest);
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
                     }

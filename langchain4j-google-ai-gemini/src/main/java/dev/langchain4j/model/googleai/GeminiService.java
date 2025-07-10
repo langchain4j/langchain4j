@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -107,7 +108,7 @@ class GeminiService {
 
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
-            AtomicInteger currentToolIndex = new AtomicInteger(0);
+            AtomicInteger toolIndex = new AtomicInteger(0);
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -123,16 +124,11 @@ class GeminiService {
 
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
                     try {
-                        handler.onPartialToolExecutionRequest(currentToolIndex.get(), tool);
+                        handler.onCompleteToolExecutionRequest(new CompleteToolExecutionRequest(toolIndex.get(), tool));
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
                     }
-                    try {
-                        handler.onCompleteToolExecutionRequest(currentToolIndex.get(), tool);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
-                    currentToolIndex.incrementAndGet();
+                    toolIndex.incrementAndGet();
                 }
             }
 

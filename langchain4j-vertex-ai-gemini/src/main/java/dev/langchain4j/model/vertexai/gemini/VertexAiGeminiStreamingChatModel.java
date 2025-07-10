@@ -20,8 +20,8 @@ import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
-import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import com.google.common.annotations.VisibleForTesting;
+import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -424,12 +424,9 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                     for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
                         ToolExecutionRequest toolExecutionRequest = fromFunctionCall(functionCall);
                         try {
-                            handler.onPartialToolExecutionRequest(currentToolIndex.get(), toolExecutionRequest);
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
-                        try {
-                            handler.onCompleteToolExecutionRequest(currentToolIndex.get(), toolExecutionRequest);
+                            CompleteToolExecutionRequest completeToolExecutionRequest =
+                                    new CompleteToolExecutionRequest(currentToolIndex.get(), toolExecutionRequest);
+                            handler.onCompleteToolExecutionRequest(completeToolExecutionRequest);
                         } catch (Exception e) {
                             withLoggingExceptions(() -> handler.onError(e));
                         }
