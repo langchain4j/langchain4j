@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import java.util.Objects;
@@ -12,7 +13,7 @@ public class PartialToolExecutionRequest {
     private final int index;
     private final String toolId;
     private final String toolName;
-    private final String partialToolArguments;
+    private final String partialToolArguments; // TODO name
 
     public PartialToolExecutionRequest(Builder builder) {
         this.index = builder.index;
@@ -38,7 +39,7 @@ public class PartialToolExecutionRequest {
     }
 
     @Override
-    public boolean equals(final Object object) {
+    public boolean equals(Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
         PartialToolExecutionRequest that = (PartialToolExecutionRequest) object;
@@ -57,7 +58,7 @@ public class PartialToolExecutionRequest {
     public String toString() {
         return "PartialToolExecutionRequest{" +
                 "index=" + index +
-                ", toolId='" + toolId + '\'' +
+                ", toolId=" + quoted(toolId) +
                 ", toolName='" + toolName + '\'' +
                 ", partialToolArguments='" + partialToolArguments + '\'' +
                 '}';

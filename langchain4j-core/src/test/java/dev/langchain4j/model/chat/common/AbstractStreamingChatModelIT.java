@@ -216,7 +216,6 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                System.out.println("OLOLO!!! TEXT PARTIAL " + partialResponse); // TODO
                 concatenatedPartialResponsesBuilder.append(partialResponse);
                 timesOnPartialResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
@@ -224,21 +223,18 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
             @Override
             public void onPartialToolExecutionRequest(PartialToolExecutionRequest partialToolExecutionRequest) {
-                System.out.println("OLOLO!!! TOOL PARTIAL " + partialToolExecutionRequest); // TODO
                 partialToolExecutionRequests.add(partialToolExecutionRequest);
                 threads.add(Thread.currentThread());
             }
 
             @Override
             public void onCompleteToolExecutionRequest(CompleteToolExecutionRequest completeToolExecutionRequest) {
-                System.out.println("OLOLO!!! TOOL COMPLETE " + completeToolExecutionRequest); // TODO
                 completeToolExecutionRequests.add(completeToolExecutionRequest);
                 threads.add(Thread.currentThread());
             }
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                System.out.println("OLOLO!!! COMPLETE " + completeResponse); // TODO
                 futureChatResponse.complete(completeResponse);
                 timesOnCompleteResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());

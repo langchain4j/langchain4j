@@ -229,8 +229,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean assertToolId() {
-        return false; // Ollama does not return tool ID via Ollama API, only via OpenAI API
+    protected boolean assertToolId(StreamingChatModel model) {
+        return model instanceof OpenAiStreamingChatModel; // Ollama does not return tool ID via Ollama API
     }
 
     @Override
@@ -276,29 +276,29 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id, StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+            io.verify(handler).onPartialToolExecutionRequest(partial(0, null, "getWeather", "{\"city\":\"Munich\"}"));
         }
-        io.verify(handler).onCompleteToolExecutionRequest(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(complete(0, null, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolExecutionRequest(any());
+            io.verify(handler).onPartialToolExecutionRequest(partial(0, null, "get_current_time", "{}"));
         }
         // Ollama talks in-between for some reason TODO fix in OpenAI?
         io.verify(handler, atLeast(0)).onPartialResponse(any());
-        io.verify(handler).onCompleteToolExecutionRequest(any());
+        io.verify(handler).onCompleteToolExecutionRequest(complete(0, null, "get_current_time", "{}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2, StreamingChatModel model) {
-        verifyToolCallbacks(handler, io, id1, model);
+        verifyToolCallbacks(handler, io, null, model);
 
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolExecutionRequest(partial(1, id2, "getTime", "{\"country\":\"France\"}"));
+            io.verify(handler).onPartialToolExecutionRequest(partial(1, null, "getTime", "{\"country\":\"France\"}"));
         }
-        io.verify(handler).onCompleteToolExecutionRequest(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
+        io.verify(handler).onCompleteToolExecutionRequest(complete(1, null, "getTime", "{\"country\":\"France\"}"));
     }
 
     @Override

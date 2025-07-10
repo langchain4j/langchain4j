@@ -178,7 +178,7 @@ class OllamaClient {
 
                         int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
                         if (toolBuilder.index() != index) {
-                            onCompleteToolExecutionRequest(handler, toolBuilder.build());
+                            onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
                             toolBuilder.updateIndex(index);
                         }
 
@@ -193,8 +193,8 @@ class OllamaClient {
 
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
 
-                    if (toolBuilder.hasToolExecutionRequests()) {
-                        onCompleteToolExecutionRequest(handler, toolBuilder.build());
+                    if (toolBuilder.hasRequests()) {
+                        onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
                     }
 
                     ChatResponse response = responseBuilder.build(ollamaChatResponse);

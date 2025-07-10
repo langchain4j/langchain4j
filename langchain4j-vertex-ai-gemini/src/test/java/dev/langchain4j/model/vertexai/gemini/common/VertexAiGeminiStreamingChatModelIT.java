@@ -104,7 +104,7 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean assertToolId() {
+    protected boolean assertToolId(StreamingChatModel model) {
         return false; // Gemini does not provide a tool ID
     }
 

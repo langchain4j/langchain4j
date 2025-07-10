@@ -101,7 +101,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         io.verify(handler, atLeast(0)).onPartialResponse(any());
 
         io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(argThat(request ->
-                // Anthropic does not output the same tokens consistently, so we can't easilty assert them.
+                // Anthropic does not output same tokens consistently, so we can't easily assert partialToolArguments
                 request.index() == 0
                         && request.toolId().equals(id)
                         && request.toolName().equals("getWeather")
@@ -115,7 +115,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         verifyToolCallbacks(handler, io, id1);
 
         io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(argThat(request ->
-                // Anthropic does not output the same tokens consistently, so we can't easilty assert them.
+                // Anthropic does not output same tokens consistently, so we can't easily assert partialToolArguments
                 request.index() == 1
                         && request.toolId().equals(id2)
                         && request.toolName().equals("getTime")

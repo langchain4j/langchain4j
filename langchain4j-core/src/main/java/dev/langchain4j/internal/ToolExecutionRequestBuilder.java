@@ -5,14 +5,14 @@ import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 @Internal
-// TODO location
-// TODO name
 public class ToolExecutionRequestBuilder {
 
     private final AtomicReference<Integer> index;
@@ -21,7 +21,7 @@ public class ToolExecutionRequestBuilder {
     private final AtomicReference<String> name = new AtomicReference<>();
     private final StringBuffer arguments = new StringBuffer();
 
-    private final List<ToolExecutionRequest> allToolExecutionRequests = new ArrayList<>();
+    private final Queue<ToolExecutionRequest> allToolExecutionRequests = new ConcurrentLinkedQueue<>();
 
     public ToolExecutionRequestBuilder() {
         this(0);
@@ -70,16 +70,21 @@ public class ToolExecutionRequestBuilder {
         }
     }
 
-    public CompleteToolExecutionRequest build() {
-        // TODO store it till complete response?
+    public CompleteToolExecutionRequest buildAndReset() {
         String arguments = this.arguments.toString();
+        if (arguments.isEmpty()) {
+            arguments = "{}";
+        }
+
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                 .id(id.get())
                 .name(name.get())
-                .arguments(arguments.isEmpty() ? "{}" : arguments)
+                .arguments(arguments)
                 .build();
-        allToolExecutionRequests.add(toolExecutionRequest); // TODO method name, rethink
+        allToolExecutionRequests.add(toolExecutionRequest);
+
         reset();
+
         return new CompleteToolExecutionRequest(this.index.get(), toolExecutionRequest);
     }
 
@@ -89,11 +94,11 @@ public class ToolExecutionRequestBuilder {
         arguments.setLength(0);
     }
 
-    public boolean hasToolExecutionRequests() {
+    public boolean hasRequests() {
         return !allToolExecutionRequests.isEmpty() || name.get() != null;
     }
 
-    public List<ToolExecutionRequest> allToolExecutionRequests() {
-        return allToolExecutionRequests;
+    public List<ToolExecutionRequest> allRequests() {
+        return new ArrayList<>(allToolExecutionRequests);
     }
 }

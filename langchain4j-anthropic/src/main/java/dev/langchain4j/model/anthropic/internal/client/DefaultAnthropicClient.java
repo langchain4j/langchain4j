@@ -256,7 +256,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     contents.add(currentContentBuilder().toString());
                     setCurrentContentBuilder(new StringBuffer());
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
-                    CompleteToolExecutionRequest completeToolRequest = toolBuilder.build();
+                    CompleteToolExecutionRequest completeToolRequest = toolBuilder.buildAndReset();
 
                     if (completeToolRequest.request().arguments().equals("{}")) {
                         PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
@@ -310,8 +310,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 ChatResponseMetadata metadata = createMetadata(tokenUsage, finishReason);
 
-                if (toolBuilder.hasToolExecutionRequests()) {
-                    List<ToolExecutionRequest> toolExecutionRequests = toolBuilder.allToolExecutionRequests();
+                if (toolBuilder.hasRequests()) {
+                    List<ToolExecutionRequest> toolExecutionRequests = toolBuilder.allRequests();
 
                     AiMessage aiMessage = isNullOrBlank(text)
                             ? AiMessage.from(toolExecutionRequests)

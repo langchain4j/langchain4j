@@ -127,15 +127,15 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             if (error.isPresent()) {
                                 handler.onError(error.get());
                             } else {
-                                if (toolBuilder.hasToolExecutionRequests()) {
-                                    onCompleteToolExecutionRequest(handler, toolBuilder.build());
+                                if (toolBuilder.hasRequests()) {
+                                    onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
                                 }
 
                                 String text = textBuilder.toString();
 
                                 AiMessage aiMessage = AiMessage.builder()
                                         .text(text.isEmpty() ? null : text)
-                                        .toolExecutionRequests(toolBuilder.allToolExecutionRequests())
+                                        .toolExecutionRequests(toolBuilder.allRequests())
                                         .build();
 
                                 ChatResponse chatResponse = ChatResponse.builder()
@@ -187,7 +187,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         ChatCompletionChunk.Choice.Delta.ToolCall.Function function = toolCall.function().get();
                         int index = (int) toolCall.index();
                         if (toolBuilder.index() != index) {
-                            onCompleteToolExecutionRequest(handler, toolBuilder.build());
+                            onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
                             toolBuilder.updateIndex(index);
                         }
 

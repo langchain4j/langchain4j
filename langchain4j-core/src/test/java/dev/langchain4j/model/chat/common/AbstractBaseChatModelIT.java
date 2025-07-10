@@ -610,7 +610,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        if (assertToolId()) {
+        if (assertToolId(model)) {
             assertThat(toolExecutionRequest.id()).isNotBlank();
         }
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
@@ -636,18 +636,18 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(metadata.partialToolExecutionRequests()).isNotEmpty();
 
                 StringBuilder arguments = new StringBuilder();
-                PartialToolExecutionRequest prev = null;
-                for (PartialToolExecutionRequest curr : metadata.partialToolExecutionRequests()) {
-                    assertThat(curr.index()).isEqualTo(0);
-                    assertThat(curr.toolId()).isEqualTo(toolExecutionRequest.id());
-                    assertThat(curr.toolName()).isEqualTo(toolExecutionRequest.name());
-                    assertThat(curr.partialToolArguments()).isNotBlank();
-                    arguments.append(curr.partialToolArguments());
-                    if (prev != null) {
-                        assertThat(curr.toolId()).isEqualTo(prev.toolId());
-                        assertThat(curr.toolName()).isEqualTo(prev.toolName());
+                PartialToolExecutionRequest previousRequest = null;
+                for (PartialToolExecutionRequest request : metadata.partialToolExecutionRequests()) {
+                    assertThat(request.index()).isEqualTo(0);
+                    assertThat(request.toolId()).isEqualTo(toolExecutionRequest.id());
+                    assertThat(request.toolName()).isEqualTo(toolExecutionRequest.name());
+                    assertThat(request.partialToolArguments()).isNotBlank();
+                    arguments.append(request.partialToolArguments());
+                    if (previousRequest != null) {
+                        assertThat(request.toolId()).isEqualTo(previousRequest.toolId());
+                        assertThat(request.toolName()).isEqualTo(previousRequest.toolName());
                     }
-                    prev = curr;
+                    previousRequest = request;
                 }
                 assertThat(arguments.toString()).isEqualTo(toolExecutionRequest.arguments());
             }
@@ -664,6 +664,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             verifyNoMoreInteractions(handler);
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+
             if (assertThreads()) {
                 Set<Thread> threads = metadata.threads();
                 assertThat(threads).hasSize(1);
@@ -749,7 +750,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        if (assertToolId()) {
+        if (assertToolId(model)) {
             assertThat(toolExecutionRequest.id()).isNotBlank();
         }
         assertThat(toolExecutionRequest.name()).isEqualTo(timeTool.name());
@@ -793,6 +794,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             verifyNoMoreInteractions(handler);
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+
             if (assertThreads()) {
                 Set<Thread> threads = metadata.threads();
                 assertThat(threads).hasSize(1);
@@ -854,7 +856,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
-    @EnabledIf("supportsParallelTools")
+    @EnabledIf("supportsTools")
     protected void should_execute_multiple_tools_in_parallel_then_answer(M model) {
 
         // given
@@ -882,13 +884,13 @@ public abstract class AbstractBaseChatModelIT<M> {
         List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
         assertThat(toolExecutionRequests).hasSize(2);
 
-        if (assertToolId()) {
+        if (assertToolId(model)) {
             assertThat(toolExecutionRequests.get(0).id()).isNotBlank();
         }
         assertThat(toolExecutionRequests.get(0).name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequests.get(0).arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        if (assertToolId()) {
+        if (assertToolId(model)) {
             assertThat(toolExecutionRequests.get(1).id())
                     .isNotBlank()
                     .isNotEqualTo(toolExecutionRequests.get(0).id());
@@ -918,23 +920,24 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(metadata.partialToolExecutionRequests().get(0).index()).isEqualTo(0);
                 assertThat(metadata.partialToolExecutionRequests().get(metadata.partialToolExecutionRequests().size() - 1).index()).isEqualTo(1);
 
-                List<List<PartialToolExecutionRequest>> partialToolPartitions = partitionByIndex(metadata.partialToolExecutionRequests());
-                assertThat(partialToolPartitions).hasSize(2);
+                List<List<PartialToolExecutionRequest>> partialToolRequestPartitions =
+                        partitionByIndex(metadata.partialToolExecutionRequests());
+                assertThat(partialToolRequestPartitions).hasSize(2);
 
-                for (int i = 0; i < partialToolPartitions.size(); i++) {
-                    List<PartialToolExecutionRequest> toolPartition = partialToolPartitions.get(i);
+                for (int i = 0; i < partialToolRequestPartitions.size(); i++) {
+                    List<PartialToolExecutionRequest> partialToolRequestPartition = partialToolRequestPartitions.get(i);
                     StringBuilder arguments = new StringBuilder();
-                    PartialToolExecutionRequest prev = null;
-                    for (PartialToolExecutionRequest curr : toolPartition) {
-                        assertThat(curr.toolId()).isEqualTo(toolExecutionRequests.get(i).id());
-                        assertThat(curr.toolName()).isEqualTo(toolExecutionRequests.get(i).name());
-                        assertThat(curr.partialToolArguments()).isNotBlank();
-                        arguments.append(curr.partialToolArguments());
-                        if (prev != null) {
-                            assertThat(curr.toolId()).isEqualTo(prev.toolId());
-                            assertThat(curr.toolName()).isEqualTo(prev.toolName());
+                    PartialToolExecutionRequest previousRequest = null;
+                    for (PartialToolExecutionRequest request : partialToolRequestPartition) {
+                        assertThat(request.toolId()).isEqualTo(toolExecutionRequests.get(i).id());
+                        assertThat(request.toolName()).isEqualTo(toolExecutionRequests.get(i).name());
+                        assertThat(request.partialToolArguments()).isNotBlank();
+                        arguments.append(request.partialToolArguments());
+                        if (previousRequest != null) {
+                            assertThat(request.toolId()).isEqualTo(previousRequest.toolId());
+                            assertThat(request.toolName()).isEqualTo(previousRequest.toolName());
                         }
-                        prev = curr;
+                        previousRequest = request;
                     }
                     assertThat(arguments.toString()).isEqualTo(toolExecutionRequests.get(i).arguments());
                 }
@@ -954,6 +957,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             verifyNoMoreInteractions(handler);
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+
             if (assertThreads()) {
                 Set<Thread> threads = metadata.threads();
                 assertThat(threads).hasSize(1);
@@ -1586,10 +1590,6 @@ public abstract class AbstractBaseChatModelIT<M> {
         return true;
     }
 
-    protected boolean supportsParallelTools() { // TODO remove?
-        return supportsTools();
-    }
-
     protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
         return true;
     }
@@ -1654,7 +1654,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return true;
     }
 
-    protected boolean assertToolId() {
+    protected boolean assertToolId(M model) {
         return true;
     }
 

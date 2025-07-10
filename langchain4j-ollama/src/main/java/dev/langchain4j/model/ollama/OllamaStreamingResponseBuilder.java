@@ -52,11 +52,11 @@ class OllamaStreamingResponseBuilder {
     ChatResponse build(OllamaChatResponse ollamaChatResponse) {
         String text = contentBuilder.toString();
 
-        if (toolBuilder.hasToolExecutionRequests()) {
+        if (toolBuilder.hasRequests()) {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.builder()
                             .text(text.isEmpty() ? null : text)
-                            .toolExecutionRequests(toolBuilder.allToolExecutionRequests())
+                            .toolExecutionRequests(toolBuilder.allRequests())
                             .build())
                     .metadata(chatResponseMetadataFrom(modelName, TOOL_EXECUTION, tokenUsage))
                     .build();

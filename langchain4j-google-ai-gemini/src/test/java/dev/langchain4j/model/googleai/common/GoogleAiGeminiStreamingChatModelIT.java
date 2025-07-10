@@ -20,7 +20,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     static final StreamingChatModel GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL = GoogleAiGeminiStreamingChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-2.0-flash-lite")
-            .logRequestsAndResponses(true) // images are huge in logs
+            .logRequestsAndResponses(false) // images are huge in logs
             .build();
 
     @Override
@@ -86,7 +86,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean assertToolId() {
+    protected boolean assertToolId(StreamingChatModel model) {
         return false; // Gemini does not provide a tool ID
     }
 }

@@ -45,7 +45,6 @@ public class OpenAiStreamingResponseBuilder {
     private final StringBuffer toolNameBuilder = new StringBuffer();
     private final StringBuffer toolArgumentsBuilder = new StringBuffer();
 
-    // TODO replace with new tool request builder?
     private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
 
     private final AtomicReference<String> id = new AtomicReference<>();
@@ -125,26 +124,24 @@ public class OpenAiStreamingResponseBuilder {
             }
         }
 
-        if (delta.toolCalls() != null) {
-            for (ToolCall toolCall : delta.toolCalls()) {
+        if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
+            ToolCall toolCall = delta.toolCalls().get(0);
 
-                ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                        toolCall.index(),
-                        idx -> new ToolExecutionRequestBuilder()
-                );
+            ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                    toolCall.index(),
+                    idx -> new ToolExecutionRequestBuilder()
+            );
 
-                if (toolCall.id() != null) {
-                    builder.idBuilder.append(toolCall.id());
-                }
+            if (toolCall.id() != null) {
+                builder.idBuilder.append(toolCall.id());
+            }
 
-                FunctionCall functionCall = toolCall.function();
-                if (functionCall.name() != null) {
-                    builder.nameBuilder.append(functionCall.name());
-                }
-
-                if (functionCall.arguments() != null) {
-                    builder.argumentsBuilder.append(functionCall.arguments());
-                }
+            FunctionCall functionCall = toolCall.function();
+            if (functionCall.name() != null) {
+                builder.nameBuilder.append(functionCall.name());
+            }
+            if (functionCall.arguments() != null) {
+                builder.argumentsBuilder.append(functionCall.arguments());
             }
         }
     }

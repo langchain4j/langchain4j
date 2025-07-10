@@ -246,8 +246,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     withLoggingExceptions(() -> handler.onError(mappedError));
                 },
                 () -> {
-                    if (toolBuilder.hasToolExecutionRequests()) {
-                        onCompleteToolExecutionRequest(handler, toolBuilder.build());
+                    if (toolBuilder.hasRequests()) {
+                        onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
                     }
 
                     Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
@@ -300,7 +300,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     int index = toolBuilder.index();
                     if (startOfNewToolCall(toolCall)) {
                         if (index > -1) {
-                            onCompleteToolExecutionRequest(handler, toolBuilder.build());
+                            onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
                         }
                         index++;
                         toolBuilder.updateIndex(index);

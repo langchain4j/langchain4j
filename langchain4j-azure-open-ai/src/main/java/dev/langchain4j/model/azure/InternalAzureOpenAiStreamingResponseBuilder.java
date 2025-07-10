@@ -95,7 +95,7 @@ class InternalAzureOpenAiStreamingResponseBuilder {
 
         List<ToolExecutionRequest> toolExecutionRequests = List.of();
         if (toolBuilder != null) {
-            toolExecutionRequests = toolBuilder.allToolExecutionRequests();
+            toolExecutionRequests = toolBuilder.allRequests();
         }
 
         AiMessage aiMessage = AiMessage.builder()

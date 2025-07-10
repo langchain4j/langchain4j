@@ -88,7 +88,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         })
                         .onContentBlockStop(event -> {
                             if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
-                                onCompleteToolExecutionRequest(handler, toolBuilder.build());
+                                onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
                             }
                             responseBuilder.append(event);
                         })

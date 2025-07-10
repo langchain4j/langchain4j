@@ -143,8 +143,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 })
                 .onComplete(() -> {
 
-                    if (toolBuilder.hasToolExecutionRequests()) {
-                        onCompleteToolExecutionRequest(handler, toolBuilder.build());
+                    if (toolBuilder.hasRequests()) {
+                        onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
                     }
 
                     ChatResponse chatResponse = openAiResponseBuilder.build();
@@ -198,7 +198,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
                 int index = toolCall.index();
                 if (toolBuilder.index() != index) {
-                    onCompleteToolExecutionRequest(handler, toolBuilder.build());
+                    onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
                     toolBuilder.updateIndex(index);
                 }
 
