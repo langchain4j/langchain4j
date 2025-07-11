@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -56,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -310,6 +312,11 @@ public class OpenAiUtils {
             return isNullOrBlank(text)
                     ? AiMessage.from(toolExecutionRequest)
                     : AiMessage.from(text, singletonList(toolExecutionRequest));
+        }
+
+        String refusal = assistantMessage.refusal();
+        if (isNotNullOrBlank(refusal)) {
+            throw new ContentFilteredException(refusal);
         }
 
         return AiMessage.from(text);
