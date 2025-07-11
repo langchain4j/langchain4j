@@ -8,7 +8,10 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+import java.util.Locale;
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 
 @JsonDeserialize(builder = ToolCall.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -20,7 +23,7 @@ public class ToolCall {
     @JsonProperty
     private final Integer index;
     @JsonProperty
-    private final String type;
+    private final ToolType type;
     @JsonProperty
     private final FunctionCall function;
 
@@ -40,7 +43,7 @@ public class ToolCall {
     }
 
     public ToolType type() {
-        return ToolType.valueOf(type);
+        return type;
     }
 
     public FunctionCall function() {
@@ -92,7 +95,7 @@ public class ToolCall {
 
         private String id;
         private Integer index;
-        private String type;
+        private ToolType type;
         private FunctionCall function;
 
         public Builder id(String id) {
@@ -106,14 +109,14 @@ public class ToolCall {
         }
 
         public Builder type(String type) {
-            this.type = type;
+            if (isNotNullOrBlank(type)) {
+                this.type = ToolType.valueOf(type.toUpperCase(Locale.ROOT));
+            }
             return this;
         }
 
         public Builder type(ToolType type) {
-            if (type != null) {
-                this.type = type.toString();
-            }
+            this.type = type;
             return this;
         }
 
