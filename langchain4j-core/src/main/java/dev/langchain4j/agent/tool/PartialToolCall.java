@@ -1,5 +1,7 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.Experimental;
+
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -8,7 +10,9 @@ import java.util.Objects;
 /**
  * TODO
  */
+@Experimental
 public class PartialToolCall {
+    // TODO location
 
     private final int index;
     private final String id;

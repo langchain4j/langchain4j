@@ -1,5 +1,7 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.Experimental;
+
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Objects;
@@ -7,7 +9,9 @@ import java.util.Objects;
 /**
  * TODO
  */
+@Experimental
 public class CompleteToolCall {
+    // TODO location
 
     private final int index;
     private final ToolExecutionRequest request;

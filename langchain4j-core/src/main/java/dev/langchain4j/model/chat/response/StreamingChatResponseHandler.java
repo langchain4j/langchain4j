@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.response;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.CompleteToolCall;
 import dev.langchain4j.agent.tool.PartialToolCall;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -49,17 +50,19 @@ public interface StreamingChatResponseHandler {
      * @param partialToolCall A partial tool call that contains
      *                        the index, tool ID, tool name and partial arguments.
      */
+    @Experimental
     default void onPartialToolCall(PartialToolCall partialToolCall) {
     }
 
-/**
- * Invoked when the model has finished streaming a complete tool call.
- *
- * @param completeToolCall A complete tool call that contains
- *                         the index, tool ID, tool name, and fully assembled arguments.
- */
-default void onCompleteToolCall(CompleteToolCall completeToolCall) {
-}
+    /**
+     * Invoked when the model has finished streaming a complete tool call.
+     *
+     * @param completeToolCall A complete tool call that contains
+     *                         the index, tool ID, tool name, and fully assembled arguments.
+     */
+    @Experimental
+    default void onCompleteToolCall(CompleteToolCall completeToolCall) {
+    }
 
     /**
      * Invoked when the model has finished streaming a response.
