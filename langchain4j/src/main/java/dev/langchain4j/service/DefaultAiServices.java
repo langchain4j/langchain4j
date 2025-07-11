@@ -122,7 +122,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
     }
 
-    private void validate() {
+    protected void validate() {
         performBasicValidation();
         validateContextMemory();
         validateMethods();
