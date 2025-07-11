@@ -13,7 +13,7 @@ public class PartialToolCall {
     private final int index;
     private final String id;
     private final String name;
-    private final String partiaArguments; // TODO name
+    private final String partiaArguments;
 
     public PartialToolCall(Builder builder) {
         this.index = builder.index;
@@ -22,18 +22,30 @@ public class PartialToolCall {
         this.partiaArguments = ensureNotBlank(builder.partiaArguments, "partiaArguments");
     }
 
+    /**
+     * TODO
+     */
     public int index() {
         return index;
     }
 
+    /**
+     * Please note that some LLM providers (e.g., Google, Ollama) do not include a tool call ID.
+     */
     public String id() {
         return id;
     }
 
+    /**
+     * TODO
+     */
     public String name() {
         return name;
     }
 
+    /**
+     * TODO
+     */
     public String partialArguments() {
         return partiaArguments;
     }

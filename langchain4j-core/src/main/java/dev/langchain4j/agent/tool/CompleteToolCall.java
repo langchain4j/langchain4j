@@ -4,7 +4,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Objects;
 
-public class CompleteToolCall { // TODO name: CompleteToolCall
+/**
+ * TODO
+ */
+public class CompleteToolCall {
 
     private final int index;
     private final ToolExecutionRequest request;
@@ -14,10 +17,16 @@ public class CompleteToolCall { // TODO name: CompleteToolCall
         this.request = ensureNotNull(request, "request");
     }
 
+    /**
+     * TODO
+     */
     public int index() {
         return index;
     }
 
+    /**
+     * TODO
+     */
     public ToolExecutionRequest request() {
         return request;
     }

@@ -39,8 +39,7 @@ public interface StreamingChatResponseHandler {
      * 7. onCompleteToolCall(index = 0, id = "call_abc", name = "get_weather", arguments = "{\"city\":\"Munich\"}")
      * </pre>
      *
-     * If the model decides to call multiple tools, the index will increment, allowing you to track each one.
-     * Please note that some LLM providers (e.g., Google, Ollama) do not include a tool call ID.
+     * If the model decides to call multiple tools, the index will increment, allowing you to correlate.
      * <p>
      * Please note that not all LLM providers stream tool calls token by token.
      * Some providers (e.g., Bedrock, Google, Mistral, Ollama) return complete tool calls instead.
@@ -53,14 +52,14 @@ public interface StreamingChatResponseHandler {
     default void onPartialToolCall(PartialToolCall partialToolCall) {
     }
 
-    /**
-     * Invoked when the model has finished streaming a complete tool call.
-     *
-     * @param completeToolCall A complete tool call that contains
-     *                         the index, tool ID, tool name, and fully assembled arguments.
-     */
-    default void onCompleteToolCall(CompleteToolCall completeToolCall) {
-    }
+/**
+ * Invoked when the model has finished streaming a complete tool call.
+ *
+ * @param completeToolCall A complete tool call that contains
+ *                         the index, tool ID, tool name, and fully assembled arguments.
+ */
+default void onCompleteToolCall(CompleteToolCall completeToolCall) {
+}
 
     /**
      * Invoked when the model has finished streaming a response.
