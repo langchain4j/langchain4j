@@ -160,9 +160,10 @@ public class AnthropicMapper {
                 .map(message -> (SystemMessage) message)
                 .collect(toList());
 
+        SystemMessage lastSystemMessage = systemMessages.get(systemMessages.size() - 1);
         return systemMessages.stream()
                 .map(message -> {
-                    boolean isLastItem = message.equals(systemMessages.get(systemMessages.size() - 1));
+                    boolean isLastItem = message.equals(lastSystemMessage);
                     if (isLastItem && cacheType != AnthropicCacheType.NO_CACHE) {
                         return new AnthropicTextContent(message.text(), cacheType.cacheControl());
                     }
@@ -222,9 +223,10 @@ public class AnthropicMapper {
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
+        ToolSpecification lastToolSpecification = toolSpecifications.get(toolSpecifications.size() - 1);
         return toolSpecifications.stream()
                 .map(toolSpecification -> {
-                    boolean isLastItem = toolSpecification.equals(toolSpecifications.get(toolSpecifications.size() - 1));
+                    boolean isLastItem = toolSpecification.equals(lastToolSpecification);
                     if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
                         return toAnthropicTool(toolSpecification, cacheToolsPrompt);
                     }
