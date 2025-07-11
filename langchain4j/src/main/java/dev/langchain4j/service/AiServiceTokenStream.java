@@ -36,10 +36,12 @@ public class AiServiceTokenStream implements TokenStream {
     private Consumer<String> partialResponseHandler;
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
+    private Consumer<ChatResponse> intermediateResponseHandler;
     private Consumer<ChatResponse> completeResponseHandler;
     private Consumer<Throwable> errorHandler;
 
     private int onPartialResponseInvoked;
+    private int onIntermediateResponseInvoked;
     private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
     private int onToolExecutedInvoked;
@@ -86,6 +88,13 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
+    public TokenStream onIntermediateResponse(Consumer<ChatResponse> intermediateResponseHandler) {
+        this.intermediateResponseHandler = intermediateResponseHandler;
+        this.onIntermediateResponseInvoked++;
+        return this;
+    }
+
+    @Override
     public TokenStream onCompleteResponse(Consumer<ChatResponse> completionHandler) {
         this.completeResponseHandler = completionHandler;
         this.onCompleteResponseInvoked++;
@@ -126,6 +135,7 @@ public class AiServiceTokenStream implements TokenStream {
                 memoryId,
                 partialResponseHandler,
                 toolExecutionHandler,
+                intermediateResponseHandler,
                 completeResponseHandler,
                 errorHandler,
                 initTemporaryMemory(context, messages),
@@ -145,6 +155,9 @@ public class AiServiceTokenStream implements TokenStream {
     private void validateConfiguration() {
         if (onPartialResponseInvoked != 1) {
             throw new IllegalConfigurationException("onPartialResponse must be invoked on TokenStream exactly 1 time");
+        }
+        if (onIntermediateResponseInvoked > 1) {
+            throw new IllegalConfigurationException("onIntermediateResponse can be invoked on TokenStream at most 1 time");
         }
         if (onCompleteResponseInvoked > 1) {
             throw new IllegalConfigurationException("onCompleteResponse can be invoked on TokenStream at most 1 time");
