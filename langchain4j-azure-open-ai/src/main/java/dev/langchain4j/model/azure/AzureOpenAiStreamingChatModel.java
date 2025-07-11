@@ -1,7 +1,7 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
@@ -33,9 +33,9 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
-import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
+import dev.langchain4j.agent.tool.PartialToolCall;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.internal.ToolExecutionRequestBuilder;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.TokenCountEstimator;
@@ -221,7 +221,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
             inputTokenCount = tokenCountEstimator.estimateTokenCountInMessages(request.messages());
         }
 
-        ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder(-1);
+        ToolCallBuilder toolBuilder = new ToolCallBuilder(-1);
         InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount, toolBuilder);
 
         Flux<ChatCompletions> chatCompletionsStream = client.getChatCompletionsStream(parameters.modelName(), options);
@@ -247,7 +247,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 },
                 () -> {
                     if (toolBuilder.hasRequests()) {
-                        onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
+                        onCompleteToolCall(handler, toolBuilder.buildAndReset());
                     }
 
                     Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
@@ -271,7 +271,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     private static void handle(ChatCompletions chatCompletions,
-                               ToolExecutionRequestBuilder toolBuilder,
+                               ToolCallBuilder toolBuilder,
                                StreamingChatResponseHandler handler) {
         List<ChatChoice> choices = chatCompletions.getChoices();
         if (isNullOrEmpty(choices)) {
@@ -300,7 +300,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     int index = toolBuilder.index();
                     if (startOfNewToolCall(toolCall)) {
                         if (index > -1) {
-                            onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
+                            onCompleteToolCall(handler, toolBuilder.buildAndReset());
                         }
                         index++;
                         toolBuilder.updateIndex(index);
@@ -313,13 +313,13 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                     if (isNotNullOrEmpty(partialArguments)) {
                         toolBuilder.appendArguments(partialArguments);
 
-                        PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
+                        PartialToolCall partialToolRequest = PartialToolCall.builder()
                                 .index(index)
-                                .toolId(id)
-                                .toolName(name)
-                                .partialToolArguments(partialArguments)
+                                .id(id)
+                                .name(name)
+                                .partialArguments(partialArguments)
                                 .build();
-                        onPartialToolExecutionRequest(handler, partialToolRequest);
+                        onPartialToolCall(handler, partialToolRequest);
                     }
                 }
             }

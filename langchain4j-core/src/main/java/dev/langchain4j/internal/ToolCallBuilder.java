@@ -9,11 +9,11 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
+import dev.langchain4j.agent.tool.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 @Internal
-public class ToolExecutionRequestBuilder {
+public class ToolCallBuilder {
 
     private final AtomicReference<Integer> index;
 
@@ -23,11 +23,11 @@ public class ToolExecutionRequestBuilder {
 
     private final Queue<ToolExecutionRequest> allToolExecutionRequests = new ConcurrentLinkedQueue<>();
 
-    public ToolExecutionRequestBuilder() {
+    public ToolCallBuilder() {
         this(0);
     }
 
-    public ToolExecutionRequestBuilder(int index) {
+    public ToolCallBuilder(int index) {
         this.index = new AtomicReference(index);
     }
 
@@ -70,7 +70,7 @@ public class ToolExecutionRequestBuilder {
         }
     }
 
-    public CompleteToolExecutionRequest buildAndReset() {
+    public CompleteToolCall buildAndReset() {
         String arguments = this.arguments.toString();
         if (arguments.isEmpty()) {
             arguments = "{}";
@@ -85,7 +85,7 @@ public class ToolExecutionRequestBuilder {
 
         reset();
 
-        return new CompleteToolExecutionRequest(this.index.get(), toolExecutionRequest);
+        return new CompleteToolCall(this.index.get(), toolExecutionRequest);
     }
 
     private void reset() {

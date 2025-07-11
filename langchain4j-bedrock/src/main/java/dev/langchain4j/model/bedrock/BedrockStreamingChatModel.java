@@ -1,13 +1,13 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
-import dev.langchain4j.internal.ToolExecutionRequestBuilder;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -57,7 +57,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
 
         ConverseResponseFromStreamBuilder responseBuilder = ConverseResponseFromStreamBuilder.builder();
-        ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder(-1);
+        ToolCallBuilder toolBuilder = new ToolCallBuilder(-1);
         AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
 
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
@@ -88,7 +88,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         })
                         .onContentBlockStop(event -> {
                             if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
-                                onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
+                                onCompleteToolCall(handler, toolBuilder.buildAndReset());
                             }
                             responseBuilder.append(event);
                         })

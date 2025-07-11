@@ -101,14 +101,14 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Bedrock can talk before calling a tool. "atLeast(0)" is meant to ignore it.
         io.verify(handler, atLeast(0)).onPartialResponse(any());
 
-        io.verify(handler).onCompleteToolExecutionRequest(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
 
-        io.verify(handler).onCompleteToolExecutionRequest(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
     }
 
     @Override

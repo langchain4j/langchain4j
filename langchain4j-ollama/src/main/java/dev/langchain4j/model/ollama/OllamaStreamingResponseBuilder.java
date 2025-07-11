@@ -5,7 +5,7 @@ import static dev.langchain4j.model.ollama.InternalOllamaHelper.toFinishReason;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.internal.ToolExecutionRequestBuilder;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -17,11 +17,11 @@ import dev.langchain4j.model.output.TokenUsage;
 class OllamaStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
-    private final ToolExecutionRequestBuilder toolBuilder;
+    private final ToolCallBuilder toolBuilder;
     private volatile String modelName;
     private volatile TokenUsage tokenUsage;
 
-    public OllamaStreamingResponseBuilder(ToolExecutionRequestBuilder toolBuilder) {
+    public OllamaStreamingResponseBuilder(ToolCallBuilder toolBuilder) {
         this.toolBuilder = toolBuilder;
     }
 

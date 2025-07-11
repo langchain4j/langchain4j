@@ -277,26 +277,27 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id, StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolExecutionRequest(partial(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+            io.verify(handler).onPartialToolCall(partial(0, id, "getWeather", "{\"city\":\"Munich\"}"));
         }
-        io.verify(handler).onCompleteToolExecutionRequest(complete(0, null, "getWeather", "{\"city\":\"Munich\"}"));
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolExecutionRequest(argThat(request ->
-                    request.index() == 0
-                            && !request.toolId().isBlank()
-                            && request.toolName().equals("get_current_time")
-                            && request.partialToolArguments().equals("{}")
+            io.verify(handler).onPartialToolCall(argThat(toolCall ->
+                    toolCall.index() == 0
+                            && !toolCall.id().isBlank()
+                            && toolCall.name().equals("get_current_time")
+                            && toolCall.partialArguments().equals("{}")
             ));
         }
+
         // Ollama talks in-between for some reason TODO fix in OpenAI?
         io.verify(handler, atLeast(0)).onPartialResponse(any());
-        io.verify(handler).onCompleteToolExecutionRequest(argThat(request ->
+
+        io.verify(handler).onCompleteToolCall(argThat(request ->
                 request.index() == 0
-                        && !request.request().id().isBlank()
                         && request.request().name().equals("get_current_time")
                         && request.request().arguments().equals("{}")
         ));
@@ -307,9 +308,9 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
         verifyToolCallbacks(handler, io, id1, model);
 
         if (model instanceof OpenAiStreamingChatModel) {
-            io.verify(handler).onPartialToolExecutionRequest(partial(1, id2, "getTime", "{\"country\":\"France\"}"));
+            io.verify(handler).onPartialToolCall(partial(1, id2, "getTime", "{\"country\":\"France\"}"));
         }
-        io.verify(handler).onCompleteToolExecutionRequest(complete(1, null, "getTime", "{\"country\":\"France\"}"));
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
     }
 
     @Override

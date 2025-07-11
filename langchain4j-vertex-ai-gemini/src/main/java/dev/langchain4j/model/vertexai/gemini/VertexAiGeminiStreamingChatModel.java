@@ -1,6 +1,6 @@
 package dev.langchain4j.model.vertexai.gemini;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -22,7 +22,7 @@ import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.common.annotations.VisibleForTesting;
-import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
+import dev.langchain4j.agent.tool.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -420,9 +420,9 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
                     for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
                         ToolExecutionRequest toolExecutionRequest = fromFunctionCall(functionCall);
-                            CompleteToolExecutionRequest completeToolRequest =
-                                    new CompleteToolExecutionRequest(currentToolIndex.get(), toolExecutionRequest);
-                        onCompleteToolExecutionRequest(handler, completeToolRequest);
+                            CompleteToolCall completeToolCall =
+                                    new CompleteToolCall(currentToolIndex.get(), toolExecutionRequest);
+                        onCompleteToolCall(handler, completeToolCall);
                         currentToolIndex.incrementAndGet();
                     }
                 }

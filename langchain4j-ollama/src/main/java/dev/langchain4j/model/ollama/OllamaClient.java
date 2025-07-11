@@ -3,7 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -27,7 +27,7 @@ import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ToolExecutionRequestBuilder;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -149,7 +149,7 @@ class OllamaClient {
 
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
-            ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder();
+            ToolCallBuilder toolBuilder = new ToolCallBuilder();
             OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolBuilder);
 
             @Override
@@ -178,7 +178,7 @@ class OllamaClient {
 
                         int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
                         if (toolBuilder.index() != index) {
-                            onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
+                            onCompleteToolCall(handler, toolBuilder.buildAndReset());
                             toolBuilder.updateIndex(index);
                         }
 
@@ -194,7 +194,7 @@ class OllamaClient {
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
 
                     if (toolBuilder.hasRequests()) {
-                        onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
+                        onCompleteToolCall(handler, toolBuilder.buildAndReset());
                     }
 
                     ChatResponse response = responseBuilder.build(ollamaChatResponse);

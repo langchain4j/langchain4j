@@ -1,9 +1,9 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
+import dev.langchain4j.agent.tool.PartialToolCall;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ToolExecutionRequestBuilder;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -26,8 +26,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -134,7 +134,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                         .build();
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
-        ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder();
+        ToolCallBuilder toolBuilder = new ToolCallBuilder();
 
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
@@ -144,7 +144,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .onComplete(() -> {
 
                     if (toolBuilder.hasRequests()) {
-                        onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
+                        onCompleteToolCall(handler, toolBuilder.buildAndReset());
                     }
 
                     ChatResponse chatResponse = openAiResponseBuilder.build();
@@ -162,7 +162,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     private static void handle(ChatCompletionResponse partialResponse,
-                               ToolExecutionRequestBuilder toolBuilder,
+                               ToolCallBuilder toolBuilder,
                                StreamingChatResponseHandler handler) {
         if (partialResponse == null) {
             return;
@@ -198,7 +198,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
                 int index = toolCall.index();
                 if (toolBuilder.index() != index) {
-                    onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
+                    onCompleteToolCall(handler, toolBuilder.buildAndReset());
                     toolBuilder.updateIndex(index);
                 }
 
@@ -209,13 +209,13 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 if (isNotNullOrEmpty(partialArguments)) {
                     toolBuilder.appendArguments(partialArguments);
 
-                    PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
+                    PartialToolCall partialToolRequest = PartialToolCall.builder()
                             .index(index)
-                            .toolId(id)
-                            .toolName(name)
-                            .partialToolArguments(partialArguments)
+                            .id(id)
+                            .name(name)
+                            .partialArguments(partialArguments)
                             .build();
-                    onPartialToolExecutionRequest(handler, partialToolRequest);
+                    onPartialToolCall(handler, partialToolRequest);
                 }
             }
         }

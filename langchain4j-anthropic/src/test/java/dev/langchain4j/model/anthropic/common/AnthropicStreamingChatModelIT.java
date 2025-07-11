@@ -100,27 +100,27 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Anthropic can talk before calling a tool. "atLeast(0)" is meant to ignore it.
         io.verify(handler, atLeast(0)).onPartialResponse(any());
 
-        io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(argThat(request ->
-                // Anthropic does not output same tokens consistently, so we can't easily assert partialToolArguments
-                request.index() == 0
-                        && request.toolId().equals(id)
-                        && request.toolName().equals("getWeather")
-                        && !request.partialToolArguments().isBlank()
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                // Anthropic does not output same tokens consistently, so we can't easily assert partialArguments
+                toolCall.index() == 0
+                        && toolCall.id().equals(id)
+                        && toolCall.name().equals("getWeather")
+                        && !toolCall.partialArguments().isBlank()
         ));
-        io.verify(handler).onCompleteToolExecutionRequest(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
 
-        io.verify(handler, atLeast(1)).onPartialToolExecutionRequest(argThat(request ->
-                // Anthropic does not output same tokens consistently, so we can't easily assert partialToolArguments
-                request.index() == 1
-                        && request.toolId().equals(id2)
-                        && request.toolName().equals("getTime")
-                        && !request.partialToolArguments().isBlank()
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                // Anthropic does not output same tokens consistently, so we can't easily assert partialArguments
+                toolCall.index() == 1
+                        && toolCall.id().equals(id2)
+                        && toolCall.name().equals("getTime")
+                        && !toolCall.partialArguments().isBlank()
         ));
-        io.verify(handler).onCompleteToolExecutionRequest(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 }

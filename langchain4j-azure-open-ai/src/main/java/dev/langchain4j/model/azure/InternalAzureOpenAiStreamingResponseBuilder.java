@@ -4,7 +4,7 @@ import com.azure.ai.openai.models.*;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.internal.ToolExecutionRequestBuilder;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -24,10 +24,10 @@ class InternalAzureOpenAiStreamingResponseBuilder {
 
     private final Integer inputTokenCount;
     private final StringBuffer contentBuilder = new StringBuffer();
-    private final ToolExecutionRequestBuilder toolBuilder;
+    private final ToolCallBuilder toolBuilder;
     private volatile CompletionsFinishReason finishReason;
 
-    InternalAzureOpenAiStreamingResponseBuilder(Integer inputTokenCount, ToolExecutionRequestBuilder toolBuilder) {
+    InternalAzureOpenAiStreamingResponseBuilder(Integer inputTokenCount, ToolCallBuilder toolBuilder) {
         this.inputTokenCount = inputTokenCount;
         this.toolBuilder = toolBuilder;
     }

@@ -1,13 +1,13 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
-import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
+import dev.langchain4j.agent.tool.CompleteToolCall;
+import dev.langchain4j.agent.tool.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 @Internal
 public class InternalStreamingChatResponseHandlerUtils {
@@ -35,19 +35,17 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
-    public static void onPartialToolExecutionRequest(StreamingChatResponseHandler handler,
-                                                     PartialToolExecutionRequest request) {
+    public static void onPartialToolCall(StreamingChatResponseHandler handler, PartialToolCall partialToolCall) {
         try {
-            handler.onPartialToolExecutionRequest(request);
+            handler.onPartialToolCall(partialToolCall);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }
     }
 
-    public static void onCompleteToolExecutionRequest(StreamingChatResponseHandler handler,
-                                                      CompleteToolExecutionRequest request) {
+    public static void onCompleteToolCall(StreamingChatResponseHandler handler, CompleteToolCall completeToolCall) {
         try {
-            handler.onCompleteToolExecutionRequest(request);
+            handler.onCompleteToolCall(completeToolCall);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

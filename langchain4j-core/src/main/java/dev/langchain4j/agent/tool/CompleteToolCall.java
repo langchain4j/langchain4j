@@ -4,12 +4,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Objects;
 
-public class CompleteToolExecutionRequest {
+public class CompleteToolCall { // TODO name: CompleteToolCall
 
     private final int index;
     private final ToolExecutionRequest request;
 
-    public CompleteToolExecutionRequest(int index, ToolExecutionRequest request) {
+    public CompleteToolCall(int index, ToolExecutionRequest request) {
         this.index = index;
         this.request = ensureNotNull(request, "request");
     }
@@ -26,7 +26,7 @@ public class CompleteToolExecutionRequest {
     public boolean equals(Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
-        CompleteToolExecutionRequest that = (CompleteToolExecutionRequest) object;
+        CompleteToolCall that = (CompleteToolCall) object;
         return index == that.index
                 && Objects.equals(request, that.request);
     }
@@ -38,7 +38,7 @@ public class CompleteToolExecutionRequest {
 
     @Override
     public String toString() {
-        return "CompleteToolExecutionRequest{" +
+        return "CompleteToolCall{" +
                 "index=" + index +
                 ", request=" + request +
                 '}';

@@ -1,8 +1,8 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
-import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
+import dev.langchain4j.agent.tool.CompleteToolCall;
+import dev.langchain4j.agent.tool.PartialToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
@@ -14,7 +14,7 @@ import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ToolExecutionRequestBuilder;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -36,8 +36,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -114,7 +114,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             final AtomicReference<AnthropicContentBlockType> currentContentBlockStartType = new AtomicReference<>();
 
-            final ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder(-1);
+            final ToolCallBuilder toolBuilder = new ToolCallBuilder(-1);
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
@@ -240,13 +240,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(partialJson)) {
                         toolBuilder.appendArguments(partialJson);
 
-                        PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
+                        PartialToolCall partialToolRequest = PartialToolCall.builder()
                                 .index(toolBuilder.index())
-                                .toolId(toolBuilder.id())
-                                .toolName(toolBuilder.name())
-                                .partialToolArguments(partialJson)
+                                .id(toolBuilder.id())
+                                .name(toolBuilder.name())
+                                .partialArguments(partialJson)
                                 .build();
-                        onPartialToolExecutionRequest(handler, partialToolRequest);
+                        onPartialToolCall(handler, partialToolRequest);
                     }
                 }
             }
@@ -256,19 +256,19 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     contents.add(currentContentBuilder().toString());
                     setCurrentContentBuilder(new StringBuffer());
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
-                    CompleteToolExecutionRequest completeToolRequest = toolBuilder.buildAndReset();
+                    CompleteToolCall completeToolCall = toolBuilder.buildAndReset();
 
-                    if (completeToolRequest.request().arguments().equals("{}")) {
-                        PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
-                                .index(completeToolRequest.index())
-                                .toolId(completeToolRequest.request().id())
-                                .toolName(completeToolRequest.request().name())
-                                .partialToolArguments(completeToolRequest.request().arguments())
+                    if (completeToolCall.request().arguments().equals("{}")) {
+                        PartialToolCall partialToolRequest = PartialToolCall.builder()
+                                .index(completeToolCall.index())
+                                .id(completeToolCall.request().id())
+                                .name(completeToolCall.request().name())
+                                .partialArguments(completeToolCall.request().arguments())
                                 .build();
-                        onPartialToolExecutionRequest(handler, partialToolRequest);
+                        onPartialToolCall(handler, partialToolRequest);
                     }
 
-                    onCompleteToolExecutionRequest(handler, completeToolRequest);
+                    onCompleteToolCall(handler, completeToolCall);
                 }
             }
 

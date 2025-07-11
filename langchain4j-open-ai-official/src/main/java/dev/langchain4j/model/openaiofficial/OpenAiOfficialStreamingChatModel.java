@@ -1,7 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolExecutionRequest;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolExecutionRequest;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
@@ -15,10 +15,10 @@ import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletionChunk;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
-import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
+import dev.langchain4j.agent.tool.PartialToolCall;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.ToolExecutionRequestBuilder;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -103,7 +103,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                     OpenAiOfficialChatResponseMetadata.builder();
 
             StringBuffer textBuilder = new StringBuffer();
-            ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder();
+            ToolCallBuilder toolBuilder = new ToolCallBuilder();
 
             asyncClient
                     .chat()
@@ -128,7 +128,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                 handler.onError(error.get());
                             } else {
                                 if (toolBuilder.hasRequests()) {
-                                    onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
+                                    onCompleteToolCall(handler, toolBuilder.buildAndReset());
                                 }
 
                                 String text = textBuilder.toString();
@@ -158,7 +158,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             StreamingChatResponseHandler handler,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,
-            ToolExecutionRequestBuilder toolBuilder) {
+            ToolCallBuilder toolBuilder) {
 
         responseMetadataBuilder.id(chatCompletionChunk.id());
         responseMetadataBuilder.modelName(chatCompletionChunk.model());
@@ -187,7 +187,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         ChatCompletionChunk.Choice.Delta.ToolCall.Function function = toolCall.function().get();
                         int index = (int) toolCall.index();
                         if (toolBuilder.index() != index) {
-                            onCompleteToolExecutionRequest(handler, toolBuilder.buildAndReset());
+                            onCompleteToolCall(handler, toolBuilder.buildAndReset());
                             toolBuilder.updateIndex(index);
                         }
 
@@ -198,13 +198,13 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         if (isNotNullOrEmpty(partialArguments)) {
                             toolBuilder.appendArguments(partialArguments);
 
-                            PartialToolExecutionRequest partialToolRequest = PartialToolExecutionRequest.builder()
+                            PartialToolCall partialToolRequest = PartialToolCall.builder()
                                     .index(index)
-                                    .toolId(id)
-                                    .toolName(name)
-                                    .partialToolArguments(partialArguments)
+                                    .id(id)
+                                    .name(name)
+                                    .partialArguments(partialArguments)
                                     .build();
-                            onPartialToolExecutionRequest(handler, partialToolRequest);
+                            onPartialToolCall(handler, partialToolRequest);
                         }
                     }
                 }

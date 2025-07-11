@@ -1,7 +1,7 @@
 package dev.langchain4j.model.chat.common;
 
-import dev.langchain4j.agent.tool.CompleteToolExecutionRequest;
-import dev.langchain4j.agent.tool.PartialToolExecutionRequest;
+import dev.langchain4j.agent.tool.CompleteToolCall;
+import dev.langchain4j.agent.tool.PartialToolCall;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -206,8 +206,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
-        Queue<PartialToolExecutionRequest> partialToolExecutionRequests = new ConcurrentLinkedQueue<>();
-        Queue<CompleteToolExecutionRequest> completeToolExecutionRequests = new ConcurrentLinkedQueue<>();
+        Queue<PartialToolCall> partialToolCalls = new ConcurrentLinkedQueue<>();
+        Queue<CompleteToolCall> completeToolCalls = new ConcurrentLinkedQueue<>();
         AtomicInteger timesOnPartialResponseWasCalled = new AtomicInteger();
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
@@ -222,14 +222,14 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onPartialToolExecutionRequest(PartialToolExecutionRequest partialToolExecutionRequest) {
-                partialToolExecutionRequests.add(partialToolExecutionRequest);
+            public void onPartialToolCall(PartialToolCall partialToolCall) {
+                partialToolCalls.add(partialToolCall);
                 threads.add(Thread.currentThread());
             }
 
             @Override
-            public void onCompleteToolExecutionRequest(CompleteToolExecutionRequest completeToolExecutionRequest) {
-                completeToolExecutionRequests.add(completeToolExecutionRequest);
+            public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+                completeToolCalls.add(completeToolCall);
                 threads.add(Thread.currentThread());
             }
 
@@ -256,8 +256,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             StreamingMetadata metadata = new StreamingMetadata(
                     concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
                     timesOnPartialResponseWasCalled.get(),
-                    new ArrayList<>(partialToolExecutionRequests),
-                    new ArrayList<>(completeToolExecutionRequests),
+                    new ArrayList<>(partialToolCalls),
+                    new ArrayList<>(completeToolCalls),
                     timesOnCompleteResponseWasCalled.get(),
                     threads,
                     spyHandler
