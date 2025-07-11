@@ -20,7 +20,7 @@ public class ToolCall {
     @JsonProperty
     private final Integer index;
     @JsonProperty
-    private final ToolType type;
+    private final String type;
     @JsonProperty
     private final FunctionCall function;
 
@@ -40,7 +40,7 @@ public class ToolCall {
     }
 
     public ToolType type() {
-        return type;
+        return ToolType.valueOf(type);
     }
 
     public FunctionCall function() {
@@ -92,7 +92,7 @@ public class ToolCall {
 
         private String id;
         private Integer index;
-        private ToolType type;
+        private String type;
         private FunctionCall function;
 
         public Builder id(String id) {
@@ -105,8 +105,15 @@ public class ToolCall {
             return this;
         }
 
-        public Builder type(ToolType type) {
+        public Builder type(String type) {
             this.type = type;
+            return this;
+        }
+
+        public Builder type(ToolType type) {
+            if (type != null) {
+                this.type = type.toString();
+            }
             return this;
         }
 
