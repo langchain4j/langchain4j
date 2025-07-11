@@ -45,6 +45,19 @@ public interface TokenStream {
     TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
 
     /**
+     * TODO
+     * TODO relationship with onCompleteResponse
+     *
+     * @param intermediateResponseHandler TODO
+     * @return token stream instance used to configure or start stream processing
+     */
+    default TokenStream onIntermediateResponse(Consumer<ChatResponse> intermediateResponseHandler) {
+        // TODO name: distinction between onPartialResponse and onCompleteResponse
+        throw new UnsupportedOperationException("Consuming intermediate responses is not supported " +
+                "by this implementation of TokenStream: " + this.getClass().getName());
+    }
+
+    /**
      * The provided handler will be invoked when a language model finishes streaming a response.
      *
      * @param completeResponseHandler lambda that will be invoked when language model finishes streaming
