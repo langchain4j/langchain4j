@@ -55,6 +55,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -160,7 +161,7 @@ public class AnthropicMapper {
                 .map(message -> (SystemMessage) message)
                 .collect(toList());
 
-        SystemMessage lastSystemMessage = systemMessages.get(systemMessages.size() - 1);
+        SystemMessage lastSystemMessage = systemMessages.isEmpty() ? null : systemMessages.get(systemMessages.size() - 1);
         return systemMessages.stream()
                 .map(message -> {
                     boolean isLastItem = message.equals(lastSystemMessage);
@@ -223,7 +224,7 @@ public class AnthropicMapper {
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
-        ToolSpecification lastToolSpecification = toolSpecifications.get(toolSpecifications.size() - 1);
+        ToolSpecification lastToolSpecification = toolSpecifications.isEmpty() ? null : toolSpecifications.get(toolSpecifications.size() - 1);
         return toolSpecifications.stream()
                 .map(toolSpecification -> {
                     boolean isLastItem = toolSpecification.equals(lastToolSpecification);
