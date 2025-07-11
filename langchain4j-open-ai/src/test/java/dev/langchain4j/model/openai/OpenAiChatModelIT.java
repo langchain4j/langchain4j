@@ -1,7 +1,9 @@
 package dev.langchain4j.model.openai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -15,6 +17,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -26,13 +29,12 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -578,5 +580,50 @@ class OpenAiChatModelIT {
                 .containsIgnoringCase("Berlin")
                 .containsIgnoringCase("capital")
                 .containsIgnoringCase("Germany");
+    }
+
+    @Test
+    void should_set_custom_parameters_and_get_raw_response() throws JsonProcessingException {
+
+        // given
+        String city = "Munich";
+
+        record ApproximateLocation(String city) {
+        }
+        record UserLocation(String type, ApproximateLocation approximate) {
+        }
+        record WebSearchOptions(@JsonProperty("user_location") UserLocation userLocation) {
+        }
+
+        WebSearchOptions webSearchOptions = new WebSearchOptions(new UserLocation("approximate", new ApproximateLocation(city)));
+        Map<String, Object> customParameters = Map.of("web_search_options", webSearchOptions);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Where can I buy good coffee?"))
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .modelName("gpt-4o-mini-search-preview")
+                        .customParameters(customParameters)
+                        .maxOutputTokens(20) // to save tokens
+                        .build())
+                .build();
+
+        ChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains(city);
+
+        SuccessfulHttpResponse rawResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
+        JsonNode jsonNode = new ObjectMapper().readTree(rawResponse.body());
+        assertThat(jsonNode.get("choices").get(0).get("message").get("annotations").get(0).get("type").asText())
+                .isEqualTo("url_citation");
     }
 }
