@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -18,22 +19,26 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 @Internal
 public class ToolService {
 
-    private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
+    private final Map<String, ToolSpecification> toolSpecifications = new HashMap<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
+    private final Set<String> immediateReturnTools = new HashSet<>();
     private ToolProvider toolProvider;
     private int maxSequentialToolsInvocations = 100;
 
@@ -51,7 +56,7 @@ public class ToolService {
 
     public void tools(Map<ToolSpecification, ToolExecutor> tools) {
         tools.forEach((toolSpecification, toolExecutor) -> {
-            toolSpecifications.add(toolSpecification);
+            toolSpecifications.put(toolSpecification.name(), toolSpecification);
             toolExecutors.put(toolSpecification.name(), toolExecutor);
         });
     }
@@ -74,8 +79,13 @@ public class ToolService {
             throw new IllegalConfigurationException(
                     "Duplicated definition for tool: " + toolSpecification.name());
         }
+
         toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
-        toolSpecifications.add(toolSpecificationFrom(method));
+        toolSpecifications.put(toolSpecification.name(), toolSpecification);
+
+        if (method.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
+            immediateReturnTools.add(toolSpecification.name());
+        }
     }
 
     public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
@@ -85,11 +95,11 @@ public class ToolService {
     public ToolServiceContext createContext(Object memoryId, UserMessage userMessage) {
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty() ?
-                    new ToolServiceContext(null, null) :
+                    ToolServiceContext.Empty.INSTANCE :
                     new ToolServiceContext(this.toolSpecifications, this.toolExecutors);
         }
 
-        List<ToolSpecification> toolsSpecs = new ArrayList<>(this.toolSpecifications);
+        Map<String, ToolSpecification> toolsSpecs = new HashMap<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecs = new HashMap<>(this.toolExecutors);
         ToolProviderRequest toolProviderRequest = new ToolProviderRequest(memoryId, userMessage);
         ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
@@ -97,7 +107,7 @@ public class ToolService {
             for (Map.Entry<ToolSpecification, ToolExecutor> entry :
                     toolProviderResult.tools().entrySet()) {
                 if (toolExecs.putIfAbsent(entry.getKey().name(), entry.getValue()) == null) {
-                    toolsSpecs.add(entry.getKey());
+                    toolsSpecs.put(entry.getKey().name(), entry.getKey());
                 } else {
                     throw new IllegalConfigurationException(
                             "Duplicated definition for tool: " + entry.getKey().name());
@@ -157,6 +167,10 @@ public class ToolService {
                 } else {
                     messages.add(toolExecutionResultMessage);
                 }
+
+                if (isImmediateTool(toolExecutionRequest.name())) {
+                    return new ToolServiceResult(rawToolExecutionResponse(chatResponse, toolExecutionResultMessage), toolExecutions);
+                }
             }
 
             if (chatMemory != null) {
@@ -188,7 +202,7 @@ public class ToolService {
         return toolHallucinationStrategy.apply(toolExecutionRequest);
     }
 
-    public List<ToolSpecification> toolSpecifications() {
+    public Map<String, ToolSpecification> toolSpecifications() {
         return toolSpecifications;
     }
 
@@ -198,5 +212,22 @@ public class ToolService {
 
     public ToolProvider toolProvider() {
         return toolProvider;
+    }
+
+    public boolean isImmediateTool(String toolName) {
+        return immediateReturnTools.contains(toolName);
+    }
+
+    private static ChatResponse rawToolExecutionResponse(ChatResponse chatResponse, ToolExecutionResultMessage toolExecutionResultMessage) {
+        ChatResponseMetadata toolResponseMetadata = ChatResponseMetadata.builder()
+                .id(chatResponse.metadata().id())
+                .modelName(chatResponse.metadata().modelName())
+                .tokenUsage(chatResponse.metadata().tokenUsage())
+                .finishReason(FinishReason.STOP)
+                .build();
+        return ChatResponse.builder()
+                .aiMessage(new AiMessage(toolExecutionResultMessage.text()))
+                .metadata(toolResponseMetadata)
+                .build();
     }
 }

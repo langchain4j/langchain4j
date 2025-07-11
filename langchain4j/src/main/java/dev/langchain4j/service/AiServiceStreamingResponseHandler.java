@@ -118,6 +118,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             .build();
                     toolExecutionHandler.accept(toolExecution);
                 }
+
+                if (context.toolService.isImmediateTool(toolName)) {
+                    completeResponseHandler.accept(finalResponse(completeResponse, new AiMessage(toolExecutionResultMessage.text())));
+                }
             }
 
             ChatRequest chatRequest = ChatRequest.builder()
@@ -143,13 +147,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
             if (completeResponseHandler != null) {
-                ChatResponse finalChatResponse = ChatResponse.builder()
-                        .aiMessage(aiMessage)
-                        .metadata(completeResponse.metadata().toBuilder()
-                                .tokenUsage(tokenUsage.add(
-                                        completeResponse.metadata().tokenUsage()))
-                                .build())
-                        .build();
+                ChatResponse finalChatResponse = finalResponse(completeResponse, aiMessage);
 
                 // Invoke output guardrails
                 if (hasOutputGuardrails) {
@@ -181,6 +179,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 completeResponseHandler.accept(finalChatResponse);
             }
         }
+    }
+
+    private ChatResponse finalResponse(ChatResponse completeResponse, AiMessage aiMessage) {
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(completeResponse.metadata().toBuilder()
+                        .tokenUsage(tokenUsage.add(
+                                completeResponse.metadata().tokenUsage()))
+                        .build())
+                .build();
     }
 
     private ChatMemory getMemory() {
