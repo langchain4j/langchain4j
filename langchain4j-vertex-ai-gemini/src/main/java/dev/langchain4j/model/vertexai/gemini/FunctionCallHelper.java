@@ -9,7 +9,6 @@ import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,24 +35,24 @@ class FunctionCallHelper {
     }
 
     static List<ToolExecutionRequest> fromFunctionCalls(List<FunctionCall> functionCalls) {
-        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+        return functionCalls.stream()
+                .map(FunctionCallHelper::fromFunctionCall)
+                .toList();
+    }
 
-        for (FunctionCall functionCall : functionCalls) {
-            ToolExecutionRequest.Builder builder = ToolExecutionRequest.builder()
-                .name(functionCall.getName());
+    static ToolExecutionRequest fromFunctionCall(FunctionCall functionCall) {
+        ToolExecutionRequest.Builder builder = ToolExecutionRequest.builder()
+            .name(functionCall.getName());
 
-            Map<String, Object> callArgsMap = new HashMap<>();
-            Struct callArgs = functionCall.getArgs();
-            Map<String, Value> callArgsFieldsMap = callArgs.getFieldsMap();
-            callArgsFieldsMap.forEach((key, value) -> callArgsMap.put(key, unwrapProtoValue(value)));
+        Map<String, Object> callArgsMap = new HashMap<>();
+        Struct callArgs = functionCall.getArgs();
+        Map<String, Value> callArgsFieldsMap = callArgs.getFieldsMap();
+        callArgsFieldsMap.forEach((key, value) -> callArgsMap.put(key, unwrapProtoValue(value)));
 
-            String serializedArgsMap = GSON.toJson(callArgsMap);
-            builder.arguments(serializedArgsMap);
+        String serializedArgsMap = GSON.toJson(callArgsMap);
+        builder.arguments(serializedArgsMap);
 
-            toolExecutionRequests.add(builder.build());
-        }
-
-        return toolExecutionRequests;
+        return builder.build();
     }
 
     static Object unwrapProtoValue(Value value) {

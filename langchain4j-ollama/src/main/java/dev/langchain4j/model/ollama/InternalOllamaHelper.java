@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Internal;
@@ -83,7 +84,7 @@ class InternalOllamaHelper {
         return toolCalls.stream()
                 .map(toolCall -> ToolExecutionRequest.builder()
                         .name(toolCall.getFunction().getName())
-                        .arguments(toJson(toolCall.getFunction().getArguments()))
+                        .arguments(toJsonWithoutIdent(toolCall.getFunction().getArguments()))
                         .build())
                 .toList();
     }

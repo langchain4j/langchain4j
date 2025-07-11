@@ -37,11 +37,13 @@ class GeminiStreamingResponseBuilder {
      *
      * @param includeCodeExecutionOutput whether to include code execution output in the response
      */
-    public GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput) {
+    GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput) {
         this.includeCodeExecutionOutput = includeCodeExecutionOutput;
         this.contentBuilder = new StringBuilder();
         this.functionCalls = new ArrayList<>();
     }
+
+    record TextAndTools(Optional<String> maybeText, List<ToolExecutionRequest> tools) {}
 
     /**
      * Appends a partial response to the builder.
@@ -49,9 +51,9 @@ class GeminiStreamingResponseBuilder {
      * @param partialResponse the partial response from Gemini AI
      * @return an Optional containing the text of the partial response, or empty if no valid text
      */
-    public Optional<String> append(GeminiGenerateContentResponse partialResponse) {
+    TextAndTools append(GeminiGenerateContentResponse partialResponse) {
         if (partialResponse == null) {
-            return Optional.empty();
+            return new TextAndTools(Optional.empty(), List.of());
         }
 
         GeminiCandidate firstCandidate = partialResponse.getCandidates().get(0);
@@ -63,13 +65,13 @@ class GeminiStreamingResponseBuilder {
 
         GeminiContent content = firstCandidate.getContent();
         if (content == null || content.getParts() == null) {
-            return Optional.empty();
+            return new TextAndTools(Optional.empty(), List.of());
         }
 
         AiMessage message = fromGPartsToAiMessage(content.getParts(), this.includeCodeExecutionOutput);
         updateContentAndFunctionCalls(message);
 
-        return Optional.ofNullable(message.text());
+        return new TextAndTools(Optional.ofNullable(message.text()), message.toolExecutionRequests());
     }
 
     /**
@@ -77,7 +79,7 @@ class GeminiStreamingResponseBuilder {
      *
      * @return a Response object containing the complete AiMessage, token usage, and finish reason
      */
-    public ChatResponse build() {
+    ChatResponse build() {
         AiMessage aiMessage = createAiMessage();
 
         FinishReason finishReason = this.finishReason.get();
