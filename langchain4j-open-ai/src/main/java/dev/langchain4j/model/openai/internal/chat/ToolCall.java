@@ -8,7 +8,10 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+import java.util.Locale;
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 
 @JsonDeserialize(builder = ToolCall.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -102,6 +105,13 @@ public class ToolCall {
 
         public Builder index(Integer index) {
             this.index = index;
+            return this;
+        }
+
+        public Builder type(String type) {
+            if (isNotNullOrBlank(type)) {
+                this.type = ToolType.valueOf(type.toUpperCase(Locale.ROOT));
+            }
             return this;
         }
 
