@@ -56,6 +56,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -403,7 +404,20 @@ class AiServicesWithRagIT {
         QueryRouter queryRouter = new LanguageModelQueryRouter(model, retrieverToDescription);
 
         ScoringModel scoringModel = mock(ScoringModel.class);
-        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.9, 0.7)));
+        when(scoringModel.scoreAll(any(), any())).thenAnswer(invocation -> {
+            List<TextSegment> segments = (List<TextSegment>) invocation.getArguments()[0];
+            List<Double> scores = segments.stream()
+                    .map(segment -> {
+                        if (segment.text().contains(ALLOWED_CANCELLATION_PERIOD_DAYS)
+                                || segment.text().contains(MIN_BOOKING_PERIOD_DAYS)) {
+                            return 0.9;
+                        } else {
+                            return 0.1;
+                        }
+                    })
+                    .toList();
+            return Response.from(scores);
+        });
         ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
                 .scoringModel(scoringModel)
                 .querySelector(
