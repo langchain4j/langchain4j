@@ -38,7 +38,7 @@ class DocumentTest implements WithAssertions {
                 .hasToString("DefaultDocument { text = \"foo bar\", metadata = Metadata { metadata = {} } }");
 
         final var expectedMetadata = new HashMap<String, Object>();
-        expectedMetadata.put("index", "0");
+        expectedMetadata.put(MetadataKeys.INDEX, "0");
         assertThat(document.toTextSegment()).isEqualTo(new TextSegment("foo bar", Metadata.from(expectedMetadata)));
     }
 
@@ -54,7 +54,7 @@ class DocumentTest implements WithAssertions {
                 .hasToString("DefaultDocument { text = \"foo bar\", metadata = Metadata { metadata = {foo=bar} } }");
 
         final var expectedMetadata = new HashMap<String, Object>();
-        expectedMetadata.put("index", "0");
+        expectedMetadata.put(MetadataKeys.INDEX, "0");
         expectedMetadata.put("foo", "bar");
         assertThat(document.toTextSegment()).isEqualTo(new TextSegment("foo bar", Metadata.from(expectedMetadata)));
     }
@@ -62,10 +62,11 @@ class DocumentTest implements WithAssertions {
     @Test
     void index_metadata() {
         final var textSegmentWithIndex =
-                Document.from("foo bar", Metadata.from("index", "1")).toTextSegment();
+                Document.from("foo bar", Metadata.from(MetadataKeys.INDEX, "1")).toTextSegment();
 
         assertThat(textSegmentWithIndex.metadata().toMap()).hasSize(1);
-        assertThat(textSegmentWithIndex.metadata().getString("index")).isEqualTo("1");
+        assertThat(textSegmentWithIndex.metadata().getString(MetadataKeys.INDEX))
+                .isEqualTo("1");
     }
 
     @Test

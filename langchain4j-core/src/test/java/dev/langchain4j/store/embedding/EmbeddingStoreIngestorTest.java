@@ -13,6 +13,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.document.MetadataKeys;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
@@ -168,7 +169,7 @@ class EmbeddingStoreIngestorTest {
         String text = "Some text";
         Document document = Document.from(text);
 
-        TextSegment expectedTextSegment = TextSegment.from(text, Metadata.from("index", "0"));
+        TextSegment expectedTextSegment = TextSegment.from(text, Metadata.from(MetadataKeys.INDEX, "0"));
         TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
 
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);

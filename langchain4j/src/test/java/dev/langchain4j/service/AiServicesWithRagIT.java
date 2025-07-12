@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.MetadataKeys;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.message.AiMessage;
@@ -552,7 +553,8 @@ class AiServicesWithRagIT {
                 .isEqualToIgnoringWhitespace("4. Cancellation Policy"
                         + "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period."
                         + "4.2 If the booking period is less than 17 days, cancellations are not permitted.");
-        assertThat(content.textSegment().metadata().getString("index")).isEqualTo("3");
+        assertThat(content.textSegment().metadata().getString(MetadataKeys.INDEX))
+                .isEqualTo("3");
         assertThat(content.textSegment().metadata().getString("file_name"))
                 .isEqualTo("miles-of-smiles-terms-of-use.txt");
     }

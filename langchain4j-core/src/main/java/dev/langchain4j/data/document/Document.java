@@ -42,10 +42,10 @@ public interface Document {
      * @return a {@link TextSegment}
      */
     default TextSegment toTextSegment() {
-        if (metadata().containsKey("index")) {
+        if (metadata().containsKey(MetadataKeys.INDEX)) {
             return TextSegment.from(text(), metadata().copy());
         } else {
-            return TextSegment.from(text(), metadata().copy().put("index", "0"));
+            return TextSegment.from(text(), metadata().copy().put(MetadataKeys.INDEX, "0"));
         }
     }
 
