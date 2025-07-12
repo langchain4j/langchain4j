@@ -1,19 +1,19 @@
 package dev.langchain4j.data.document.splitter;
 
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.TokenCountEstimator;
-import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.MetadataKeys;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class DocumentBySentenceSplitterTest {
 
@@ -30,21 +30,20 @@ class DocumentBySentenceSplitterTest {
 
         assertThat(firstSentence + " " + secondSentence).hasSizeGreaterThan(maxSegmentSize);
 
-        Document document = Document.from(
-                format(" %s  %s ", firstSentence, secondSentence),
-                metadata("document", "0")
-        );
+        Document document = Document.from(format(" %s  %s ", firstSentence, secondSentence), metadata("document", "0"));
 
         DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0);
 
         List<TextSegment> segments = splitter.split(document);
 
-        segments.forEach(segment ->
-                assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
-        assertThat(segments).containsExactly(
-                textSegment(firstSentence, metadata("index", "0").put("document", "0")),
-                textSegment(secondSentence, metadata("index", "1").put("document", "0"))
-        );
+        segments.forEach(segment -> assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
+        assertThat(segments)
+                .containsExactly(
+                        textSegment(
+                                firstSentence, metadata(MetadataKeys.INDEX, "0").put("document", "0")),
+                        textSegment(
+                                secondSentence,
+                                metadata(MetadataKeys.INDEX, "1").put("document", "0")));
     }
 
     @Test
@@ -57,24 +56,23 @@ class DocumentBySentenceSplitterTest {
         assertThat(firstSentence + " " + secondSentence).hasSizeLessThan(maxSegmentSize);
 
         String thirdSentence = "This is a third sentence.";
-        assertThat(firstSentence + " " + secondSentence + " " + thirdSentence)
-                .hasSizeGreaterThan(maxSegmentSize);
+        assertThat(firstSentence + " " + secondSentence + " " + thirdSentence).hasSizeGreaterThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s  %s  %s ", firstSentence, secondSentence, thirdSentence),
-                metadata("document", "0")
-        );
+                format(" %s  %s  %s ", firstSentence, secondSentence, thirdSentence), metadata("document", "0"));
 
         DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0);
 
         List<TextSegment> segments = splitter.split(document);
 
-        segments.forEach(segment ->
-                assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
-        assertThat(segments).containsExactly(
-                textSegment(firstSentence + " " + secondSentence, metadata("index", "0").put("document", "0")),
-                textSegment(thirdSentence, metadata("index", "1").put("document", "0"))
-        );
+        segments.forEach(segment -> assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
+        assertThat(segments)
+                .containsExactly(
+                        textSegment(
+                                firstSentence + " " + secondSentence,
+                                metadata(MetadataKeys.INDEX, "0").put("document", "0")),
+                        textSegment(
+                                thirdSentence, metadata(MetadataKeys.INDEX, "1").put("document", "0")));
     }
 
     @Test
@@ -92,22 +90,25 @@ class DocumentBySentenceSplitterTest {
         assertThat(thirdSentence).hasSizeLessThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s  %s  %s ", firstSentence, secondSentence, thirdSentence),
-                metadata("document", "0")
-        );
+                format(" %s  %s  %s ", firstSentence, secondSentence, thirdSentence), metadata("document", "0"));
 
         DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0);
 
         List<TextSegment> segments = splitter.split(document);
 
-        segments.forEach(segment ->
-                assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
-        assertThat(segments).containsExactly(
-                textSegment(firstSentence, metadata("index", "0").put("document", "0")),
-                textSegment("This is a very long sentence that does", metadata("index", "1").put("document", "0")),
-                textSegment("not fit into segment.", metadata("index", "2").put("document", "0")),
-                textSegment(thirdSentence, metadata("index", "3").put("document", "0"))
-        );
+        segments.forEach(segment -> assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
+        assertThat(segments)
+                .containsExactly(
+                        textSegment(
+                                firstSentence, metadata(MetadataKeys.INDEX, "0").put("document", "0")),
+                        textSegment(
+                                "This is a very long sentence that does",
+                                metadata(MetadataKeys.INDEX, "1").put("document", "0")),
+                        textSegment(
+                                "not fit into segment.",
+                                metadata(MetadataKeys.INDEX, "2").put("document", "0")),
+                        textSegment(
+                                thirdSentence, metadata(MetadataKeys.INDEX, "3").put("document", "0")));
     }
 
     @Test
@@ -119,8 +120,8 @@ class DocumentBySentenceSplitterTest {
         String s3 = "Fields of gold stretched as far as the eye could see, punctuated by tiny blossoms.";
         String s4 = "The wind whispered.";
 
-        String s5p1 = "Sometimes, it would carry fragrances from the neighboring towns, which included chocolate, " +
-                "freshly baked bread, and the salty tang of";
+        String s5p1 = "Sometimes, it would carry fragrances from the neighboring towns, which included chocolate, "
+                + "freshly baked bread, and the salty tang of";
 
         String s5p2 = "the sea.";
 
@@ -147,10 +148,8 @@ class DocumentBySentenceSplitterTest {
         Document document = Document.from(
                 format(
                         "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
-                        s1, s2, s3, s4, s5p1, s5p2, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18
-                ),
-                metadata("document", "0")
-        );
+                        s1, s2, s3, s4, s5p1, s5p2, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18),
+                metadata("document", "0"));
 
         int maxSegmentSize = 26;
         TokenCountEstimator countEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
@@ -158,20 +157,27 @@ class DocumentBySentenceSplitterTest {
 
         List<TextSegment> segments = splitter.split(document);
 
-        segments.forEach(segment ->
-                assertThat(countEstimator.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
-        assertThat(segments).containsExactly(
-                textSegment(s1 + " " + s2, metadata("index", "0").put("document", "0")),
-                textSegment(s3 + " " + s4, metadata("index", "1").put("document", "0")),
-                textSegment(s5p1, metadata("index", "2").put("document", "0")),
-                textSegment(s5p2, metadata("index", "3").put("document", "0")),
-                textSegment(s6, metadata("index", "4").put("document", "0")),
-                textSegment(s7, metadata("index", "5").put("document", "0")),
-                textSegment(s8 + " " + s9, metadata("index", "6").put("document", "0")),
-                textSegment(s10, metadata("index", "7").put("document", "0")),
-                textSegment(s11 + " " + s12 + " " + s13 + " " + s14, metadata("index", "8").put("document", "0")),
-                textSegment(s15 + " " + s16 + " " + s17, metadata("index", "9").put("document", "0")),
-                textSegment(s18, metadata("index", "10").put("document", "0"))
-        );
+        segments.forEach(segment -> assertThat(countEstimator.estimateTokenCountInText(segment.text()))
+                .isLessThanOrEqualTo(maxSegmentSize));
+        assertThat(segments)
+                .containsExactly(
+                        textSegment(
+                                s1 + " " + s2, metadata(MetadataKeys.INDEX, "0").put("document", "0")),
+                        textSegment(
+                                s3 + " " + s4, metadata(MetadataKeys.INDEX, "1").put("document", "0")),
+                        textSegment(s5p1, metadata(MetadataKeys.INDEX, "2").put("document", "0")),
+                        textSegment(s5p2, metadata(MetadataKeys.INDEX, "3").put("document", "0")),
+                        textSegment(s6, metadata(MetadataKeys.INDEX, "4").put("document", "0")),
+                        textSegment(s7, metadata(MetadataKeys.INDEX, "5").put("document", "0")),
+                        textSegment(
+                                s8 + " " + s9, metadata(MetadataKeys.INDEX, "6").put("document", "0")),
+                        textSegment(s10, metadata(MetadataKeys.INDEX, "7").put("document", "0")),
+                        textSegment(
+                                s11 + " " + s12 + " " + s13 + " " + s14,
+                                metadata(MetadataKeys.INDEX, "8").put("document", "0")),
+                        textSegment(
+                                s15 + " " + s16 + " " + s17,
+                                metadata(MetadataKeys.INDEX, "9").put("document", "0")),
+                        textSegment(s18, metadata(MetadataKeys.INDEX, "10").put("document", "0")));
     }
 }

@@ -2,6 +2,7 @@ package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.MetadataKeys;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.TokenCountEstimator;
 
@@ -23,32 +24,29 @@ import dev.langchain4j.model.TokenCountEstimator;
  * place them into multiple segments.
  * Such segments contain only the parts of the split long word.
  * <p>
- * Each {@link TextSegment} inherits all metadata from the {@link Document} and includes an "index" metadata key
+ * Each {@link TextSegment} inherits all metadata from the {@link Document} and includes an {@link MetadataKeys#index} metadata key
  * representing its position within the document (starting from 0).
  */
 public class DocumentByWordSplitter extends HierarchicalDocumentSplitter {
 
-    public DocumentByWordSplitter(int maxSegmentSizeInChars,
-                                  int maxOverlapSizeInChars) {
+    public DocumentByWordSplitter(int maxSegmentSizeInChars, int maxOverlapSizeInChars) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
     }
 
-    public DocumentByWordSplitter(int maxSegmentSizeInChars,
-                                  int maxOverlapSizeInChars,
-                                  DocumentSplitter subSplitter) {
+    public DocumentByWordSplitter(int maxSegmentSizeInChars, int maxOverlapSizeInChars, DocumentSplitter subSplitter) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
     }
 
-    public DocumentByWordSplitter(int maxSegmentSizeInTokens,
-                                  int maxOverlapSizeInTokens,
-                                  TokenCountEstimator tokenCountEstimator) {
+    public DocumentByWordSplitter(
+            int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, TokenCountEstimator tokenCountEstimator) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, null);
     }
 
-    public DocumentByWordSplitter(int maxSegmentSizeInTokens,
-                                  int maxOverlapSizeInTokens,
-                                  TokenCountEstimator tokenCountEstimator,
-                                  DocumentSplitter subSplitter) {
+    public DocumentByWordSplitter(
+            int maxSegmentSizeInTokens,
+            int maxOverlapSizeInTokens,
+            TokenCountEstimator tokenCountEstimator,
+            DocumentSplitter subSplitter) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, subSplitter);
     }
 
