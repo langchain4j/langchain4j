@@ -147,6 +147,27 @@ class UtilsTest {
     }
 
     @Test
+    void array_is_null_or_empty() {
+        // Null array
+        assertThat(Utils.isNullOrEmpty((Object[]) null)).isTrue();
+
+        // Empty array
+        assertThat(Utils.isNullOrEmpty(new Object[0])).isTrue();
+
+        // Non-empty array with one element
+        assertThat(Utils.isNullOrEmpty(new Object[] {"abc"})).isFalse();
+
+        // Non-empty array with multiple elements
+        assertThat(Utils.isNullOrEmpty(new Object[] {"a", "b", "c"})).isFalse();
+
+        // Array with a null element (still non-empty)
+        assertThat(Utils.isNullOrEmpty(new Object[] {null})).isFalse();
+
+        // Mixed null and non-null elements
+        assertThat(Utils.isNullOrEmpty(new Object[] {null, "xyz"})).isFalse();
+    }
+
+    @Test
     void repeat() {
         assertThat(Utils.repeat("foo", 0)).isEmpty();
         assertThat(Utils.repeat("foo", 1)).isEqualTo("foo");
