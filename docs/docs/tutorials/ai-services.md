@@ -260,7 +260,7 @@ AI service will parse LLM-generated output into a desired type before returning
 
 Any type can be additionally wrapped into a `Result<T>` to get extra metadata about AI Service invocation:
 - `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
-the LLM (e.g., because tools were executed), it will summ token usages of all calls.
+the LLM (e.g., because tools were executed), it will sum token usages of all calls.
 - Sources - `Content`s retrieved during [RAG](/tutorials/ai-services#rag) retrieval
 - Executed [tools](/tutorials/ai-services#tools-function-calling)
 - `FinishReason`
