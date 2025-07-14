@@ -36,15 +36,16 @@ public class PlaywrightDocumentLoader implements AutoCloseable {
         logger.info("Loading document from URL: {}", url);
         String pageContent;
         try {
-            final Page page = browser.newPage();
-            page.navigate(url);
+            try (Page page = browser.newPage()) {
+                page.navigate(url);
 
-            // Most of the time, this method is not needed because Playwright auto-waits before every action.
-            // https://playwright.dev/java/docs/actionability
-            page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                // Most of the time, this method is not needed because Playwright auto-waits before every action.
+                // https://playwright.dev/java/docs/actionability
+                page.waitForLoadState(LoadState.DOMCONTENTLOADED);
 
-            logger.debug("Waiting webpage fully loaded: {}", url);
-            pageContent = page.content();
+                logger.debug("Waiting webpage fully loaded: {}", url);
+                pageContent = page.content();
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to load document from URL: " + url, e);
         }

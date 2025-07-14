@@ -11,6 +11,8 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
@@ -232,6 +234,7 @@ public abstract class HttpClientIT {
             inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -323,6 +326,7 @@ public abstract class HttpClientIT {
             inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -395,9 +399,8 @@ public abstract class HttpClientIT {
             assertThat(streamingResult.threads()).hasSize(1);
             assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
 
-            InOrder inOrder = inOrder(spyListener);
-            inOrder.verify(spyListener, times(1)).onError(any());
-            inOrder.verifyNoMoreInteractions();
+            verify(spyListener).onError(any());
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -477,6 +480,7 @@ public abstract class HttpClientIT {
             inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -556,6 +560,7 @@ public abstract class HttpClientIT {
             inOrder.verify(spyListener, times(events.size())).onEvent(any());
             inOrder.verify(spyListener, times(1)).onClose();
             inOrder.verifyNoMoreInteractions();
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -635,9 +640,8 @@ public abstract class HttpClientIT {
             assertThat(threads).hasSize(1);
             assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
 
-            InOrder inOrder = inOrder(spyListener);
-            inOrder.verify(spyListener, times(1)).onError(any());
-            inOrder.verifyNoMoreInteractions();
+            verify(spyListener).onError(any());
+            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -712,9 +716,8 @@ public abstract class HttpClientIT {
             assertThat(threads).hasSize(1);
             assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
 
-            InOrder inOrder = inOrder(spyListener);
-            inOrder.verify(spyListener, times(1)).onError(any());
-            inOrder.verifyNoMoreInteractions();
+            verify(spyListener).onError(any());
+            verifyNoMoreInteractions(spyListener);
         }
     }
 }
