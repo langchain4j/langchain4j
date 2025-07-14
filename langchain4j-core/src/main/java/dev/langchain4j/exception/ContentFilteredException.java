@@ -6,6 +6,8 @@ package dev.langchain4j.exception;
  * <p>
  * This typically indicates that the input was flagged as inappropriate, unsafe, or against
  * the provider’s content guidelines.
+ *
+ * @since 1.2.0
  */
 public class ContentFilteredException extends InvalidRequestException {
 
