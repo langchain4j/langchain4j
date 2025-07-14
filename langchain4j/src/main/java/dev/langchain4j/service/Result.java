@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -15,11 +16,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * It contains actual content (LLM response) and additional information associated with it,
  * such as:
  * <pre>
- * - {@link TokenUsage}
- * - {@link FinishReason}
+ * - Aggregate {@link TokenUsage} over all calls to the {@link ChatModel}
+ * - {@link FinishReason} of the final {@link ChatResponse}
  * - sources ({@link Content}s) retrieved during RAG retrieval
- * - executed tools
- * - intermediate {@link ChatResponse}s
+ * - all executed tools
+ * - all intermediate {@link ChatResponse}s
  * - final {@link ChatResponse}
  * </pre>
  *
@@ -36,6 +37,9 @@ public class Result<T> {
     private final List<ChatResponse> intermediateResponses;
     private final ChatResponse finalResponse;
 
+    /**
+     * @since 1.2.0
+     */
     public Result(ResultBuilder<T> builder) {
         this.content = ensureNotNull(builder.content, "content");
         this.tokenUsage = builder.tokenUsage;
@@ -84,6 +88,11 @@ public class Result<T> {
         return toolExecutions;
     }
 
+    /**
+     * TODO
+     * @return
+     * @since 1.2.0
+     */
     // TODO expose intermediate and final separately?
     public List<ChatResponse> intermediateResponses() { // TODO name
         return intermediateResponses;
@@ -92,6 +101,7 @@ public class Result<T> {
     /**
      * TODO can differ from {@link #content()} in case guardrail changed it
      * @return
+     * @since 1.2.0
      */
     public ChatResponse finalResponse() { // TODO name
         return finalResponse;
@@ -135,11 +145,17 @@ public class Result<T> {
             return this;
         }
 
+        /**
+         * @since 1.2.0
+         */
         public ResultBuilder<T> intermediateResponses(List<ChatResponse> intermediateResponses) {
             this.intermediateResponses = intermediateResponses;
             return this;
         }
 
+        /**
+         * @since 1.2.0
+         */
         public ResultBuilder<T> finalResponse(ChatResponse finalResponse) {
             this.finalResponse = finalResponse;
             return this;

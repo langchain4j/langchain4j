@@ -50,6 +50,7 @@ public interface TokenStream {
      *
      * @param intermediateResponseHandler TODO
      * @return token stream instance used to configure or start stream processing
+     * @since 1.2.0
      */
     default TokenStream onIntermediateResponse(Consumer<ChatResponse> intermediateResponseHandler) {
         // TODO name: distinction between onPartialResponse and onCompleteResponse
@@ -59,6 +60,9 @@ public interface TokenStream {
 
     /**
      * The provided handler will be invoked when a language model finishes streaming a response.
+     * <p>
+     * Please note that {@link ChatResponse#tokenUsage()} contains aggregate token usage across all calls to the LLM.
+     * It is a sum of {@link ChatResponse#tokenUsage()} for all {@link #onIntermediateResponse(Consumer)} TODO
      *
      * @param completeResponseHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing

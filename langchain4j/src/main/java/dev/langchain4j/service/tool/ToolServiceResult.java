@@ -17,6 +17,9 @@ public class ToolServiceResult {
     private final List<ToolExecution> toolExecutions;
     private final TokenUsage aggregateTokenUsage;
 
+    /**
+     * @since 1.2.0
+     */
     public ToolServiceResult(List<ChatResponse> intermediateResponses,
                              ChatResponse finalResponse,
                              List<ToolExecution> toolExecutions,
@@ -30,7 +33,7 @@ public class ToolServiceResult {
     /**
      * @deprecated Please use {@link #ToolServiceResult(List, ChatResponse, List, TokenUsage)} instead
      */
-    @Deprecated
+    @Deprecated(since = "1.2.0")
     public ToolServiceResult(ChatResponse chatResponse,
                              List<ToolExecution> toolExecutions) {
         this.intermediateResponses = List.of();
@@ -39,14 +42,23 @@ public class ToolServiceResult {
         this.aggregateTokenUsage = chatResponse.tokenUsage();
     }
 
+    /**
+     * @since 1.2.0
+     */
     public List<ChatResponse> intermediateResponses() {
         return intermediateResponses;
     }
 
+    /**
+     * @since 1.2.0
+     */
     public ChatResponse finalResponse() {
         return finalResponse;
     }
 
+    /**
+     * @since 1.2.0
+     */
     public ChatResponse aggregateResponse() {
         return ChatResponse.builder()
                 .aiMessage(finalResponse.aiMessage())
@@ -59,7 +71,7 @@ public class ToolServiceResult {
     /**
      * @deprecated Please use {@link #aggregateResponse()} instead for clarity
      */
-    @Deprecated
+    @Deprecated(since = "1.2.0")
     public ChatResponse chatResponse() {
         return aggregateResponse();
     }
@@ -68,6 +80,9 @@ public class ToolServiceResult {
         return toolExecutions;
     }
 
+    /**
+     * @since 1.2.0
+     */
     public TokenUsage aggregateTokenUsage() {
         return aggregateTokenUsage;
     }
