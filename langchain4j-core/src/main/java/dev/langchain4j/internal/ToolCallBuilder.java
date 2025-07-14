@@ -7,21 +7,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 /**
+ * Internal helper that helps to build partial and complete tool calls during streaming.
+ * <p>
+ * Volatile fields, StringBuffer, and ConcurrentLinkedQueue are used to ensure safe access,
+ * as incoming SSE events may be processed by different threads depending on the underlying HTTP client implementation.
+ *
  * @since 1.2.0
  */
 @Internal
 public class ToolCallBuilder {
 
-    private final AtomicReference<Integer> index;
+    private volatile int index;
 
-    private final AtomicReference<String> id = new AtomicReference<>();
-    private final AtomicReference<String> name = new AtomicReference<>();
+    private volatile String id;
+    private volatile String name;
     private final StringBuffer arguments = new StringBuffer();
 
     private final Queue<ToolExecutionRequest> allToolExecutionRequests = new ConcurrentLinkedQueue<>();
@@ -31,40 +35,40 @@ public class ToolCallBuilder {
     }
 
     public ToolCallBuilder(int index) {
-        this.index = new AtomicReference(index);
+        this.index = index;
     }
 
     public int index() {
-        return index.get();
+        return index;
     }
 
     public int updateIndex(Integer index) {
         if (index != null) {
-            this.index.set(index);
+            this.index = index;
         }
-        return this.index.get();
+        return this.index;
     }
 
     public String id() {
-        return id.get();
+        return id;
     }
 
     public String updateId(String id) {
         if (isNotNullOrBlank(id)) {
-            this.id.set(id);
+            this.id = id;
         }
-        return this.id.get();
+        return this.id;
     }
 
     public String name() {
-        return name.get();
+        return name;
     }
 
     public String updateName(String name) {
         if (isNotNullOrBlank(name)) {
-            this.name.set(name);
+            this.name = name;
         }
-        return this.name.get();
+        return this.name;
     }
 
     public void appendArguments(String partialArguments) {
@@ -80,25 +84,25 @@ public class ToolCallBuilder {
         }
 
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .id(id.get())
-                .name(name.get())
+                .id(id)
+                .name(name)
                 .arguments(arguments)
                 .build();
         allToolExecutionRequests.add(toolExecutionRequest);
 
         reset();
 
-        return new CompleteToolCall(this.index.get(), toolExecutionRequest);
+        return new CompleteToolCall(this.index, toolExecutionRequest);
     }
 
     private void reset() {
-        id.set(null);
-        name.set(null);
+        id = null;
+        name = null;
         arguments.setLength(0);
     }
 
     public boolean hasRequests() {
-        return !allToolExecutionRequests.isEmpty() || name.get() != null;
+        return !allToolExecutionRequests.isEmpty() || name != null;
     }
 
     public List<ToolExecutionRequest> allRequests() {
