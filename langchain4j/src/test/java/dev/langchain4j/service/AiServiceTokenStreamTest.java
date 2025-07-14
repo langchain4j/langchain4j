@@ -5,11 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,14 +108,24 @@ class AiServiceTokenStreamTest {
     }
 
     private AiServiceTokenStream setupAiServiceTokenStream() {
-        StreamingChatModel model = mock(StreamingChatModel.class);
+        StreamingChatModel streamingModel = mock(StreamingChatModel.class);
+        ChatModel chatModel = mock(ChatModel.class);
+
         AiServiceContext context = new AiServiceContext(getClass());
-        context.streamingChatModel = model;
+        context.streamingChatModel = streamingModel;
+        context.chatModel = chatModel;
+
         return new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
                 .messages(messages)
                 .retrievedContents(content)
                 .context(context)
                 .memoryId(memoryId)
+                .commonGuardrailParams(GuardrailRequestParams.builder()
+                        .chatMemory(null)
+                        .augmentationResult(null)
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .build())
                 .build());
     }
 }

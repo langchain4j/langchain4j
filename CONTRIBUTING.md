@@ -42,6 +42,7 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 
 - Add [documentation](https://github.com/langchain4j/langchain4j/tree/main/docs/docs) (if required).
 - Add an example to the [examples repository](https://github.com/langchain4j/langchain4j-examples) (if required).
+- Run `./mvnw spotless:check` and `./mvnw spotless:apply` to ensure compliance with the source code formatting of the project.
 - [Mark a PR as ready for review](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request#marking-a-pull-request-as-ready-for-review)
 
 # Guidelines on adding a new model integration

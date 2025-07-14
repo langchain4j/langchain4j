@@ -6,7 +6,7 @@ sidebar_position: 30
 
 LangChain4j uses [SLF4J](https://www.slf4j.org/) for logging,
 allowing you to plug in any logging backend you prefer,
-such as [Logback](https://logback.qos.ch/) or [Log4j](https://logging.apache.org/log4j/2.x/index.html)).
+such as [Logback](https://logback.qos.ch/) or [Log4j](https://logging.apache.org/log4j/2.x/index.html).
 
 ## Pure Java
 

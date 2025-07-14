@@ -1,17 +1,5 @@
 package dev.langchain4j.model.mistralai;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
-import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
-import dev.langchain4j.model.mistralai.spi.MistralAiFimModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
-
-import java.time.Duration;
-import java.util.List;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -20,6 +8,17 @@ import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.fi
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.language.LanguageModel;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
+import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
+import dev.langchain4j.model.mistralai.spi.MistralAiFimModelBuilderFactory;
+import dev.langchain4j.model.output.Response;
+import java.time.Duration;
+import java.util.List;
+
 /**
  * Represents a Mistral AI FIM Completion Model with a language completion interface, users can define the starting point of the text/code using a prompt, and the ending point of the text/code using an optional suffix and an optional stop.
  * <p>
@@ -27,7 +26,6 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * <p>
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createFIMCompletion">here</a>.
  */
-@Experimental
 public class MistralAiFimModel implements LanguageModel {
 
     private final MistralAiClient client;
@@ -42,16 +40,17 @@ public class MistralAiFimModel implements LanguageModel {
 
     public MistralAiFimModel(Builder builder) {
         this.client = MistralAiClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(builder.apiKey)
-                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.maxTokens = builder.maxTokens;
-        this.minTokens = getOrDefault(builder.minTokens, 0);
+        this.minTokens = builder.minTokens;
         this.topP = builder.topP;
         this.randomSeed = builder.randomSeed;
         this.stop = copy(builder.stop);
@@ -97,9 +96,10 @@ public class MistralAiFimModel implements LanguageModel {
 
         MistralAiChatCompletionResponse response =
                 withRetryMappingExceptions(() -> client.fimCompletion(request), maxRetries);
+
         MistralAiChatCompletionChoice responseChoice = response.getChoices().get(0);
         return Response.from(
-                responseChoice.getMessage().getContent(),
+                responseChoice.getMessage().asText(),
                 tokenUsageFrom(response.getUsage()),
                 finishReasonFrom(responseChoice.getFinishReason()));
     }
@@ -113,6 +113,7 @@ public class MistralAiFimModel implements LanguageModel {
 
     public static class Builder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String modelName;
@@ -127,7 +128,15 @@ public class MistralAiFimModel implements LanguageModel {
         private Boolean logResponses;
         private Integer maxRetries;
 
-        public Builder() {
+        public Builder() {}
+
+        /**
+         * @param httpClientBuilder the HTTP client builder to use for creating the HTTP client
+         * @return {@code this}.
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         /**

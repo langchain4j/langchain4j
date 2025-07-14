@@ -25,7 +25,7 @@ As an example, let's import the OpenAI dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -36,14 +36,14 @@ the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
 - For Gradle in `build.gradle`:
 ```groovy
-implementation 'dev.langchain4j:langchain4j-open-ai:1.0.0'
-implementation 'dev.langchain4j:langchain4j:1.0.0'
+implementation 'dev.langchain4j:langchain4j-open-ai:1.1.0'
+implementation 'dev.langchain4j:langchain4j:1.1.0'
 ```
 
 <details>
@@ -55,7 +55,7 @@ implementation 'dev.langchain4j:langchain4j:1.0.0'
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>1.0.0</version>
+            <version>1.1.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -68,9 +68,9 @@ Please note that `langchain4j-bom` always contains the latest versions of all La
 :::
 
 :::note
-Please note that while the `langchain4j-bom` version is `1.0.0`,
-many of the modules still have version `1.0.0-beta{n}`,
-so there might be some breaking changes for these modules in the furture.
+Please note that while the `langchain4j-bom` version is `1.1.0`,
+many of the modules still have version `1.1.0-beta7`,
+so there might be some breaking changes for these modules in the future.
 :::
 </details>
 
@@ -81,20 +81,24 @@ If you'd like to test the newest features before their official release,
 you can use the most recent `SNAPSHOT` dependency:
 ```xml
 <repositories>
-    <repository>
-        <id>snapshots-repo</id>
-        <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-        <snapshots>
-            <enabled>true</enabled>
-        </snapshots>
-    </repository>
+  <repository>
+    <name>Central Portal Snapshots</name>
+    <id>central-portal-snapshots</id>
+    <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+    <releases>
+      <enabled>false</enabled>
+    </releases>
+    <snapshots>
+      <enabled>true</enabled>
+    </snapshots>
+  </repository>
 </repositories>
 
 <dependencies>
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.2.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```

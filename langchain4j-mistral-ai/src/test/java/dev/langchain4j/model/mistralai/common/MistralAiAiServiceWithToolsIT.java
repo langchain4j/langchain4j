@@ -19,4 +19,9 @@ class MistralAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 .logResponses(true)
                 .build());
     }
+
+    @Override
+    protected boolean verifyModelInteractions() {
+        return true;
+    }
 }

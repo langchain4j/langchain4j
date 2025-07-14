@@ -32,7 +32,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -41,7 +41,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-beta5</version>
+    <version>1.1.0-beta7</version>
 </dependency>
 ```
 
@@ -267,6 +267,81 @@ langchain4j.open-ai.moderation-model.timeout=...
 TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator("gpt-4o-mini");
 ```
 
+## Setting custom chat request parameters
+
+When using `OpenAiChatModel` and `OpenAiStreamingChatModel`,
+you can configure custom parameters for the chat request within the HTTP request's JSON body.
+Here is an example of how to enable web search:
+```java
+record ApproximateLocation(String city) {}
+record UserLocation(String type, ApproximateLocation approximate) {}
+record WebSearchOptions(UserLocation user_location) {}
+WebSearchOptions webSearchOptions = new WebSearchOptions(new UserLocation("approximate", new ApproximateLocation("London")));
+Map<String, Object> customParameters = Map.of("web_search_options", webSearchOptions);
+
+ChatRequest chatRequest = ChatRequest.builder()
+    .messages(UserMessage.from("Where can I buy good coffee?"))
+    .parameters(OpenAiChatRequestParameters.builder()
+        .modelName("gpt-4o-mini-search-preview")
+        .customParameters(customParameters)
+        .build())
+    .build();
+
+ChatModel model = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .logRequests(true)
+        .build();
+
+ChatResponse chatResponse = model.chat(chatRequest);
+```
+
+This will produce an HTTP request with the following body:
+```json
+{
+  "model" : "gpt-4o-mini-search-preview",
+  "messages" : [ {
+    "role" : "user",
+    "content" : "Where can I buy good coffee?"
+  } ],
+  "web_search_options" : {
+    "user_location" : {
+      "type" : "approximate",
+      "approximate" : {
+        "city" : "London"
+      }
+    }
+  }
+}
+```
+
+Alternatively, custom parameters can also be specified as a structure of nested maps:
+```java
+Map<String, Object> customParameters = Map.of(
+    "web_search_options", Map.of(
+        "user_location", Map.of(
+            "type", "approximate",
+            "approximate", Map.of("city", "London")
+        )
+    )
+);
+```
+
+## Accessing raw HTTP responses and Server-Sent Events (SSE)
+
+When using `OpenAiChatModel`, you can access the raw HTTP response:
+```java
+SuccessfulHttpResponse rawHttpResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
+System.out.println(rawHttpResponse.body());
+System.out.println(rawHttpResponse.headers());
+System.out.println(rawHttpResponse.statusCode());
+```
+
+When using `OpenAiStreamingChatModel`, you can access raw Server-Sent Events:
+```java
+List<ServerSentEvent> rawServerSentEvents = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
+System.out.println(rawServerSentEvents.get(0).data());
+System.out.println(rawServerSentEvents.get(0).event());
+```
 
 ## HTTP Client
 

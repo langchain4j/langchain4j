@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
@@ -48,7 +49,7 @@ public class McpServerHelper {
 
     static String getJBangCommand() {
         String command = System.getProperty("jbang.command");
-        if (command == null || command.isEmpty()) {
+        if (isNullOrEmpty(command)) {
             command = isWindows() ? "jbang.cmd" : "jbang";
         }
         return command;
