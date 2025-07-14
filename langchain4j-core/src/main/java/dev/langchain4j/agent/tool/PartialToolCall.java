@@ -9,6 +9,7 @@ import java.util.Objects;
 
 /**
  * TODO
+ * @since 1.2.0
  */
 @Experimental
 public class PartialToolCall {
@@ -17,13 +18,13 @@ public class PartialToolCall {
     private final int index;
     private final String id;
     private final String name;
-    private final String partiaArguments;
+    private final String partialArguments;
 
     public PartialToolCall(Builder builder) {
         this.index = builder.index;
         this.id = builder.id;
         this.name = ensureNotBlank(builder.name, "name");
-        this.partiaArguments = ensureNotBlank(builder.partiaArguments, "partiaArguments");
+        this.partialArguments = ensureNotBlank(builder.partialArguments, "partialArguments");
     }
 
     /**
@@ -51,7 +52,7 @@ public class PartialToolCall {
      * TODO
      */
     public String partialArguments() {
-        return partiaArguments;
+        return partialArguments;
     }
 
     @Override
@@ -62,12 +63,12 @@ public class PartialToolCall {
         return index == that.index
                 && Objects.equals(id, that.id)
                 && Objects.equals(name, that.name)
-                && Objects.equals(partiaArguments, that.partiaArguments);
+                && Objects.equals(partialArguments, that.partialArguments);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(index, id, name, partiaArguments);
+        return Objects.hash(index, id, name, partialArguments);
     }
 
     @Override
@@ -76,7 +77,7 @@ public class PartialToolCall {
                 "index=" + index +
                 ", id=" + quoted(id) +
                 ", name=" + quoted(name) +
-                ", partiaArguments=" + quoted(partiaArguments) +
+                ", partialArguments=" + quoted(partialArguments) +
                 '}';
     }
 
@@ -89,7 +90,7 @@ public class PartialToolCall {
         private int index;
         private String id;
         private String name;
-        private String partiaArguments;
+        private String partialArguments;
 
         public Builder index(int index) {
             this.index = index;
@@ -107,7 +108,7 @@ public class PartialToolCall {
         }
 
         public Builder partialArguments(String partialArguments) {
-            this.partiaArguments = partialArguments;
+            this.partialArguments = partialArguments;
             return this;
         }
 

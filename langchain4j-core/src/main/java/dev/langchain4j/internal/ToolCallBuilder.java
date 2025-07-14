@@ -12,6 +12,9 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
+/**
+ * @since 1.2.0
+ */
 @Internal
 public class ToolCallBuilder {
 

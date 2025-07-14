@@ -31,15 +31,15 @@ public interface StreamingChatResponseHandler {
      * <p>
      * Here's an example of what streaming a single tool call might look like:
      * <pre>
-     * 1. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partiaArguments = "{\"")
-     * 2. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partiaArguments = "city")
-     * 3. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partiaArguments = ""\":\"")
-     * 4. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partiaArguments = "Mun")
-     * 5. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partiaArguments = "ich")
-     * 6. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partiaArguments = "\"}")
+     * 1. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "{\"")
+     * 2. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "city")
+     * 3. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = ""\":\"")
+     * 4. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "Mun")
+     * 5. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "ich")
+     * 6. onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "\"}")
      * 7. onCompleteToolCall(index = 0, id = "call_abc", name = "get_weather", arguments = "{\"city\":\"Munich\"}")
      * </pre>
-     *
+     * <p>
      * If the model decides to call multiple tools, the index will increment, allowing you to correlate.
      * <p>
      * Please note that not all LLM providers stream tool calls token by token.
@@ -49,6 +49,7 @@ public interface StreamingChatResponseHandler {
      *
      * @param partialToolCall A partial tool call that contains
      *                        the index, tool ID, tool name and partial arguments.
+     * @since 1.2.0
      */
     @Experimental
     default void onPartialToolCall(PartialToolCall partialToolCall) {
@@ -59,6 +60,7 @@ public interface StreamingChatResponseHandler {
      *
      * @param completeToolCall A complete tool call that contains
      *                         the index, tool ID, tool name, and fully assembled arguments.
+     * @since 1.2.0
      */
     @Experimental
     default void onCompleteToolCall(CompleteToolCall completeToolCall) {
