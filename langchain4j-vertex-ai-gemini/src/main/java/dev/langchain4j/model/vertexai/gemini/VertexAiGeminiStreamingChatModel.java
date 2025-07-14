@@ -498,10 +498,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             this.vertexAI.close();
         }
 
-        if (this.executor != null) {
-            if (executor instanceof ExecutorService) {
-                ((ExecutorService) executor).shutdown();
-            }
+        if (executor instanceof ExecutorService) {
+            ((ExecutorService) executor).shutdown();
         }
     }
 
