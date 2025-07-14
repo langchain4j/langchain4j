@@ -307,6 +307,26 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
+                                            GenerationConfig generationConfig) {
+        this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
+        this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
+        this.vertexAI = null;
+        this.safetySettings = Collections.emptyMap();
+        this.googleSearch = null;
+        this.vertexSearch = null;
+        this.toolConfig = ToolConfig.newBuilder()
+                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
+                        .setMode(FunctionCallingConfig.Mode.AUTO)
+                        .build())
+                .build();
+        this.allowedFunctionNames = Collections.emptyList();
+        this.logRequests = false;
+        this.logResponses = false;
+        this.listeners = Collections.emptyList();
+        this.executor = VertexAiGeminiStreamingChatModel.createDefaultExecutor();
+    }
+
+    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
                                             GenerationConfig generationConfig,
                                             Executor executor) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");

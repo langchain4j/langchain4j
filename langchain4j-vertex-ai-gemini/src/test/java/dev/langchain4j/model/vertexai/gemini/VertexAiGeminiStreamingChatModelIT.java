@@ -165,7 +165,7 @@ class VertexAiGeminiStreamingChatModelIT {
         GenerativeModel generativeModel = new GenerativeModel(MODEL_NAME, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
-        StreamingChatModel model = new VertexAiGeminiStreamingChatModel(generativeModel, generationConfig, null);
+        StreamingChatModel model = new VertexAiGeminiStreamingChatModel(generativeModel, generationConfig);
 
         String userMessage = "What is the capital of Germany?";
 
