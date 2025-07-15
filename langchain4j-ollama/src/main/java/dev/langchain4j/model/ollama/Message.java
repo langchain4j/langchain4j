@@ -88,7 +88,7 @@ class Message {
         return thinking;
     }
 
-    public void setThinking(final String thinking) {
+    public void setThinking(String thinking) {
         this.thinking = thinking;
     }
 
