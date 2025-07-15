@@ -2,9 +2,7 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.test.guardrail.GuardrailAssertions.assertThat;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -44,15 +42,27 @@ class JsonExtractorOutputGuardrailTests {
                         OutputGuardrailResult::successfulResult)
                 .containsExactly(GuardrailResult.Result.SUCCESS_WITH_RESULT, json, expectedResult);
 
-        verify(guardrailSpy, never()).trimNonJson(anyString());
+        verify(guardrailSpy).deserialize(json);
     }
 
     @ParameterizedTest
     @MethodSource("guardrails")
     void successfulValidationAfterTrimming(
             String json, JsonExtractorOutputGuardrail<?> guardrail, Object expectedResult) {
-        var guardrailSpy = spy(guardrail);
         var input = "abc" + json;
+        parseJsonRequiringTrimming(json, guardrail, expectedResult, input);
+    }
+
+    @ParameterizedTest
+    @MethodSource("guardrails")
+    void successfulValidationAfterTrimmingWithInvalidJson(
+            String json, JsonExtractorOutputGuardrail<?> guardrail, Object expectedResult) {
+        var input = "abc [test] {\"key\":\"value\"} " + json + " [another] xyz";
+        parseJsonRequiringTrimming(json, guardrail, expectedResult, input);
+    }
+
+    private void parseJsonRequiringTrimming(String json, JsonExtractorOutputGuardrail<?> guardrail, Object expectedResult, String input) {
+        var guardrailSpy = spy(guardrail);
         var result = guardrailSpy.validate(AiMessage.from(input));
 
         assertThat(result)
@@ -63,7 +73,7 @@ class JsonExtractorOutputGuardrailTests {
                         OutputGuardrailResult::successfulResult)
                 .containsExactly(GuardrailResult.Result.SUCCESS_WITH_RESULT, json, expectedResult);
 
-        verify(guardrailSpy).trimNonJson(input);
+        verify(guardrailSpy).deserialize(input);
     }
 
     @Test
@@ -77,7 +87,7 @@ class JsonExtractorOutputGuardrailTests {
                         JsonExtractorOutputGuardrail.DEFAULT_REPROMPT_MESSAGE,
                         JsonExtractorOutputGuardrail.DEFAULT_REPROMPT_PROMPT);
 
-        verify(guardrail).trimNonJson(input);
+        verify(guardrail).deserialize(input);
         verify(guardrail).invokeInvalidJson(any(AiMessage.class), eq(input));
     }
 
