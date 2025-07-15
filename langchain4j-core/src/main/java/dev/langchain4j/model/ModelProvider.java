@@ -8,6 +8,7 @@ public enum ModelProvider {
     AZURE_OPEN_AI,
     GOOGLE_AI_GEMINI,
     GOOGLE_VERTEX_AI_GEMINI,
+    GOOGLE_VERTEX_AI_ANTHROPIC,
     MISTRAL_AI,
     OLLAMA,
     OPEN_AI,

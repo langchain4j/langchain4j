@@ -44,6 +44,7 @@
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
+        <module>langchain4j-vertex-ai-anthropic</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-voyage-ai</module>
 
