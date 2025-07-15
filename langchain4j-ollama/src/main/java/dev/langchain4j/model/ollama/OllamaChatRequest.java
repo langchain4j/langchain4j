@@ -104,7 +104,7 @@ class OllamaChatRequest {
         return think;
     }
 
-    public void setThink(final Boolean think) {
+    public void setThink(Boolean think) {
         this.think = think;
     }
 
