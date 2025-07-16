@@ -64,7 +64,7 @@ public class GitHubDocumentLoader {
      * parses it using the provided {@link DocumentParser}, and returns the resulting {@link Document} object.
      * </p>
      *
-     * <h3>Parameters</h3>
+     * <p><b>Parameters:</b></p>
      * <ul>
      *     <li><b>owner</b> - The GitHub username or organization name that owns the repository. Must not be blank.</li>
      *     <li><b>repo</b> - The name of the GitHub repository. Must not be blank.</li>
@@ -80,16 +80,16 @@ public class GitHubDocumentLoader {
      *     <li><b>parser</b> - An implementation of {@link DocumentParser} used to parse the retrieved file content into a {@link Document} object.</li>
      * </ul>
      *
-     * <h3>Returns</h3>
+     * <p><b>Returns:</b></p>
      * A {@link Document} parsed from the contents of the file at the specified location and ref in the GitHub repository.
      *
-     * <h3>Throws</h3>
+     * <p><b>Throws:</b></p>
      * <ul>
      *     <li>{@link IllegalArgumentException} if the {@code owner} or {@code repo} is blank or null.</li>
      *     <li>{@link RuntimeException} if the GitHub API call fails or the content cannot be retrieved (wraps {@link IOException}).</li>
      * </ul>
      *
-     * <h3>Usage Example:</h3>
+     * <p><b>Usage Example:</b></p>
      * <pre>{@code
      * Document doc = loader.loadDocument("langchain4j", "langchain4j", "main", "pom.xml", new TextDocumentParser());
      * }</pre>
@@ -121,7 +121,7 @@ public class GitHubDocumentLoader {
      * {@link DocumentParser}, and returns a list of {@link Document} objects.
      * </p>
      *
-     * <h3>Parameters</h3>
+     * <p><b>Parameters:</b></p>
      * <ul>
      *     <li><b>owner</b> - The GitHub username or organization name that owns the repository. Must not be blank.</li>
      *     <li><b>repo</b> - The name of the GitHub repository. Must not be blank.</li>
@@ -130,16 +130,16 @@ public class GitHubDocumentLoader {
      *     <li><b>parser</b> - An implementation of {@link DocumentParser} used to convert file contents into {@link Document} objects.</li>
      * </ul>
      *
-     * <h3>Returns</h3>
+     * <p><b>Returns:</b></p>
      * A list of {@link Document} objects parsed from the files found in the specified directory and its subdirectories.
      *
-     * <h3>Throws</h3>
+     * <p><b>Throws:</b></p>
      * <ul>
      *     <li>{@link IllegalArgumentException} if {@code owner} or {@code repo} is blank or null.</li>
      *     <li>{@link RuntimeException} if an {@link IOException} occurs while accessing the GitHub repository content.</li>
      * </ul>
      *
-     * <h3>Usage Example:</h3>
+     * <p><b>Usage Example:</b></p>
      * <pre>{@code
      * List<Document> docs = loader.loadDocuments(
      *     "langchain4j",
