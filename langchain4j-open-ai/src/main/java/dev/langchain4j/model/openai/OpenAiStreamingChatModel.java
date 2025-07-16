@@ -178,6 +178,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 withLoggingExceptions(() -> handler.onError(e));
             }
         }
+
+        String reasoning_content = delta.reasoning_content();
+        if (!isNullOrEmpty(reasoning_content)) {
+            handler.onPartialResponse(reasoning_content);
+        }
     }
 
     @Override
