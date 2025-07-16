@@ -119,7 +119,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         List<Embedding> embeddings = createEmbeddingResponse.data().stream()
                 .map(embeddingItem -> Embedding.from(embeddingItem.embedding().stream()
-                        .map(Double::floatValue)
+                        .map(value -> value.floatValue())
                         .toList()))
                 .toList();
 
