@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.0.0-beta5</version>
+    <version>1.1.0-rc1</version>
 </dependency>
 ```
 
@@ -95,7 +95,7 @@ Anthropic documentation on tools can be found [here](https://docs.anthropic.com/
 Caching is disabled by default.
 It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
 
-When enabled,`cache_control` blocks will be added to all system messages and tools respectively.
+When enabled,`cache_control` blocks will be added to the last system message and tool, respectively.
 
 To use caching, please set `beta("prompt-caching-2024-07-31")`.
 
@@ -139,7 +139,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.0.0-beta5</version>
+    <version>1.1.0-beta7</version>
 </dependency>
 ```
 

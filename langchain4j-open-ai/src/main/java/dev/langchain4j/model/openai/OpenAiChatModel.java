@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
@@ -76,15 +77,13 @@ public class OpenAiChatModel implements ChatModel {
             validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
-            commonParameters = DefaultChatRequestParameters.builder().build();
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        OpenAiChatRequestParameters openAiParameters;
-        if (builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
-            openAiParameters = openAiChatRequestParameters;
-        } else {
-            openAiParameters = OpenAiChatRequestParameters.builder().build();
-        }
+        OpenAiChatRequestParameters openAiParameters =
+                builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters ?
+                        openAiChatRequestParameters :
+                        OpenAiChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
@@ -108,6 +107,7 @@ public class OpenAiChatModel implements ChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
+                .customParameters(openAiParameters.customParameters())
                 .build();
         this.responseFormat = builder.responseFormat;
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -139,8 +139,10 @@ public class OpenAiChatModel implements ChatModel {
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
-        ChatCompletionResponse openAiResponse = withRetryMappingExceptions(() ->
-                client.chatCompletion(openAiRequest).execute(), maxRetries);
+        ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(() ->
+                client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+
+        ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
@@ -150,6 +152,7 @@ public class OpenAiChatModel implements ChatModel {
                 .created(openAiResponse.created())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
+                .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
                 .build();
 
         return ChatResponse.builder()

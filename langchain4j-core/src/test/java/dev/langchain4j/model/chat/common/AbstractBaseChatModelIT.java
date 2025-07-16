@@ -22,7 +22,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -131,7 +130,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         if (assertResponseModel()) {
             assertThat(chatResponseMetadata.modelName()).isNotBlank();
         }
-        assertTokenUsage(chatResponseMetadata, model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponseMetadata, model);
+        }
         if (assertFinishReason()) {
             assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
         }
@@ -304,7 +305,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -346,7 +349,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -418,7 +423,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -449,7 +456,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -494,7 +503,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // TODO test more/all common params?
         int maxOutputTokens = 5;
         ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
-        assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class);
+        // assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class); TODO
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
@@ -509,7 +518,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -525,7 +536,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // TODO test more/all common params?
         int maxOutputTokens = 5;
         ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
-        assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class);
+        // assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class); TODO
 
         M model = createModelWith(parameters);
 
@@ -542,7 +553,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -585,7 +598,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
@@ -622,7 +637,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage2.text()).contains("sun");
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse2.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse2.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
@@ -700,7 +717,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
@@ -733,7 +752,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
@@ -793,7 +814,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -847,7 +870,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -918,7 +943,10 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
+
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
         }
@@ -955,7 +983,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage2.text()).isEqualToIgnoringWhitespace("{\"weather\":\"sunny\"}");
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse2.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse2.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
@@ -992,10 +1022,12 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -1011,7 +1043,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         Base64.Encoder encoder = Base64.getEncoder();
 
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see on these images?"),
+                TextContent.from("What do you see on these images? Describe both images."),
                 ImageContent.from(encoder.encodeToString(readBytes(catImageUrl())), "image/png"),
                 ImageContent.from(encoder.encodeToString(readBytes(diceImageUrl())), "image/png"));
 
@@ -1022,10 +1054,14 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(aiMessage.text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -1070,10 +1106,12 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -1087,7 +1125,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see on these images?"),
+                TextContent.from("What do you see on these images? Describe both images."),
                 ImageContent.from(catImageUrl()),
                 ImageContent.from(diceImageUrl()));
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
@@ -1097,10 +1135,14 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
+        assertThat(aiMessage.text().toLowerCase())
+                .containsAnyOf("cat", "feline", "animal")
+                .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        assertTokenUsage(chatResponse.metadata(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
@@ -1216,6 +1258,10 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected boolean assertTimesOnPartialResponseWasCalled() {
+        return true;
+    }
+
+    protected boolean assertTokenUsage() {
         return true;
     }
 

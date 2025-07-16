@@ -9,7 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -861,5 +863,130 @@ class AiServicesWithToolsIT {
 
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);
+    }
+
+
+    interface RouterAgent {
+
+        @dev.langchain4j.service.UserMessage("""
+            Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
+            then forward the request as it is to the corresponding expert provided as a tool.
+            Finally return the answer that you received from the expert without any modification.
+
+            The user request is: '{{it}}'.
+            """)
+        String askToExpert(String request);
+    }
+
+    interface MedicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a medical expert.
+            Analyze the following user request under a medical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A medical expert")
+        String medicalRequest(String request);
+    }
+
+    interface LegalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a legal expert.
+            Analyze the following user request under a legal point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A legal expert")
+        String legalRequest(String request);
+    }
+
+    interface TechnicalExpert {
+
+        @dev.langchain4j.service.UserMessage("""
+            You are a technical expert.
+            Analyze the following user request under a technical point of view and provide the best possible answer.
+            The user request is {{it}}.
+            """)
+        @Tool("A technical expert")
+        String technicalRequest(String request);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void tools_as_agents_tests(ChatModel model) {
+        MedicalExpert medicalExpert = spy(AiServices.builder(MedicalExpert.class)
+                .chatModel(model)
+                .build());
+        LegalExpert legalExpert = spy(AiServices.builder(LegalExpert.class)
+                .chatModel(model)
+                .build());
+        TechnicalExpert technicalExpert = spy(AiServices.builder(TechnicalExpert.class)
+                .chatModel(model)
+                .build());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
+                .chatModel(model)
+                .chatMemory(chatMemory)
+                .tools(medicalExpert, legalExpert, technicalExpert)
+                .build();
+
+        routerAgent.askToExpert("I broke my leg what should I do");
+        verify(medicalExpert).medicalRequest("I broke my leg what should I do");
+        verifyNoInteractions(legalExpert, technicalExpert);
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+        assertThat(messages.get(0)).isInstanceOf(UserMessage.class); // user prompt
+        assertThat(messages.get(1)).isInstanceOf(AiMessage.class); // ai message to invoke the tool
+        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class); // tool response
+        assertThat(messages.get(3)).isInstanceOf(AiMessage.class); // final ai message
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_propagate_exception_thrown_from_tool_method_to_LLM(ChatModel model) {
+
+        // given
+        String exceptionMessage = "Weather service is unavailable";
+
+        class FailingTool {
+
+            @Tool
+            String getWeather(String ignored) {
+                throw new RuntimeException(exceptionMessage);
+            }
+        }
+
+        interface Assistant {
+
+            String chat(String userMessage);
+        }
+
+        ChatModel spyModel = spy(model);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyModel)
+                .tools(new FailingTool())
+                .build();
+
+        // when
+        assistant.chat("What is the weather in Munich?");
+
+        // then
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals(exceptionMessage)));
+        ignoreOtherInvocations(spyModel);
+        verifyNoMoreInteractions(spyModel);
+    }
+
+    private static void ignoreOtherInvocations(ChatModel model) {
+        verify(model, atLeast(0)).doChat(any());
+        verify(model, atLeast(0)).defaultRequestParameters();
+        verify(model, atLeast(0)).listeners();
+        verify(model, atLeast(0)).provider();
+        verify(model, atLeast(0)).supportedCapabilities();
     }
 }
