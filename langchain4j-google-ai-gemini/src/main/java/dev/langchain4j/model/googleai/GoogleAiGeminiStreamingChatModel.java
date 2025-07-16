@@ -22,6 +22,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         super(
                 builder.httpClientBuilder,
                 builder.apiKey,
+                builder.baseUrl,
                 builder.modelName,
                 builder.temperature,
                 builder.topK,
@@ -53,6 +54,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public GoogleAiGeminiStreamingChatModel(
             String apiKey,
+            String baseUrl,
             String modelName,
             Double temperature,
             Integer topK,
@@ -75,6 +77,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         super(
                 null,
                 apiKey,
+                baseUrl,
                 modelName,
                 temperature,
                 topK,
@@ -112,8 +115,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     @Override
     public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
         GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request);
-        geminiService.generateContentStream(
-                request.modelName(), apiKey, geminiRequest, includeCodeExecutionOutput, handler);
+        geminiService.generateContentStream(request.modelName(), geminiRequest, includeCodeExecutionOutput, handler);
     }
 
     @Override
@@ -131,6 +133,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private HttpClientBuilder httpClientBuilder;
         private ChatRequestParameters defaultRequestParameters;
         private String apiKey;
+        private String baseUrl;
         private String modelName;
         private Double temperature;
         private Integer topK;
@@ -181,6 +184,11 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
         public GoogleAiGeminiStreamingChatModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
             return this;
         }
 

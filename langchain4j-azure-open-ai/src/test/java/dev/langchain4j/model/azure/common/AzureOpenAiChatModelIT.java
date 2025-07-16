@@ -1,30 +1,26 @@
 package dev.langchain4j.model.azure.common;
 
+import dev.langchain4j.model.azure.AzureModelBuilders;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.List;
-
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
-    static final AzureOpenAiChatModel AZURE_OPEN_AI_CHAT_MODEL = AzureOpenAiChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-4o-mini")
+    static final AzureOpenAiChatModel AZURE_OPEN_AI_CHAT_MODEL = AzureModelBuilders.chatModelBuilder()
             .logRequestsAndResponses(false) // images are huge in logs
             .build();
 
-    static final AzureOpenAiChatModel AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA = AzureOpenAiChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-4o-mini")
+    static final AzureOpenAiChatModel AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA = AzureModelBuilders.chatModelBuilder()
             .strictJsonSchema(true)
             .logRequestsAndResponses(false) // images are huge in logs
             .build();
@@ -36,22 +32,19 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
-        AzureOpenAiChatModel.Builder chatModelBuilder = AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        AzureOpenAiChatModel.Builder chatModelBuilder = AzureModelBuilders.chatModelBuilder()
                 .defaultRequestParameters(parameters)
-                .logRequestsAndResponses(true);
+                .deploymentName(null)
+                .maxTokens(null);
         if (parameters.modelName() == null) {
-            chatModelBuilder.deploymentName("gpt-4o-mini");
+            chatModelBuilder.deploymentName(AzureModelBuilders.DEFAULT_CHAT_MODEL);
         }
         return chatModelBuilder.build();
     }
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     @Override

@@ -6,7 +6,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIServiceVersion;
-import com.azure.ai.openai.models.*;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinition;
+import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
+import com.azure.ai.openai.models.ChatRequestMessage;
+import com.azure.ai.openai.models.ChatRequestUserMessage;
+import com.azure.ai.openai.models.ChatResponseMessage;
+import com.azure.ai.openai.models.CompletionsFinishReason;
 import com.azure.json.JsonOptions;
 import com.azure.json.JsonReader;
 import com.azure.json.implementation.DefaultJsonReader;
@@ -22,7 +27,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
+@Execution(ExecutionMode.CONCURRENT)
 class InternalAzureOpenAiHelperTest {
 
     @Test
@@ -116,18 +124,22 @@ class InternalAzureOpenAiHelperTest {
 
         String functionName = "current_time";
         String functionArguments = "{}";
-        String responseJson = "{\n" + "        \"role\": \"ASSISTANT\",\n"
-                + "        \"content\": \"Hello\",\n"
-                + "        \"tool_calls\": [\n"
-                + "          {\n"
-                + "            \"type\": \"function\",\n"
-                + "            \"function\": {\n"
-                + "              \"name\": \"current_time\",\n"
-                + "              \"arguments\": \"{}\"\n"
-                + "            }\n"
-                + "          }\n"
-                + "        ]\n"
-                + "      }";
+        // language=json
+        String responseJson =
+                """
+                {
+                        "role": "ASSISTANT",
+                        "content": "Hello",
+                        "tool_calls": [
+                          {
+                            "type": "function",
+                            "function": {
+                              "name": "current_time",
+                              "arguments": "{}"
+                            }
+                          }
+                        ]
+                      }""";
         ChatResponseMessage responseMessage;
         try (JsonReader jsonReader = DefaultJsonReader.fromString(responseJson, new JsonOptions())) {
             responseMessage = ChatResponseMessage.fromJson(jsonReader);

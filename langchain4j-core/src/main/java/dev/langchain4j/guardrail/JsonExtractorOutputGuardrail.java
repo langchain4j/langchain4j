@@ -1,12 +1,13 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import java.util.Optional;
+import dev.langchain4j.internal.JsonParsingUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,30 +61,9 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
         var llmResponse = ensureNotNull(responseFromLLM, "responseFromLLM").text();
         LOGGER.debug("LLM output: {}", llmResponse);
 
-        return deserialize(llmResponse).map(r -> successWith(llmResponse, r)).orElseGet(() -> {
-            LOGGER.debug("LLM output contained invalid JSON. Attempting to trim non-JSON");
-            var json = trimNonJson(llmResponse);
-
-            LOGGER.debug("Attempting to deserialize trimmed JSON: {}", json);
-            return deserialize(json)
-                    .map(r -> successWith(json, r))
-                    .orElseGet(() -> invokeInvalidJson(responseFromLLM, json));
-        });
-    }
-
-    protected String trimNonJson(String llmResponse) {
-        var jsonMapStart = llmResponse.indexOf('{');
-        var jsonListStart = llmResponse.indexOf('[');
-
-        if ((jsonMapStart < 0) && (jsonListStart < 0)) {
-            return "";
-        }
-
-        var isJsonMap = (jsonMapStart >= 0) && ((jsonMapStart < jsonListStart) || (jsonListStart < 0));
-        var jsonStart = isJsonMap ? jsonMapStart : jsonListStart;
-        var jsonEnd = isJsonMap ? llmResponse.lastIndexOf('}') : llmResponse.lastIndexOf(']');
-
-        return (jsonEnd >= 0) && (jsonStart < jsonEnd) ? llmResponse.substring(jsonStart, jsonEnd + 1) : "";
+        return deserialize(llmResponse)
+                .map(r -> successWith(r.json(), r.value()))
+                .orElseGet(() -> invokeInvalidJson(responseFromLLM, llmResponse));
     }
 
     protected OutputGuardrailResult invokeInvalidJson(AiMessage aiMessage, String json) {
@@ -125,14 +105,12 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
      * @param llmResponse the JSON-formatted response string to be deserialized
      * @return an Optional containing the deserialized object if successful, or an empty Optional if deserialization fails
      */
-    protected Optional<T> deserialize(String llmResponse) {
+    protected Optional<JsonParsingUtils.ParsedJson<T>> deserialize(String llmResponse) {
         try {
-            var obj = (this.outputClass != null)
-                    ? this.objectMapper.readValue(llmResponse, this.outputClass)
-                    : this.objectMapper.readValue(llmResponse, this.outputType);
-
-            return Optional.ofNullable(obj);
-        } catch (JsonProcessingException e) {
+            return this.outputClass != null ?
+                    extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputClass)) :
+                    extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputType));
+        } catch (Exception e) {
             return Optional.empty();
         }
     }

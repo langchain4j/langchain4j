@@ -260,7 +260,7 @@ AI service will parse LLM-generated output into a desired type before returning
 
 Any type can be additionally wrapped into a `Result<T>` to get extra metadata about AI Service invocation:
 - `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
-the LLM (e.g., because tools were executed), it will summ token usages of all calls.
+the LLM (e.g., because tools were executed), it will sum token usages of all calls.
 - Sources - `Content`s retrieved during [RAG](/tutorials/ai-services#rag) retrieval
 - Executed [tools](/tutorials/ai-services#tools-function-calling)
 - `FinishReason`
@@ -685,6 +685,20 @@ More RAG examples can be found [here](https://github.com/langchain4j/langchain4j
 
 
 ## Auto-Moderation
+
+AI Services can automatically perform content moderation. When inappropriate content is detected, a `ModerationException` is thrown, which contains the original `Moderation` object.
+This object includes information about the flagged content, such as the specific text that was flagged.
+
+Auto-moderation can be configured when building the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .moderationModel(moderationModel)  // Configures moderation  model
+    .build();
+```
+
+
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
 
 

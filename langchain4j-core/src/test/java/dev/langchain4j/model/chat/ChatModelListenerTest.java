@@ -95,6 +95,7 @@ class ChatModelListenerTest {
         inOrder.verify(listener1).onResponse(any());
         inOrder.verify(listener2).onResponse(any());
         inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(listener1, listener2);
     }
 
     @Test

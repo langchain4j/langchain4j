@@ -95,7 +95,7 @@ Anthropic documentation on tools can be found [here](https://docs.anthropic.com/
 Caching is disabled by default.
 It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
 
-When enabled,`cache_control` blocks will be added to all system messages and tools respectively.
+When enabled,`cache_control` blocks will be added to the last system message and tool, respectively.
 
 To use caching, please set `beta("prompt-caching-2024-07-31")`.
 

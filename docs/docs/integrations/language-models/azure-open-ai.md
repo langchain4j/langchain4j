@@ -27,7 +27,7 @@ Azure OpenAI provides language models from OpenAI (`gpt-4`, `gpt-4o`, etc.) host
 
 ### Plain Java
 
-The `langchain4j-azure-open-ai` library is availlable on Maven Central.
+The `langchain4j-azure-open-ai` library is available on Maven Central.
 
 ```xml
 <dependency>

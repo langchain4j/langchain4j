@@ -21,7 +21,6 @@ import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -30,13 +29,14 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiStreamingChatModelIT {
 
     public long STREAMING_TIMEOUT = 120;
@@ -48,9 +48,7 @@ class AzureOpenAiStreamingChatModelIT {
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        StreamingChatModel model = AzureModelBuilders.streamingChatModelBuilder()
                 .deploymentName(deploymentName)
                 .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
@@ -102,7 +100,7 @@ class AzureOpenAiStreamingChatModelIT {
             asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(
                     System.getenv("AZURE_OPENAI_ENDPOINT"),
                     gptVersion,
-                    System.getenv("AZURE_OPENAI_KEY"),
+                    AzureModelBuilders.getAzureOpenaiKey(),
                     Duration.ofSeconds(30),
                     5,
                     null,
@@ -112,10 +110,8 @@ class AzureOpenAiStreamingChatModelIT {
                     null);
         }
 
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureModelBuilders.streamingChatModelBuilder()
                 .openAIAsyncClient(asyncClient)
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(gptVersion))
                 .logRequestsAndResponses(true)
@@ -142,13 +138,11 @@ class AzureOpenAiStreamingChatModelIT {
     @ValueSource(strings = {"gpt-4o"})
     void should_use_json_format(String deploymentName) {
 
-        ResponseFormat responseFormat = JSON;
-
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureModelBuilders.streamingChatModelBuilder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .responseFormat(responseFormat)
+                .responseFormat(JSON)
                 .temperature(0.0)
                 .maxTokens(50)
                 .logRequestsAndResponses(true)
@@ -203,7 +197,8 @@ class AzureOpenAiStreamingChatModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                futureResponse.completeExceptionally(new IllegalStateException("onPartialResponse() should never be called when tool is executed"));
+                futureResponse.completeExceptionally(
+                        new IllegalStateException("onPartialResponse() should never be called when tool is executed"));
             }
 
             @Override

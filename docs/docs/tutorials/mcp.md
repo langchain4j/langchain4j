@@ -140,6 +140,13 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
 
 ## Resources
 
+There are two ways how to work with resources. Either the application can call the MCP client's
+resource-related methods to access resources programmatically, or there is an option to expose
+resources automatically to LLM calls via synthetic tools (one tool to obtain a list of resources
+and one to obtain the contents of a resource) so that Chat Models can consult resources by themselves.
+
+### Accessing resources programmatically
+
 To obtain a list of [MCP resources](https://modelcontextprotocol.io/docs/concepts/resources) 
 on the server, use `client.listResources()`, or `client.listResourceTemplates()` in case of resource templates.
 This will return a list of `McpResource` objects (or `McpResourceTemplate` respectively). These
@@ -149,6 +156,49 @@ To obtain the actual contents of the resource, use `client.readResource(uri)`, s
 This returns a `McpReadResourceResult`, which contains a  list of `McpResourceContents` objects (there may be more resource contents on a single URI, for 
 example if the URI represents a directory). Each `McpResourceContents` object represents either a 
 binary blob (`McpBlobResourceContents`) or text (`McpTextResourceContents`).
+
+### Exposing resources automatically via synthetic tools
+
+If you set a `McpResourcesAsToolsPresenter` instance using the builder when building an `McpToolProvider`,
+the MCP tool provider will automatically add two synthetic tools to the result of its `provideTools` method,
+along the 'regular' tools that are supported by the backing MCP servers. One tool should serve for obtaining
+a list of resources and the other for obtaining a particular resource. LangChain4j provides
+a default implementation named `DefaultMcpResourcesAsToolsPresenter` that adds these two tools:
+
+**_NOTE:_** The rest of this section describes `DefaultMcpResourcesAsToolsPresenter`. You may plug in your own implementation
+that behaves differently.
+
+- `list_resources`: Lists all resources exposed by the backing MCP servers. This tool takes no arguments.
+- `get_resource`: Reads the contents of a resource. This tool takes two arguments that together identify a resource:
+MCP server name and the URI.
+
+The output of `list_resources` is a JSON array like:
+
+```json
+[ {
+  "mcpServer" : "alice",
+  "uri" : "file:///info",
+  "uriTemplate" : null,
+  "name" : "basicInfo",
+  "description" : "Basic information about Alice",
+  "mimeType" : "text/plain"
+}, {
+  "mcpServer" : "bob",
+  "uri" : "file:///info",
+  "uriTemplate" : null,
+  "name" : "basicInfo",
+  "description" : "Basic information about Bob",
+  "mimeType" : "text/plain"
+} ]
+```
+
+Each document in this array represents one resource. Each resource is identified by a combination of `uri` and `mcpServer`, 
+where `mcpServer` is the value of `key` that was assigned to the MCP client during creation (see `DefaultMcpClient.Builder#key`).
+When the Chat model invokes the `list_resources` tool, 
+it receives this list of resources and can then decide to invoke `read_resource`. The default descriptions of `list_resources`
+and `get_resource` tools should suffice under most circumstances to explain to an LLM how to use them. However, if you need
+to customize the descriptions of these tools and their arguments, you override them using the methods of
+`DefaultMcpResourcesAsToolsPresenter.Builder`.
 
 ## Prompts
 

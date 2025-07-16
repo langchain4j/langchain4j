@@ -31,7 +31,7 @@ public final class AssistantMessage implements Message {
     @JsonProperty
     private final List<ToolCall> toolCalls;
     @JsonProperty
-    private final Boolean refusal;
+    private final String refusal;
     @JsonProperty
     @Deprecated
     private final FunctionCall functionCall;
@@ -60,7 +60,7 @@ public final class AssistantMessage implements Message {
         return toolCalls;
     }
 
-    public Boolean refusal() {
+    public String refusal() {
         return refusal;
     }
 
@@ -127,7 +127,7 @@ public final class AssistantMessage implements Message {
         private String content;
         private String name;
         private List<ToolCall> toolCalls;
-        private Boolean refusal;
+        private String refusal;
         @Deprecated
         private FunctionCall functionCall;
 
@@ -154,7 +154,7 @@ public final class AssistantMessage implements Message {
             return toolCalls(asList(toolCalls));
         }
 
-        public Builder refusal(Boolean refusal) {
+        public Builder refusal(String refusal) {
             this.refusal = refusal;
             return this;
         }

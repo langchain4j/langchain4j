@@ -87,10 +87,10 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         Response<List<RunningOllamaModel>> response = ollamaModels.runningModels();
 
         // then
-        RunningOllamaModel runningOllamaModel = response.content().get(0);
-
-        assertThat(runningOllamaModel.getName()).contains(TINY_DOLPHIN_MODEL);
-        assertThat(runningOllamaModel.getDigest()).isNotBlank();
-        assertThat(runningOllamaModel.getExpiresAt()).isNotNull();
+        assertThat(response.content()).anySatisfy(runningOllamaModel -> {
+            assertThat(runningOllamaModel.getName()).contains(TINY_DOLPHIN_MODEL);
+            assertThat(runningOllamaModel.getDigest()).isNotBlank();
+            assertThat(runningOllamaModel.getExpiresAt()).isNotNull();
+        });
     }
 }
