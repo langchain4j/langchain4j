@@ -27,12 +27,15 @@ public final class EmbeddingRequest {
     private final Integer dimensions;
     @JsonProperty
     private final String user;
+    @JsonProperty
+    private final String encodingFormat;
 
     public EmbeddingRequest(Builder builder) {
         this.model = builder.model;
         this.input = builder.input;
         this.dimensions = builder.dimensions;
         this.user = builder.user;
+        this.encodingFormat = builder.encodingFormat;
     }
 
     public String model() {
@@ -51,6 +54,10 @@ public final class EmbeddingRequest {
         return user;
     }
 
+    public String encodingFormat() {
+        return encodingFormat;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
@@ -62,7 +69,8 @@ public final class EmbeddingRequest {
         return Objects.equals(model, another.model)
                 && Objects.equals(input, another.input)
                 && Objects.equals(dimensions, another.dimensions)
-                && Objects.equals(user, another.user);
+                && Objects.equals(user, another.user)
+                && Objects.equals(encodingFormat, another.encodingFormat);
     }
 
     @Override
@@ -72,6 +80,7 @@ public final class EmbeddingRequest {
         h += (h << 5) + Objects.hashCode(input);
         h += (h << 5) + Objects.hashCode(dimensions);
         h += (h << 5) + Objects.hashCode(user);
+        h += (h << 5) + Objects.hashCode(encodingFormat);
         return h;
     }
 
@@ -82,6 +91,7 @@ public final class EmbeddingRequest {
                 + ", input=" + input
                 + ", dimensions=" + dimensions
                 + ", user=" + user
+                + ", encodingFormat=" + encodingFormat
                 + "}";
     }
 
@@ -98,6 +108,7 @@ public final class EmbeddingRequest {
         private List<String> input;
         private Integer dimensions;
         private String user;
+        private String encodingFormat;
 
         public Builder model(String model) {
             this.model = model;
@@ -122,6 +133,11 @@ public final class EmbeddingRequest {
 
         public Builder user(String user) {
             this.user = user;
+            return this;
+        }
+
+        public Builder encodingFormat(String encodingFormat) {
+            this.encodingFormat = encodingFormat;
             return this;
         }
 

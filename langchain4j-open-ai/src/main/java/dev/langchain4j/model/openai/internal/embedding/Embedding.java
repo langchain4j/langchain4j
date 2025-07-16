@@ -76,6 +76,7 @@ public final class Embedding {
         private List<Float> embedding;
         private Integer index;
 
+        @JsonDeserialize(using = OpenAiEmbeddingDeserializer.class)
         public Builder embedding(List<Float> embedding) {
             if (embedding != null) {
                 this.embedding = unmodifiableList(embedding);

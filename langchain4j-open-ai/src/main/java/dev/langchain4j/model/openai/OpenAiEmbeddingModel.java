@@ -37,6 +37,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String user;
     private final Integer maxRetries;
     private final Integer maxSegmentsPerBatch;
+    private final String encodingFormat;
 
     public OpenAiEmbeddingModel(OpenAiEmbeddingModelBuilder builder) {
 
@@ -58,6 +59,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.user = builder.user;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
+        this.encodingFormat = builder.encodingFormat;
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
     }
 
@@ -118,6 +120,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .model(modelName)
                 .dimensions(dimensions)
                 .user(user)
+                .encodingFormat(encodingFormat)
                 .build();
 
         EmbeddingResponse response = withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
@@ -153,6 +156,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Map<String, String> customHeaders;
+        private String encodingFormat;
 
         public OpenAiEmbeddingModelBuilder() {
             // This is public so it can be extended
@@ -230,6 +234,11 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public OpenAiEmbeddingModelBuilder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
             this.maxSegmentsPerBatch = maxSegmentsPerBatch;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder encodingFormat(String encodingFormat) {
+            this.encodingFormat = encodingFormat;
             return this;
         }
 
