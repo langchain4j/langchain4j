@@ -21,8 +21,7 @@ public class OpenAiEmbeddingDeserializer extends JsonDeserializer<List<Float>> {
         JsonToken token = jsonParser.currentToken();
         if (token == JsonToken.START_ARRAY) {
             return jsonParser.readValueAs(new TypeReference<List<Float>>() {});
-        }
-        else if (token == JsonToken.VALUE_STRING) {
+        } else if (token == JsonToken.VALUE_STRING) {
             String base64 = jsonParser.getValueAsString();
             byte[] decodedBytes = Base64.getDecoder().decode(base64);
 
@@ -36,10 +35,8 @@ public class OpenAiEmbeddingDeserializer extends JsonDeserializer<List<Float>> {
                 result.add(byteBuffer.getFloat());
             }
             return result;
-        }
-        else {
+        } else {
             throw new IOException("Illegal embedding: " + token);
         }
     }
-
 }

@@ -7,17 +7,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Base64;
-import java.util.List;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class OpenAiEmbeddingDeserializerTest {
@@ -73,7 +73,8 @@ class OpenAiEmbeddingDeserializerTest {
 
     @Test
     void testDeserializeEmbeddingWithFloatArray() throws Exception {
-        String json = """
+        String json =
+                """
                 {
                   "index": 1,
                   "embedding": [1.0, 2.0, 3.0]
@@ -89,16 +90,17 @@ class OpenAiEmbeddingDeserializerTest {
         List<Float> original = List.of(4.2f, -1.5f, 0.0f);
         ByteBuffer buffer = ByteBuffer.allocate(original.size() * Float.BYTES);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
-        for (float v : original)
-            buffer.putFloat(v);
+        for (float v : original) buffer.putFloat(v);
         String base64 = Base64.getEncoder().encodeToString(buffer.array());
 
-        String json = """
+        String json =
+                """
                 {
                   "index": 2,
                   "embedding": "%s"
                 }
-                """.formatted(base64);
+                """
+                        .formatted(base64);
 
         Embedding embedding = mapper.readValue(json, Embedding.class);
         assertEquals(2, embedding.index());
@@ -107,7 +109,8 @@ class OpenAiEmbeddingDeserializerTest {
 
     @Test
     void testDeserializeEmbeddingWithWrongType() {
-        String json = """
+        String json =
+                """
                 {
                   "index": 3,
                   "embedding": 123

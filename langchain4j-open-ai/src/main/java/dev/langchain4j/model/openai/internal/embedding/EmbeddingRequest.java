@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openai.internal.embedding;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableList;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -7,12 +10,8 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import java.util.List;
 import java.util.Objects;
-
-import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = EmbeddingRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -21,12 +20,16 @@ public final class EmbeddingRequest {
 
     @JsonProperty
     private final String model;
+
     @JsonProperty
     private final List<String> input;
+
     @JsonProperty
     private final Integer dimensions;
+
     @JsonProperty
     private final String user;
+
     @JsonProperty
     private final String encodingFormat;
 
@@ -61,8 +64,7 @@ public final class EmbeddingRequest {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof EmbeddingRequest
-                && equalTo((EmbeddingRequest) another);
+        return another instanceof EmbeddingRequest && equalTo((EmbeddingRequest) another);
     }
 
     private boolean equalTo(EmbeddingRequest another) {
