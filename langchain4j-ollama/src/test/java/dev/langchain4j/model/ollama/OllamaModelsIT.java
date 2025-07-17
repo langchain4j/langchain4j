@@ -102,6 +102,6 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         Response<OllamaModelCard> response = ollamaModels.modelCard(ollamaModel);
 
         assertThat(response.content().getCapabilities()).isNotEmpty();
-        assertThat(response.content().getCapabilities()).contains(OllamaCapability.COMPLETION);
+        assertThat(response.content().getCapabilities()).contains("completion");
     }
 }

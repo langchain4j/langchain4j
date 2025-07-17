@@ -26,7 +26,7 @@ public class OllamaModelCard {
     @JsonDeserialize(using = OllamaDateDeserializer.class)
     private OffsetDateTime modifiedAt;
 
-    private List<OllamaCapability> capabilities;
+    private List<String> capabilities;
 
     OllamaModelCard() {}
 
@@ -97,11 +97,11 @@ public class OllamaModelCard {
         this.modifiedAt = modifiedAt;
     }
 
-    public List<OllamaCapability> getCapabilities() {
+    public List<String> getCapabilities() {
         return capabilities;
     }
 
-    public void setCapabilities(List<OllamaCapability> capabilities) {
+    public void setCapabilities(List<String> capabilities) {
         this.capabilities = capabilities;
     }
 
@@ -114,7 +114,7 @@ public class OllamaModelCard {
         private OllamaModelDetails details;
         private Map<String, Object> modelInfo;
         private OffsetDateTime modifiedAt;
-        private List<OllamaCapability> capabilities;
+        private List<String> capabilities;
 
         public Builder license(String license) {
             this.license = license;
@@ -146,7 +146,7 @@ public class OllamaModelCard {
             return this;
         }
 
-        public Builder capabilities(List<OllamaCapability> capabilities) {
+        public Builder capabilities(List<String> capabilities) {
             this.capabilities = capabilities;
             return this;
         }
