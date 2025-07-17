@@ -33,6 +33,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer dimensions;
     private final String user;
     private final Integer maxSegmentsPerBatch;
+    private final EmbeddingCreateParams.EncodingFormat encodingFormat;
 
     public OpenAiOfficialEmbeddingModel(Builder builder) {
 
@@ -60,6 +61,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = builder.modelName;
         this.dimensions = getOrDefault(builder.dimensions, knownDimension());
         this.user = builder.user;
+        this.encodingFormat = builder.encodingFormat;
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
     }
@@ -107,6 +109,9 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         EmbeddingCreateParams.Builder embeddingCreateParamsBuilder = EmbeddingCreateParams.builder();
         embeddingCreateParamsBuilder.input(input);
         embeddingCreateParamsBuilder.model(modelName);
+        if (encodingFormat != null) {
+            embeddingCreateParamsBuilder.encodingFormat(encodingFormat);
+        }
         if (user != null) {
             embeddingCreateParamsBuilder.user(user);
         }
@@ -158,6 +163,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Integer maxRetries;
         private Proxy proxy;
         private Map<String, String> customHeaders;
+        private EmbeddingCreateParams.EncodingFormat encodingFormat;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -246,6 +252,11 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public Builder encodingFormat(EmbeddingCreateParams.EncodingFormat encodingFormat) {
+            this.encodingFormat = encodingFormat;
             return this;
         }
 
