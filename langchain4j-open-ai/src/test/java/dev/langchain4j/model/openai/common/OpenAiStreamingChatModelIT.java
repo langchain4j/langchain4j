@@ -22,7 +22,9 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_4_O_MINI);
+                .modelName(GPT_4_O_MINI)
+                .logRequests(false) // base64-encoded images are huge in logs
+                .logResponses(true);
     }
 
     @Override
