@@ -1,13 +1,12 @@
 package dev.langchain4j.model.chat.request.json;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
+
+import java.util.List;
+import java.util.Objects;
 
 public class JsonAnyOfSchema implements JsonSchemaElement {
 
@@ -60,8 +59,7 @@ public class JsonAnyOfSchema implements JsonSchemaElement {
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (!(o instanceof final JsonAnyOfSchema that)) return false;
-        return Objects.equals(description, that.description)
-                && Objects.equals(anyOf, that.anyOf);
+        return Objects.equals(description, that.description) && Objects.equals(anyOf, that.anyOf);
     }
 
     @Override
@@ -71,9 +69,6 @@ public class JsonAnyOfSchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonAnyOfSchema {" +
-                "description = " + quoted(description) +
-                ", anyOf = " + anyOf +
-                " }";
+        return "JsonAnyOfSchema {" + "description = " + quoted(description) + ", anyOf = " + anyOf + " }";
     }
 }
