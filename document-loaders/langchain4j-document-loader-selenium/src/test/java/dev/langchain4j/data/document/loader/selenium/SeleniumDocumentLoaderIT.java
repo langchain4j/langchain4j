@@ -96,4 +96,33 @@ class SeleniumDocumentLoaderIT {
         assertThat(document.text()).contains("test");
         customLoader.close();
     }
+
+    @Test
+    void should_load_raw_document_content() {
+        String url =
+                "https://raw.githubusercontent.com/langchain4j/langchain4j/main/langchain4j/src/test/resources/test-file-utf8.txt";
+
+        Document document = loader.load(url);
+
+        assertThat(document.text()).contains("test", "content"); // raw content
+        assertThat(document.metadata().getString(Document.URL)).isEqualTo(url);
+    }
+
+    @Test
+    void should_fail_to_load_from_unreachable_url_without_parser() {
+        String url = "https://nonexistent.domain.abc123";
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> loader.load(url))
+                .withMessageContaining("Failed to load document from URL");
+    }
+
+    @Test
+    void should_fail_to_load_from_malformed_url_without_parser() {
+        String url = "ht!tp://bad_url";
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> loader.load(url))
+                .withMessageContaining("Failed to load document from URL");
+    }
 }
