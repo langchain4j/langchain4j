@@ -136,7 +136,7 @@ public class OpenAiUtils {
                     .collect(toList());
 
             return AssistantMessage.builder()
-                    .content(aiMessage.text())
+                    .content(aiMessage.text() != null ? aiMessage.text() : "")
                     .toolCalls(toolCalls)
                     .build();
         }
