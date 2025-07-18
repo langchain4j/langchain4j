@@ -42,7 +42,7 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
                 withRetryMappingExceptions(() -> client.chat(ollamaChatRequest), maxRetries);
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(ollamaChatResponse))
+                .aiMessage(aiMessageFrom(ollamaChatResponse.getMessage()))
                 .metadata(chatResponseMetadataFrom(ollamaChatResponse))
                 .build();
     }

@@ -73,7 +73,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         return keepAlive;
     }
 
-    public Boolean think() {
+    public Boolean think() { // TODO use the same name for all providers, elevate to generic params?
         return think;
     }
 

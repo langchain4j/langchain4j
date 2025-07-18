@@ -25,9 +25,27 @@ public class GeminiThinkingConfig {
 
     public static class Builder {
 
+        private Boolean returnThinking;
         private Boolean includeThoughts;
         private Integer thinkingBudget;
 
+        /**
+         * TODO
+         * @param returnThinking
+         * @return
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * TODO
+         * @param includeThoughts
+         * @return
+         * @deprecated Please use {@link #returnThinking(Boolean)} instead.
+         */
+        @Deprecated
         public Builder includeThoughts(Boolean includeThoughts) {
             this.includeThoughts = includeThoughts;
             return this;

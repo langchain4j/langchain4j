@@ -29,7 +29,7 @@ class AnthropicMapperTest {
     @MethodSource
     void test_toAnthropicMessages(List<ChatMessage> messages, List<AnthropicMessage> expectedAnthropicMessages) {
         // when
-        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages, false);
 
         //then
         assertThat(anthropicMessages).containsExactlyElementsOf(expectedAnthropicMessages);

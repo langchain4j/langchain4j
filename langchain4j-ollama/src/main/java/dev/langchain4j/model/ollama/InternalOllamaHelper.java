@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
@@ -125,11 +126,16 @@ class InternalOllamaHelper {
         }
     }
 
-    static AiMessage aiMessageFrom(OllamaChatResponse ollamaChatResponse) {
-        return ollamaChatResponse.getMessage().getToolCalls() != null
-                ? AiMessage.from(
-                        toToolExecutionRequests(ollamaChatResponse.getMessage().getToolCalls()))
-                : AiMessage.from(ollamaChatResponse.getMessage().getContent());
+    static AiMessage aiMessageFrom(Message message) {
+        String content = message.getContent();
+        String thinking = message.getThinking();
+        List<ToolCall> toolCalls = getOrDefault(message.getToolCalls(), List.of());
+
+        return AiMessage.builder()
+                .text(isNullOrEmpty(content) ? null : content)
+                .thinking(isNullOrEmpty(thinking) ? null : thinking)
+                .toolExecutionRequests(toToolExecutionRequests(toolCalls))
+                .build();
     }
 
     static ChatResponseMetadata chatResponseMetadataFrom(OllamaChatResponse ollamaChatResponse) {

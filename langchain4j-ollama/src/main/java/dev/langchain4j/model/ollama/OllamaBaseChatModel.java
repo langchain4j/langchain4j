@@ -68,6 +68,7 @@ abstract class OllamaBaseChatModel {
                 .seed(getOrDefault(builder.seed, ollamaParameters.seed()))
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
                 .keepAlive(ollamaParameters.keepAlive())
+                .think(getOrDefault(builder.think, ollamaParameters.think()))
                 .build();
 
         this.listeners = copy(builder.listeners);
@@ -100,6 +101,7 @@ abstract class OllamaBaseChatModel {
         protected List<String> stop;
         protected Double minP;
         protected ResponseFormat responseFormat;
+        protected Boolean think;
         protected Duration timeout;
         protected Map<String, String> customHeaders;
         protected Boolean logRequests;
@@ -204,6 +206,11 @@ abstract class OllamaBaseChatModel {
 
         public B responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return self();
+        }
+
+        public B think(Boolean think) {
+            this.think = think;
             return self();
         }
 

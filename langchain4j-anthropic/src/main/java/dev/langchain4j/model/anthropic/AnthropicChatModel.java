@@ -11,6 +11,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -66,6 +67,8 @@ public class AnthropicChatModel implements ChatModel {
     private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
+    private final boolean returnThinking;
+    private final boolean preserveThinking;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
@@ -86,6 +89,8 @@ public class AnthropicChatModel implements ChatModel {
         this.cacheTools = getOrDefault(builder.cacheTools, false);
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.preserveThinking = getOrDefault(builder.preserveThinking, true); // TODO good idea?
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
 
@@ -106,6 +111,7 @@ public class AnthropicChatModel implements ChatModel {
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
+                // TODO?
                 .build();
     }
 
@@ -132,6 +138,8 @@ public class AnthropicChatModel implements ChatModel {
         private Boolean cacheTools;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
+        private Boolean returnThinking;
+        private Boolean preserveThinking;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -204,6 +212,10 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
+        public AnthropicChatModelBuilder toolSpecifications(ToolSpecification... toolSpecifications) {
+            return toolSpecifications(asList(toolSpecifications));
+        }
+
         public AnthropicChatModelBuilder toolChoice(ToolChoice toolChoice) {
             this.toolChoice = toolChoice;
             return this;
@@ -226,6 +238,26 @@ public class AnthropicChatModel implements ChatModel {
 
         public AnthropicChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
+            return this;
+        }
+
+        /**
+         * TODO
+         * @param returnThinking
+         * @return
+         */
+        public AnthropicChatModelBuilder returnThinking(Boolean returnThinking) { // TODO names
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * TODO
+         * @param returnThinking
+         * @return
+         */
+        public AnthropicChatModelBuilder preserveThinking(Boolean preserveThinking) { // TODO names
+            this.preserveThinking = preserveThinking;
             return this;
         }
 
@@ -254,13 +286,13 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
-        public AnthropicChatModel build() {
-            return new AnthropicChatModel(this);
-        }
-
         public AnthropicChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
             return this;
+        }
+
+        public AnthropicChatModel build() {
+            return new AnthropicChatModel(this);
         }
     }
 
@@ -270,6 +302,7 @@ public class AnthropicChatModel implements ChatModel {
 
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(chatRequest,
                 toThinking(thinkingType, thinkingBudgetTokens),
+                preserveThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 false);
@@ -280,7 +313,7 @@ public class AnthropicChatModel implements ChatModel {
         return createChatResponse(response);
     }
 
-    private static ChatResponse createChatResponse(AnthropicCreateMessageResponse response) {
+    private ChatResponse createChatResponse(AnthropicCreateMessageResponse response) {
         ChatResponseMetadata responseMetadata = ChatResponseMetadata.builder()
                 .id(response.id)
                 .modelName(response.model)
@@ -289,7 +322,7 @@ public class AnthropicChatModel implements ChatModel {
                 .build();
 
         return ChatResponse.builder()
-                .aiMessage(toAiMessage(response.content))
+                .aiMessage(toAiMessage(response.content, returnThinking))
                 .metadata(responseMetadata)
                 .build();
     }

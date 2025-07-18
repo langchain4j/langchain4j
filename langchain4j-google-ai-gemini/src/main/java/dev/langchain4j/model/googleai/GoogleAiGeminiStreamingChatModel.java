@@ -45,6 +45,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 builder.listeners,
                 null,
                 builder.thinkingConfig,
+                builder.preserveThinking,
                 builder.defaultRequestParameters);
     }
 
@@ -99,6 +100,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
                 safetySettings,
                 listeners,
                 maxRetries,
+                null,
                 null,
                 null);
     }
@@ -155,6 +157,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         private List<GeminiSafetySetting> safetySettings;
         private List<ChatModelListener> listeners;
         private GeminiThinkingConfig thinkingConfig;
+        private Boolean preserveThinking;
 
         GoogleAiGeminiStreamingChatModelBuilder() {}
 

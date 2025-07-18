@@ -3,10 +3,12 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.THINKING;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
@@ -43,6 +45,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicThinkingContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoiceType;
@@ -61,7 +64,9 @@ import java.util.Map;
 @Internal
 public class AnthropicMapper {
 
-    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
+    private static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
+
+    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, boolean preserveThinking) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -81,8 +86,8 @@ public class AnthropicMapper {
                 if (message instanceof UserMessage) {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
-                } else if (message instanceof AiMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((AiMessage) message);
+                } else if (message instanceof AiMessage aiMessage) {
+                    List<AnthropicMessageContent> contents = toAnthropicMessageContents(aiMessage, preserveThinking);
                     anthropicMessages.add(new AnthropicMessage(ASSISTANT, contents));
                 }
             }
@@ -124,8 +129,13 @@ public class AnthropicMapper {
                 .collect(toList());
     }
 
-    private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message) {
+    private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean preserveThinking) {
         List<AnthropicMessageContent> contents = new ArrayList<>();
+
+        if (preserveThinking && isNotNullOrBlank(message.thinking())) {
+            String signature = (String) message.metadata().get(THINKING_SIGNATURE_KEY);
+            contents.add(new AnthropicThinkingContent(message.thinking(), signature));
+        }
 
         if (isNotNullOrBlank(message.text())) {
             contents.add(new AnthropicTextContent(message.text()));
@@ -174,12 +184,28 @@ public class AnthropicMapper {
                 .collect(toList());
     }
 
-    public static AiMessage toAiMessage(List<AnthropicContent> contents) {
+    public static AiMessage toAiMessage(List<AnthropicContent> contents, boolean returnThinking) {
 
         String text = contents.stream()
                 .filter(content -> content.type == TEXT)
                 .map(content -> content.text)
                 .collect(joining("\n"));
+
+        String thinking = null;
+        Map<String, Object> metadata = null;
+        if (returnThinking) {
+            thinking = contents.stream()
+                    .filter(content -> content.type == THINKING)
+                    .map(content -> content.thinking)
+                    .collect(joining("\n"));
+            String signature = contents.stream()
+                    .filter(content -> content.type == THINKING)
+                    .map(content -> content.signature)
+                    .collect(joining("\n"));
+            if (isNotNullOrEmpty(signature)) {
+                metadata = Map.of(THINKING_SIGNATURE_KEY, signature);
+            }
+        }
 
         List<ToolExecutionRequest> toolExecutionRequests = contents.stream()
                 .filter(content -> content.type == TOOL_USE)
@@ -190,13 +216,12 @@ public class AnthropicMapper {
                         .build())
                 .collect(toList());
 
-        if (isNotNullOrBlank(text) && !isNullOrEmpty(toolExecutionRequests)) {
-            return AiMessage.from(text, toolExecutionRequests);
-        } else if (!isNullOrEmpty(toolExecutionRequests)) {
-            return AiMessage.from(toolExecutionRequests);
-        } else {
-            return AiMessage.from(text);
-        }
+        return AiMessage.builder()
+                .text(isNullOrEmpty(text) ? null : text)
+                .thinking(isNullOrEmpty(thinking) ? null : thinking)
+                .toolExecutionRequests(toolExecutionRequests)
+                .metadata(metadata)
+                .build();
     }
 
     public static TokenUsage toTokenUsage(AnthropicUsage anthropicUsage) {

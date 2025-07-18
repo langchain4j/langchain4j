@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.data.message.ChatMessageDeserializer.messageFromJson;
@@ -67,7 +68,7 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         AiMessage.from("hello"),
-                        "{\"text\":\"hello\",\"toolExecutionRequests\":[],\"type\":\"AI\"}"
+                        "{\"text\":\"hello\",\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         AiMessage.from(ToolExecutionRequest.builder()
@@ -75,6 +76,21 @@ class ChatMessageSerializerTest {
                                 .arguments("{\"city\": \"Munich\"}")
                                 .build()),
                         "{\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"type\":\"AI\"}"
+                ),
+                Arguments.of(
+                        AiMessage.builder()
+                                .text("test-text")
+                                .thinking("test-thinking")
+                                .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                        .name("weather")
+                                        .arguments("{\"city\": \"Munich\"}")
+                                        .build()))
+                                .metadata(new LinkedHashMap<>() {{
+                                    put("name", "Klaus");
+                                    put("age", 42);
+                                }})
+                                .build(),
+                        "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"metadata\":{\"name\":\"Klaus\",\"age\":42},\"type\":\"AI\"}"
                 ),
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
@@ -117,11 +133,13 @@ class ChatMessageSerializerTest {
     }
 
     @Test
-    void should_deserialize_AiMessage_without_toolExecutionRequests() {
+    void should_deserialize_empty_AiMessage() {
 
-        ChatMessage deserialized = messageFromJson("{\"text\":\"hello\",\"type\":\"AI\"}");
+        AiMessage deserialized = (AiMessage) messageFromJson("{\"type\":\"AI\"}");
 
-        assertThat(deserialized).isEqualTo(AiMessage.from("hello"));
-        assertThat(((AiMessage) deserialized).toolExecutionRequests()).isEmpty();
+        assertThat(deserialized.text()).isNull();
+        assertThat(deserialized.thinking()).isNull();
+        assertThat(deserialized.toolExecutionRequests()).isEmpty();
+        assertThat(deserialized.metadata()).isEmpty();
     }
 }

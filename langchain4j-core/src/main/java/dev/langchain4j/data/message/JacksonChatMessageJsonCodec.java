@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXISTING_PROPERTY;
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
@@ -123,7 +124,7 @@ class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     private static abstract class UserMessageMixin {
     }
 
-    @JsonInclude(NON_NULL)
+    @JsonInclude(NON_EMPTY)
     @JsonDeserialize(builder = AiMessage.Builder.class)
     private static abstract class AiMessageMixin {
     }

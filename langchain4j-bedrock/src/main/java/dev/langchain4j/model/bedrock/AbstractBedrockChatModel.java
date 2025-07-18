@@ -2,6 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertAdditionalModelRequestFields;
@@ -45,6 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
@@ -59,6 +61,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.Tool;
@@ -71,14 +75,20 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 @Internal
 abstract class AbstractBedrockChatModel {
 
+    private static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
+
     protected final Region region;
     protected final Duration timeout;
+    protected final boolean returnThinking;
+    protected final boolean preserveThinking;
     protected final BedrockChatRequestParameters defaultRequestParameters;
     protected final List<ChatModelListener> listeners;
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.preserveThinking = getOrDefault(builder.preserveThinking, false); // TODO should be true by default?
         this.listeners = copy(builder.listeners);
 
         ChatRequestParameters commonParameters;
@@ -181,6 +191,16 @@ abstract class AbstractBedrockChatModel {
 
     protected Message createAiMessage(AiMessage message) {
         List<ContentBlock> blocks = new ArrayList<>();
+
+        if (preserveThinking && message.thinking() != null) {
+            ReasoningContentBlock reasoningContentBlock = ReasoningContentBlock.builder()
+                    .reasoningText(ReasoningTextBlock.builder()
+                            .text(message.thinking())
+                            .signature((String) message.metadata().get(THINKING_SIGNATURE_KEY))
+                            .build())
+                    .build();
+            blocks.add(ContentBlock.builder().reasoningContent(reasoningContentBlock).build());
+        }
 
         if (message.text() != null) {
             blocks.add(ContentBlock.builder().text(message.text()).build());
@@ -292,29 +312,52 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected AiMessage aiMessageFrom(ConverseResponse converseResponse) {
-        ArrayList<ToolExecutionRequest> toolExecRequests = new ArrayList<>();
-        String textAnswer = "";
+
+        List<String> texts = new ArrayList<>();
+        String thinking = null;
+        Map<String, Object> metadata = null;
+        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+
         for (ContentBlock cBlock : converseResponse.output().message().content()) {
             if (cBlock.type() == ContentBlock.Type.TOOL_USE) {
-                toolExecRequests.add(ToolExecutionRequest.builder()
+                toolExecutionRequests.add(ToolExecutionRequest.builder()
                         .name(cBlock.toolUse().name())
                         .id(cBlock.toolUse().toolUseId())
                         .arguments(documentToJson(cBlock.toolUse().input()))
                         .build());
             } else if (cBlock.type() == ContentBlock.Type.TEXT) {
-                textAnswer = cBlock.text();
+                 if (isNotNullOrEmpty(cBlock.text())) {
+                     texts.add(cBlock.text());
+                 }
             } else if (cBlock.type() == ContentBlock.Type.REASONING_CONTENT) {
-                // TODO Implement full support of reasoning
+                if (returnThinking) {
+                    ReasoningContentBlock reasoningContentBlock = cBlock.reasoningContent();
+                    if (reasoningContentBlock != null) {
+                        ReasoningTextBlock reasoningTextBlock = reasoningContentBlock.reasoningText();
+                        if (reasoningTextBlock != null) {
+                            if (isNotNullOrEmpty(reasoningTextBlock.text())) {
+                                thinking = reasoningTextBlock.text();
+                            }
+                            if (isNotNullOrEmpty(reasoningTextBlock.signature())) {
+                                metadata = Map.of(THINKING_SIGNATURE_KEY, reasoningTextBlock.signature());
+                            }
+                        }
+                    }
+                }
             } else {
                 throw new IllegalArgumentException(
                         "Unsupported content in LLM response. Content type: " + cBlock.type());
             }
         }
-        if (!toolExecRequests.isEmpty()) {
-            if (isNullOrEmpty(textAnswer)) return AiMessage.aiMessage(toolExecRequests);
-            else return AiMessage.aiMessage(textAnswer, toolExecRequests);
-        }
-        return AiMessage.aiMessage(textAnswer);
+
+        String text = texts.stream().collect(Collectors.joining("\n\n"));
+
+        return AiMessage.builder()
+                .text(isNullOrEmpty(text) ? null : text)
+                .thinking(thinking)
+                .metadata(metadata)
+                .toolExecutionRequests(toolExecutionRequests)
+                .build();
     }
 
     protected TokenUsage tokenUsageFrom(software.amazon.awssdk.services.bedrockruntime.model.TokenUsage tokenUsage) {
@@ -402,6 +445,8 @@ abstract class AbstractBedrockChatModel {
         protected Region region;
         protected String modelId;
         protected Duration timeout;
+        protected Boolean returnThinking;
+        protected Boolean preserveThinking;
         protected ChatRequestParameters defaultRequestParameters;
         protected Boolean logRequests;
         protected Boolean logResponses;
@@ -424,6 +469,26 @@ abstract class AbstractBedrockChatModel {
 
         public T timeout(Duration timeout) {
             this.timeout = timeout;
+            return self();
+        }
+
+        /**
+         * TODO
+         * @param returnThinking
+         * @return
+         */
+        public T returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return self();
+        }
+
+        /**
+         * TODO
+         * @param preserveThinking
+         * @return
+         */
+        public T preserveThinking(Boolean preserveThinking) {
+            this.preserveThinking = preserveThinking;
             return self();
         }
 
