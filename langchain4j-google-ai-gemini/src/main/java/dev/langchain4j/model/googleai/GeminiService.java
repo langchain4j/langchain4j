@@ -109,12 +109,19 @@ class GeminiService {
             @Override
             public void onEvent(ServerSentEvent event) {
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
-                Optional<String> maybeText = responseBuilder.append(response);
-                maybeText.ifPresent(text -> {
+                GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
+                textAndTools.maybeText().ifPresent(text -> {
                     try {
                         handler.onPartialResponse(text);
                     } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
+                        withLoggingExceptions(() -> handler.onError(e)); // TODO
+                    }
+                });
+                textAndTools.maybeThought().ifPresent(thought -> {
+                    try {
+                        handler.onPartialThinkingResponse(thought);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e)); // TODO
                     }
                 });
             }

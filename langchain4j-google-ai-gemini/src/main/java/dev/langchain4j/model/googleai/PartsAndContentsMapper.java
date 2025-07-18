@@ -36,7 +36,7 @@ import static java.util.stream.Collectors.toList;
 
 class PartsAndContentsMapper {
 
-    private static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
+    static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector =
         new CustomMimeTypesFileTypeDetector();

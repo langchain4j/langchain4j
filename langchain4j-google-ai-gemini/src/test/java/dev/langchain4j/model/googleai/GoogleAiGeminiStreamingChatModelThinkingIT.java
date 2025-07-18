@@ -1,9 +1,17 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -13,27 +21,29 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SpyingHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InOrder;
 
-class GoogleAiGeminiChatModelThinkingIT {
+class GoogleAiGeminiStreamingChatModelThinkingIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
-    // TODO test streaming model as well
     // TODO is sending thoughts back billed? by token?
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void should_return_thinking(boolean preserveThinking) { // TODO name
+    void should_return_thinking(boolean preserveThinking) throws Exception { // TODO name
 
         // given
         boolean returnThinking = true;
@@ -43,7 +53,7 @@ class GoogleAiGeminiChatModelThinkingIT {
                 .thinkingBudget(20)
                 .build();
 
-        ChatModel model = GoogleAiGeminiChatModel.builder()
+        StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
@@ -54,23 +64,58 @@ class GoogleAiGeminiChatModelThinkingIT {
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
+        StringBuffer thinkingBuilder = new StringBuffer();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+        StreamingChatResponseHandler spyHandler = spy(new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+            }
+
+            @Override
+            public void onPartialThinkingResponse(String partialThinkingResponse) {
+                thinkingBuilder.append(partialThinkingResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse.completeExceptionally(error);
+            }
+        });
+
         // when
-        ChatResponse chatResponse = model.chat(userMessage);
+        model.chat(List.of(userMessage), spyHandler);
 
         // then
+        ChatResponse chatResponse = futureResponse.get(60, SECONDS);
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage.thinking()).isNotBlank();
+        assertThat(aiMessage.thinking())
+                .isNotBlank()
+                .isEqualTo(thinkingBuilder.toString());
         assertThat(aiMessage.metadata()).isEmpty();
+
+        InOrder inOrder = inOrder(spyHandler);
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(spyHandler);
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
 
         // when
-        ChatResponse chatResponse2 = model.chat(userMessage, aiMessage, userMessage2);
+        TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage, aiMessage, userMessage2), handler2);
 
         // then
-        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        AiMessage aiMessage2 = handler2.get().aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).isNotBlank();
         assertThat(aiMessage2.metadata()).isEmpty();
@@ -106,7 +151,7 @@ class GoogleAiGeminiChatModelThinkingIT {
                         .build())
                 .build();
 
-        ChatModel model = GoogleAiGeminiChatModel.builder()
+        StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
@@ -121,9 +166,11 @@ class GoogleAiGeminiChatModelThinkingIT {
         UserMessage userMessage1 = UserMessage.from("What is the weather in Munich?");
 
         // when
-        ChatResponse chatResponse1 = model.chat(userMessage1);
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1), spyHandler1);
 
         // then
+        ChatResponse chatResponse1 = spyHandler1.get();
         AiMessage aiMessage1 = chatResponse1.aiMessage();
         String thinking1 = aiMessage1.thinking();
         assertThat(thinking1).isNotBlank();
@@ -134,26 +181,44 @@ class GoogleAiGeminiChatModelThinkingIT {
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
+        InOrder inOrder1 = inOrder(spyHandler1);
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        inOrder1.verifyNoMoreInteractions();
+        verify(spyHandler1).get();
+        verifyNoMoreInteractions(spyHandler1);
+
         // given
         ToolExecutionResultMessage toolResultMessage1 = ToolExecutionResultMessage.from(toolExecutionRequest1, "sunny");
 
         // when
-        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, toolResultMessage1);
+        TestStreamingChatResponseHandler spyHandler2 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1), spyHandler2);
 
         // then
+        ChatResponse chatResponse2 = spyHandler2.get();
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.thinking()).isNull();
         assertThat(aiMessage2.metadata()).isEmpty();
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
 
+        InOrder inOrder2 = inOrder(spyHandler2);
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        inOrder2.verifyNoMoreInteractions();
+        verify(spyHandler2).get();
+        verifyNoMoreInteractions(spyHandler2);
+
         // given
         UserMessage userMessage2 = UserMessage.from("What is the weather in Paris?");
 
         // when
-        ChatResponse chatResponse3 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2);
+        TestStreamingChatResponseHandler spyHandler3 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2), spyHandler3);
 
         // then
+        ChatResponse chatResponse3 = spyHandler3.get();
         AiMessage aiMessage3 = chatResponse3.aiMessage();
         String thinking2 = aiMessage3.thinking();
         assertThat(thinking2).isNotBlank();
@@ -164,20 +229,42 @@ class GoogleAiGeminiChatModelThinkingIT {
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
+        InOrder inOrder3 = inOrder(spyHandler3);
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinkingResponse(any());
+        inOrder3.verify(spyHandler3).onCompleteResponse(any());
+        inOrder3.verifyNoMoreInteractions();
+        verify(spyHandler3).get();
+        verifyNoMoreInteractions(spyHandler3);
+
         // given
         ToolExecutionResultMessage toolResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "rainy");
 
         // when
-        ChatResponse chatResponse4 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
+        TestStreamingChatResponseHandler spyHandler4 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2), spyHandler4);
 
         // then
+        ChatResponse chatResponse4 = spyHandler4.get();
         AiMessage aiMessage4 = chatResponse4.aiMessage();
         assertThat(aiMessage4.text()).containsIgnoringCase("rain");
         if (preserveThinking) {
             assertThat(aiMessage4.thinking()).isNull();
             assertThat(aiMessage4.metadata()).isEmpty();
+        } else {
+            assertThat(aiMessage4.thinking()).isNotBlank();
+            assertThat((String) aiMessage4.metadata().get("thinking_signature")).isNotBlank();
         }
         assertThat(aiMessage4.toolExecutionRequests()).isEmpty();
+
+        InOrder inOrder4 = inOrder(spyHandler4);
+        if (!preserveThinking) {
+            inOrder4.verify(spyHandler4).onPartialThinkingResponse(any());
+        }
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
+        inOrder4.verify(spyHandler4).onCompleteResponse(any());
+        inOrder4.verifyNoMoreInteractions();
+        verify(spyHandler4).get();
+        verifyNoMoreInteractions(spyHandler4);
 
         // should preserve thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
@@ -206,7 +293,7 @@ class GoogleAiGeminiChatModelThinkingIT {
 
 
     @Test
-    void should_NOT_return_thinking() { // TODO name
+    void should_NOT_return_thinking() { // TODO name TODO remove?
 
         // given
         boolean returnThinking = false;
@@ -216,23 +303,32 @@ class GoogleAiGeminiChatModelThinkingIT {
                 .thinkingBudget(20)
                 .build();
 
-        ChatModel model = GoogleAiGeminiChatModel.builder()
+        StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
                 .thinkingConfig(thinkingConfig)
                 .logRequestsAndResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        String userMessage = "What is the capital of Germany?";
 
         // when
-        ChatResponse chatResponse = model.chat(userMessage);
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
+        model.chat(userMessage, spyHandler);
 
         // then
+        ChatResponse chatResponse = spyHandler.get();
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).contains("Berlin");
         assertThat(aiMessage.thinking()).isNull();
         assertThat(aiMessage.metadata()).isEmpty();
+
+        InOrder inOrder = inOrder(spyHandler);
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verify(spyHandler).get();
+        verifyNoMoreInteractions(spyHandler);
     }
 
     // TODO other tests?

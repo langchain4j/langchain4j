@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.List;
@@ -58,6 +59,7 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
             @Override
             public void onPartialThinkingResponse(String partialThinkingResponse) {
                 thinkingBuilder.append(partialThinkingResponse);
+                System.out.println("OLOLOOOOOOO");
             }
 
             @Override
@@ -77,8 +79,11 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         // then
         ChatResponse chatResponse = futureResponse.get(60, SECONDS);
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("Berlin")
+                .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).containsIgnoringCase("Berlin");
+//        assertThat(aiMessage.thinking()).isEqualTo(thinkingBuilder.toString()); TODO
 
         InOrder inOrder = inOrder(spyHandler);
         inOrder.verify(spyHandler, atLeastOnce()).onPartialThinkingResponse(any());
@@ -124,16 +129,23 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         String userMessage = "What is the capital of Germany?";
 
         // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(userMessage, handler);
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
+        model.chat(userMessage, spyHandler);
 
         // then
-        ChatResponse chatResponse = handler.get();
+        ChatResponse chatResponse = spyHandler.get();
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text())
                 .containsIgnoringCase("Berlin")
                 .contains("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
+
+        InOrder inOrder = inOrder(spyHandler);
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verify(spyHandler).get();
+        verifyNoMoreInteractions(spyHandler);
     }
 
     @Test
@@ -153,15 +165,22 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         String userMessage = "What is the capital of Germany?";
 
         // when
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(userMessage, handler);
+        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
+        model.chat(userMessage, spyHandler);
 
         // then
-        ChatResponse chatResponse = handler.get();
+        ChatResponse chatResponse = spyHandler.get();
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text())
                 .containsIgnoringCase("Berlin")
                 .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
+
+        InOrder inOrder = inOrder(spyHandler);
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler).onCompleteResponse(any());
+        inOrder.verifyNoMoreInteractions();
+        verify(spyHandler).get();
+        verifyNoMoreInteractions(spyHandler);
     }
 }

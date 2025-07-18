@@ -293,6 +293,11 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
             return this;
         }
 
+        public GoogleAiGeminiStreamingChatModelBuilder preserveThinking(Boolean preserveThinking) {
+            this.preserveThinking = preserveThinking;
+            return this;
+        }
+
         public GoogleAiGeminiStreamingChatModelBuilder responseLogprobs(Boolean responseLogprobs) {
             this.responseLogprobs = responseLogprobs;
             return this;
