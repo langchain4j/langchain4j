@@ -1,15 +1,15 @@
 package dev.langchain4j.data.document.splitter;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.MetadataKeys;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.TokenCountEstimator;
+import java.io.InputStream;
 import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
-
-import java.io.InputStream;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Splits the provided {@link Document} into sentences and attempts to fit as many sentences as possible
@@ -27,37 +27,35 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * place them into multiple segments.
  * Such segments contain only the parts of the split long sentence.
  * <p>
- * Each {@link TextSegment} inherits all metadata from the {@link Document} and includes an "index" metadata key
+ * Each {@link TextSegment} inherits all metadata from the {@link Document} and includes an {@link MetadataKeys#INDEX} metadata key
  * representing its position within the document (starting from 0).
  */
 public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
 
     private final SentenceModel sentenceModel;
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInChars,
-                                      int maxOverlapSizeInChars) {
+    public DocumentBySentenceSplitter(int maxSegmentSizeInChars, int maxOverlapSizeInChars) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
         this.sentenceModel = createSentenceModel();
     }
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInChars,
-                                      int maxOverlapSizeInChars,
-                                      DocumentSplitter subSplitter) {
+    public DocumentBySentenceSplitter(
+            int maxSegmentSizeInChars, int maxOverlapSizeInChars, DocumentSplitter subSplitter) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
         this.sentenceModel = createSentenceModel();
     }
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
-                                      int maxOverlapSizeInTokens,
-                                      TokenCountEstimator tokenCountEstimator) {
+    public DocumentBySentenceSplitter(
+            int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, TokenCountEstimator tokenCountEstimator) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, null);
         this.sentenceModel = createSentenceModel();
     }
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
-                                      int maxOverlapSizeInTokens,
-                                      TokenCountEstimator tokenCountEstimator,
-                                      DocumentSplitter subSplitter) {
+    public DocumentBySentenceSplitter(
+            int maxSegmentSizeInTokens,
+            int maxOverlapSizeInTokens,
+            TokenCountEstimator tokenCountEstimator,
+            DocumentSplitter subSplitter) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, subSplitter);
         this.sentenceModel = createSentenceModel();
     }
@@ -67,11 +65,12 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
      *                      Pretrained models for various languages can be found
      *                      <a href="https://opennlp.apache.org/models.html#sentence_detection">here</a>.
      */
-    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
-                                      int maxOverlapSizeInTokens,
-                                      TokenCountEstimator tokenCountEstimator,
-                                      DocumentSplitter subSplitter,
-                                      SentenceModel sentenceModel) {
+    public DocumentBySentenceSplitter(
+            int maxSegmentSizeInTokens,
+            int maxOverlapSizeInTokens,
+            TokenCountEstimator tokenCountEstimator,
+            DocumentSplitter subSplitter,
+            SentenceModel sentenceModel) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, subSplitter);
         this.sentenceModel = ensureNotNull(sentenceModel, "sentenceModel");
     }
