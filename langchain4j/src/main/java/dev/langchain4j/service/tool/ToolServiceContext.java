@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,5 +46,14 @@ public class ToolServiceContext {
         return "ToolServiceContext[" +
                 "toolSpecifications=" + toolSpecifications + ", " +
                 "toolExecutors=" + toolExecutors + ']';
+    }
+
+    public static class Empty extends ToolServiceContext {
+
+        public static final Empty INSTANCE = new Empty();
+
+        private Empty() {
+            super(List.of(), Map.of());
+        }
     }
 }

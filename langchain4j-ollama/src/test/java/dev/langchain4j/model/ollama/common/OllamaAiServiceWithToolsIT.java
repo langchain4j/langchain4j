@@ -1,8 +1,11 @@
 package dev.langchain4j.model.ollama.common;
 
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
@@ -43,4 +46,12 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
     @Override
     @Disabled("llama 3.1 cannot do it properly")
     protected void should_execute_tool_with_collection_of_integers_parameter(ChatModel model) {}
+
+    @Override
+    @Disabled("llama 3.1 cannot manage the invocation of 2 different tools in the same call")
+    protected void should_return_immediately_from_first_tool_when_not_called_in_parallel(ChatModel model) { }
+
+    @Override
+    @Disabled("llama 3.1 cannot manage the invocation of 2 different tools in the same call")
+    protected void should_return_to_LLM(ChatModel model) { }
 }
