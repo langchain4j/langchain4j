@@ -21,9 +21,23 @@ import java.util.concurrent.CopyOnWriteArrayList;
 class OllamaStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
+
+    private final boolean returnThinking;
+    private final StringBuffer thinkingBuilder;
+
+    private final List<ToolExecutionRequest> toolExecutionRequests = new CopyOnWriteArrayList<>();
+
     private volatile String modelName;
     private volatile TokenUsage tokenUsage;
-    private final List<ToolExecutionRequest> toolExecutionRequests = new CopyOnWriteArrayList<>();
+
+    OllamaStreamingResponseBuilder(boolean returnThinking) {
+        this.returnThinking = returnThinking;
+        if (returnThinking) {
+            this.thinkingBuilder = new StringBuffer();
+        } else {
+            this.thinkingBuilder = null;
+        }
+    }
 
     void append(OllamaChatResponse partialResponse) {
         if (partialResponse == null) {
@@ -52,24 +66,38 @@ class OllamaStreamingResponseBuilder {
         if (content != null) {
             contentBuilder.append(content);
         }
+
+        String thinking = message.getThinking();
+        if (returnThinking && thinking != null) {
+            thinkingBuilder.append(thinking);
+        }
     }
 
     ChatResponse build(OllamaChatResponse ollamaChatResponse) {
+        String text = contentBuilder.toString();
+
+        String thinking = null;
+        if (returnThinking) {
+            thinking = thinkingBuilder.toString();
+        }
+
         if (!isNullOrEmpty(toolExecutionRequests)) {
             return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(toolExecutionRequests))
+                    .aiMessage(AiMessage.builder()
+                            .text(isNullOrEmpty(text) ? null : text)
+                            .thinking(isNullOrEmpty(thinking) ? null : thinking)
+                            .toolExecutionRequests(toolExecutionRequests)
+                            .build())
                     .metadata(chatResponseMetadataFrom(modelName, TOOL_EXECUTION, tokenUsage))
                     .build();
         }
 
-        String text = contentBuilder.toString();
-        if (text.isEmpty()) {
-            return null;
-        } else {
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(text))
-                    .metadata(chatResponseMetadataFrom(modelName, toFinishReason(ollamaChatResponse), tokenUsage))
-                    .build();
-        }
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.builder()
+                        .text(isNullOrEmpty(text) ? null : text)
+                        .thinking(isNullOrEmpty(thinking) ? null : thinking)
+                        .build())
+                .metadata(chatResponseMetadataFrom(modelName, toFinishReason(ollamaChatResponse), tokenUsage))
+                .build();
     }
 }

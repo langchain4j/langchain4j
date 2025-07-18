@@ -63,7 +63,6 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT { // TODO abstract? Move into A
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                System.out.println(); // TODO
             }
 
             @Override

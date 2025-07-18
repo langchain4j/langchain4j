@@ -48,7 +48,7 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public OllamaChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 

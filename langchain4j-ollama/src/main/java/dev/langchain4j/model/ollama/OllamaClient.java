@@ -65,7 +65,7 @@ class OllamaClient {
         return new Builder();
     }
 
-    public CompletionResponse completion(CompletionRequest request) {
+    CompletionResponse completion(CompletionRequest request) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -80,7 +80,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), CompletionResponse.class);
     }
 
-    public OllamaChatResponse chat(OllamaChatRequest request) {
+    OllamaChatResponse chat(OllamaChatRequest request) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -95,7 +95,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), OllamaChatResponse.class);
     }
 
-    public void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
+    void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -130,7 +130,7 @@ class OllamaClient {
         });
     }
 
-    public void streamingChat(ChatRequest request, StreamingChatResponseHandler handler) {
+    void streamingChat(ChatRequest request, boolean returnThinking, StreamingChatResponseHandler handler) {
         ensureNotEmpty(request.messages(), "messages");
 
         OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true);
@@ -144,7 +144,7 @@ class OllamaClient {
 
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
-            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder();
+            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(returnThinking);
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -158,6 +158,15 @@ class OllamaClient {
                         handler.onPartialResponse(content);
                     } catch (Exception e) {
                         withLoggingExceptions(() -> handler.onError(e));
+                    }
+                }
+
+                String thinking = ollamaChatResponse.getMessage().getThinking();
+                if (returnThinking && !isNullOrEmpty(thinking)) {
+                    try {
+                        handler.onPartialThinkingResponse(content);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e)); // TODO
                     }
                 }
 
@@ -179,7 +188,7 @@ class OllamaClient {
         });
     }
 
-    public EmbeddingResponse embed(EmbeddingRequest request) {
+    EmbeddingResponse embed(EmbeddingRequest request) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -194,7 +203,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), EmbeddingResponse.class);
     }
 
-    public ModelsListResponse listModels() {
+    ModelsListResponse listModels() {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(GET)
@@ -208,7 +217,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), ModelsListResponse.class);
     }
 
-    public OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
+    OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -223,7 +232,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), OllamaModelCard.class);
     }
 
-    public RunningModelsListResponse listRunningModels() {
+    RunningModelsListResponse listRunningModels() {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(GET)
@@ -237,7 +246,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), RunningModelsListResponse.class);
     }
 
-    public Void deleteModel(DeleteModelRequest deleteModelRequest) {
+    Void deleteModel(DeleteModelRequest deleteModelRequest) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(DELETE)
