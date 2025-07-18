@@ -281,11 +281,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 memoryId,
                                 toolServiceContext.toolExecutors());
 
-                        chatResponse = toolServiceResult.chatResponse();
+                        ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
-                        FinishReason finishReason = chatResponse.metadata().finishReason();
                         var response = invokeOutputGuardrails(
-                                context.guardrailService(), method, chatResponse, chatExecutor, commonGuardrailParam);
+                                context.guardrailService(), method, aggregateResponse, chatExecutor, commonGuardrailParam);
 
                         if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
                             return response;
@@ -296,10 +295,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
-                                    .tokenUsage(chatResponse.tokenUsage())
+                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(finishReason)
+                                    .finishReason(toolServiceResult.finalResponse().finishReason())
                                     .toolExecutions(toolServiceResult.toolExecutions())
+                                    .intermediateResponses(toolServiceResult.intermediateResponses())
+                                    .finalResponse(toolServiceResult.finalResponse())
                                     .build();
                         } else {
                             return parsedResponse;

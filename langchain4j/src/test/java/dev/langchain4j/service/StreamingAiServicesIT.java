@@ -23,7 +23,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
@@ -66,11 +68,13 @@ class StreamingAiServicesIT {
         Assistant assistant = AiServices.create(Assistant.class, model);
 
         StringBuilder answerBuilder = new StringBuilder();
+        Queue<ChatResponse> intermediateResponses = new ConcurrentLinkedQueue<>();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         assistant.chat("What is the capital of Germany?")
                 .onPartialResponse(answerBuilder::append)
+                .onIntermediateResponse(intermediateResponses::add)
                 .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
@@ -91,6 +95,8 @@ class StreamingAiServicesIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+
+        assertThat(intermediateResponses).isEmpty();
     }
 
     @ParameterizedTest
@@ -206,6 +212,7 @@ class StreamingAiServicesIT {
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();
+        Queue<ChatResponse> intermediateResponses = new ConcurrentLinkedQueue<>();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
@@ -213,6 +220,7 @@ class StreamingAiServicesIT {
 
         assistant.chat(userMessage)
                 .onPartialResponse(answerBuilder::append)
+                .onIntermediateResponse(intermediateResponses::add)
                 .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
@@ -262,6 +270,9 @@ class StreamingAiServicesIT {
 
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) messages.get(3)).text()).contains("6.97");
+
+        assertThat(intermediateResponses).hasSize(1);
+        assertThat(intermediateResponses.poll().aiMessage()).isEqualTo(aiMessage);
     }
 
     @Test
@@ -290,6 +301,7 @@ class StreamingAiServicesIT {
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();
+        Queue<ChatResponse> intermediateResponses = new ConcurrentLinkedQueue<>();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
@@ -297,6 +309,7 @@ class StreamingAiServicesIT {
 
         assistant.chat(userMessage)
                 .onPartialResponse(answerBuilder::append)
+                .onIntermediateResponse(intermediateResponses::add)
                 .onCompleteResponse(response -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureResponse.complete(response);
@@ -360,6 +373,10 @@ class StreamingAiServicesIT {
 
         assertThat(messages.get(5)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) messages.get(5)).text()).contains("6.97", "9.89");
+
+        assertThat(intermediateResponses).hasSize(2);
+        assertThat(intermediateResponses.poll().aiMessage()).isEqualTo(aiMessage);
+        assertThat(intermediateResponses.poll().aiMessage()).isEqualTo(secondAiMessage);
     }
 
     @Test

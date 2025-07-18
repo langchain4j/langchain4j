@@ -37,6 +37,7 @@ import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -147,12 +148,6 @@ class AiServicesWithToolsIT {
 
         assertThat(result.content()).contains("11.1");
 
-        TokenUsage tokenUsage = result.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isPositive();
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
         assertThat(result.finishReason()).isEqualTo(STOP);
 
         verify(transactionService).getTransactionAmount("T001");
@@ -177,8 +172,29 @@ class AiServicesWithToolsIT {
         assertThat(toolExecutionResultMessage.toolName()).isEqualTo("getTransactionAmount");
         assertThat(toolExecutionResultMessage.text()).isEqualTo("11.1");
 
-        assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(((AiMessage) messages.get(3)).text()).contains("11.1");
+        AiMessage secondAiMessage = (AiMessage) messages.get(3);
+        assertThat(secondAiMessage.text()).contains("11.1");
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
+
+        assertThat(result.toolExecutions()).hasSize(1);
+        assertThat(result.toolExecutions().get(0).request()).isEqualTo(toolExecutionRequest);
+        assertThat(result.toolExecutions().get(0).result()).isEqualTo("11.1");
+
+        assertThat(result.intermediateResponses()).hasSize(1);
+        ChatResponse intermediateResponse = result.intermediateResponses().get(0);
+        assertThat(intermediateResponse.aiMessage()).isEqualTo(aiMessage);
+
+        assertThat(result.finalResponse().aiMessage()).isEqualTo(secondAiMessage);
+
+        TokenUsage tokenUsage = result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount())
+                .isEqualTo(intermediateResponse.tokenUsage().inputTokenCount()
+                        + result.finalResponse().tokenUsage().inputTokenCount());
+        assertThat(tokenUsage.outputTokenCount())
+                .isEqualTo(intermediateResponse.tokenUsage().outputTokenCount()
+                        + result.finalResponse().tokenUsage().outputTokenCount());
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         verify(spyChatModel)
                 .chat(ChatRequest.builder()
