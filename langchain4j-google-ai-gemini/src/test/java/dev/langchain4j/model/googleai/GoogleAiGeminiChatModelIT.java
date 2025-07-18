@@ -754,7 +754,7 @@ class GoogleAiGeminiChatModelIT {
 
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-preview-04-17")
+                .modelName("gemini-2.5-flash")
                 .temperature(0.0)
                 .logRequestsAndResponses(true)
                 .thinkingConfig(thinkingConfig)

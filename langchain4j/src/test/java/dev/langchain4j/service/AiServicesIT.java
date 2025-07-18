@@ -22,6 +22,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -38,6 +39,8 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -926,9 +929,60 @@ public class AiServicesIT {
                         + "}"));
     }
 
+    @Test
+    void should_rewrite_chat_request() {
+        UserMessageTransformer requestTransformer = userMessage -> userMessage.replace("three", "four");
+
+        EggCounter eggCounter = AiServices.builder(EggCounter.class)
+                .chatModel(chatModel)
+                .chatRequestTransformer(requestTransformer)
+                .build();
+
+        String sentence = "I have ten eggs in my basket and three in my pocket.";
+
+        int count = eggCounter.count(sentence);
+        assertThat(count).isEqualTo(14);
+
+        verify(chatModel)
+                .chat(chatRequest("Count the number of eggs mentioned in this sentence:\n"
+                        + "|||I have ten eggs in my basket and four in my pocket.|||\n"
+                        + "You must answer strictly in the following format: integer number"));
+    }
+
     static ChatRequest chatRequest(String userMessage) {
         return ChatRequest.builder()
                 .messages(dev.langchain4j.data.message.UserMessage.from(userMessage))
                 .build();
+    }
+
+    @FunctionalInterface
+    public interface UserMessageTransformer extends UnaryOperator<ChatRequest> {
+
+        @Override
+        default ChatRequest apply(ChatRequest chatRequest) {
+            return chatRequest.messages().stream()
+                    .filter(dev.langchain4j.data.message.UserMessage.class::isInstance)
+                    .map(dev.langchain4j.data.message.UserMessage.class::cast)
+                    .findFirst()
+                    .map(userMessage -> {
+                        String originalMessage = userMessage.singleText();
+                        String transformedMessage = transformUserMessage(originalMessage);
+                        if (transformedMessage == null || transformedMessage.equals(originalMessage)) {
+                            return chatRequest; // No transformation needed
+                        }
+                        List<ChatMessage> messages = chatRequest.messages().stream()
+                                .map(message -> message == userMessage ?
+                                        dev.langchain4j.data.message.UserMessage.from(transformedMessage) :
+                                        message)
+                                .toList();
+                        return ChatRequest.builder()
+                                .messages(messages)
+                                .parameters(chatRequest.parameters())
+                                .build();
+                    })
+                    .orElse(chatRequest);
+        }
+
+        String transformUserMessage(String userMessage);
     }
 }
