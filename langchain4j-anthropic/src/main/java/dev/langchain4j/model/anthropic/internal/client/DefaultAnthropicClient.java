@@ -14,12 +14,14 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
+import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -96,7 +98,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
     @Override
     public AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request) {
-        HttpRequest httpRequest = toHttpRequest(request);
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
         return fromJson(successfulHttpResponse.body(), AnthropicCreateMessageResponse.class);
     }
@@ -338,20 +340,26 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
         };
 
-        HttpRequest httpRequest = toHttpRequest(request);
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
 
         httpClient.execute(httpRequest, eventListener);
     }
 
-    private HttpRequest toHttpRequest(AnthropicCreateMessageRequest request) {
+    @Override
+    public MessageTokenCountResponse countTokens(final AnthropicCountTokensRequest request) {
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages/count_tokens");
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        return fromJson(successfulHttpResponse.body(), MessageTokenCountResponse.class);
+    }
 
+    private HttpRequest toHttpRequest(String jsonRequest, String path) {
         HttpRequest.Builder builder = HttpRequest.builder()
                 .method(POST)
-                .url(baseUrl, "messages")
+                .url(baseUrl, path)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
-                .body(toJson(request));
+                .body(jsonRequest);
 
         if (this.beta != null) {
             builder.addHeader("anthropic-beta", beta);
