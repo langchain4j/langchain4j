@@ -50,9 +50,9 @@ public class OpenAiChatModel implements ChatModel {
     private final OpenAiChatRequestParameters defaultRequestParameters;
     private final String responseFormat;
     private final Set<Capability> supportedCapabilities;
-    private final Boolean strictJsonSchema;
-    private final Boolean strictTools;
-    private final Boolean returnThinking;
+    private final boolean strictJsonSchema;
+    private final boolean strictTools;
+    private final boolean returnThinking;
 
     private final List<ChatModelListener> listeners;
 

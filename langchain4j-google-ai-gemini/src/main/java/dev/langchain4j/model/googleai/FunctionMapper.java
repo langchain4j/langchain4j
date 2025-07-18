@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.googleai.Json.toJson;
+import static dev.langchain4j.model.googleai.Json.toJsonWithoutIndent;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 
 class FunctionMapper {
@@ -60,7 +61,7 @@ class FunctionMapper {
         return functionCalls.stream()
                 .map(functionCall -> ToolExecutionRequest.builder()
                         .name(functionCall.getName())
-                        .arguments(toJson(functionCall.getArgs()))
+                        .arguments(toJsonWithoutIndent(functionCall.getArgs()))
                         .build())
                 .collect(Collectors.toList());
     }

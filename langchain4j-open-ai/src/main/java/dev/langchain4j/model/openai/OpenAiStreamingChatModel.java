@@ -45,8 +45,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
     private final OpenAiClient client;
     private final OpenAiChatRequestParameters defaultRequestParameters;
-    private final Boolean strictJsonSchema;
-    private final Boolean strictTools;
+    private final boolean strictJsonSchema;
+    private final boolean strictTools;
+    private final boolean returnThinking;
     private final List<ChatModelListener> listeners;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
@@ -105,6 +106,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
     }
 
@@ -127,7 +129,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                                 .build())
                         .build();
 
-        OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
+        OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder(returnThinking);
 
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
@@ -149,8 +151,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .execute();
     }
 
-    private static void handle(ChatCompletionResponse partialResponse,
-                               StreamingChatResponseHandler handler) {
+    private void handle(ChatCompletionResponse partialResponse,
+                        StreamingChatResponseHandler handler) {
         if (partialResponse == null) {
             return;
         }
@@ -176,6 +178,15 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 handler.onPartialResponse(content);
             } catch (Exception e) {
                 withLoggingExceptions(() -> handler.onError(e));
+            }
+        }
+
+        String reasoningContent = delta.reasoningContent();
+        if (returnThinking && !isNullOrEmpty(reasoningContent)) {
+            try {
+                handler.onPartialThinkingResponse(reasoningContent);
+            } catch (Exception e) {
+                withLoggingExceptions(() -> handler.onError(e)); // TODO
             }
         }
     }
@@ -224,6 +235,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private Boolean returnThinking;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -362,6 +374,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         public OpenAiStreamingChatModelBuilder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
             return this;
         }
 

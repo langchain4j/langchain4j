@@ -188,7 +188,7 @@ class AnthropicChatModelThinkingIT {
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage1 = UserMessage.from("What is the weather in Munich and Paris?");
+        UserMessage userMessage1 = UserMessage.from("What is the weather in Munich?");
 
         // when
         ChatResponse chatResponse1 = model.chat(userMessage1);

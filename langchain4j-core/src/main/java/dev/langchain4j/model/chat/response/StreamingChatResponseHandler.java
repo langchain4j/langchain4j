@@ -20,6 +20,14 @@ public interface StreamingChatResponseHandler {
     void onPartialResponse(String partialResponse);
 
     /**
+     * TODO
+     *
+     * @param partialThinkingResponse TODO
+     */
+    default void onPartialThinkingResponse(String partialThinkingResponse) { // TODO names
+    }
+
+    /**
      * Invoked when the model has finished streaming a response.
      * If the model requests the execution of one or multiple tools,
      * this can be accessed via {@link ChatResponse#aiMessage()} -> {@link AiMessage#toolExecutionRequests()}.

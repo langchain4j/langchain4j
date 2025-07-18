@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.compatible;
+package dev.langchain4j.model.openai.compatible.deepseek;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,26 +23,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * See <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek API Docs</a> for more info.
  */
 @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
-class DeepSeekReasoningIT { // TODO abstract? Move into AbstractBaseChatModelIT? name: OpenAiThinking...?
+class OpenAiChatModelDeepSeekThinkingIT { // TODO abstract? Move into AbstractBaseChatModelIT? name: OpenAiThinking...?
 
-    SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
-
-    ChatModel model = OpenAiChatModel.builder()
-            .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-            .baseUrl("https://api.deepseek.com/v1")
-            .apiKey(System.getenv("DEEPSEEK_API_KEY"))
-            .modelName("deepseek-reasoner")
-            .logRequests(true)
-            .logResponses(true)
-            .build();
-
-//    OpenAiStreamingChatModel streamingChatModel = OpenAiStreamingChatModel.builder()
-//            .baseUrl(System.getenv("DEEPSEEK_BASE_URL"))
-//            .apiKey(System.getenv("DEEPSEEK_API_KEY"))
-//            // .temperature(0.0)   unsupported by the model, will be ignored
-//            .logRequests(true)
-//            .logResponses(true)
-//            .build();
+    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
     void should_answer_with_reasoning_when_returnThinking_is_true() { // TODO name
@@ -68,7 +51,7 @@ class DeepSeekReasoningIT { // TODO abstract? Move into AbstractBaseChatModelIT?
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage.thinking()).containsIgnoringCase("Berlin"); // TODO will be stored. Add feature toggle?
+        assertThat(aiMessage.thinking()).containsIgnoringCase("Berlin");
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
@@ -81,7 +64,7 @@ class DeepSeekReasoningIT { // TODO abstract? Move into AbstractBaseChatModelIT?
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
 
-        // should not send thinking back
+        // should NOT preserve thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
@@ -115,63 +98,4 @@ class DeepSeekReasoningIT { // TODO abstract? Move into AbstractBaseChatModelIT?
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
     }
-
-//    @ParameterizedTest
-//    @CsvSource({"deepseek-reasoner"})
-//    void should_stream_answer_with_reasoning_content(String modelName) throws Exception {
-//
-//        // given
-//        UserMessage userMessage = userMessage("what is the capital of China after 1949?");
-//
-//        ChatRequest request = ChatRequest.builder()
-//                .parameters(ChatRequestParameters.builder().modelName(modelName).build())
-//                .messages(userMessage)
-//                .build();
-//
-//        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-//        CompletableFuture<String> futureReasoning = new CompletableFuture<>();
-//        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-//
-//        // when
-//        streamingChatModel.chat(request, new StreamingChatResponseHandler() {
-//
-//            private final StringBuilder answerBuilder = new StringBuilder();
-//            private final StringBuilder reasoningBuilder = new StringBuilder();
-//
-//            @Override
-//            public void onPartialResponse(String partialResponse) {
-//                answerBuilder.append(partialResponse);
-//            }
-//
-//            @Override
-//            public void onReasoningResponse(String reasoningContent) {
-//                reasoningBuilder.append(reasoningContent);
-//            }
-//
-//            @Override
-//            public void onCompleteResponse(ChatResponse completeResponse) {
-//                futureAnswer.complete(answerBuilder.toString());
-//                futureReasoning.complete(reasoningBuilder.toString());
-//                futureResponse.complete(completeResponse);
-//            }
-//
-//            @Override
-//            public void onError(Throwable error) {
-//                futureAnswer.completeExceptionally(error);
-//                futureReasoning.completeExceptionally(error);
-//                futureResponse.completeExceptionally(error);
-//            }
-//        });
-//
-//        String answer = futureAnswer.get(30, SECONDS);
-//        String reasoning = futureReasoning.get(30, SECONDS);
-//        ChatResponse response = futureResponse.get(30, SECONDS);
-//
-//        // then
-//
-//        assertThat(answer).containsIgnoringCase("Beijing");
-//        assertThat(reasoning).isNotBlank();
-//
-//        assertThat(response.finishReason()).isEqualTo(STOP);
-//    }
 }

@@ -57,7 +57,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
         assertThat(aiMessage2.thinking()).containsIgnoringCase("Paris");
 
-        // should not send thinking back
+        // should NOT preserve thinking in the follow-up request
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
