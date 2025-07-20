@@ -1,5 +1,36 @@
 package dev.langchain4j.store.embedding.pgvector;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.store.embedding.pgvector.FullTextIndexType.GIN;
+import static java.lang.String.join;
+import static java.util.Collections.nCopies;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
+import javax.sql.DataSource;
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import com.pgvector.PGvector;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
@@ -13,42 +44,6 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.sql.DataSource;
-import java.sql.*;
-import java.util.*;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.sql.Array;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.IntStream;
-
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
-import static dev.langchain4j.store.embedding.pgvector.FullTextIndexType.GIN;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static java.lang.String.join;
-import static java.util.Collections.nCopies;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * PGVector EmbeddingStore Implementation
@@ -161,6 +156,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.datasource = null;
         this.table = null;
         this.metadataHandler = null;
+        this.regconfig = null;
+        this.fullTextIndexType = null;
     }
 
     private static DataSource createDataSource(String host, Integer port, String user, String password, String database) {
@@ -192,11 +189,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Initialize metadata table following configuration
      *
-     * @param dropTableFirst   Should drop table first, usually for testing
-     * @param createTable      Should create table automatically
-     * @param useIndex         Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param dimension        The vector dimension
-     * @param indexListSize    The IVFFlat number of lists
+     * @param dropTableFirst Should drop table first, usually for testing
+     * @param createTable    Should create table automatically
+     * @param useIndex       Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param dimension      The vector dimension
+     * @param indexListSize  The IVFFlat number of lists
      */
     protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension,
                              Integer indexListSize) {
@@ -356,7 +353,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 "WITH " + embeddingCTESQL(referenceVector, whereClause, false) +
                         String.format("SELECT * FROM embedding_result\n\tWHERE score >= %s ORDER BY score desc LIMIT %s;", minScore, maxResults);
 
-        return searchInternal(query, i->{});
+        return searchInternal(query, i -> {
+        });
     }
 
     @Experimental
@@ -415,12 +413,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
 
-
     private String embeddingCTESQL(String referenceVector, String filterCondition, Boolean rankAsScore) {
         String scoreColumn = rankAsScore ? "row_number() over (order by embedding <=> '%s')" :
                 "(2 - (embedding <=> '%s')) / 2";
         return String.format(
-                "embedding_result AS (\n\tSELECT " + scoreColumn +" AS score, embedding_id, embedding, text, %s FROM %s %s\n)\n",
+                "embedding_result AS (\n\tSELECT " + scoreColumn + " AS score, embedding_id, embedding, text, %s FROM %s %s\n)\n",
                 referenceVector, join(",", metadataHandler.columnsNames()), table, filterCondition);
     }
 
@@ -431,7 +428,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         String toQuery = String.format("plainto_tsquery('%s', ?)", regconfig);
         String fullTextColumn = fullTextIndexType == GIN ? "text_tsv" : String.format("to_tsvector('%s', text)", regconfig);
         return String.format(
-                "full_text_result AS (\n\tSELECT " +scoreColumn+" AS score, embedding_id, embedding, text, %s FROM %s " +
+                "full_text_result AS (\n\tSELECT " + scoreColumn + " AS score, embedding_id, embedding, text, %s FROM %s " +
                         "\n\t\tWHERE %s @@ %s %s\n)\n",
                 fullTextColumn, toQuery,
                 join(",", metadataHandler.columnsNames()), table,
@@ -441,7 +438,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     EmbeddingSearchResult<TextSegment> searchInternal(String query, Consumer<PreparedStatement> preparedStatementSetter) {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         try (Connection connection = getConnection();
-            PreparedStatement selectStmt = connection.prepareStatement(query)) {
+             PreparedStatement selectStmt = connection.prepareStatement(query)) {
             preparedStatementSetter.accept(selectStmt);
             try (ResultSet resultSet = selectStmt.executeQuery()) {
                 while (resultSet.next()) {
@@ -551,6 +548,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean createTable;
         private Boolean dropTableFirst;
         private MetadataStorageConfig metadataStorageConfig;
+        private String regconfig;
+        /**
+         * Should use Gin on text column for full-text search
+         */
+        private FullTextIndexType fullTextIndexType;
 
         DatasourceBuilder() {
         }
@@ -596,7 +598,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PgVectorEmbeddingStore build() {
-            return new PgVectorEmbeddingStore(this.datasource, this.table, this.dimension, this.useIndex, this.indexListSize, this.createTable, this.dropTableFirst, this.metadataStorageConfig);
+            return new PgVectorEmbeddingStore(this.datasource, this.table, this.dimension, this.useIndex, this.fullTextIndexType, this.regconfig, this.indexListSize, this.createTable, this.dropTableFirst, this.metadataStorageConfig);
         }
 
         public String toString() {
@@ -617,6 +619,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean createTable;
         private Boolean dropTableFirst;
         private MetadataStorageConfig metadataStorageConfig;
+        private String regconfig;
+        /**
+         * Should use Gin on text column for full-text search
+         */
+        private FullTextIndexType fullTextIndexType;
 
         PgVectorEmbeddingStoreBuilder() {
         }
@@ -681,8 +688,18 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public PgVectorEmbeddingStoreBuilder fullTextIndexType(FullTextIndexType fullTextIndexType) {
+            this.fullTextIndexType = fullTextIndexType;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder regconfig(String regconfig) {
+            this.regconfig = regconfig;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
-            return new PgVectorEmbeddingStore(this.host, this.port, this.user, this.password, this.database, this.table, this.dimension, this.useIndex, this.indexListSize, this.createTable, this.dropTableFirst, this.metadataStorageConfig);
+            return new PgVectorEmbeddingStore(this.host, this.port, this.user, this.password, this.database, this.table, this.dimension, this.useIndex, this.fullTextIndexType, this.regconfig, this.indexListSize, this.createTable, this.dropTableFirst, this.metadataStorageConfig);
         }
 
         public String toString() {
