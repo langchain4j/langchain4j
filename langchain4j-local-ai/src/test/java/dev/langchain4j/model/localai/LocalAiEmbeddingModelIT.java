@@ -7,11 +7,11 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LocalAiEmbeddingModelIT extends AbstractLocalAiInfrastructure {
+class LocalAiEmbeddingModelIT {
 
     EmbeddingModel model = LocalAiEmbeddingModel.builder()
-            .baseUrl(localAi.getBaseUrl())
-            .modelName("ggml-model-q4_0")
+            .baseUrl("http://localhost:8082/v1")
+            .modelName("text-embedding-ada-002")
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -27,7 +27,7 @@ class LocalAiEmbeddingModelIT extends AbstractLocalAiInfrastructure {
 
         // then
         Embedding embedding = response.content();
-        assertThat(embedding.dimension()).isEqualTo(384);
+        assertThat(embedding.dimension()).isEqualTo(2048);
 
         assertThat(response.tokenUsage()).isNull();
         assertThat(response.finishReason()).isNull();

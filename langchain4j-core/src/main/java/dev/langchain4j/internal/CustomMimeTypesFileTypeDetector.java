@@ -1,5 +1,7 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.Internal;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,7 +9,6 @@ import java.net.URI;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Collections;
@@ -31,6 +32,7 @@ import java.util.Map;
  *     but it's slower as it needs to connect to the underlying URL.
  * </p>
  */
+@Internal
 public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
 
     private static final Map<String, String> defaultMappings = new HashMap<>();
@@ -136,7 +138,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
     }
 
     public String probeContentType(String path) {
-        return probeContentType(Paths.get(path));
+        return probeContentType(Path.of(path));
     }
 
     /**
@@ -149,7 +151,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
      */
     public String probeContentType(URI uri) {
         // First let's try to guess via the Path
-        Path path = Paths.get(uri.getPath());
+        Path path = Path.of(uri.getPath());
         String mimeTypeFromPath = probeContentType(path);
         if (mimeTypeFromPath != null) {
             return mimeTypeFromPath;

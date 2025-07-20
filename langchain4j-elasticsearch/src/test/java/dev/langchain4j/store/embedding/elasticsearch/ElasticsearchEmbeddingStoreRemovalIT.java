@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
@@ -70,7 +71,8 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     }
 
     @Test
-    void should_remove_all() throws IOException {
+    @Override // ElasticsearchEmbeddingStore behaves differently on removeAll() - the index is removed
+    protected void should_remove_all() {
 
         // given
         Embedding embedding1 = embeddingModel().embed("test1").content();
@@ -85,7 +87,11 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
         embeddingStore().removeAll();
 
         // then
-        assertThat(elasticsearchClientHelper.client.indices().exists(er -> er.index(indexName)).value()).isFalse();
+        try {
+            assertThat(elasticsearchClientHelper.client.indices().exists(er -> er.index(indexName)).value()).isFalse();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test

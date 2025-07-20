@@ -10,45 +10,88 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>0.35.0</version>
+    <version>1.1.0-rc1</version>
 </dependency>
 ```
 
 ## AWS credentials
 In order to use Amazon Bedrock models, you need to configure AWS credentials.
-One of the options is to set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
-More information can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html).
+One of the options is to set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables. More information can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html). Alternatively, set the `AWS_BEARER_TOKEN_BEDROCK` environment variable locally for API Key authentication. For additional API key details, refer to [docs](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html).
 
-## AI21 Models
-- `BedrockAI21LabsChatModel`
+## BedrockChatModel
+:::note
+Guardrails is not supported by the current implementation.
+:::
 
-## Anthropic Models
-- `BedrockAnthropicMessageChatModel`: supports new Messages API
-- `BedrockAnthropicCompletionChatModel`: supports old Text Completions API
-- `BedrockAnthropicStreamingChatModel`
+Supported models and their features can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
 
-Example:
+Models ids can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
+
+### Configuration
 ```java
-ChatLanguageModel model = BedrockAnthropicMessageChatModel.builder()
-.model("anthropic.claude-3-sonnet-20240229-v1:0")
-.build();
+ChatModel model = BedrockChatModel.builder()
+        .modelId("us.amazon.nova-lite-v1:0")
+        .region(...)
+        .maxRetries(...)
+        .timeout(...)
+        .logRequests(...)
+        .logResponses(...)
+        .listeners(...)
+        .defaultRequestParameters(BedrockChatRequestParameters.builder()
+                .topP(...)
+                .temperature(...)
+                .maxOutputTokens(...)
+                .stopSequences(...)
+                .toolSpecifications(...)
+                .additionalModelRequestFields(...)
+                .build())
+        .build();
 ```
 
-## Cohere Models
-- `BedrockCohereChatModel`
+The field `additionalModelRequestFields` is a `Map<String, Object>`. As explained [here](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html#bedrock-runtime_Converse-request-additionalModelRequestFields) 
+it allows to add inference parameters for a specific model that is not covered by common inferenceConfig. 
+`BedrockChatRequestParameters` has a convenience method to enable Claude 3.7 thinking process through adding inference
+parameters in `additionalModelRequestFields`.
 
-## Meta Llama Models
-- `BedrockLlamaChatModel`
+### Examples
 
-## Mistral Models
-- `BedrockMistralAiChatModel`
+- [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockChatModelExample.java)
 
-## Titan Models
-- `BedrockTitanChatModel`
-- `BedrockTitanEmbeddingModel`
+## BedrockStreamingChatModel
 
+:::note
+Guardrails is not supported by the current implementation.
+:::
 
-## Examples
+Supported models and their features can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
 
-- [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockChatModelExample.java)
-- [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockStreamingChatModelExample.java)
+Models ids can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
+
+### Configuration
+```java
+StreamingChatModel model = BedrockStreamingChatModel.builder()
+        .modelId("us.amazon.nova-lite-v1:0")
+        .region(...)
+        .timeout(...)
+        .logRequests(...)
+        .logResponses(...)
+        .listeners(...)
+        .defaultRequestParameters(BedrockChatRequestParameters.builder()
+                .topP(...)
+                .temperature(...)
+                .maxOutputTokens(...)
+                .stopSequences(...)
+                .toolSpecifications(...)
+                .additionalModelRequestFields(...)
+                .build())
+        .build();
+```
+
+The field `additionalModelRequestFields` is a `Map<String, Object>`. As explained [here](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html#bedrock-runtime_Converse-request-additionalModelRequestFields)
+it allows to add inference parameters for a specific model that is not covered by common inferenceConfig.
+`BedrockChatRequestParameters` has a convenience method to enable Claude 3.7 thinking process through adding inference
+parameters in `additionalModelRequestFields`.
+
+### Examples
+
+- [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)

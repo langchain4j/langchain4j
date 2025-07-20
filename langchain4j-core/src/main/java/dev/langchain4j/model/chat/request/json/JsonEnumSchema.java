@@ -1,30 +1,24 @@
 package dev.langchain4j.model.chat.request.json;
 
-import com.google.gson.annotations.SerializedName;
-import dev.langchain4j.Experimental;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static java.util.Arrays.asList;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
 
-@Experimental
 public class JsonEnumSchema implements JsonSchemaElement {
 
     private final String description;
-    @SerializedName("enum")
     private final List<String> enumValues;
 
     public JsonEnumSchema(Builder builder) {
         this.description = builder.description;
-        this.enumValues = new ArrayList<>(ensureNotEmpty(builder.enumValues, "enumValues"));
+        this.enumValues = copy(ensureNotEmpty(builder.enumValues, "enumValues"));
     }
 
+    @Override
     public String description() {
         return description;
     }
@@ -53,19 +47,7 @@ public class JsonEnumSchema implements JsonSchemaElement {
         }
 
         public Builder enumValues(String... enumValues) {
-            return enumValues(asList(enumValues));
-        }
-
-        public Builder enumValues(Class<?> enumClass) {
-            if (!enumClass.isEnum()) {
-                throw new RuntimeException("Class " + enumClass.getName() + " must be enum");
-            }
-
-            List<String> enumValues = stream(enumClass.getEnumConstants())
-                    .map(Object::toString)
-                    .collect(toList());
-
-            return enumValues(enumValues);
+            return enumValues(List.of(enumValues));
         }
 
         public JsonEnumSchema build() {

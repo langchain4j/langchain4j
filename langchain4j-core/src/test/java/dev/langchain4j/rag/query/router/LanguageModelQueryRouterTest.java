@@ -51,13 +51,14 @@ class LanguageModelQueryRouterTest {
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
 
         assertThat(model.userMessageText()).isEqualTo(
-                "Based on the user query, determine the most suitable data source(s) " +
-                        "to retrieve relevant information from the following options:\n" +
-                        "1: articles about cats\n" +
-                        "2: articles about dogs\n" +
-                        "It is very important that your answer consists of either a single number " +
-                        "or multiple numbers separated by commas and nothing else!\n" +
-                        "User query: Do Labradors shed?");
+                """
+                Based on the user query, determine the most suitable data source(s) \
+                to retrieve relevant information from the following options:
+                1: articles about cats
+                2: articles about dogs
+                It is very important that your answer consists of either a single number \
+                or multiple numbers separated by commas and nothing else!
+                User query: Do Labradors shed?""");
     }
 
     @Test
@@ -74,7 +75,7 @@ class LanguageModelQueryRouterTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .build();
 
@@ -85,13 +86,14 @@ class LanguageModelQueryRouterTest {
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
 
         assertThat(model.userMessageText()).isEqualTo(
-                "Based on the user query, determine the most suitable data source(s) " +
-                        "to retrieve relevant information from the following options:\n" +
-                        "1: articles about cats\n" +
-                        "2: articles about dogs\n" +
-                        "It is very important that your answer consists of either a single number " +
-                        "or multiple numbers separated by commas and nothing else!\n" +
-                        "User query: Do Labradors shed?");
+                """
+                Based on the user query, determine the most suitable data source(s) \
+                to retrieve relevant information from the following options:
+                1: articles about cats
+                2: articles about dogs
+                It is very important that your answer consists of either a single number \
+                or multiple numbers separated by commas and nothing else!
+                User query: Do Labradors shed?""");
     }
 
     @Test
@@ -141,11 +143,12 @@ class LanguageModelQueryRouterTest {
         // then
         assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
 
-        assertThat(model.userMessageText()).isEqualTo("Which source should I use to get answer for " +
-                "'Which animal is the fluffiest?'? " +
-                "Options: " +
-                "1: articles about cats\n" +
-                "2: articles about dogs'");
+        assertThat(model.userMessageText()).isEqualTo("""
+                Which source should I use to get answer for \
+                'Which animal is the fluffiest?'? \
+                Options: \
+                1: articles about cats
+                2: articles about dogs'""");
     }
 
     @Test
@@ -156,9 +159,10 @@ class LanguageModelQueryRouterTest {
 
         ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
 
-        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
-        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
-        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        final var retrieverToDescription = Map.of(
+            catArticlesRetriever, "articles about cats",
+            dogArticlesRetriever, "articles about dogs"
+        );
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -203,7 +207,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();
@@ -229,7 +233,7 @@ class LanguageModelQueryRouterTest {
 
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();
@@ -254,7 +258,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();
@@ -277,7 +281,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
                 .fallbackStrategy(fallbackStrategy)
                 .build();

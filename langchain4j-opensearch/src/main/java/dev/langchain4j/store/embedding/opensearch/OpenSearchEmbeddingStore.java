@@ -5,6 +5,8 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -48,6 +50,7 @@ import java.util.Optional;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -247,16 +250,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
                 .collect(toList());
-        addAllInternal(ids, embeddings, null);
-        return ids;
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAllInternal(ids, embeddings, embedded);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
@@ -265,14 +259,18 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * See https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
      */
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+
         List<EmbeddingMatch<TextSegment>> matches;
         try {
-            ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(referenceEmbedding.vector(), (float) minScore);
+            ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(
+                request.queryEmbedding().vector(),
+                (float) request.minScore()
+            );
             SearchResponse<Document> response = client.search(
                     SearchRequest.of(s -> s.index(indexName)
                             .query(n -> n.scriptScore(scriptScoreQuery))
-                            .size(maxResults)),
+                            .size(request.maxResults())),
                     Document.class
             );
             matches = toEmbeddingMatch(response);
@@ -280,7 +278,8 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             log.error("[I/O OpenSearch Exception]", ex);
             throw new OpenSearchRequestFailedException(ex.getMessage());
         }
-        return matches;
+
+        return new EmbeddingSearchResult<>(matches);
     }
 
     private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) throws JsonProcessingException {
@@ -303,10 +302,11 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
 
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("[do not add empty embeddings to opensearch]");
@@ -355,7 +355,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
                     .metadata(embedded == null ? null : Optional.ofNullable(embedded.get(i).metadata())
-                            .map(Metadata::asMap)
+                            .map(Metadata::toMap)
                             .orElse(null))
                     .build();
             bulkBuilder.operations(op -> op.index(

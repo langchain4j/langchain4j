@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_HOST", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_MASTER_KEY", matches = ".+")
@@ -22,7 +22,7 @@ class AzureCosmosDbNoSqlEmbeddingStoreTest {
 
     @Test
     void should_fail_if_cosmosClient_missing() {
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbNoSqlEmbeddingStore.builder()
                     .cosmosClient(null)
                     .build();
@@ -39,23 +39,23 @@ class AzureCosmosDbNoSqlEmbeddingStoreTest {
                 .contentResponseOnWriteEnabled(true)
                 .buildClient();
 
-        assertThrows(IllegalArgumentException.class, () -> AzureCosmosDbNoSqlEmbeddingStore.builder()
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .cosmosClient(cosmosClient)
                 .databaseName(null)
                 .build());
 
-        assertThrows(IllegalArgumentException.class, () -> AzureCosmosDbNoSqlEmbeddingStore.builder()
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .cosmosClient(cosmosClient)
                 .databaseName("")
                 .build());
 
-        assertThrows(IllegalArgumentException.class, () -> AzureCosmosDbNoSqlEmbeddingStore.builder()
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .cosmosClient(cosmosClient)
                 .databaseName("test_database")
                 .containerName(null)
                 .build());
 
-        assertThrows(IllegalArgumentException.class, () -> AzureCosmosDbNoSqlEmbeddingStore.builder()
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .cosmosClient(cosmosClient)
                 .databaseName("test_database")
                 .containerName("")
@@ -73,7 +73,7 @@ class AzureCosmosDbNoSqlEmbeddingStoreTest {
 
         CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy = new CosmosVectorEmbeddingPolicy();
 
-        assertThrows(IllegalArgumentException.class, () -> AzureCosmosDbNoSqlEmbeddingStore.builder()
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .cosmosClient(cosmosClient)
                 .databaseName(DATABASE_NAME)
                 .containerName(CONTAINER_NAME)
@@ -82,7 +82,7 @@ class AzureCosmosDbNoSqlEmbeddingStoreTest {
 
 
         cosmosVectorEmbeddingPolicy.setCosmosVectorEmbeddings(null);
-        assertThrows(IllegalArgumentException.class, () -> AzureCosmosDbNoSqlEmbeddingStore.builder()
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .cosmosClient(cosmosClient)
                 .databaseName(DATABASE_NAME)
                 .containerName(CONTAINER_NAME)
@@ -90,7 +90,7 @@ class AzureCosmosDbNoSqlEmbeddingStoreTest {
                 .build());
 
         cosmosVectorEmbeddingPolicy.setCosmosVectorEmbeddings(new ArrayList<>());
-        assertThrows(IllegalArgumentException.class, () -> AzureCosmosDbNoSqlEmbeddingStore.builder()
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .cosmosClient(cosmosClient)
                 .databaseName(DATABASE_NAME)
                 .containerName(CONTAINER_NAME)
@@ -109,7 +109,7 @@ class AzureCosmosDbNoSqlEmbeddingStoreTest {
 
         CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy = populateCosmosVectorEmbeddingPolicy();
 
-        assertThrows(IllegalArgumentException.class, () -> AzureCosmosDbNoSqlEmbeddingStore.builder()
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .cosmosClient(cosmosClient)
                 .databaseName(DATABASE_NAME)
                 .containerName(CONTAINER_NAME)
@@ -118,7 +118,7 @@ class AzureCosmosDbNoSqlEmbeddingStoreTest {
                 .build());
 
         List<CosmosVectorIndexSpec> cosmosVectorIndexes = new ArrayList<CosmosVectorIndexSpec>();
-        assertThrows(IllegalArgumentException.class, () -> AzureCosmosDbNoSqlEmbeddingStore.builder()
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> AzureCosmosDbNoSqlEmbeddingStore.builder()
                 .cosmosClient(cosmosClient)
                 .databaseName(DATABASE_NAME)
                 .containerName(CONTAINER_NAME)

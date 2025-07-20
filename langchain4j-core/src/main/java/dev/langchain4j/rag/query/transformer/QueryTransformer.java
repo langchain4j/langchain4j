@@ -1,6 +1,5 @@
 package dev.langchain4j.rag.query.transformer;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.rag.query.Query;
 
 import java.util.Collection;
@@ -24,7 +23,6 @@ import java.util.Collection;
  * @see CompressingQueryTransformer
  * @see ExpandingQueryTransformer
  */
-@Experimental
 public interface QueryTransformer {
 
     /**

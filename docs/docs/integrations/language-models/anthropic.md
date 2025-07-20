@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>0.35.0</version>
+    <version>1.1.0-rc1</version>
 </dependency>
 ```
 
@@ -24,7 +24,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .apiKey(System.getenv("ANTHROPIC_API_KEY"))
     .modelName(CLAUDE_3_5_SONNET_20240620)
     .build();
-String answer = model.generate("Say 'Hello World'");
+String answer = model.chat("Say 'Hello World'");
 System.out.println(answer);
 ```
 
@@ -41,6 +41,10 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .topK(...)
     .maxTokens(...)
     .stopSequences(...)
+    .cacheSystemMessages(...)
+    .cacheTools(...)
+    .thinkingType(...)
+    .thinkingBudgetTokens(...)
     .timeout(...)
     .maxRetries(...)
     .logRequests(...)
@@ -56,15 +60,15 @@ AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
     .modelName(CLAUDE_3_5_SONNET_20240620)
     .build();
 
-model.generate("Say 'Hello World'", new StreamingResponseHandler<AiMessage>() {
+model.chat("Say 'Hello World'", new StreamingChatResponseHandler() {
 
     @Override
-    public void onNext(String token) {
-        // this method is called when a new token is available
+    public void onPartialResponse(String partialResponse) {
+        // this method is called when a new partial response is available. It can consist of one or more tokens.
     }
 
     @Override
-    public void onComplete(Response<AiMessage> response) {
+    public void onCompleteResponse(ChatResponse completeResponse) {
         // this method is called when the model has completed responding
     }
 
@@ -85,6 +89,45 @@ Anthropic supports [tools](/tutorials/tools) in both streaming and non-streaming
 
 Anthropic documentation on tools can be found [here](https://docs.anthropic.com/claude/docs/tool-use).
 
+## Caching
+
+`AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.
+Caching is disabled by default.
+It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
+
+When enabled,`cache_control` blocks will be added to the last system message and tool, respectively.
+
+To use caching, please set `beta("prompt-caching-2024-07-31")`.
+
+`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in response which
+contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
+
+More info on caching can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
+
+## Thinking
+
+`AnthropicChatModel` and `AnthropicStreamingChatModel` have a **_limited_** support
+for [thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
+It can be enabled by setting the `thinkingType` and `thinkingBudgetTokens` parameters:
+```java
+ChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName(CLAUDE_3_7_SONNET_20250219)
+        .thinkingType("enabled")
+        .thinkingBudgetTokens(1024)
+        .maxTokens(1024 + 100)
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+```
+
+What is currently not supported:
+- It not possible to get the thinking content from the LC4j API. It is only visible in logs.
+- Thinking content is not [preserved](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#preserving-thinking-blocks) in the multi-turn conversations (with [memory](/tutorials/chat-memory))
+- etc
+
+More info on thinking can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
+
 ## Quarkus
 
 See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/anthropic.html).
@@ -96,7 +139,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>0.35.0</version>
+    <version>1.1.0-beta7</version>
 </dependency>
 ```
 

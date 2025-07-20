@@ -1,18 +1,17 @@
 package dev.langchain4j.model.cohere;
 
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.CosineSimilarity;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class CohereEmbeddingModelIT {
 
@@ -36,7 +35,7 @@ class CohereEmbeddingModelIT {
     }
 
     @Test
-    public void should_embed_multiple_segments() {
+    void should_embed_multiple_segments() {
 
         // given
         EmbeddingModel model = CohereEmbeddingModel.builder()
@@ -46,7 +45,7 @@ class CohereEmbeddingModelIT {
                 .inputType("search_document")
                 .timeout(Duration.ofSeconds(60))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");
@@ -74,8 +73,7 @@ class CohereEmbeddingModelIT {
     }
 
     @Test
-    public void should_embed_any_number_of_segments()
-    {
+    void should_embed_any_number_of_segments() {
         EmbeddingModel model = CohereEmbeddingModel.builder()
                 .baseUrl("https://api.cohere.ai/v1/")
                 .apiKey(System.getenv("COHERE_API_KEY"))
@@ -83,7 +81,7 @@ class CohereEmbeddingModelIT {
                 .inputType("search_document")
                 .timeout(Duration.ofSeconds(60))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         List<TextSegment> segments = new ArrayList<>();

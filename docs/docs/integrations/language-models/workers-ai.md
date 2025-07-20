@@ -1,5 +1,5 @@
 ---
-sidebar_position: 17
+sidebar_position: 19
 ---
 
 # Cloudflare Workers AI
@@ -13,7 +13,7 @@ https://developers.cloudflare.com/workers-ai/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-workers-ai</artifactId>
-    <version>0.35.0</version>
+    <version>1.1.0-beta7</version>
 </dependency>
 ```
 

@@ -2,17 +2,19 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,20 +25,29 @@ import java.util.concurrent.TimeUnit;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesWithToolsWithoutMemoryIT {
 
     @Spy
-    StreamingChatLanguageModel spyModel = OpenAiStreamingChatModel.builder()
+    StreamingChatModel spyModel = OpenAiStreamingChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_O_MINI)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
             .build();
+
+    @Captor
+    ArgumentCaptor<ChatRequest> chatRequestCaptor;
 
     interface Assistant {
 
@@ -60,45 +71,43 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .tools(calculator)
                 .build();
 
         String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
+        ChatResponse response = future.get(60, TimeUnit.SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("6.97");
+        assertThat(response.aiMessage().text()).contains("6.97");
         assertThat(response.finishReason()).isEqualTo(STOP);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         verify(calculator).squareRoot(485906798473894056.0);
         verifyNoMoreInteractions(calculator);
 
-        ArgumentCaptor<List<ChatMessage>> sendMessagesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(spyModel, times(2)).generate(sendMessagesCaptor.capture(), anyList(), any());
-        List<List<ChatMessage>> allGenerateSendMessages = sendMessagesCaptor.getAllValues();
+        verify(spyModel, times(2)).chat(chatRequestCaptor.capture(), any());
+        List<ChatRequest> allChatRequests = chatRequestCaptor.getAllValues();
 
-        List<ChatMessage> firstGenerateSendMessages = allGenerateSendMessages.get(0);
+        List<ChatMessage> firstGenerateSendMessages = allChatRequests.get(0).messages();
         assertThat(firstGenerateSendMessages).hasSize(1);
         assertThat(firstGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) firstGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
 
-        List<ChatMessage> secondGenerateSendMessages = allGenerateSendMessages.get(1);
+        List<ChatMessage> secondGenerateSendMessages = allChatRequests.get(1).messages();
         assertThat(secondGenerateSendMessages).hasSize(3);
         assertThat(secondGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) secondGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
@@ -112,45 +121,44 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         // given
         Calculator calculator = spy(new Calculator());
 
-        StreamingChatLanguageModel model = OpenAiStreamingChatModel
+        StreamingChatModel model = OpenAiStreamingChatModel
                 .builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
-                .parallelToolCalls(false) // called sequentially
+                .parallelToolCalls(false) // to force the model to call tools sequentially
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        StreamingChatLanguageModel spyModel = spy(model);
+        StreamingChatModel spyModel = spy(model);
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .tools(calculator)
                 .build();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
+        ChatResponse response = future.get(60, TimeUnit.SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("6.97", "9.89");
+        assertThat(response.aiMessage().text()).contains("6.97", "9.89");
         assertThat(response.finishReason()).isEqualTo(STOP);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -158,23 +166,22 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verify(calculator).squareRoot(97866249624785.0);
         verifyNoMoreInteractions(calculator);
 
-        ArgumentCaptor<List<ChatMessage>> sendMessagesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(spyModel, times(3)).generate(sendMessagesCaptor.capture(), anyList(), any());
-        List<List<ChatMessage>> allGenerateSendMessages = sendMessagesCaptor.getAllValues();
+        verify(spyModel, times(3)).chat(chatRequestCaptor.capture(), any());
+        List<ChatRequest> allChatRequests = chatRequestCaptor.getAllValues();
 
-        List<ChatMessage> firstGenerateSendMessages = allGenerateSendMessages.get(0);
+        List<ChatMessage> firstGenerateSendMessages = allChatRequests.get(0).messages();
         assertThat(firstGenerateSendMessages).hasSize(1);
         assertThat(firstGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) firstGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
 
-        List<ChatMessage> secondGenerateSendMessages = allGenerateSendMessages.get(1);
+        List<ChatMessage> secondGenerateSendMessages = allChatRequests.get(1).messages();
         assertThat(secondGenerateSendMessages).hasSize(3);
         assertThat(secondGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) secondGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
         assertThat(secondGenerateSendMessages.get(1).type()).isEqualTo(ChatMessageType.AI);
         assertThat(secondGenerateSendMessages.get(2).type()).isEqualTo(ChatMessageType.TOOL_EXECUTION_RESULT);
 
-        List<ChatMessage> thirdGenerateSendMessages = allGenerateSendMessages.get(2);
+        List<ChatMessage> thirdGenerateSendMessages = allChatRequests.get(2).messages();
         assertThat(thirdGenerateSendMessages).hasSize(5);
         assertThat(thirdGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) thirdGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
@@ -192,29 +199,28 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .tools(calculator)
                 .build();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
+        ChatResponse response = future.get(60, TimeUnit.SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("6.97", "9.89");
+        assertThat(response.aiMessage().text()).contains("6.97", "9.89");
         assertThat(response.finishReason()).isEqualTo(STOP);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -222,16 +228,15 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verify(calculator).squareRoot(97866249624785.0);
         verifyNoMoreInteractions(calculator);
 
-        ArgumentCaptor<List<ChatMessage>> sendMessagesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(spyModel, times(2)).generate(sendMessagesCaptor.capture(), anyList(), any());
-        List<List<ChatMessage>> allGenerateSendMessages = sendMessagesCaptor.getAllValues();
+        verify(spyModel, times(2)).chat(chatRequestCaptor.capture(), any());
+        List<ChatRequest> allChatRequests = chatRequestCaptor.getAllValues();
 
-        List<ChatMessage> firstGenerateSendMessages = allGenerateSendMessages.get(0);
+        List<ChatMessage> firstGenerateSendMessages = allChatRequests.get(0).messages();
         assertThat(firstGenerateSendMessages).hasSize(1);
         assertThat(firstGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) firstGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
 
-        List<ChatMessage> secondGenerateSendMessages = allGenerateSendMessages.get(1);
+        List<ChatMessage> secondGenerateSendMessages = allChatRequests.get(1).messages();
         assertThat(secondGenerateSendMessages).hasSize(4);
         assertThat(secondGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) secondGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);

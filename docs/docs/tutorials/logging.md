@@ -6,7 +6,7 @@ sidebar_position: 30
 
 LangChain4j uses [SLF4J](https://www.slf4j.org/) for logging,
 allowing you to plug in any logging backend you prefer,
-such as [Logback](https://logback.qos.ch/) or [Log4j](https://logging.apache.org/log4j/2.x/index.html)).
+such as [Logback](https://logback.qos.ch/) or [Log4j](https://logging.apache.org/log4j/2.x/index.html).
 
 ## Pure Java
 
@@ -56,5 +56,4 @@ logging is configured in the `application.properties` file:
 langchain4j.open-ai.chat-model.log-requests = true
 langchain4j.open-ai.chat-model.log-responses = true
 logging.level.dev.langchain4j = DEBUG
-logging.level.dev.ai4j.openai4j = DEBUG
 ```

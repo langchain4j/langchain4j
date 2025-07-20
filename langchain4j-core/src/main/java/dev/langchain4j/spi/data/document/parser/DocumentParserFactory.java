@@ -1,5 +1,6 @@
 package dev.langchain4j.spi.data.document.parser;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.document.DocumentParser;
 
 /**
@@ -9,6 +10,7 @@ import dev.langchain4j.data.document.DocumentParser;
  * in the {@code langchain4j-document-parser-apache-tika} module.
  * For the "Easy RAG", import {@code langchain4j-easy-rag} module.
  */
+@Internal
 public interface DocumentParserFactory {
 
     DocumentParser create();

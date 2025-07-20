@@ -10,7 +10,6 @@
         <appender-ref ref="STDOUT"/>
     </root>
 
-    <logger name="dev.ai4j" level="DEBUG"/>
     <logger name="dev.langchain4j" level="DEBUG"/>
 
     <logger name="org.testcontainers" level="INFO"/>

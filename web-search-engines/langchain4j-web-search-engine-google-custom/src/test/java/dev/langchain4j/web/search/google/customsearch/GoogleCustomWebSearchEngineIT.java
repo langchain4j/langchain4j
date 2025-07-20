@@ -153,7 +153,7 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
         WebSearchResults webSearchResults = googleSearchEngine.search(webSearchRequest);
 
         // then
-        assertThat(webSearchResults.searchMetadata().get("searchType").toString()).isEqualTo("web"); // searchType: web
+        assertThat(webSearchResults.searchMetadata().get("searchType")).hasToString("web"); // searchType: web
         assertThat(webSearchResults.searchInformation().metadata().get("images")).isOfAnyClassIn(ArrayList.class, List.class); // should add images related to the query
         assertThat((List<ImageSearchResult>) webSearchResults.searchInformation().metadata().get("images")) // Get images from searchInformation.metadata
                 .as("At least one image result should be contains title, link, contextLink and thumbnailLink")
@@ -184,7 +184,7 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
         WebSearchResults webSearchResults = googleSearchEngine.search(webSearchRequest);
 
         // then
-        assertThat(webSearchResults.searchMetadata().get("searchType").toString()).isEqualTo("images"); // searchType: images
+        assertThat(webSearchResults.searchMetadata().get("searchType")).hasToString("images"); // searchType: images
         assertThat(webSearchResults.results()) // Get images as search results
                 .as("At least the snippet should be contains 'weather' and 'Porto' ignoring case")
                 .anySatisfy(result -> assertThat(result.title())
@@ -194,8 +194,7 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
                         .startsWith("http"))
                 .anySatisfy(result -> assertThat(result.metadata().get("mimeType"))
                         .startsWith("image"))
-                .anySatisfy(result -> assertThat(result.metadata().get("imageLink"))
-                        .isEqualTo(result.url().toString()))
+                .anySatisfy(result -> assertThat(result.metadata()).containsEntry("imageLink", result.url().toString()))
                 .anySatisfy(result -> assertThat(result.metadata().get("contextLink"))
                         .startsWith("http"))
                 .anySatisfy(result -> assertThat(result.metadata().get("thumbnailLink"))

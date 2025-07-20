@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
@@ -7,17 +10,12 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.stream.StreamSupport;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import java.util.stream.StreamSupport;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.in;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
+class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
 
     private static final String DATABASE_NAME = "test_db";
     private static final String COLLECTION_NAME = "test_coll";
@@ -25,46 +23,42 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
 
     @Test
     void should_fail_if_mongoClient_missing() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            AzureCosmosDbMongoVCoreEmbeddingStore.builder()
-                    .mongoClient(null)
-                    .build();
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            AzureCosmosDbMongoVCoreEmbeddingStore.builder().mongoClient(null).build();
         });
     }
 
     @Test
     void should_fail_if_connectionString_missing() {
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString(null)
                     .build();
         });
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            AzureCosmosDbMongoVCoreEmbeddingStore.builder()
-                    .connectionString("")
-                    .build();
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            AzureCosmosDbMongoVCoreEmbeddingStore.builder().connectionString("").build();
         });
     }
 
     @Test
     void should_fail_if_databaseName_collectionName_missing() {
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName(null)
                     .build();
         });
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName("")
                     .build();
         });
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName("test_database")
@@ -72,7 +66,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
                     .build();
         });
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName("test_database")
@@ -83,7 +77,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
 
     @Test
     void should_fail_if_wrong_vector_index_type() {
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                     .connectionString("Test_connection_string")
                     .databaseName("test_database")
@@ -96,11 +90,10 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
     @Test
     @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
     void should_create_collection_and_index_if_not_exists() {
-        MongoClient client = MongoClients.create(
-                MongoClientSettings.builder()
-                        .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
-                        .applicationName("JAVA_LANG_CHAIN")
-                        .build());
+        MongoClient client = MongoClients.create(MongoClientSettings.builder()
+                .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
+                .applicationName("JAVA_LANG_CHAIN")
+                .build());
 
         MongoDatabase database = client.getDatabase(DATABASE_NAME);
         assertThat(isCollectionExist(database, COLLECTION_NAME)).isEqualTo(Boolean.FALSE);
@@ -125,11 +118,10 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
     @Test
     @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
     void should_not_create_index_if_createIndex_set_to_false() {
-        MongoClient client = MongoClients.create(
-                MongoClientSettings.builder()
-                        .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
-                        .applicationName("JAVA_LANG_CHAIN")
-                        .build());
+        MongoClient client = MongoClients.create(MongoClientSettings.builder()
+                .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
+                .applicationName("JAVA_LANG_CHAIN")
+                .build());
 
         MongoDatabase database = client.getDatabase(DATABASE_NAME);
 

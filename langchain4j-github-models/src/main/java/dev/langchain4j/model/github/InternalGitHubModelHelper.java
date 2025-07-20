@@ -1,9 +1,51 @@
 package dev.langchain4j.model.github;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import com.azure.ai.inference.ChatCompletionsClientBuilder;
 import com.azure.ai.inference.EmbeddingsClientBuilder;
 import com.azure.ai.inference.ModelServiceVersion;
-import com.azure.ai.inference.models.*;
+import com.azure.ai.inference.models.ChatCompletionsFunctionToolCall;
+import com.azure.ai.inference.models.ChatCompletionsFunctionToolDefinition;
+import com.azure.ai.inference.models.ChatCompletionsOptions;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormat;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonObject;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonSchema;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonSchemaDefinition;
+import com.azure.ai.inference.models.ChatCompletionsToolCall;
+import com.azure.ai.inference.models.ChatCompletionsToolDefinition;
+import com.azure.ai.inference.models.ChatMessageImageContentItem;
+import com.azure.ai.inference.models.ChatMessageImageDetailLevel;
+import com.azure.ai.inference.models.ChatMessageImageUrl;
+import com.azure.ai.inference.models.ChatMessageTextContentItem;
+import com.azure.ai.inference.models.ChatRequestAssistantMessage;
+import com.azure.ai.inference.models.ChatRequestMessage;
+import com.azure.ai.inference.models.ChatRequestSystemMessage;
+import com.azure.ai.inference.models.ChatRequestToolMessage;
+import com.azure.ai.inference.models.ChatRequestUserMessage;
+import com.azure.ai.inference.models.ChatResponseMessage;
+import com.azure.ai.inference.models.CompletionsFinishReason;
+import com.azure.ai.inference.models.CompletionsUsage;
+import com.azure.ai.inference.models.FunctionCall;
+import com.azure.ai.inference.models.FunctionDefinition;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.exception.HttpResponseException;
@@ -18,25 +60,27 @@ import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.time.Duration;
-import java.util.*;
-
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.model.output.FinishReason.*;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
 
 class InternalGitHubModelHelper {
 
@@ -46,7 +90,16 @@ class InternalGitHubModelHelper {
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-github-models";
 
-    public static ChatCompletionsClientBuilder setupChatCompletionsBuilder(String endpoint, ModelServiceVersion serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+    public static ChatCompletionsClientBuilder setupChatCompletionsBuilder(
+            String endpoint,
+            ModelServiceVersion serviceVersion,
+            String gitHubToken,
+            Duration timeout,
+            Integer maxRetries,
+            ProxyOptions proxyOptions,
+            boolean logRequestsAndResponses,
+            String userAgentSuffix,
+            Map<String, String> customHeaders) {
         HttpClientOptions clientOptions = getClientOptions(timeout, proxyOptions, userAgentSuffix, customHeaders);
         ChatCompletionsClientBuilder chatCompletionsClientBuilder = new ChatCompletionsClientBuilder()
                 .endpoint(getEndpoint(endpoint))
@@ -60,7 +113,16 @@ class InternalGitHubModelHelper {
         return chatCompletionsClientBuilder;
     }
 
-    public static EmbeddingsClientBuilder setupEmbeddingsBuilder(String endpoint, ModelServiceVersion serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+    public static EmbeddingsClientBuilder setupEmbeddingsBuilder(
+            String endpoint,
+            ModelServiceVersion serviceVersion,
+            String gitHubToken,
+            Duration timeout,
+            Integer maxRetries,
+            ProxyOptions proxyOptions,
+            boolean logRequestsAndResponses,
+            String userAgentSuffix,
+            Map<String, String> customHeaders) {
         HttpClientOptions clientOptions = getClientOptions(timeout, proxyOptions, userAgentSuffix, customHeaders);
         EmbeddingsClientBuilder embeddingsClientBuilder = new EmbeddingsClientBuilder()
                 .endpoint(getEndpoint(endpoint))
@@ -86,7 +148,8 @@ class InternalGitHubModelHelper {
         return new NettyAsyncHttpClientProvider().createInstance(clientOptions);
     }
 
-    private static HttpClientOptions getClientOptions(Duration timeout, ProxyOptions proxyOptions, String userAgentSuffix, Map<String, String> customHeaders) {
+    private static HttpClientOptions getClientOptions(
+            Duration timeout, ProxyOptions proxyOptions, String userAgentSuffix, Map<String, String> customHeaders) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -96,7 +159,7 @@ class InternalGitHubModelHelper {
         clientOptions.setProxyOptions(proxyOptions);
 
         String userAgent = DEFAULT_USER_AGENT;
-        if (userAgentSuffix!=null && !userAgentSuffix.isEmpty()) {
+        if (userAgentSuffix != null && !userAgentSuffix.isEmpty()) {
             userAgent = DEFAULT_USER_AGENT + "-" + userAgentSuffix;
         }
         List<Header> headers = new ArrayList<>();
@@ -117,22 +180,18 @@ class InternalGitHubModelHelper {
     }
 
     private static RetryOptions getRetryOptions(Integer maxRetries) {
-        maxRetries = getOrDefault(maxRetries, 3);
+        maxRetries = getOrDefault(maxRetries, 2);
         ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
         exponentialBackoffOptions.setMaxRetries(maxRetries);
         return new RetryOptions(exponentialBackoffOptions);
     }
 
     private static KeyCredential getCredential(String gitHubToken) {
-        if (gitHubToken != null) {
-            return new AzureKeyCredential(gitHubToken);
-        } else {
-            throw new IllegalArgumentException("GitHub token is a mandatory parameter for connecting to GitHub models.");
-        }
+        ensureNotNull(gitHubToken, "%s", "GitHub token is a mandatory parameter for connecting to GitHub models.");
+        return new AzureKeyCredential(gitHubToken);
     }
 
     public static List<ChatRequestMessage> toAzureAiMessages(List<ChatMessage> messages) {
-
         return messages.stream()
                 .map(InternalGitHubModelHelper::toAzureAiMessage)
                 .collect(toList());
@@ -141,12 +200,15 @@ class InternalGitHubModelHelper {
     public static ChatRequestMessage toAzureAiMessage(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
-            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
+            ChatRequestAssistantMessage chatRequestAssistantMessage =
+                    new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
             chatRequestAssistantMessage.setToolCalls(toolExecutionRequestsFrom(message));
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
-            return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
+            ChatRequestToolMessage chatRequestToolMessage = new ChatRequestToolMessage(toolExecutionResultMessage.id());
+            chatRequestToolMessage.setContent(toolExecutionResultMessage.text());
+            return chatRequestToolMessage;
         } else if (message instanceof SystemMessage) {
             SystemMessage systemMessage = (SystemMessage) message;
             return new ChatRequestSystemMessage(systemMessage.text());
@@ -163,11 +225,11 @@ class InternalGitHubModelHelper {
                                 return new ChatMessageTextContentItem(text);
                             } else if (content instanceof ImageContent) {
                                 ImageContent imageContent = (ImageContent) content;
-                                if (imageContent.image().url() == null) {
-                                    throw new IllegalArgumentException("Image URL is not present. Base64 encoded images are not supported at the moment.");
-                                }
-                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageContent.image().url().toString());
-                                imageUrl.setDetail(ChatMessageImageDetailLevel.fromString(imageContent.detailLevel().name()));
+                                ensureNotNull(imageContent.image().url(), "%s", "Image URL is not present. Base64 encoded images are not supported at the moment.");
+                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(
+                                        imageContent.image().url().toString());
+                                imageUrl.setDetail(ChatMessageImageDetailLevel.fromString(
+                                        imageContent.detailLevel().name()));
                                 return new ChatMessageImageContentItem(imageUrl);
                             } else {
                                 throw new IllegalArgumentException("Unsupported content type: " + content.type());
@@ -186,15 +248,17 @@ class InternalGitHubModelHelper {
             AiMessage aiMessage = (AiMessage) message;
             if (aiMessage.hasToolExecutionRequests()) {
                 return aiMessage.toolExecutionRequests().stream()
-                        .map(toolExecutionRequest -> new ChatCompletionsFunctionToolCall(toolExecutionRequest.id(), new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments())))
+                        .map(toolExecutionRequest -> new ChatCompletionsFunctionToolCall(
+                                toolExecutionRequest.id(),
+                                new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments())))
                         .collect(toList());
-
             }
         }
         return null;
     }
 
-    public static List<ChatCompletionsToolDefinition> toToolDefinitions(Collection<ToolSpecification> toolSpecifications) {
+    public static List<ChatCompletionsToolDefinition> toToolDefinitions(
+            Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
                 .map(InternalGitHubModelHelper::toToolDefinition)
                 .collect(toList());
@@ -203,14 +267,23 @@ class InternalGitHubModelHelper {
     private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
-        functionDefinition.setParameters(toAzureAiParameters(toolSpecification.parameters()));
+        functionDefinition.setParameters(getParameters(toolSpecification));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
     public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toAzureAiParameters(toolThatMustBeExecuted.parameters()).toString());
-        ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
+        FunctionCall functionCall = new FunctionCall(
+                toolThatMustBeExecuted.name(),
+                getParameters(toolThatMustBeExecuted).toString());
+        ChatCompletionsToolCall toolToCall =
+                new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
+        // TODO Revisit, does not seem right and differs from Azure OpenAI implementation.
+        // TODO It should probably contain only the name of the tool that must be called (without parameters).
         return BinaryData.fromObject(toolToCall);
+    }
+
+    private static BinaryData getParameters(ToolSpecification toolSpecification) {
+        return toAzureAiParameters(toolSpecification.parameters());
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -220,12 +293,12 @@ class InternalGitHubModelHelper {
         NO_PARAMETER_DATA.put("properties", new HashMap<>());
     }
 
-    private static BinaryData toAzureAiParameters(ToolParameters toolParameters) {
+    private static BinaryData toAzureAiParameters(JsonObjectSchema toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
         }
-        parameters.setProperties(toolParameters.properties());
+        parameters.setProperties(toMap(toolParameters.properties()));
         parameters.setRequired(toolParameters.required());
         return BinaryData.fromObject(parameters);
     }
@@ -265,19 +338,17 @@ class InternalGitHubModelHelper {
         if (isNullOrEmpty(chatResponseMessage.getToolCalls())) {
             return aiMessage(text);
         } else {
-            List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
-                    .stream()
-                    .map(chatCompletionsFunctionToolCall ->
-                            ToolExecutionRequest.builder()
-                                    .id(chatCompletionsFunctionToolCall.getId())
-                                    .name(chatCompletionsFunctionToolCall.getFunction().getName())
-                                    .arguments(chatCompletionsFunctionToolCall.getFunction().getArguments())
-                                    .build())
+            List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls().stream()
+                    .map(chatCompletionsFunctionToolCall -> ToolExecutionRequest.builder()
+                            .id(chatCompletionsFunctionToolCall.getId())
+                            .name(chatCompletionsFunctionToolCall.getFunction().getName())
+                            .arguments(chatCompletionsFunctionToolCall
+                                    .getFunction()
+                                    .getArguments())
+                            .build())
                     .collect(toList());
 
-            return isNullOrBlank(text) ?
-                    aiMessage(toolExecutionRequests) :
-                    aiMessage(text, toolExecutionRequests);
+            return isNullOrBlank(text) ? aiMessage(toolExecutionRequests) : aiMessage(text, toolExecutionRequests);
         }
     }
 
@@ -286,10 +357,7 @@ class InternalGitHubModelHelper {
             return null;
         }
         return new TokenUsage(
-                azureAiUsage.getPromptTokens(),
-                azureAiUsage.getCompletionTokens(),
-                azureAiUsage.getTotalTokens()
-        );
+                azureAiUsage.getPromptTokens(), azureAiUsage.getCompletionTokens(), azureAiUsage.getTotalTokens());
     }
 
     public static FinishReason finishReasonFrom(CompletionsFinishReason azureAiFinishReason) {
@@ -311,7 +379,8 @@ class InternalGitHubModelHelper {
     /**
      * Support for Responsible AI (content filtered by Azure OpenAI for violence, self harm, or hate).
      */
-    public static FinishReason contentFilterManagement(HttpResponseException httpResponseException, String contentFilterCode) {
+    public static FinishReason contentFilterManagement(
+            HttpResponseException httpResponseException, String contentFilterCode) {
         FinishReason exceptionFinishReason = FinishReason.OTHER;
         if (httpResponseException.getValue() instanceof Map) {
             try {
@@ -323,7 +392,8 @@ class InternalGitHubModelHelper {
                     if (errorCode instanceof String) {
                         String code = (String) errorCode;
                         if (contentFilterCode.equals(code)) {
-                            // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
+                            // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or
+                            // hate).
                             exceptionFinishReason = FinishReason.CONTENT_FILTER;
                         }
                     }
@@ -335,32 +405,63 @@ class InternalGitHubModelHelper {
         return exceptionFinishReason;
     }
 
-    static ChatModelRequest createModelListenerRequest(ChatCompletionsOptions options,
-                                                       List<ChatMessage> messages,
-                                                       List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-            .model(options.getModel())
-            .temperature(options.getTemperature())
-            .topP(options.getTopP())
-            .maxTokens(options.getMaxTokens())
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
+    static ChatRequest createListenerRequest(
+            ChatCompletionsOptions options, List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return ChatRequest.builder()
+                .messages(messages)
+                .parameters(ChatRequestParameters.builder()
+                        .modelName(options.getModel())
+                        .temperature(options.getTemperature())
+                        .topP(options.getTopP())
+                        .maxOutputTokens(options.getMaxTokens())
+                        .toolSpecifications(toolSpecifications)
+                        .build())
+                .build();
     }
 
-    static ChatModelResponse createModelListenerResponse(String responseId,
-                                                         String responseModel,
-                                                         Response<AiMessage> response) {
+    static ChatResponse createListenerResponse(
+            String responseId, String responseModel, Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
 
-        return ChatModelResponse.builder()
-            .id(responseId)
-            .model(responseModel)
-            .tokenUsage(response.tokenUsage())
-            .finishReason(response.finishReason())
-            .aiMessage(response.content())
-            .build();
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .id(responseId)
+                        .modelName(responseModel)
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
     }
+
+
+    static ChatCompletionsResponseFormat toChatCompletionsResponseFormat(
+            ResponseFormat responseFormat, Boolean strict) {
+        if (responseFormat == null || responseFormat.type() == TEXT) {
+            return null;
+        }
+
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
+            return new ChatCompletionsResponseFormatJsonObject();
+        } else {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+                throw new IllegalArgumentException(
+                        "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                                + jsonSchema.rootElement().getClass());
+            }
+            return new ChatCompletionsResponseFormatJsonSchema(new ChatCompletionsResponseFormatJsonSchemaDefinition(
+                    jsonSchema.name(), toJsonSchemaDefinition(jsonSchema.rootElement(), strict)).setStrict(strict));
+        }
+    }
+
+    static Map<String, BinaryData> toJsonSchemaDefinition(JsonSchemaElement jsonSchemaElement, boolean strict) {
+        final Map<String, Object> map = toMap(jsonSchemaElement, strict);
+        Map<String, BinaryData> result = new HashMap<>();
+        map.forEach((key, value) -> result.put(key, BinaryData.fromObject(value)));
+        return result;
+    }
+
 }

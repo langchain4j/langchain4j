@@ -2,7 +2,6 @@ package dev.langchain4j.model.workersai;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -14,6 +13,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Base64;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
@@ -33,8 +34,8 @@ class WorkersAiImageModelIT {
     @Test
     void should_generate_an_image_as_binary() {
         Response<Image> image = imageModel.generate("Draw me a squirrel");;
-        Assertions.assertNotNull(image.content());
-        Assertions.assertNotNull(image.content().base64Data());
+        assertThat(image.content()).isNotNull();
+        assertThat(image.content().base64Data()).isNotNull();
     }
 
     @Test
@@ -42,7 +43,7 @@ class WorkersAiImageModelIT {
         String homeDirectory = System.getProperty("user.home");
         Response<File> image = imageModel.generate("Draw me a squirrel",
                 System.getProperty("user.home") + "/langchain4j-squirrel.png");;
-        Assertions.assertTrue(image.content().exists());
+        assertThat(image.content()).exists();
     }
 
     @Test

@@ -35,6 +35,7 @@ public class UrlDocumentLoader {
 
     /**
      * Creates a URL from the specified string.
+     *
      * @param url The URL string.
      * @return the URL
      * @throws IllegalArgumentException If specified URL is malformed.

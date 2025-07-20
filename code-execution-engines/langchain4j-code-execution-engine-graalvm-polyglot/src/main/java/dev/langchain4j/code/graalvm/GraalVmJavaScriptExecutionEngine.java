@@ -22,11 +22,11 @@ public class GraalVmJavaScriptExecutionEngine implements CodeExecutionEngine {
     public String execute(String code) {
         OutputStream outputStream = new ByteArrayOutputStream();
         try (Context context = Context.newBuilder("js")
-                .sandbox(CONSTRAINED)
-                .allowHostAccess(UNTRUSTED)
-                .out(outputStream)
-                .err(outputStream)
-                .build()) {
+            .sandbox(CONSTRAINED)
+            .allowHostAccess(UNTRUSTED)
+            .out(outputStream)
+            .err(outputStream)
+            .build()) {
             Object result = context.eval("js", code).as(Object.class);
             return String.valueOf(result);
         }

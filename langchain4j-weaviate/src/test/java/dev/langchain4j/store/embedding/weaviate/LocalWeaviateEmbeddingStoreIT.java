@@ -37,6 +37,7 @@ class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
             "long_minus_1",
             "long_0",
             "long_1",
+            "long_1746714878034235396",
             "long_max",
             "float_min",
             "float_minus_1",

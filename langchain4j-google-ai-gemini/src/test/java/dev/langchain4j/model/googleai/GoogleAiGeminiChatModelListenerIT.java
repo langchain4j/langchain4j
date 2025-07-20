@@ -1,16 +1,16 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.ChatModelListenerIT;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.AfterEach;
 
 import static java.util.Collections.singletonList;
 
-class GoogleAiGeminiChatModelListenerIT extends ChatModelListenerIT {
+class GoogleAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
-    protected ChatLanguageModel createModel(ChatModelListener listener) {
+    protected ChatModel createModel(ChatModelListener listener) {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .modelName(modelName())
@@ -28,16 +28,10 @@ class GoogleAiGeminiChatModelListenerIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected boolean assertResponseId() {
-        return false;
-    }
-
-    @Override
-    protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected ChatModel createFailingModel(ChatModelListener listener) {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey("banana")
-                .modelName(modelName())
-                .maxRetries(1)
+                .maxRetries(0)
                 .listeners(singletonList(listener))
                 .logRequestsAndResponses(true)
                 .build();
@@ -45,7 +39,7 @@ class GoogleAiGeminiChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return dev.langchain4j.exception.InvalidRequestException.class;
     }
 
     @AfterEach

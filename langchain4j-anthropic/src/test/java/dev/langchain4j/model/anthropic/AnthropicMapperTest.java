@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.anthropic.internal.api.*;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -13,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
@@ -28,7 +28,6 @@ class AnthropicMapperTest {
     @ParameterizedTest
     @MethodSource
     void test_toAnthropicMessages(List<ChatMessage> messages, List<AnthropicMessage> expectedAnthropicMessages) {
-
         // when
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
 
@@ -212,7 +211,7 @@ class AnthropicMapperTest {
     void test_toAnthropicTool(ToolSpecification toolSpecification, AnthropicTool expectedAnthropicTool) {
 
         // when
-        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification);
+        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE);
 
         // then
         assertThat(anthropicTool).isEqualTo(expectedAnthropicTool);
@@ -224,7 +223,10 @@ class AnthropicMapperTest {
                         ToolSpecification.builder()
                                 .name("name")
                                 .description("description")
-                                .addParameter("parameter", STRING)
+                                .parameters(JsonObjectSchema.builder()
+                                        .addStringProperty("parameter")
+                                        .required("parameter")
+                                        .build())
                                 .build(),
                         AnthropicTool.builder()
                                 .name("name")

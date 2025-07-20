@@ -1,8 +1,11 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
+import dev.langchain4j.Internal;
+
 import java.math.BigDecimal;
 import java.util.Collection;
 
+@Internal
 class NumberComparator {
 
     static int compareAsBigDecimals(Object actualNumber, Object comparisonNumber) {
@@ -18,14 +21,14 @@ class NumberComparator {
     }
 
     private static BigDecimal toBigDecimal(Object actualNumber) {
-        if (actualNumber instanceof Integer) {
-            return BigDecimal.valueOf((int) actualNumber);
-        } else if (actualNumber instanceof Long) {
-            return BigDecimal.valueOf((long) actualNumber);
-        } else if (actualNumber instanceof Float) {
-            return BigDecimal.valueOf((float) actualNumber);
-        } else if (actualNumber instanceof Double) {
-            return BigDecimal.valueOf((double) actualNumber);
+        if (actualNumber instanceof Integer integer) {
+            return BigDecimal.valueOf(integer);
+        } else if (actualNumber instanceof Long long1) {
+            return BigDecimal.valueOf(long1);
+        } else if (actualNumber instanceof Float float1) {
+            return BigDecimal.valueOf(float1);
+        } else if (actualNumber instanceof Double double1) {
+            return BigDecimal.valueOf(double1);
         }
 
         throw new IllegalArgumentException("Unsupported type: " + actualNumber.getClass().getName());

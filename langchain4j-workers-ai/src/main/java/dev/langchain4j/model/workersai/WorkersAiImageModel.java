@@ -272,7 +272,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     }
 
     /**
-     * Convert Workers AI Image Generation output to Langchain4j model.
+     * Convert Workers AI Image Generation output to LangChain4j model.
      *
      * @param data
      *      output image

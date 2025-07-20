@@ -9,7 +9,7 @@ public class MongoDbMatchedDocument {
     private String id;
     private List<Float> embedding;
     private String text;
-    private Map<String, String> metadata;
+    private Map<String, Object> metadata;
     private Double score;
 
     public MongoDbMatchedDocument() {
@@ -47,11 +47,11 @@ public class MongoDbMatchedDocument {
         this.text = text;
     }
 
-    public Map<String, String> getMetadata() {
+    public Map<String, Object> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(Map<String, String> metadata) {
+    public void setMetadata(Map<String, Object> metadata) {
         this.metadata = metadata;
     }
 

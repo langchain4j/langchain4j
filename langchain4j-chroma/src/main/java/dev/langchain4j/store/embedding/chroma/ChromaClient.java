@@ -1,18 +1,18 @@
 package dev.langchain4j.store.embedding.chroma;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
-
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 class ChromaClient {
 
@@ -20,10 +20,10 @@ class ChromaClient {
 
     private ChromaClient(Builder builder) {
         OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder()
-            .callTimeout(builder.timeout)
-            .connectTimeout(builder.timeout)
-            .readTimeout(builder.timeout)
-            .writeTimeout(builder.timeout);
+                .callTimeout(builder.timeout)
+                .connectTimeout(builder.timeout)
+                .readTimeout(builder.timeout)
+                .writeTimeout(builder.timeout);
 
         if (builder.logRequests) {
             httpClientBuilder.addInterceptor(new ChromaRequestLoggingInterceptor());
@@ -32,13 +32,17 @@ class ChromaClient {
             httpClientBuilder.addInterceptor(new ChromaResponseLoggingInterceptor());
         }
 
-        Gson gson = new GsonBuilder().setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES).create();
+        ObjectMapper objectMapper = new ObjectMapper()
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                .enable(SerializationFeature.INDENT_OUTPUT)
+                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         Retrofit retrofit = new Retrofit.Builder()
-            .baseUrl(Utils.ensureTrailingForwardSlash(builder.baseUrl))
-            .client(httpClientBuilder.build())
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .build();
+                .baseUrl(Utils.ensureTrailingForwardSlash(builder.baseUrl))
+                .client(httpClientBuilder.build())
+                .addConverterFactory(JacksonConverterFactory.create(objectMapper))
+                .build();
 
         this.chromaApi = retrofit.create(ChromaApi.class);
     }
@@ -77,7 +81,8 @@ class ChromaClient {
 
     Collection createCollection(CreateCollectionRequest createCollectionRequest) {
         try {
-            Response<Collection> response = chromaApi.createCollection(createCollectionRequest).execute();
+            Response<Collection> response =
+                    chromaApi.createCollection(createCollectionRequest).execute();
             if (response.isSuccessful()) {
                 return response.body();
             } else {
@@ -104,7 +109,8 @@ class ChromaClient {
 
     boolean addEmbeddings(String collectionId, AddEmbeddingsRequest addEmbeddingsRequest) {
         try {
-            Response<Boolean> retrofitResponse = chromaApi.addEmbeddings(collectionId, addEmbeddingsRequest).execute();
+            Response<Boolean> retrofitResponse =
+                    chromaApi.addEmbeddings(collectionId, addEmbeddingsRequest).execute();
             if (retrofitResponse.isSuccessful()) {
                 return Boolean.TRUE.equals(retrofitResponse.body());
             } else {
@@ -117,7 +123,8 @@ class ChromaClient {
 
     QueryResponse queryCollection(String collectionId, QueryRequest queryRequest) {
         try {
-            Response<QueryResponse> retrofitResponse = chromaApi.queryCollection(collectionId, queryRequest).execute();
+            Response<QueryResponse> retrofitResponse =
+                    chromaApi.queryCollection(collectionId, queryRequest).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -131,8 +138,8 @@ class ChromaClient {
     void deleteEmbeddings(String collectionId, DeleteEmbeddingsRequest deleteEmbeddingsRequest) {
         try {
             Response<List<String>> retrofitResponse = chromaApi
-                .deleteEmbeddings(collectionId, deleteEmbeddingsRequest)
-                .execute();
+                    .deleteEmbeddings(collectionId, deleteEmbeddingsRequest)
+                    .execute();
             if (!retrofitResponse.isSuccessful()) {
                 throw toException(retrofitResponse);
             }

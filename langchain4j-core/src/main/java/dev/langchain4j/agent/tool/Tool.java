@@ -10,10 +10,13 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * Java methods annotated with {@code @Tool} are considered tools/functions that language model can execute/call.
  * Tool/function calling LLM capability (e.g., see <a href="https://platform.openai.com/docs/guides/function-calling">OpenAI function calling documentation</a>)
  * is used under the hood.
- * A low-level {@link ToolSpecification} will be automatically created from the method signature
- * (e.g. method name, method parameters (names and types), @Tool and @P annotations, etc.)
- * and will be sent to the LLM.
- * If LLM decides to call the tool, the arguments are automatically parsed and injected as method arguments.
+ * When used together with {@code AiServices}, a low-level {@link ToolSpecification} will be automatically created
+ * from the method signature (e.g. method name, method parameters (names and types), {@code @Tool}
+ * and @{@link P} annotations, etc.) and will be sent to the LLM.
+ * If the LLM decides to call the tool, the arguments will be parsed, and the method will be called automatically.
+ * If the return type of the method annotated with {@code @Tool} is {@link String}, the returned value will be sent to the LLM as-is.
+ * If the return type is {@code void}, "Success" string will be sent to the LLM.
+ * In all other cases, the returned value will be serialized into a JSON string and sent to the LLM.
  */
 @Retention(RUNTIME)
 @Target({METHOD})

@@ -5,8 +5,6 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.weaviate.WeaviateContainer;
@@ -44,18 +42,13 @@ class LocalWeaviateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
         return embeddingModel;
     }
 
-    @Test
-    @Disabled("should be enabled once implemented")
-    void should_remove_all_by_filter() {
+    @Override
+    protected boolean supportsRemoveAllByFilter() {
+        return false;
     }
 
-    @Test
-    @Disabled("should be enabled once implemented")
-    void should_fail_to_remove_all_by_filter_null() {
-    }
-
-    @Test
-    @Disabled("should be enabled once implemented")
-    void should_remove_all() {
+    @Override
+    protected boolean supportsRemoveAll() {
+        return false;
     }
 }

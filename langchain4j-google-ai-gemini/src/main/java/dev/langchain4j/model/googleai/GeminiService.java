@@ -1,85 +1,150 @@
 package dev.langchain4j.model.googleai;
 
-//import io.reactivex.rxjava3.core.Observable;
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
-import org.slf4j.Logger;
-import retrofit2.Call;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-import retrofit2.http.Body;
-import retrofit2.http.POST;
-import retrofit2.http.Path;
-import retrofit2.http.Header;
-import retrofit2.http.Headers;
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.firstNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.googleai.Json.fromJson;
+import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
-//import retrofit2.http.Streaming;
+import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
-interface GeminiService {
-    String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/";
-    String API_KEY_HEADER_NAME = "x-goog-api-key";
-    String USER_AGENT = "User-Agent: LangChain4j";
+class GeminiService {
 
-    static GeminiService getGeminiService(Logger logger, Duration timeout) {
-        Retrofit.Builder retrofitBuilder = new Retrofit.Builder()
-            .baseUrl(GEMINI_AI_ENDPOINT)
-            .addConverterFactory(GsonConverterFactory.create());
+    private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
+    private static final String API_KEY_HEADER_NAME = "x-goog-api-key";
+    private static final Duration DEFAULT_CONNECT_TIMEOUT = ofSeconds(15);
+    private static final Duration DEFAULT_READ_TIMEOUT = ofSeconds(60);
 
-        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
-            .callTimeout(timeout);
+    private final HttpClient httpClient;
+    private final String baseUrl;
+    private final String apiKey;
 
-        if (logger != null) {
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor(logger::debug);
-            logging.redactHeader(API_KEY_HEADER_NAME);
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+    GeminiService(
+            final @Nullable HttpClientBuilder httpClientBuilder,
+            final String apiKey,
+            final String baseUrl,
+            final boolean logRequestsAndResponses,
+            final Duration timeout) {
+        this.apiKey = ensureNotBlank(apiKey, "apiKey");
+        this.baseUrl = getOrDefault(baseUrl, GeminiService.GEMINI_AI_ENDPOINT);
+        final var builder = getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
+        HttpClient httpClient = builder.connectTimeout(
+                        firstNotNull("connectTimeout", timeout, builder.connectTimeout(), DEFAULT_CONNECT_TIMEOUT))
+                .readTimeout(firstNotNull("readTimeout", timeout, builder.readTimeout(), DEFAULT_READ_TIMEOUT))
+                .build();
 
-            clientBuilder.addInterceptor(logging);
+        if (logRequestsAndResponses) {
+            this.httpClient = new LoggingHttpClient(httpClient, true, true);
+        } else {
+            this.httpClient = httpClient;
         }
-
-        retrofitBuilder.client(clientBuilder.build());
-        Retrofit retrofit = retrofitBuilder.build();
-
-        return retrofit.create(GeminiService.class);
     }
 
-    @POST("models/{model}:generateContent")
-    @Headers(USER_AGENT)
-    Call<GeminiGenerateContentResponse> generateContent(
-        @Path("model") String modelName,
-        @Header(API_KEY_HEADER_NAME) String apiKey,
-        @Body GeminiGenerateContentRequest request);
+    GeminiGenerateContentResponse generateContent(String modelName, GeminiGenerateContentRequest request) {
+        String url = String.format("%s/models/%s:generateContent", baseUrl, modelName);
+        return sendRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
+    }
 
-    @POST("models/{model}:countTokens")
-    @Headers(USER_AGENT)
-    Call<GeminiCountTokensResponse> countTokens(
-        @Path("model") String modelName,
-        @Header(API_KEY_HEADER_NAME) String apiKey,
-        @Body GeminiCountTokensRequest countTokensRequest);
+    GeminiCountTokensResponse countTokens(String modelName, GeminiCountTokensRequest request) {
+        String url = String.format("%s/models/%s:countTokens", baseUrl, modelName);
+        return sendRequest(url, apiKey, request, GeminiCountTokensResponse.class);
+    }
 
-    @POST("models/{model}:embedContent")
-    @Headers(USER_AGENT)
-    Call<GoogleAiEmbeddingResponse> embed(
-        @Path("model") String modelName,
-        @Header(API_KEY_HEADER_NAME) String apiKey,
-        @Body GoogleAiEmbeddingRequest embeddingRequest);
+    GoogleAiEmbeddingResponse embed(String modelName, GoogleAiEmbeddingRequest request) {
+        String url = String.format("%s/models/%s:embedContent", baseUrl, modelName);
+        return sendRequest(url, apiKey, request, GoogleAiEmbeddingResponse.class);
+    }
 
-    @POST("models/{model}:batchEmbedContents")
-    @Headers(USER_AGENT)
-    Call<GoogleAiBatchEmbeddingResponse> batchEmbed(
-        @Path("model") String modelName,
-        @Header(API_KEY_HEADER_NAME) String apiKey,
-        @Body GoogleAiBatchEmbeddingRequest batchEmbeddingRequest);
+    GoogleAiBatchEmbeddingResponse batchEmbed(String modelName, GoogleAiBatchEmbeddingRequest request) {
+        String url = String.format("%s/models/%s:batchEmbedContents", baseUrl, modelName);
+        return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
+    }
 
-/*
-    @Streaming
-    @POST("models/{model}:streamGenerateContent")
-    @Headers("User-Agent: LangChain4j")
-    Observable<GeminiGenerateContentResponse> streamGenerateContent(
-        @Path("model") String modelName,
-        @Header(API_KEY_HEADER_NAME) String apiKey,
-        @Body GeminiGenerateContentRequest request);
-*/
+    void generateContentStream(
+            String modelName,
+            GeminiGenerateContentRequest request,
+            boolean includeCodeExecutionOutput,
+            StreamingChatResponseHandler handler) {
+        String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", baseUrl, modelName);
+        streamRequest(url, apiKey, request, includeCodeExecutionOutput, handler);
+    }
 
+    private <T> T sendRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
+        String jsonBody = Json.toJson(requestBody);
+        HttpRequest request = buildHttpRequest(url, apiKey, jsonBody);
 
+        SuccessfulHttpResponse response = httpClient.execute(request);
+
+        return fromJson(response.body(), responseType);
+    }
+
+    private void streamRequest(
+            String url,
+            String apiKey,
+            Object requestBody,
+            boolean includeCodeExecutionOutput,
+            StreamingChatResponseHandler handler) {
+        String jsonBody = Json.toJson(requestBody);
+        HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
+
+        GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(includeCodeExecutionOutput);
+
+        httpClient.execute(httpRequest, new ServerSentEventListener() {
+
+            @Override
+            public void onEvent(ServerSentEvent event) {
+                GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
+                Optional<String> maybeText = responseBuilder.append(response);
+                maybeText.ifPresent(text -> {
+                    try {
+                        handler.onPartialResponse(text);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
+                });
+            }
+
+            @Override
+            public void onClose() {
+                ChatResponse chatResponse = responseBuilder.build();
+                try {
+                    handler.onCompleteResponse(chatResponse);
+                } catch (Exception e) {
+                    withLoggingExceptions(() -> handler.onError(e));
+                }
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                RuntimeException mappedError = ExceptionMapper.DEFAULT.mapException(error);
+                withLoggingExceptions(() -> handler.onError(mappedError));
+            }
+        });
+    }
+
+    private HttpRequest buildHttpRequest(String url, String apiKey, String jsonBody) {
+        return HttpRequest.builder()
+                .method(POST)
+                .url(url)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "LangChain4j")
+                .addHeader(API_KEY_HEADER_NAME, apiKey)
+                .body(jsonBody)
+                .build();
+    }
 }

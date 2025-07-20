@@ -20,6 +20,22 @@ class QueryRequest {
         this.include = builder.include;
     }
 
+    public Map<String, Object> getWhere() {
+        return where;
+    }
+
+    public List<List<Float>> getQueryEmbeddings() {
+        return queryEmbeddings;
+    }
+
+    public int getnResults() {
+        return nResults;
+    }
+
+    public List<String> getInclude() {
+        return include;
+    }
+
     public static class Builder {
 
         private Map<String, Object> where;

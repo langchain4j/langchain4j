@@ -1,14 +1,21 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 
-import static java.util.Arrays.asList;
-
-class StringSetOutputParser extends CollectionOutputParser<Set<String>> {
+@Internal
+class StringSetOutputParser extends StringCollectionOutputParser<Set<String>> {
 
     @Override
-    public Set<String> parse(String text) {
-        return new LinkedHashSet<>(asList(text.split("\n")));
+    Supplier<Set<String>> emptyCollectionSupplier() {
+        return LinkedHashSet::new;
+    }
+
+    @Override
+    Class<?> collectionType() {
+        return Set.class;
     }
 }

@@ -1,13 +1,12 @@
 package dev.langchain4j.data.image;
 
+import java.net.URI;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import java.net.URI;
-
 class ImageTest implements WithAssertions {
     @Test
-    public void testBuilder() throws Exception {
+    void builder() throws Exception {
         {
             Image image = Image.builder()
                     .url(new URI("https://example.com/image.png"))
@@ -29,16 +28,13 @@ class ImageTest implements WithAssertions {
             assertThat(image.revisedPrompt()).isNull();
         }
         {
-            Image image = Image.builder()
-                    .url("https://example.com/image.png")
-                    .build();
-            assertThat(image.url()).isEqualTo(
-                    new URI("https://example.com/image.png"));
+            Image image = Image.builder().url("https://example.com/image.png").build();
+            assertThat(image.url()).isEqualTo(new URI("https://example.com/image.png"));
         }
     }
 
     @Test
-    public void test_toString() {
+    void to_string() {
         Image image = Image.builder()
                 .url(URI.create("https://example.com/image.png"))
                 .base64Data("base64Data")
@@ -52,7 +48,7 @@ class ImageTest implements WithAssertions {
     }
 
     @Test
-    public void test_equals_hash() {
+    void equals_hash() {
         Image image1 = Image.builder()
                 .url(URI.create("https://example.com/image.png"))
                 .base64Data("base64Data")
@@ -73,8 +69,7 @@ class ImageTest implements WithAssertions {
                 .isEqualTo(image2)
                 .hasSameHashCodeAs(image2);
 
-        assertThat(
-                Image.builder()
+        assertThat(Image.builder()
                         .url(URI.create("https://change"))
                         .base64Data("base64Data")
                         .mimeType("image/png")
@@ -83,8 +78,7 @@ class ImageTest implements WithAssertions {
                 .isNotEqualTo(image1)
                 .doesNotHaveSameHashCodeAs(image1);
 
-        assertThat(
-                Image.builder()
+        assertThat(Image.builder()
                         .url(URI.create("https://example.com/image.png"))
                         .base64Data("changed")
                         .mimeType("image/png")
@@ -93,8 +87,7 @@ class ImageTest implements WithAssertions {
                 .isNotEqualTo(image1)
                 .doesNotHaveSameHashCodeAs(image1);
 
-        assertThat(
-                Image.builder()
+        assertThat(Image.builder()
                         .url(URI.create("https://example.com/image.png"))
                         .base64Data("base64Data")
                         .mimeType("changed")
@@ -103,8 +96,7 @@ class ImageTest implements WithAssertions {
                 .isNotEqualTo(image1)
                 .doesNotHaveSameHashCodeAs(image1);
 
-        assertThat(
-                Image.builder()
+        assertThat(Image.builder()
                         .url(URI.create("https://example.com/image.png"))
                         .base64Data("base64Data")
                         .mimeType("image/png")
@@ -113,5 +105,4 @@ class ImageTest implements WithAssertions {
                 .isNotEqualTo(image1)
                 .doesNotHaveSameHashCodeAs(image1);
     }
-
 }

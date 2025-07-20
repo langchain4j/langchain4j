@@ -1,9 +1,11 @@
 package dev.langchain4j.rag.query.router;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -16,9 +18,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class LanguageModelQueryRouterIT {
 
     @Mock
@@ -29,7 +33,7 @@ class LanguageModelQueryRouterIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_route_to_single_retriever(ChatLanguageModel model) {
+    void should_route_to_single_retriever(ChatModel model) {
 
         // given
         Query query = Query.from("Do Labradors shed?");
@@ -49,7 +53,7 @@ class LanguageModelQueryRouterIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_route_to_multiple_retrievers(ChatLanguageModel model) {
+    void should_route_to_multiple_retrievers(ChatModel model) {
 
         // given
         Query query = Query.from("Tell me about animals");
@@ -69,7 +73,7 @@ class LanguageModelQueryRouterIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_return_an_empty_list_when_LLM_did_not_provide_a_valid_response(ChatLanguageModel model) {
+    void should_return_an_empty_list_when_LLM_did_not_provide_a_valid_response(ChatModel model) {
 
         // given
         Query query = Query.from("Hey, what's up?");
@@ -94,6 +98,7 @@ class LanguageModelQueryRouterIT {
                                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                                 .apiKey(System.getenv("OPENAI_API_KEY"))
                                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                                .modelName(GPT_4_O_MINI)
                                 .logRequests(true)
                                 .logResponses(true)
                                 .build()

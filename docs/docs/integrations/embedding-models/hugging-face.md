@@ -1,5 +1,5 @@
 ---
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 # Hugging Face
@@ -13,7 +13,7 @@ sidebar_position: 7
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hugging-face</artifactId>
-    <version>0.35.0</version>
+    <version>1.1.0-beta7</version>
 </dependency>
 ```
 

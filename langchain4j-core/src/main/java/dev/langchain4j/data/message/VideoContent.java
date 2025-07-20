@@ -1,6 +1,5 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.video.Video;
 
 import java.net.URI;
@@ -10,7 +9,6 @@ import static dev.langchain4j.data.message.ContentType.VIDEO;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-@Experimental
 public class VideoContent implements Content {
 
     private final Video video;
@@ -20,7 +18,6 @@ public class VideoContent implements Content {
         return VIDEO;
     }
 
-
     /**
      * Create a new {@link VideoContent} from the given url.
      *
@@ -28,8 +25,8 @@ public class VideoContent implements Content {
      */
     public VideoContent(URI url) {
         this.video = Video.builder()
-            .url(ensureNotNull(url, "url"))
-            .build();
+                .url(ensureNotNull(url, "url"))
+                .build();
     }
 
     /**
@@ -45,12 +42,12 @@ public class VideoContent implements Content {
      * Create a new {@link VideoContent} from the given base64 data and mime type.
      *
      * @param base64Data the base64 data of the video.
-     * @param mimeType the mime type of the video.
+     * @param mimeType   the mime type of the video.
      */
     public VideoContent(String base64Data, String mimeType) {
         this.video = Video.builder()
-            .base64Data(ensureNotBlank(base64Data, "base64data"))
-            .mimeType(ensureNotBlank(mimeType, "mimeType")).build();
+                .base64Data(ensureNotBlank(base64Data, "base64data"))
+                .mimeType(ensureNotBlank(mimeType, "mimeType")).build();
     }
 
     /**
@@ -64,6 +61,7 @@ public class VideoContent implements Content {
 
     /**
      * Get the {@code Video}.
+     *
      * @return the {@code Video}.
      */
     public Video video() {
@@ -86,8 +84,8 @@ public class VideoContent implements Content {
     @Override
     public String toString() {
         return "VideoContent {" +
-            " video = " + video +
-            " }";
+                " video = " + video +
+                " }";
     }
 
     /**
@@ -114,7 +112,7 @@ public class VideoContent implements Content {
      * Create a new {@link VideoContent} from the given base64 data and mime type.
      *
      * @param base64Data the base64 data of the video.
-     * @param mimeType the mime type of the video.
+     * @param mimeType   the mime type of the video.
      * @return the new {@link VideoContent}.
      */
     public static VideoContent from(String base64Data, String mimeType) {

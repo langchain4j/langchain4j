@@ -6,7 +6,6 @@ import dev.langchain4j.model.ModelDisabledException;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * An {@link EmbeddingModel} which throws a {@link ModelDisabledException} for all of its methods

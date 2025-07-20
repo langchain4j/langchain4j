@@ -1,11 +1,12 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -16,11 +17,13 @@ class CompletionRequest {
     private String system;
     private String prompt;
     private Options options;
+
+    @JsonSerialize(using = FormatSerializer.class)
     private String format;
+
     private Boolean stream;
 
-    CompletionRequest() {
-    }
+    CompletionRequest() {}
 
     CompletionRequest(String model, String system, String prompt, Options options, String format, Boolean stream) {
         this.model = model;

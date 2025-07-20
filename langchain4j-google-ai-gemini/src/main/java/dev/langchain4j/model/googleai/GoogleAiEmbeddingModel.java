@@ -1,102 +1,86 @@
 package dev.langchain4j.model.googleai;
 
-import com.google.gson.Gson;
-import dev.langchain4j.Experimental;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
-
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
-@Experimental
-@Slf4j
-public class GoogleAiEmbeddingModel implements EmbeddingModel {
     private static final int MAX_NUMBER_OF_SEGMENTS_PER_BATCH = 100;
 
     private final GeminiService geminiService;
-
-    private final Gson GSON = new Gson();
-
     private final String modelName;
-    private final String apiKey;
     private final Integer maxRetries;
     private final TaskType taskType;
     private final String titleMetadataKey;
     private final Integer outputDimensionality;
 
-    @Builder
+    public GoogleAiEmbeddingModel(GoogleAiEmbeddingModelBuilder builder) {
+        ensureNotBlank(builder.apiKey, "apiKey");
+        this.geminiService = new GeminiService(
+                builder.httpClientBuilder,
+                builder.apiKey,
+                builder.baseUrl,
+                getOrDefault(builder.logRequestsAndResponses, false),
+                builder.timeout);
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.taskType = builder.taskType;
+        this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
+        this.outputDimensionality = builder.outputDimensionality;
+    }
+
+    /**
+     * @deprecated please use {@link #GoogleAiEmbeddingModel(GoogleAiEmbeddingModelBuilder)} instead
+     */
+    @Deprecated(forRemoval = true, since = "1.1.0-beta7")
     public GoogleAiEmbeddingModel(
-        String modelName,
-        String apiKey,
-        Integer maxRetries,
-        TaskType taskType,
-        String titleMetadataKey,
-        Integer outputDimensionality,
-        Duration timeout,
-        Boolean logRequestsAndResponses
-    ) {
-
+            String modelName,
+            String apiKey,
+            String baseUrl,
+            Integer maxRetries,
+            TaskType taskType,
+            String titleMetadataKey,
+            Integer outputDimensionality,
+            Duration timeout,
+            Boolean logRequestsAndResponses) {
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
+        ensureNotBlank(apiKey, "apiKey");
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
 
         this.taskType = taskType;
         this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");
 
         this.outputDimensionality = outputDimensionality;
 
-        Duration timeout1 = getOrDefault(timeout, Duration.ofSeconds(60));
+        this.geminiService =
+                new GeminiService(null, apiKey, baseUrl, getOrDefault(logRequestsAndResponses, false), timeout);
+    }
 
-        boolean logRequestsAndResponses1 = logRequestsAndResponses != null && logRequestsAndResponses;
-
-        this.geminiService = GeminiService.getGeminiService(logRequestsAndResponses1 ? log : null, timeout1);
+    public static GoogleAiEmbeddingModelBuilder builder() {
+        return new GoogleAiEmbeddingModelBuilder();
     }
 
     @Override
     public Response<Embedding> embed(TextSegment textSegment) {
         GoogleAiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
 
-        Call<GoogleAiEmbeddingResponse> geminiEmbeddingResponseCall =
-            withRetry(() -> this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
+        GoogleAiEmbeddingResponse geminiResponse =
+                withRetryMappingExceptions(() -> geminiService.embed(modelName, embeddingRequest), maxRetries);
 
-        GoogleAiEmbeddingResponse geminiResponse;
-        try {
-            retrofit2.Response<GoogleAiEmbeddingResponse> executed = geminiEmbeddingResponseCall.execute();
-            geminiResponse = executed.body();
-
-            if (executed.code() >= 300) {
-                try (ResponseBody errorBody = executed.errorBody()) {
-                    GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
-
-                    throw new RuntimeException(
-                        String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
-                }
-            }
-        } catch (IOException e) {
-
-            throw new RuntimeException("An error occurred when calling the Gemini API endpoint (embed).", e);
-        }
-
-        if (geminiResponse != null) {
-            return Response.from(Embedding.from(geminiResponse.getEmbedding().getValues()));
-        } else {
-            throw new RuntimeException("Gemini embedding response was null (embed)");
-        }
+        return Response.from(Embedding.from(geminiResponse.getEmbedding().getValues()));
     }
 
     @Override
@@ -106,9 +90,8 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<GoogleAiEmbeddingRequest> embeddingRequests = textSegments.stream()
-            .map(this::getGoogleAiEmbeddingRequest)
-            .collect(Collectors.toList());
+        List<GoogleAiEmbeddingRequest> embeddingRequests =
+                textSegments.stream().map(this::getGoogleAiEmbeddingRequest).collect(Collectors.toList());
 
         List<Embedding> allEmbeddings = new ArrayList<>();
         int numberOfEmbeddings = embeddingRequests.size();
@@ -123,42 +106,19 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
             GoogleAiBatchEmbeddingRequest batchEmbeddingRequest = new GoogleAiBatchEmbeddingRequest();
             batchEmbeddingRequest.setRequests(embeddingRequests.subList(startIndex, lastIndex));
 
-            Call<GoogleAiBatchEmbeddingResponse> geminiBatchEmbeddingResponseCall =
-                withRetry(() -> this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
+            GoogleAiBatchEmbeddingResponse geminiResponse =
+                    withRetryMappingExceptions(() -> geminiService.batchEmbed(modelName, batchEmbeddingRequest));
 
-            GoogleAiBatchEmbeddingResponse geminiResponse;
-            try {
-                retrofit2.Response<GoogleAiBatchEmbeddingResponse> executed = geminiBatchEmbeddingResponseCall.execute();
-                geminiResponse = executed.body();
-
-                if (executed.code() >= 300) {
-                    try (ResponseBody errorBody = executed.errorBody()) {
-                        GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
-
-                        throw new RuntimeException(
-                            String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
-                    }
-                }
-            } catch (IOException e) {
-                throw new RuntimeException("An error occurred when calling the Gemini API endpoint (embedAll).", e);
-            }
-
-            if (geminiResponse != null) {
-                allEmbeddings.addAll(geminiResponse.getEmbeddings().stream()
+            allEmbeddings.addAll(geminiResponse.getEmbeddings().stream()
                     .map(values -> Embedding.from(values.getValues()))
-                    .collect(Collectors.toList()));
-            } else {
-                throw new RuntimeException("Gemini embedding response was null (embedAll)");
-            }
+                    .toList());
         }
 
         return Response.from(allEmbeddings);
     }
 
     private GoogleAiEmbeddingRequest getGoogleAiEmbeddingRequest(TextSegment textSegment) {
-        GeminiPart geminiPart = GeminiPart.builder()
-            .text(textSegment.text())
-            .build();
+        GeminiPart geminiPart = GeminiPart.builder().text(textSegment.text()).build();
 
         GeminiContent content = new GeminiContent(Collections.singletonList(geminiPart), null);
 
@@ -170,17 +130,12 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
         }
 
         return new GoogleAiEmbeddingRequest(
-            "models/" + this.modelName,
-            content,
-            this.taskType,
-            title,
-            this.outputDimensionality
-        );
+                "models/" + this.modelName, content, this.taskType, title, this.outputDimensionality);
     }
 
     @Override
-    public int dimension() {
-        return getOrDefault(this.outputDimensionality, 768);
+    public Integer knownDimension() {
+        return outputDimensionality;
     }
 
     public enum TaskType {
@@ -191,5 +146,75 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
         CLUSTERING,
         QUESTION_ANSWERING,
         FACT_VERIFICATION
+    }
+
+    public static class GoogleAiEmbeddingModelBuilder {
+
+        private HttpClientBuilder httpClientBuilder;
+        private String modelName;
+        private String apiKey;
+        private String baseUrl;
+        private Integer maxRetries;
+        private TaskType taskType;
+        private String titleMetadataKey;
+        private Integer outputDimensionality;
+        private Duration timeout;
+        private Boolean logRequestsAndResponses;
+
+        GoogleAiEmbeddingModelBuilder() {}
+
+        public GoogleAiEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder taskType(TaskType taskType) {
+            this.taskType = taskType;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder titleMetadataKey(String titleMetadataKey) {
+            this.titleMetadataKey = titleMetadataKey;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder outputDimensionality(Integer outputDimensionality) {
+            this.outputDimensionality = outputDimensionality;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModelBuilder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        public GoogleAiEmbeddingModel build() {
+            return new GoogleAiEmbeddingModel(this);
+        }
     }
 }

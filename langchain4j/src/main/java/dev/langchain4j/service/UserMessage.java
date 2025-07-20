@@ -1,7 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.IllegalConfigurationException;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 

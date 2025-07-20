@@ -1,45 +1,56 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupAsyncClient;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Arrays.asList;
+
 import com.azure.ai.openai.OpenAIAsyncClient;
-import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.models.*;
+import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
+import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
+import com.azure.ai.openai.models.ChatChoice;
+import com.azure.ai.openai.models.ChatCompletions;
+import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatResponseMessage;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.exception.HttpResponseException;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingChatModelBuilderFactory;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.Capability;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
-import java.util.ArrayList;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
-
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import reactor.core.publisher.Flux;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
@@ -47,7 +58,7 @@ import static java.util.Collections.singletonList;
  * <p>
  * Mandatory parameters for initialization are: endpoint and apikey (or an alternate authentication method, see below for more information).
  * Optionally you can set serviceVersion (if not, the latest version is used) and deploymentName (if not, a default name is used).
- * You can also provide your own OpenAIClient instance, if you need more flexibility.
+ * You can also provide your own {@link OpenAIAsyncClient} instance, if you need more flexibility.
  * <p>
  * There are 3 authentication methods:
  * <p>
@@ -61,419 +72,226 @@ import static java.util.Collections.singletonList;
  * The constructor requires a KeyCredential instance, which can be created using `new AzureKeyCredential("{key}")`, and doesn't set up the endpoint.
  * <p>
  * 3. Azure OpenAI client with Microsoft Entra ID (formerly Azure Active Directory) credentials.
- * - This requires to add the `com.azure:azure-identity` dependency to your project, which is an optional dependency to this library.
+ * - This requires to add the `com.azure:azure-identity` dependency to your project.
  * - You need to provide a TokenCredential instance, using the tokenCredential() method in the Builder, or the tokenCredential parameter in the constructor.
  * As an example, DefaultAzureCredential can be used to authenticate the client: Set the values of the client ID, tenant ID, and
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
-public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
+public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
-    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingChatModel.class);
+    private final OpenAIAsyncClient client;
 
-    private OpenAIClient client;
-    private OpenAIAsyncClient asyncClient;
-    private final String deploymentName;
-    private final Tokenizer tokenizer;
-    private final Integer maxTokens;
-    private final Double temperature;
-    private final Double topP;
+    private final ChatRequestParameters defaultRequestParameters;
+
+    private final TokenCountEstimator tokenCountEstimator;
     private final Map<String, Integer> logitBias;
     private final String user;
-    private final Integer n;
-    private final List<String> stop;
-    private final Double presencePenalty;
-    private final Double frequencyPenalty;
     private final List<AzureChatExtensionConfiguration> dataSources;
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
-    private final ChatCompletionsResponseFormat responseFormat;
+    private final Boolean strictJsonSchema;
+
     private final List<ChatModelListener> listeners;
+    private final Set<Capability> supportedCapabilities;
 
-    public AzureOpenAiStreamingChatModel(OpenAIClient client,
-                                         OpenAIAsyncClient asyncClient,
-                                         String deploymentName,
-                                         Tokenizer tokenizer,
-                                         Integer maxTokens,
-                                         Double temperature,
-                                         Double topP,
-                                         Map<String, Integer> logitBias,
-                                         String user,
-                                         Integer n,
-                                         List<String> stop,
-                                         Double presencePenalty,
-                                         Double frequencyPenalty,
-                                         List<AzureChatExtensionConfiguration> dataSources,
-                                         AzureChatEnhancementConfiguration enhancements,
-                                         Long seed,
-                                         ChatCompletionsResponseFormat responseFormat,
-                                         List<ChatModelListener> listeners) {
-
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-
-        if (asyncClient != null) {
-            this.asyncClient = asyncClient;
-        } else if(client != null) {
-            this.client = client;
+    public AzureOpenAiStreamingChatModel(Builder builder) {
+        if (builder.openAIAsyncClient == null) {
+            if (builder.tokenCredential != null) {
+                this.client = setupAsyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.tokenCredential,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            } else if (builder.keyCredential != null) {
+                this.client = setupAsyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.keyCredential,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            } else {
+                this.client = setupAsyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.apiKey,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            }
         } else {
-            throw new IllegalStateException("No client available");
+            this.client = ensureNotNull(builder.openAIAsyncClient, "openAIAsyncClient");
         }
-    }
 
-    public AzureOpenAiStreamingChatModel(String endpoint,
-                                         String serviceVersion,
-                                         String apiKey,
-                                         String deploymentName,
-                                         Tokenizer tokenizer,
-                                         Integer maxTokens,
-                                         Double temperature,
-                                         Double topP,
-                                         Map<String, Integer> logitBias,
-                                         String user,
-                                         Integer n,
-                                         List<String> stop,
-                                         Double presencePenalty,
-                                         Double frequencyPenalty,
-                                         List<AzureChatExtensionConfiguration> dataSources,
-                                         AzureChatEnhancementConfiguration enhancements,
-                                         Long seed,
-                                         ChatCompletionsResponseFormat responseFormat,
-                                         Duration timeout,
-                                         Integer maxRetries,
-                                         ProxyOptions proxyOptions,
-                                         boolean logRequestsAndResponses,
-                                         boolean useAsyncClient,
-                                         List<ChatModelListener> listeners,
-                                         String userAgentSuffix,
-                                         Map<String, String> customHeaders) {
-
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-        if(useAsyncClient) {
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+        ChatRequestParameters parameters;
+        if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
+            parameters = builder.defaultRequestParameters;
         } else {
-            this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+            parameters = DefaultChatRequestParameters.EMPTY;
         }
-    }
 
-    public AzureOpenAiStreamingChatModel(String endpoint,
-                                         String serviceVersion,
-                                         KeyCredential keyCredential,
-                                         String deploymentName,
-                                         Tokenizer tokenizer,
-                                         Integer maxTokens,
-                                         Double temperature,
-                                         Double topP,
-                                         Map<String, Integer> logitBias,
-                                         String user,
-                                         Integer n,
-                                         List<String> stop,
-                                         Double presencePenalty,
-                                         Double frequencyPenalty,
-                                         List<AzureChatExtensionConfiguration> dataSources,
-                                         AzureChatEnhancementConfiguration enhancements,
-                                         Long seed,
-                                         ChatCompletionsResponseFormat responseFormat,
-                                         Duration timeout,
-                                         Integer maxRetries,
-                                         ProxyOptions proxyOptions,
-                                         boolean logRequestsAndResponses,
-                                         boolean useAsyncClient,
-                                         List<ChatModelListener> listeners,
-                                         String userAgentSuffix,
-                                         Map<String, String> customHeaders) {
+        this.defaultRequestParameters = ChatRequestParameters.builder()
+                .modelName(getOrDefault(builder.deploymentName, parameters.modelName()))
+                .temperature(getOrDefault(builder.temperature, parameters.temperature()))
+                .topP(getOrDefault(builder.topP, parameters.topP()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, parameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, parameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(builder.maxTokens, parameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(builder.stop, parameters.stopSequences()))
+                .toolSpecifications(parameters.toolSpecifications())
+                .toolChoice(parameters.toolChoice())
+                .responseFormat(getOrDefault(builder.responseFormat, parameters.responseFormat()))
+                .build();
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-        if(useAsyncClient)
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
-        else
-            this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);    }
+        this.logitBias = copy(builder.logitBias);
+        this.user = builder.user;
+        this.dataSources = copyIfNotNull(builder.dataSources);
+        this.enhancements = builder.enhancements;
+        this.seed = builder.seed;
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
 
-    public AzureOpenAiStreamingChatModel(String endpoint,
-                                         String serviceVersion,
-                                         TokenCredential tokenCredential,
-                                         String deploymentName,
-                                         Tokenizer tokenizer,
-                                         Integer maxTokens,
-                                         Double temperature,
-                                         Double topP,
-                                         Map<String, Integer> logitBias,
-                                         String user,
-                                         Integer n,
-                                         List<String> stop,
-                                         Double presencePenalty,
-                                         Double frequencyPenalty,
-                                         List<AzureChatExtensionConfiguration> dataSources,
-                                         AzureChatEnhancementConfiguration enhancements,
-                                         Long seed,
-                                         ChatCompletionsResponseFormat responseFormat,
-                                         Duration timeout,
-                                         Integer maxRetries,
-                                         ProxyOptions proxyOptions,
-                                         boolean logRequestsAndResponses,
-                                         boolean useAsyncClient,
-                                         List<ChatModelListener> listeners,
-                                         String userAgentSuffix,
-                                         Map<String, String> customHeaders) {
+        this.tokenCountEstimator = builder.tokenCountEstimator;
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-        if(useAsyncClient)
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
-        else
-            this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);    }
-
-
-    private AzureOpenAiStreamingChatModel(String deploymentName,
-                                          Tokenizer tokenizer,
-                                          Integer maxTokens,
-                                          Double temperature,
-                                          Double topP,
-                                          Map<String, Integer> logitBias,
-                                          String user,
-                                          Integer n,
-                                          List<String> stop,
-                                          Double presencePenalty,
-                                          Double frequencyPenalty,
-                                          List<AzureChatExtensionConfiguration> dataSources,
-                                          AzureChatEnhancementConfiguration enhancements,
-                                          Long seed,
-                                          ChatCompletionsResponseFormat responseFormat,
-                                          List<ChatModelListener> listeners) {
-
-        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
-        this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
-        this.topP = topP;
-        this.logitBias = logitBias;
-        this.user = user;
-        this.n = n;
-        this.stop = stop;
-        this.presencePenalty = presencePenalty;
-        this.frequencyPenalty = frequencyPenalty;
-        this.dataSources = dataSources;
-        this.enhancements = enhancements;
-        this.seed = seed;
-        this.responseFormat = responseFormat;
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        this.listeners = copy(builder.listeners);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, null, handler);
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, toolSpecifications, null, handler);
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, toolSpecification, handler);
-    }
+    public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
+        ChatRequestParameters parameters = request.parameters();
+        validate(parameters);
 
-    private void generate(List<ChatMessage> messages,
-                          List<ToolSpecification> toolSpecifications,
-                          ToolSpecification toolThatMustBeExecuted,
-                          StreamingResponseHandler<AiMessage> handler
-    ) {
-        ChatCompletionsOptions options = new ChatCompletionsOptions(InternalAzureOpenAiHelper.toOpenAiMessages(messages))
-                .setStream(true)
-                .setModel(deploymentName)
-                .setMaxTokens(maxTokens)
-                .setTemperature(temperature)
-                .setTopP(topP)
+        ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(request.messages()))
+                .setModel(parameters.modelName())
+                .setTemperature(parameters.temperature())
+                .setTopP(parameters.topP())
+                .setFrequencyPenalty(parameters.frequencyPenalty())
+                .setPresencePenalty(parameters.presencePenalty())
+                .setMaxTokens(parameters.maxOutputTokens())
+                .setStop(parameters.stopSequences())
+                .setResponseFormat(toAzureOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
                 .setLogitBias(logitBias)
                 .setUser(user)
-                .setN(n)
-                .setStop(stop)
-                .setPresencePenalty(presencePenalty)
-                .setFrequencyPenalty(frequencyPenalty)
                 .setDataSources(dataSources)
                 .setEnhancements(enhancements)
-                .setSeed(seed)
-                .setResponseFormat(responseFormat);
+                .setSeed(seed);
 
-        int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
-
-        if (toolThatMustBeExecuted != null) {
-            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
-            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
-             inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
+        if (!parameters.toolSpecifications().isEmpty()) {
+            options.setTools(toToolDefinitions(parameters.toolSpecifications()));
         }
-        if (!isNullOrEmpty(toolSpecifications)) {
-            options.setTools(toToolDefinitions(toolSpecifications));
-            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
+        if (parameters.toolChoice() != null) {
+            options.setToolChoice(toToolChoice(parameters.toolChoice()));
         }
 
-        AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
-
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
-        listeners.forEach(listener -> {
-            try {
-                listener.onRequest(requestContext);
-            } catch (Exception e) {
-                logger.warn("Exception while calling model listener", e);
-            }
-        });
-
-        // Sync version
-        if(client != null) {
-            syncCall(toolThatMustBeExecuted, handler, options, responseBuilder, requestContext);
-        } else if(asyncClient != null) {
-            asyncCall(toolThatMustBeExecuted, handler, options, responseBuilder, requestContext);
+        Integer inputTokenCount = null;
+        if (tokenCountEstimator != null) {
+            inputTokenCount = tokenCountEstimator.estimateTokenCountInMessages(request.messages());
         }
-    }
 
-    private void handleResponseException(Throwable throwable, StreamingResponseHandler<AiMessage> handler) {
-        if (throwable instanceof HttpResponseException) {
-            HttpResponseException httpResponseException = (HttpResponseException) throwable;
-            logger.info("Error generating response, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
-            if (exceptionFinishReason == FinishReason.CONTENT_FILTER) {
-                Response<AiMessage> response = Response.from(
-                        aiMessage(httpResponseException.getMessage()),
-                        null,
-                        exceptionFinishReason
-                );
-                handler.onComplete(response);
-            } else {
-                handler.onError(throwable);
-            }
-        } else {
-            handler.onError(throwable);
-        }
-    }
+        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount);
 
-    private void asyncCall(ToolSpecification toolThatMustBeExecuted, StreamingResponseHandler<AiMessage> handler, ChatCompletionsOptions options, AzureOpenAiStreamingResponseBuilder responseBuilder, ChatModelRequestContext requestContext) {
-        Flux<ChatCompletions> chatCompletionsStream = asyncClient.getChatCompletionsStream(deploymentName, options);
+        Flux<ChatCompletions> chatCompletionsStream = client.getChatCompletionsStream(parameters.modelName(), options);
 
         AtomicReference<String> responseId = new AtomicReference<>();
-        chatCompletionsStream.subscribe(chatCompletion -> {
+        AtomicReference<String> responseModelName = new AtomicReference<>();
+
+        chatCompletionsStream.subscribe(
+                chatCompletion -> {
                     responseBuilder.append(chatCompletion);
                     handle(chatCompletion, handler);
 
                     if (isNotNullOrBlank(chatCompletion.getId())) {
                         responseId.set(chatCompletion.getId());
                     }
+                    if (isNotNullOrBlank(chatCompletion.getModel())) {
+                        responseModelName.set(chatCompletion.getModel());
+                    }
                 },
-                throwable -> {
-                    ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                        throwable,
-                        requestContext.request(),
-                        null,
-                        requestContext.attributes()
-                    );
-
-                    listeners.forEach(listener -> {
-                        try {
-                            listener.onError(errorContext);
-                        } catch (Exception e2) {
-                            logger.warn("Exception while calling model listener", e2);
-                        }
-                    });
-                    handleResponseException(throwable, handler);
+                error -> {
+                    RuntimeException mappedError = AzureOpenAiExceptionMapper.INSTANCE.mapException(error);
+                    withLoggingExceptions(() -> handler.onError(mappedError));
                 },
                 () -> {
-                    Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
-                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                        responseId.get(),
-                        options.getModel(),
-                        response
-                    );
-                    ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                        modelListenerResponse,
-                        requestContext.request(),
-                        requestContext.attributes()
-                    );
-                    listeners.forEach(listener -> {
-                        try {
-                            listener.onResponse(responseContext);
-                        } catch (Exception e) {
-                            logger.warn("Exception while calling model listener", e);
-                        }
-                    });
-                    handler.onComplete(response);
+                    Response<AiMessage> response = responseBuilder.build(tokenCountEstimator);
+
+                    ChatResponse chatResponse = ChatResponse.builder()
+                            .aiMessage(response.content())
+                            .metadata(ChatResponseMetadata.builder()
+                                    .id(responseId.get())
+                                    .modelName(responseModelName.get())
+                                    .tokenUsage(response.tokenUsage())
+                                    .finishReason(response.finishReason())
+                                    .build())
+                            .build();
+
+                    try {
+                        handler.onCompleteResponse(chatResponse);
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
                 });
     }
 
-    private void syncCall(ToolSpecification toolThatMustBeExecuted, StreamingResponseHandler<AiMessage> handler, ChatCompletionsOptions options, AzureOpenAiStreamingResponseBuilder responseBuilder, ChatModelRequestContext requestContext) {
-        try {
-            AtomicReference<String> responseId = new AtomicReference<>();
-
-            client.getChatCompletionsStream(deploymentName, options)
-                    .stream()
-                    .forEach(chatCompletions -> {
-                        responseBuilder.append(chatCompletions);
-                        handle(chatCompletions, handler);
-
-                        if (isNotNullOrBlank(chatCompletions.getId())) {
-                            responseId.set(chatCompletions.getId());
-                        }
-                    });
-            Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                responseId.get(),
-                options.getModel(),
-                response
-            );
-            ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                modelListenerResponse,
-                requestContext.request(),
-                requestContext.attributes()
-            );
-            listeners.forEach(listener -> {
-                try {
-                    listener.onResponse(responseContext);
-                } catch (Exception e) {
-                    logger.warn("Exception while calling model listener", e);
-                }
-            });
-
-            handler.onComplete(response);
-        } catch (Exception exception) {
-            handleResponseException(exception, handler);
-
-            ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                exception,
-                requestContext.request(),
-                null,
-                requestContext.attributes()
-            );
-
-            listeners.forEach(listener -> {
-                try {
-                    listener.onError(errorContext);
-                } catch (Exception e2) {
-                    logger.warn("Exception while calling model listener", e2);
-                }
-            });
-        }
-    }
-
-
-    private static void handle(ChatCompletions chatCompletions,
-                               StreamingResponseHandler<AiMessage> handler) {
-
+    private static void handle(ChatCompletions chatCompletions, StreamingChatResponseHandler handler) {
         List<ChatChoice> choices = chatCompletions.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
+
         ChatResponseMessage delta = choices.get(0).getDelta();
-        if (delta != null && delta.getContent() != null) {
-            handler.onNext(delta.getContent());
+        if (delta == null) {
+            return;
+        }
+
+        String content = delta.getContent();
+        if (!isNullOrEmpty(content)) {
+            try {
+                handler.onPartialResponse(content);
+            } catch (Exception e) {
+                withLoggingExceptions(() -> handler.onError(e));
+            }
         }
     }
 
     @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return AZURE_OPEN_AI;
     }
 
     public static Builder builder() {
-        for (AzureOpenAiStreamingChatModelBuilderFactory factory : loadFactories(AzureOpenAiStreamingChatModelBuilderFactory.class)) {
+        for (AzureOpenAiStreamingChatModelBuilderFactory factory :
+                loadFactories(AzureOpenAiStreamingChatModelBuilderFactory.class)) {
             return factory.get();
         }
         return new Builder();
@@ -481,36 +299,43 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
     public static class Builder {
 
+        private ChatRequestParameters defaultRequestParameters;
+
         private String endpoint;
         private String serviceVersion;
         private String apiKey;
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
+        private HttpClientProvider httpClientProvider;
         private String deploymentName;
-        private Tokenizer tokenizer;
+        private TokenCountEstimator tokenCountEstimator;
         private Integer maxTokens;
         private Double temperature;
         private Double topP;
         private Map<String, Integer> logitBias;
         private String user;
-        private Integer n;
         private List<String> stop;
         private Double presencePenalty;
         private Double frequencyPenalty;
         private Duration timeout;
-        List<AzureChatExtensionConfiguration> dataSources;
-        AzureChatEnhancementConfiguration enhancements;
-        Long seed;
-        ChatCompletionsResponseFormat responseFormat;
+        private List<AzureChatExtensionConfiguration> dataSources;
+        private AzureChatEnhancementConfiguration enhancements;
+        private Long seed;
+        private ResponseFormat responseFormat;
+        private Boolean strictJsonSchema;
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
-        private OpenAIClient openAIClient;
         private OpenAIAsyncClient openAIAsyncClient;
-        private boolean useAsyncClient = true;
         private String userAgentSuffix;
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
+        private Set<Capability> supportedCapabilities;
+
+        public Builder defaultRequestParameters(ChatRequestParameters parameters) {
+            this.defaultRequestParameters = parameters;
+            return this;
+        }
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -560,11 +385,23 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         /**
          * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
+         *
          * @param tokenCredential the credentials to authenticate with Azure Active Directory
          * @return builder
          */
         public Builder tokenCredential(TokenCredential tokenCredential) {
             this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        /**
+         * Sets the {@code HttpClientProvider} to use for creating the HTTP client to communicate with the OpenAI api.
+         *
+         * @param httpClientProvider The {@code HttpClientProvider} to use
+         * @return builder
+         */
+        public Builder httpClientProvider(HttpClientProvider httpClientProvider) {
+            this.httpClientProvider = httpClientProvider;
             return this;
         }
 
@@ -579,8 +416,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
+        public Builder tokenCountEstimator(TokenCountEstimator tokenCountEstimator) {
+            this.tokenCountEstimator = tokenCountEstimator;
             return this;
         }
 
@@ -606,11 +443,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         public Builder user(String user) {
             this.user = user;
-            return this;
-        }
-
-        public Builder n(Integer n) {
-            this.n = n;
             return this;
         }
 
@@ -644,8 +476,13 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
-        public Builder responseFormat(ChatCompletionsResponseFormat responseFormat) {
+        public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public Builder strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 
@@ -666,31 +503,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         public Builder logRequestsAndResponses(boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
-            return this;
-        }
-
-        /**
-         * @deprecated If you want to continue using sync client, use {@link AzureOpenAiChatModel} instead.
-         * @param useAsyncClient {@code true} if you want to use the async client, {@code false} if you want to use the sync client.
-         * @return builder with the useAsyncClient parameter set
-         */
-        @SuppressWarnings("DeprecatedIsStillUsed")
-        @Deprecated
-        public Builder useAsyncClient(boolean useAsyncClient) {
-            this.useAsyncClient = useAsyncClient;
-            return this;
-        }
-
-        /**
-         * @deprecated Please use {@link #openAIAsyncClient(OpenAIAsyncClient)} instead, if you require response streaming.
-         * Please use {@link AzureOpenAiChatModel} instead, if you require sync responses.
-         * @param openAIClient The Azure OpenAI client.
-         * @return builder
-         */
-        @SuppressWarnings("DeprecatedIsStillUsed")
-        @Deprecated
-        public Builder openAIClient(OpenAIClient openAIClient) {
-            this.openAIClient = openAIClient;
             return this;
         }
 
@@ -720,117 +532,17 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
+        public Builder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
+        public Builder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
+        }
+
         public AzureOpenAiStreamingChatModel build() {
-            if (openAIClient == null) {
-                if (tokenCredential != null) {
-                    return new AzureOpenAiStreamingChatModel(
-                            endpoint,
-                            serviceVersion,
-                            tokenCredential,
-                            deploymentName,
-                            tokenizer,
-                            maxTokens,
-                            temperature,
-                            topP,
-                            logitBias,
-                            user,
-                            n,
-                            stop,
-                            presencePenalty,
-                            frequencyPenalty,
-                            dataSources,
-                            enhancements,
-                            seed,
-                            responseFormat,
-                            timeout,
-                            maxRetries,
-                            proxyOptions,
-                            logRequestsAndResponses,
-                            useAsyncClient,
-                            listeners,
-                            userAgentSuffix,
-                            customHeaders
-                    );
-                } else if (keyCredential != null) {
-                    return new AzureOpenAiStreamingChatModel(
-                            endpoint,
-                            serviceVersion,
-                            keyCredential,
-                            deploymentName,
-                            tokenizer,
-                            maxTokens,
-                            temperature,
-                            topP,
-                            logitBias,
-                            user,
-                            n,
-                            stop,
-                            presencePenalty,
-                            frequencyPenalty,
-                            dataSources,
-                            enhancements,
-                            seed,
-                            responseFormat,
-                            timeout,
-                            maxRetries,
-                            proxyOptions,
-                            logRequestsAndResponses,
-                            useAsyncClient,
-                            listeners,
-                            userAgentSuffix,
-                            customHeaders
-                    );
-                }
-                return new AzureOpenAiStreamingChatModel(
-                        endpoint,
-                        serviceVersion,
-                        apiKey,
-                        deploymentName,
-                        tokenizer,
-                        maxTokens,
-                        temperature,
-                        topP,
-                        logitBias,
-                        user,
-                        n,
-                        stop,
-                        presencePenalty,
-                        frequencyPenalty,
-                        dataSources,
-                        enhancements,
-                        seed,
-                        responseFormat,
-                        timeout,
-                        maxRetries,
-                        proxyOptions,
-                        logRequestsAndResponses,
-                        useAsyncClient,
-                        listeners,
-                        userAgentSuffix,
-                        customHeaders
-                );
-            } else {
-                return new AzureOpenAiStreamingChatModel(
-                        openAIClient,
-                        openAIAsyncClient,
-                        deploymentName,
-                        tokenizer,
-                        maxTokens,
-                        temperature,
-                        topP,
-                        logitBias,
-                        user,
-                        n,
-                        stop,
-                        presencePenalty,
-                        frequencyPenalty,
-                        dataSources,
-                        enhancements,
-                        seed,
-                        responseFormat,
-                        listeners
-                );
-            }
+            return new AzureOpenAiStreamingChatModel(this);
         }
     }
 }

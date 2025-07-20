@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.AI;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
 
 /**
@@ -28,7 +30,7 @@ public class AiMessage implements ChatMessage {
      */
     public AiMessage(String text) {
         this.text = ensureNotNull(text, "text");
-        this.toolExecutionRequests = null;
+        this.toolExecutionRequests = List.of();
     }
 
     /**
@@ -48,8 +50,8 @@ public class AiMessage implements ChatMessage {
      * @param toolExecutionRequests the tool execution requests of the message.
      */
     public AiMessage(String text, List<ToolExecutionRequest> toolExecutionRequests) {
-        this.text = ensureNotBlank(text, "text");
-        this.toolExecutionRequests = ensureNotEmpty(toolExecutionRequests, "toolExecutionRequests");
+        this.text = text;
+        this.toolExecutionRequests = copy(toolExecutionRequests);
     }
 
     /**
@@ -106,6 +108,30 @@ public class AiMessage implements ChatMessage {
                 " }";
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String text;
+        private List<ToolExecutionRequest> toolExecutionRequests;
+
+        public Builder text(String text) {
+            this.text = text;
+            return this;
+        }
+
+        public Builder toolExecutionRequests(List<ToolExecutionRequest> toolExecutionRequests) {
+            this.toolExecutionRequests = toolExecutionRequests;
+            return this;
+        }
+
+        public AiMessage build() {
+            return new AiMessage(text, toolExecutionRequests);
+        }
+    }
+
     /**
      * Create a new {@link AiMessage} with the given text.
      *
@@ -139,7 +165,7 @@ public class AiMessage implements ChatMessage {
     /**
      * Create a new {@link AiMessage} with the given text and tool execution requests.
      *
-     * @param text the text of the message.
+     * @param text                  the text of the message.
      * @param toolExecutionRequests the tool execution requests of the message.
      * @return the new {@link AiMessage}.
      */
@@ -180,7 +206,7 @@ public class AiMessage implements ChatMessage {
     /**
      * Create a new {@link AiMessage} with the given text and tool execution requests.
      *
-     * @param text the text of the message.
+     * @param text                  the text of the message.
      * @param toolExecutionRequests the tool execution requests of the message.
      * @return the new {@link AiMessage}.
      */

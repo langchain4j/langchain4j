@@ -5,22 +5,23 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class EmbeddingModelTest implements WithAssertions {
     public static class EmbeddingModelImpl implements EmbeddingModel {
         @Override
         public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-            List<Embedding> embeddings =
-                    textSegments.stream().map(ts -> new Embedding(new float[]{ts.text().length(), ts.text().hashCode()}))
-                            .collect(Collectors.toList());
+            List<Embedding> embeddings = textSegments.stream()
+                    .map(ts -> new Embedding(
+                            new float[] {ts.text().length(), ts.text().hashCode()}))
+                    .collect(Collectors.toList());
 
-            int tokenUsage = textSegments.stream().mapToInt(ts -> ts.text().length()).sum();
+            int tokenUsage =
+                    textSegments.stream().mapToInt(ts -> ts.text().length()).sum();
 
             return Response.from(embeddings, new TokenUsage(tokenUsage), FinishReason.STOP);
         }
@@ -61,7 +62,7 @@ class EmbeddingModelTest implements WithAssertions {
     }
 
     @Test
-    void test_broken() {
+    void broken() {
         EmbeddingModel model = new BrokenEmbeddingModelImpl();
 
         assertThatExceptionOfType(IllegalArgumentException.class)

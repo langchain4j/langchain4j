@@ -4,13 +4,14 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
@@ -30,7 +31,7 @@ class WorkersAiEmbeddingModelIT {
     @Test
     void generateEmbeddingSimple() {
         Response<Embedding> out = embeddingModel.embed("Sentence1");
-        Assertions.assertNotNull(out.content());
+        assertThat(out.content()).isNotNull();
     }
 
     @Test
@@ -39,7 +40,7 @@ class WorkersAiEmbeddingModelIT {
         data.add(new TextSegment("Sentence1", new Metadata()));
         data.add(new TextSegment("Sentence2", new Metadata()));
         Response<List<Embedding>> out = embeddingModel.embedAll(data);
-        Assertions.assertNotNull(out.content());
-        Assertions.assertEquals(2, out.content().size());
+        assertThat(out.content()).isNotNull();
+        assertThat(out.content()).hasSize(2);
     }
 }

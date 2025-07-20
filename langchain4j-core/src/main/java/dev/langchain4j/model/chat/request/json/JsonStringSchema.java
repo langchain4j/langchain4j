@@ -1,22 +1,22 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.Experimental;
-
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
-@Experimental
 public class JsonStringSchema implements JsonSchemaElement {
 
-    public static final JsonStringSchema JSON_STRING_SCHEMA = JsonStringSchema.builder().build();
-
     private final String description;
+
+    public JsonStringSchema() {
+        this.description = null;
+    }
 
     public JsonStringSchema(Builder builder) {
         this.description = builder.description;
     }
 
+    @Override
     public String description() {
         return description;
     }

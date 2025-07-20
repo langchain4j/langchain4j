@@ -1,7 +1,9 @@
 package dev.langchain4j.model.workersai.client;
 
-import lombok.extern.slf4j.Slf4j;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+
 import okhttp3.ResponseBody;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 
@@ -9,9 +11,9 @@ import java.io.IOException;
  * Abstract class for WorkerAI models as they are all initialized the same way.
  * <a href="https://developers.cloudflare.com/api/operations/workers-ai-post-run-model">...</a>
  */
-@Slf4j
 public abstract class AbstractWorkersAIModel {
 
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(AbstractWorkersAIModel.class);
     /**
      * Account identifier, provided by the WorkerAI platform.
      */
@@ -35,17 +37,11 @@ public abstract class AbstractWorkersAIModel {
      * @param apiToken  api apiToken from .
      */
     public AbstractWorkersAIModel(String accountId, String modelName, String apiToken) {
-        if (accountId == null || accountId.isEmpty()) {
-            throw new IllegalArgumentException("Account identifier should not be null or empty");
-        }
+        ensureNotEmpty(accountId, "%s", "Account identifier should not be null or empty");
         this.accountId = accountId;
-        if (modelName == null || modelName.isEmpty()) {
-            throw new IllegalArgumentException("Model name should not be null or empty");
-        }
+        ensureNotEmpty(modelName, "%s", "Model name should not be null or empty");
         this.modelName = modelName;
-        if (apiToken == null || apiToken.isEmpty()) {
-            throw new IllegalArgumentException("Token should not be null or empty");
-        }
+        ensureNotEmpty(apiToken, "%s", "Token should not be null or empty");
         this.workerAiClient = WorkersAiClient.createService(apiToken);
     }
 

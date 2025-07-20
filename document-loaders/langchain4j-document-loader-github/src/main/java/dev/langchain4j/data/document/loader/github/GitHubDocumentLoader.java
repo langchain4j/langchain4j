@@ -96,7 +96,7 @@ public class GitHubDocumentLoader {
         } else {
             Document document = null;
             try {
-                document = withRetry(() -> fromGitHub(parser, ghContent), 3);
+                document = withRetry(() -> fromGitHub(parser, ghContent), 2);
             } catch (RuntimeException runtimeException) {
                 logger.error("Failed to read document from GitHub: {}", ghContent.getHtmlUrl(), runtimeException);
             }

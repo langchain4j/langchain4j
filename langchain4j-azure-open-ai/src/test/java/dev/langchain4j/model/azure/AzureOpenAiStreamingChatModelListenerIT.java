@@ -1,23 +1,24 @@
 package dev.langchain4j.model.azure;
 
-import com.azure.core.exception.ClientAuthenticationException;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-
 import static java.util.Collections.singletonList;
 
-class AzureOpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+class AzureOpenAiStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override
-    protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
-        return AzureOpenAiStreamingChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+    protected StreamingChatModel createModel(ChatModelListener listener) {
+        return AzureModelBuilders.streamingChatModelBuilder()
                 .deploymentName(modelName())
                 .temperature(temperature())
                 .topP(topP())
                 .maxTokens(maxTokens())
+                .tokenCountEstimator(new AzureOpenAiTokenCountEstimator(modelName()))
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();
@@ -25,16 +26,15 @@ class AzureOpenAiStreamingChatModelListenerIT extends StreamingChatModelListener
 
     @Override
     protected String modelName() {
-        return "gpt-4o-mini";
+        return AzureModelBuilders.DEFAULT_CHAT_MODEL;
     }
 
     @Override
-    protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected StreamingChatModel createFailingModel(ChatModelListener listener) {
         return AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey("banana")
                 .deploymentName(modelName())
-                .maxRetries(1)
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();
@@ -42,6 +42,6 @@ class AzureOpenAiStreamingChatModelListenerIT extends StreamingChatModelListener
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return ClientAuthenticationException.class;
+        return AuthenticationException.class;
     }
 }

@@ -1,0 +1,8 @@
+style:
+  active: true
+  MethodName:
+    active: true
+    ignoreOverriddenFunctions: true
+    excludeAnnotatedMethodsOrClasses:
+      - "org.junit.jupiter.api.Test"
+    ignoreTestFiles: true

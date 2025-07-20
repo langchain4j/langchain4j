@@ -1,10 +1,13 @@
 package dev.langchain4j.data.message;
 
+import dev.langchain4j.Internal;
+
 import java.util.List;
 
 /**
  * A codec for serializing and deserializing {@link ChatMessage} objects to and from JSON.
  */
+@Internal
 public interface ChatMessageJsonCodec {
 
     /**

@@ -4,6 +4,8 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
@@ -32,7 +34,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.infinispan.InfinispanStoreConfiguration.DEFAULT_CACHE_CONFIG;
-import static dev.langchain4j.store.embedding.infinispan.InfinispanStoreConfiguration.DEFAULT_DISTANCE;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -154,28 +156,23 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
                 .collect(toList());
-        addAllInternal(ids, embeddings, null);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAllInternal(ids, embeddings, embedded);
-        return ids;
-    }
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        Query<Object[]> query = remoteCache.query("select i, score(i) from " +
+            storeConfiguration.langchainItemFullType() + " i where i.embedding <-> " +
+            Arrays.toString(request.queryEmbedding().vector()) +
+            "~" + storeConfiguration.distance());
 
-    @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        Query<Object[]> query = remoteCache.query("select i, score(i) from " + storeConfiguration.langchainItemFullType() + " i where i.embedding <-> " + Arrays.toString(referenceEmbedding.vector()) + "~" + storeConfiguration.distance());
-        List<Object[]> hits = query.maxResults(maxResults).list();
+        List<Object[]> hits = query.maxResults(request.maxResults()).list();
 
-        return hits.stream().map(obj -> {
+        List<EmbeddingMatch<TextSegment>> matches = hits.stream().map(obj -> {
             LangChainInfinispanItem item = (LangChainInfinispanItem) obj[0];
             Float score = (Float) obj[1];
-            if (score.doubleValue() < minScore) {
+            if (score.doubleValue() < request.minScore()) {
                 return null;
             }
             TextSegment embedded = null;
@@ -188,14 +185,17 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             Embedding embedding = new Embedding(item.embedding());
             return new EmbeddingMatch<>(score.doubleValue(), item.id(), embedding, embedded);
-        }).filter(Objects::nonNull).collect(Collectors.toList());
+        }).filter(Objects::nonNull).collect(toList());
+
+        return new EmbeddingSearchResult<>(matches);
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("do not add empty embeddings to infinispan");
             return;
@@ -210,8 +210,9 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
             Embedding embedding = embeddings.get(i);
             TextSegment textSegment = embedded == null ? null : embedded.get(i);
             if (textSegment != null) {
-                Set<LangChainMetadata> metadata = textSegment.metadata().asMap().entrySet().stream()
-                      .map(e -> new LangChainMetadata(e.getKey(), e.getValue())).collect(Collectors.toSet());
+                Set<LangChainMetadata> metadata = textSegment.metadata().toMap().entrySet().stream()
+                      .map(e -> new LangChainMetadata(e.getKey(), Objects.toString(e.getValue(), null)))
+                      .collect(Collectors.toSet());
                 elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), textSegment.text(), metadata));
             } else {
                 elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), null, null));

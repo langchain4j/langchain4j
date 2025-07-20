@@ -1,23 +1,25 @@
 package dev.langchain4j.agent.tool;
 
-import java.util.HashMap;
-import java.util.Map;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
-import static java.util.Arrays.asList;
 
 /**
- * Describes a {@link Tool}.
+ * Describes a tool that language model can execute.
+ * <p>
+ * Can be generated automatically from methods annotated with {@link Tool} using {@link ToolSpecifications} helper.
  */
 public class ToolSpecification {
 
     private final String name;
     private final String description;
-    private final ToolParameters parameters;
+    private final JsonObjectSchema parameters;
 
     /**
      * Creates a {@link ToolSpecification} from a {@link Builder}.
+     *
      * @param builder the builder.
      */
     private ToolSpecification(Builder builder) {
@@ -28,6 +30,7 @@ public class ToolSpecification {
 
     /**
      * Returns the name of the tool.
+     *
      * @return the name of the tool.
      */
     public String name() {
@@ -36,6 +39,7 @@ public class ToolSpecification {
 
     /**
      * Returns the description of the tool.
+     *
      * @return the description of the tool.
      */
     public String description() {
@@ -44,17 +48,16 @@ public class ToolSpecification {
 
     /**
      * Returns the parameters of the tool.
-     * @return the parameters of the tool.
      */
-    public ToolParameters parameters() {
+    public JsonObjectSchema parameters() {
         return parameters;
     }
 
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolSpecification
-                && equalTo((ToolSpecification) another);
+        return another instanceof ToolSpecification ts
+                && equalTo(ts);
     }
 
     private boolean equalTo(ToolSpecification another) {
@@ -83,6 +86,7 @@ public class ToolSpecification {
 
     /**
      * Creates builder to build {@link ToolSpecification}.
+     *
      * @return created builder
      */
     public static Builder builder() {
@@ -96,7 +100,7 @@ public class ToolSpecification {
 
         private String name;
         private String description;
-        private ToolParameters parameters;
+        private JsonObjectSchema parameters;
 
         /**
          * Creates a {@link Builder}.
@@ -106,6 +110,7 @@ public class ToolSpecification {
 
         /**
          * Sets the {@code name}.
+         *
          * @param name the {@code name}
          * @return {@code this}
          */
@@ -116,6 +121,7 @@ public class ToolSpecification {
 
         /**
          * Sets the {@code description}.
+         *
          * @param description the {@code description}
          * @return {@code this}
          */
@@ -126,68 +132,18 @@ public class ToolSpecification {
 
         /**
          * Sets the {@code parameters}.
+         *
          * @param parameters the {@code parameters}
          * @return {@code this}
          */
-        public Builder parameters(ToolParameters parameters) {
+        public Builder parameters(JsonObjectSchema parameters) {
             this.parameters = parameters;
             return this;
         }
 
         /**
-         * Adds a parameter to the tool.
-         * @param name the name of the parameter.
-         * @param jsonSchemaProperties the properties of the parameter.
-         * @return {@code this}
-         */
-        public Builder addParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
-            return addParameter(name, asList(jsonSchemaProperties));
-        }
-
-        /**
-         * Adds a parameter to the tool.
-         * @param name the name of the parameter.
-         * @param jsonSchemaProperties the properties of the parameter.
-         * @return {@code this}
-         */
-        public Builder addParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
-            addOptionalParameter(name, jsonSchemaProperties);
-            this.parameters.required().add(name);
-            return this;
-        }
-
-        /**
-         * Adds an optional parameter to the tool.
-         * @param name the name of the parameter.
-         * @param jsonSchemaProperties the properties of the parameter.
-         * @return {@code this}
-         */
-        public Builder addOptionalParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
-            return addOptionalParameter(name, asList(jsonSchemaProperties));
-        }
-
-        /**
-         * Adds an optional parameter to the tool.
-         * @param name the name of the parameter.
-         * @param jsonSchemaProperties the properties of the parameter.
-         * @return {@code this}
-         */
-        public Builder addOptionalParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
-            if (this.parameters == null) {
-                this.parameters = ToolParameters.builder().build();
-            }
-
-            Map<String, Object> jsonSchemaPropertiesMap = new HashMap<>();
-            for (JsonSchemaProperty jsonSchemaProperty : jsonSchemaProperties) {
-                jsonSchemaPropertiesMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
-            }
-
-            this.parameters.properties().put(name, jsonSchemaPropertiesMap);
-            return this;
-        }
-
-        /**
          * Returns a {@code ToolSpecification} built from the parameters previously set.
+         *
          * @return a {@code ToolSpecification} built with parameters of this {@code ToolSpecification.Builder}
          */
         public ToolSpecification build() {

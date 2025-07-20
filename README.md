@@ -1,7 +1,11 @@
 # LangChain for Java: Supercharge your Java application with the power of LLMs
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/main.yaml?branch=main&style=for-the-badge&label=GITHUB%20ACTIONS&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/main.yaml)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/main.yaml?branch=main&style=for-the-badge&label=CI%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/main.yaml)
+[![Nightly Build](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/nightly_jdk17.yaml?branch=main&style=for-the-badge&label=NIGHTLY%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/nightly_jdk17.yaml)
+[![CODACY](https://img.shields.io/badge/Codacy-Dashboard-blue?style=for-the-badge&logo=codacy)](https://app.codacy.com/gh/langchain4j/langchain4j/dashboard)
+
 [![Discord](https://dcbadge.vercel.app/api/server/JzTFvyjG6R?style=for-the-badge)](https://discord.gg/JzTFvyjG6R)
+[![BlueSky](https://img.shields.io/badge/@langchain4j-follow-blue?logo=bluesky&style=for-the-badge)](https://bsky.app/profile/langchain4j.dev)
 [![X](https://img.shields.io/badge/@langchain4j-follow-blue?logo=x&style=for-the-badge)](https://x.com/langchain4j)
 [![Maven Version](https://img.shields.io/maven-central/v/dev.langchain4j/langchain4j?logo=apachemaven&style=for-the-badge)](https://search.maven.org/#search|gav|1|g:"dev.langchain4j"%20AND%20a:"langchain4j")
 
@@ -23,7 +27,7 @@ Here's how:
    Since early 2023, the community has been building numerous LLM-powered applications,
    identifying common abstractions, patterns, and techniques. LangChain4j has refined these into practical code.
    Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and function calling
-   to high-level patterns like AI Services and RAG.
+   to high-level patterns like Agents and RAG.
    For each abstraction, we provide an interface along with multiple ready-to-use implementations based on common techniques.
    Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval,
    LangChain4j offers a wide variety of options.
@@ -46,6 +50,8 @@ the core functionality is in place, allowing you to start building LLM-powered a
 ## Documentation
 Documentation can be found [here](https://docs.langchain4j.dev).
 
+The documentation chatbot (experimental) can be found [here](https://chat.langchain4j.dev/).
+
 
 ## Getting Started
 Getting started guide can be found [here](https://docs.langchain4j.dev/get-started).
@@ -56,7 +62,8 @@ Please see examples of how LangChain4j can be used in [langchain4j-examples](htt
 - [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
 - [Examples with Quarkus](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples) (uses [quarkus-langchain4j](https://github.com/quarkiverse/quarkus-langchain4j) dependency)
 - [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/tree/main/spring-boot-example/src/main/java/dev/langchain4j/example)
-
+- [Examples with Helidon](https://github.com/helidon-io/helidon-examples/tree/helidon-4.x/examples/integrations/langchain4j) (uses [io.helidon.integrations.langchain4j](https://mvnrepository.com/artifact/io.helidon.integrations.langchain4j) dependency)
+- [Examples with Micronaut](https://github.com/micronaut-projects/micronaut-langchain4j/tree/0.3.x/doc-examples/example-openai-java) (uses [micronaut-langchain4j](https://micronaut-projects.github.io/micronaut-langchain4j/latest/guide/) dependency)
 
 ## Useful Materials
 Useful materials can be found [here](https://docs.langchain4j.dev/useful-materials).
