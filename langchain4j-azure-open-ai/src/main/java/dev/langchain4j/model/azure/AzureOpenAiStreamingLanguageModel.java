@@ -141,7 +141,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .setFrequencyPenalty(frequencyPenalty);
 
         Integer inputTokenCount = tokenCountEstimator == null ? null : tokenCountEstimator.estimateTokenCountInText(prompt);
-        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount);
+        InternalAzureOpenAiStreamingResponseBuilder responseBuilder = new InternalAzureOpenAiStreamingResponseBuilder(inputTokenCount, null);
 
         try {
             client.getCompletionsStream(deploymentName, options).stream().forEach(completions -> {

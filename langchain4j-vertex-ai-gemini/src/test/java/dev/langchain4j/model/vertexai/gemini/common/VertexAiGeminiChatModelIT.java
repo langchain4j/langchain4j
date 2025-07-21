@@ -64,8 +64,14 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
+    @Override
     protected boolean assertFinishReason() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected boolean assertToolId(ChatModel model) {
+        return false; // Gemini does not provide a tool ID
     }
 
     @AfterEach

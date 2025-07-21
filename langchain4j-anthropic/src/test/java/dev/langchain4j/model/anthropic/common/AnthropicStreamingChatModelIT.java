@@ -2,19 +2,22 @@ package dev.langchain4j.model.anthropic.common;
 
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static java.lang.System.getenv;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
 
-import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import java.util.List;
 
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -90,5 +93,34 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .listeners(List.of(listener))
                 .build();
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        // Anthropic can talk before calling a tool. "atLeast(0)" is meant to ignore it.
+        io.verify(handler, atLeast(0)).onPartialResponse(any());
+
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                // Anthropic does not output same tokens consistently, so we can't easily assert partialArguments
+                toolCall.index() == 0
+                        && toolCall.id().equals(id)
+                        && toolCall.name().equals("getWeather")
+                        && !toolCall.partialArguments().isBlank()
+        ));
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        verifyToolCallbacks(handler, io, id1);
+
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                // Anthropic does not output same tokens consistently, so we can't easily assert partialArguments
+                toolCall.index() == 1
+                        && toolCall.id().equals(id2)
+                        && toolCall.name().equals("getTime")
+                        && !toolCall.partialArguments().isBlank()
+        ));
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 }
