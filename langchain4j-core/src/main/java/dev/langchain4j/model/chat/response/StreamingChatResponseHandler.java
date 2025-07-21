@@ -43,7 +43,7 @@ public interface StreamingChatResponseHandler {
      * If the model decides to call multiple tools, the index will increment, allowing you to correlate.
      * <p>
      * Please note that not all LLM providers stream tool calls token by token.
-     * Some providers (e.g., Bedrock, Google, Mistral, Ollama) return complete tool calls instead.
+     * Some providers (e.g., Bedrock, Google, Mistral, Ollama) return only complete tool calls.
      * In those cases, this callback won't be invoked - only {@link #onCompleteToolCall(CompleteToolCall)}
      * will be called.
      *
