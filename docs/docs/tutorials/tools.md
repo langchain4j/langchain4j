@@ -147,6 +147,8 @@ You can specify one or more `ToolSpecification`s when creating the `ChatRequest`
 It is recommended to provide as much information about the tool as possible:
 a clear name, a comprehensive description, and a description for each parameter, etc.
 
+### Creating Tool Specification
+
 There are two ways to create a `ToolSpecification`:
 
 1. Manually
@@ -184,6 +186,8 @@ class WeatherTools {
 List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(WeatherTools.class);
 ```
 
+### Using `ChatModel`
+
 Once you have a `List<ToolSpecification>`, you can call the model:
 ```java
 ChatRequest request = ChatRequest.builder()
@@ -201,7 +205,7 @@ Depending on the LLM, it can contain one or multiple `ToolExecutionRequest` obje
 (some LLMs support calling multiple tools in parallel).
 
 Each `ToolExecutionRequest` should contain:
-- The `id` of the tool call (some LLMs do not provide it)
+- The `id` of the tool call. Please note that some LLM providers (e.g., Google, Ollama) may omit this ID.
 - The `name` of the tool to be called, for example: `getWeather`
 - The `arguments`, for example: `{ "city": "London", "temperatureUnit": "CELSIUS" }`
 
@@ -220,6 +224,70 @@ ChatRequest request2 = ChatRequest.builder()
         .build();
 ChatResponse response2 = model.chat(request2);
 ```
+
+### Using `StreamingChatModel`
+
+Once you have a `List<ToolSpecification>`, you can call the model:
+```java
+ChatRequest request = ChatRequest.builder()
+    .messages(UserMessage.from("What will the weather be like in London tomorrow?"))
+    .toolSpecifications(toolSpecifications)
+    .build();
+
+model.chat(request, new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse) {
+        System.out.println("onPartialResponse: " + partialResponse);
+    }
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall) {
+        System.out.println("onPartialToolCall: " + partialToolCall);
+    }
+
+    @Override
+    public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+        System.out.println("onCompleteToolCall: " + completeToolCall);
+    }
+
+    @Override
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        System.out.println("onCompleteResponse: " + completeResponse);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        error.printStackTrace();
+    }
+});
+```
+
+If the LLM decides to call the tool, the `onPartialToolCall(PartialToolCall)` callback
+will typically be called multiple times before an `onCompleteToolCall(CompleteToolCall)` callback
+is eventually called, indicating that streaming for that tool call is finished.
+
+:::note
+Please note that not all LLM providers stream partial tool calls.
+Some providers (e.g., Bedrock, Google, Mistral, Ollama) return only complete tool calls.
+In those cases, `onPartialToolCall` callback won't be invoked - only `onCompleteToolCall` will be called.
+:::
+
+Here's an example of what streaming of a single tool call might look like:
+```
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "{\"")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "city")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = ""\":\"")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "London")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "\"}")
+onCompleteToolCall(index = 0, id = "call_abc", name = "get_weather", arguments = "{\"city\":\"London\"}")
+```
+
+If the LLM initiates multiple tool calls, the `index` will increment, allowing you to correlate
+the different `PartialToolCall`s with each other and with the final `CompleteToolCall`.
+
+When complete response streaming is over and `onCompleteResponse(ChatResponse)` is invoked,
+the `AiMessage` inside the `ChatResponse` will contain all the tool calls that occurred during streaming.
 
 ## High Level Tool API
 At a high level of abstraction, you can annotate any Java method with the `@Tool` annotation

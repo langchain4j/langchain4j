@@ -25,12 +25,13 @@ class OllamaStreamingResponseBuilder {
     private final boolean returnThinking;
     private final StringBuffer thinkingBuilder;
 
-    private final List<ToolExecutionRequest> toolExecutionRequests = new CopyOnWriteArrayList<>();
+    private final ToolCallBuilder toolCallBuilder;
 
     private volatile String modelName;
     private volatile TokenUsage tokenUsage;
 
-    OllamaStreamingResponseBuilder(boolean returnThinking) {
+    OllamaStreamingResponseBuilder(ToolCallBuilder toolCallBuilder, boolean returnThinking) {
+        this.toolCallBuilder = toolCallBuilder;
         this.returnThinking = returnThinking;
         if (returnThinking) {
             this.thinkingBuilder = new StringBuffer();
@@ -57,11 +58,6 @@ class OllamaStreamingResponseBuilder {
             return;
         }
 
-        List<ToolCall> toolCalls = message.getToolCalls();
-        if (!isNullOrEmpty(toolCalls)) {
-            this.toolExecutionRequests.addAll(toToolExecutionRequests(toolCalls));
-        }
-
         String content = message.getContent();
         if (content != null) {
             contentBuilder.append(content);
@@ -81,12 +77,12 @@ class OllamaStreamingResponseBuilder {
             thinking = thinkingBuilder.toString();
         }
 
-        if (!isNullOrEmpty(toolExecutionRequests)) {
+        if (toolCallBuilder.hasRequests()) {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.builder()
                             .text(isNullOrEmpty(text) ? null : text)
                             .thinking(isNullOrEmpty(thinking) ? null : thinking)
-                            .toolExecutionRequests(toolExecutionRequests)
+                            .toolExecutionRequests(toolCallBuilder.toolExecutionRequests())
                             .build())
                     .metadata(chatResponseMetadataFrom(modelName, TOOL_EXECUTION, tokenUsage))
                     .build();
