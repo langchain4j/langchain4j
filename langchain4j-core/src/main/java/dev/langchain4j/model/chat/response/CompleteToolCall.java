@@ -1,14 +1,16 @@
 package dev.langchain4j.model.chat.response;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Objects;
+import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 /**
- * TODO
+ * Represents a complete tool call.
+ * Includes the index, and complete {@link ToolExecutionRequest}.
+ *
+ * @see PartialToolCall
  * @since 1.2.0
  */
 @Experimental
@@ -23,14 +25,16 @@ public class CompleteToolCall {
     }
 
     /**
-     * TODO
+     * The index of the tool call, starting from 0 and increasing by 1.
+     * When the LLM initiates multiple tool calls, this index helps correlate
+     * the different {@link PartialToolCall}s with each other and with the final {@link CompleteToolCall}.
      */
     public int index() {
         return index;
     }
 
     /**
-     * TODO
+     * A fully constructed {@link ToolExecutionRequest} that is ready for execution.
      */
     public ToolExecutionRequest toolExecutionRequest() {
         return toolExecutionRequest;
