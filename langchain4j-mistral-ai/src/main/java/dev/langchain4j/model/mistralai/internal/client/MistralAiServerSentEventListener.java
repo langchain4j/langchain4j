@@ -91,8 +91,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
                 toolExecutionRequests = toToolExecutionRequests(toolCalls);
 
                 for (int i = 0; i < toolExecutionRequests.size(); i++) {
-                    CompleteToolCall completeToolCall =
-                            new CompleteToolCall(i, toolExecutionRequests.get(i));
+                    CompleteToolCall completeToolCall = new CompleteToolCall(i, toolExecutionRequests.get(i));
                     onCompleteToolCall(handler, completeToolCall);
                 }
             }

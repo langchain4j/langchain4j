@@ -293,13 +293,13 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
             ));
         }
 
-        // Ollama talks in-between for some reason TODO fix in OpenAI?
+        // Ollama talks in-between for some reason
         io.verify(handler, atLeast(0)).onPartialResponse(any());
 
         io.verify(handler).onCompleteToolCall(argThat(request ->
                 request.index() == 0
-                        && request.request().name().equals("get_current_time")
-                        && request.request().arguments().equals("{}")
+                        && request.toolExecutionRequest().name().equals("get_current_time")
+                        && request.toolExecutionRequest().arguments().equals("{}")
         ));
     }
 

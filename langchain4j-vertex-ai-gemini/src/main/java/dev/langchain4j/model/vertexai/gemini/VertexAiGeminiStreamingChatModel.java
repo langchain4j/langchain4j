@@ -406,7 +406,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         });
 
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
-        AtomicInteger currentToolIndex = new AtomicInteger(0);
+        AtomicInteger toolIndex = new AtomicInteger(0);
 
         try {
             model.generateContentStream(instructionAndContent.contents).stream().forEach(partialResponse -> {
@@ -420,10 +420,9 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
                     for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
                         ToolExecutionRequest toolExecutionRequest = fromFunctionCall(functionCall);
-                            CompleteToolCall completeToolCall =
-                                    new CompleteToolCall(currentToolIndex.get(), toolExecutionRequest);
+                        CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), toolExecutionRequest);
                         onCompleteToolCall(handler, completeToolCall);
-                        currentToolIndex.incrementAndGet();
+                        toolIndex.incrementAndGet();
                     }
                 }
             });

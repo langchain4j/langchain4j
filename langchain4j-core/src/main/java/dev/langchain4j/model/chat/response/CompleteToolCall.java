@@ -15,11 +15,11 @@ import java.util.Objects;
 public class CompleteToolCall {
 
     private final int index;
-    private final ToolExecutionRequest request;
+    private final ToolExecutionRequest toolExecutionRequest;
 
-    public CompleteToolCall(int index, ToolExecutionRequest request) {
+    public CompleteToolCall(int index, ToolExecutionRequest toolExecutionRequest) {
         this.index = index;
-        this.request = ensureNotNull(request, "request");
+        this.toolExecutionRequest = ensureNotNull(toolExecutionRequest, "toolExecutionRequest");
     }
 
     /**
@@ -32,8 +32,8 @@ public class CompleteToolCall {
     /**
      * TODO
      */
-    public ToolExecutionRequest request() {
-        return request;
+    public ToolExecutionRequest toolExecutionRequest() {
+        return toolExecutionRequest;
     }
 
     @Override
@@ -42,19 +42,19 @@ public class CompleteToolCall {
         if (object == null || getClass() != object.getClass()) return false;
         CompleteToolCall that = (CompleteToolCall) object;
         return index == that.index
-                && Objects.equals(request, that.request);
+                && Objects.equals(toolExecutionRequest, that.toolExecutionRequest);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(index, request);
+        return Objects.hash(index, toolExecutionRequest);
     }
 
     @Override
     public String toString() {
         return "CompleteToolCall{" +
                 "index=" + index +
-                ", request=" + request +
+                ", toolExecutionRequest=" + toolExecutionRequest +
                 '}';
     }
 }

@@ -28,7 +28,7 @@ public class ToolCallBuilder {
     private volatile String name;
     private final StringBuffer arguments = new StringBuffer();
 
-    private final Queue<ToolExecutionRequest> allToolExecutionRequests = new ConcurrentLinkedQueue<>();
+    private final Queue<ToolExecutionRequest> toolExecutionRequests = new ConcurrentLinkedQueue<>();
 
     public ToolCallBuilder() {
         this(0);
@@ -42,11 +42,10 @@ public class ToolCallBuilder {
         return index;
     }
 
-    public int updateIndex(Integer index) {
+    public void updateIndex(Integer index) {
         if (index != null) {
             this.index = index;
         }
-        return this.index;
     }
 
     public String id() {
@@ -84,11 +83,11 @@ public class ToolCallBuilder {
         }
 
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .id(id)
-                .name(name)
+                .id(this.id)
+                .name(this.name)
                 .arguments(arguments)
                 .build();
-        allToolExecutionRequests.add(toolExecutionRequest);
+        toolExecutionRequests.add(toolExecutionRequest);
 
         reset();
 
@@ -102,10 +101,10 @@ public class ToolCallBuilder {
     }
 
     public boolean hasRequests() {
-        return !allToolExecutionRequests.isEmpty() || name != null;
+        return !toolExecutionRequests.isEmpty() || name != null;
     }
 
     public List<ToolExecutionRequest> allRequests() {
-        return new ArrayList<>(allToolExecutionRequests);
+        return new ArrayList<>(toolExecutionRequests);
     }
 }

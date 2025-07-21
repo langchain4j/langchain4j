@@ -54,7 +54,7 @@ public interface StreamingChatResponseHandler {
     }
 
     /**
-     * Invoked when the model has finished streaming a complete tool call.
+     * Invoked when the model has finished streaming a single tool call.
      *
      * @param completeToolCall A complete tool call that contains
      *                         the index, tool ID, tool name, and fully assembled arguments.

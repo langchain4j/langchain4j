@@ -115,7 +115,6 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         public void onNext(ChatCompletionChunk completion) {
                             manageChatCompletionChunks(
                                     completion,
-                                    parameters,
                                     handler,
                                     responseMetadataBuilder,
                                     textBuilder,
@@ -154,7 +153,6 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
     private void manageChatCompletionChunks(
             ChatCompletionChunk chatCompletionChunk,
-            OpenAiOfficialChatRequestParameters parameters, // TODO parameters not used
             StreamingChatResponseHandler handler,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,

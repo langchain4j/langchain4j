@@ -654,7 +654,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             assertThat(metadata.completeToolCalls()).hasSize(1);
             assertThat(metadata.completeToolCalls().get(0).index()).isEqualTo(0);
-            assertThat(metadata.completeToolCalls().get(0).request()).isEqualTo(toolExecutionRequest);
+            assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest()).isEqualTo(toolExecutionRequest);
 
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
@@ -784,7 +784,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             assertThat(metadata.completeToolCalls()).hasSize(1);
             assertThat(metadata.completeToolCalls().get(0).index()).isEqualTo(0);
-            assertThat(metadata.completeToolCalls().get(0).request()).isEqualTo(toolExecutionRequest);
+            assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest()).isEqualTo(toolExecutionRequest);
 
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
@@ -945,9 +945,9 @@ public abstract class AbstractBaseChatModelIT<M> {
 
             assertThat(metadata.completeToolCalls()).hasSize(2);
             assertThat(metadata.completeToolCalls().get(0).index()).isEqualTo(0);
-            assertThat(metadata.completeToolCalls().get(0).request()).isEqualTo(toolExecutionRequests.get(0));
+            assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest()).isEqualTo(toolExecutionRequests.get(0));
             assertThat(metadata.completeToolCalls().get(1).index()).isEqualTo(1);
-            assertThat(metadata.completeToolCalls().get(1).request()).isEqualTo(toolExecutionRequests.get(1));
+            assertThat(metadata.completeToolCalls().get(1).toolExecutionRequest()).isEqualTo(toolExecutionRequests.get(1));
 
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);

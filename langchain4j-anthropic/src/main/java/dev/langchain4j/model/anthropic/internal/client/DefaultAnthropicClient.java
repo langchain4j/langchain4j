@@ -258,12 +258,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     CompleteToolCall completeToolCall = toolCallBuilder.buildAndReset();
 
-                    if (completeToolCall.request().arguments().equals("{}")) {
+                    if (completeToolCall.toolExecutionRequest().arguments().equals("{}")) {
                         PartialToolCall partialToolRequest = PartialToolCall.builder()
                                 .index(completeToolCall.index())
-                                .id(completeToolCall.request().id())
-                                .name(completeToolCall.request().name())
-                                .partialArguments(completeToolCall.request().arguments())
+                                .id(completeToolCall.toolExecutionRequest().id())
+                                .name(completeToolCall.toolExecutionRequest().name())
+                                .partialArguments(completeToolCall.toolExecutionRequest().arguments())
                                 .build();
                         onPartialToolCall(handler, partialToolRequest);
                     }

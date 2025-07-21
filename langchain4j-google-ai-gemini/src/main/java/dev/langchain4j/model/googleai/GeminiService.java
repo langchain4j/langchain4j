@@ -121,8 +121,7 @@ class GeminiService {
                 });
 
                 for (ToolExecutionRequest tool : textAndTools.tools()) {
-                    CompleteToolCall completeToolCall =
-                            new CompleteToolCall(toolIndex.get(), tool);
+                    CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);
                     onCompleteToolCall(handler, completeToolCall);
                     toolIndex.incrementAndGet();
                 }

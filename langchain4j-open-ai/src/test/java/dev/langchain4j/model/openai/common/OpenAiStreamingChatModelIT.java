@@ -24,8 +24,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_4_O_MINI)
-                .logResponses(true);
+                .modelName(GPT_4_O_MINI);
     }
 
     @Override
