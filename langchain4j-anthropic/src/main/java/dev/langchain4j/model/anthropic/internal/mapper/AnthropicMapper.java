@@ -64,7 +64,7 @@ import java.util.Map;
 @Internal
 public class AnthropicMapper {
 
-    private static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
+    public static final String THINKING_SIGNATURE_KEY = "thinking_signature"; // do not change, will break backward compatibility!
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, boolean preserveThinking) {
 

@@ -646,7 +646,7 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_answer_with_thinking() { // TODO remove at the end
+    void should_answer_with_thinking() { // TODO run and remove at the end
 
         // given
         ChatModel model = AnthropicChatModel.builder()

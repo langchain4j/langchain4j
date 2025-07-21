@@ -111,7 +111,6 @@ public class AnthropicChatModel implements ChatModel {
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
-                // TODO?
                 .build();
     }
 

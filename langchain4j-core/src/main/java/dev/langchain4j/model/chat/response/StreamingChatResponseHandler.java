@@ -27,7 +27,7 @@ public interface StreamingChatResponseHandler {
      * @since 1.2.0
      */
     @Experimental
-    default void onPartialThinkingResponse(String partialThinkingResponse) { // TODO names
+    default void onPartialThinkingResponse(String partialThinkingResponse) { // TODO names, order
     }
 
     /**

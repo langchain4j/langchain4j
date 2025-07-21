@@ -81,8 +81,9 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         assertThat(aiMessage.text())
                 .containsIgnoringCase("Berlin")
                 .doesNotContain("<think>", "</think>");
-        assertThat(aiMessage.thinking()).containsIgnoringCase("Berlin");
-//        assertThat(aiMessage.thinking()).isEqualTo(thinkingBuilder.toString()); TODO
+        assertThat(aiMessage.thinking())
+                .containsIgnoringCase("Berlin")
+                .isEqualTo(thinkingBuilder.toString());
 
         InOrder inOrder = inOrder(spyHandler);
         inOrder.verify(spyHandler, atLeastOnce()).onPartialThinkingResponse(any());

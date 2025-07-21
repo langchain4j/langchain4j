@@ -60,23 +60,23 @@ class AnthropicChatModelThinkingIT {
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
 
         // when
-        ChatResponse chatResponse = model.chat(userMessage);
+        ChatResponse chatResponse1 = model.chat(userMessage1);
 
         // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage.thinking()).containsIgnoringCase("Berlin");
-        String signature = (String) aiMessage.metadata().get("thinking_signature");
-        assertThat(signature).isNotBlank();
+        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).containsIgnoringCase("Berlin");
+        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        assertThat(signature1).isNotBlank();
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
 
         // when
-        ChatResponse chatResponse2 = model.chat(userMessage, aiMessage, userMessage2);
+        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, userMessage2);
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
@@ -88,9 +88,9 @@ class AnthropicChatModelThinkingIT {
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
-                .contains(jsonify(aiMessage.text()))
-                .contains(jsonify(aiMessage.thinking()))
-                .contains(jsonify(signature));
+                .contains(jsonify(aiMessage1.text()))
+                .contains(jsonify(aiMessage1.thinking()))
+                .contains(jsonify(signature1));
     }
 
     @ParameterizedTest
@@ -120,23 +120,23 @@ class AnthropicChatModelThinkingIT {
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
 
         // when
-        ChatResponse chatResponse = model.chat(userMessage);
+        ChatResponse chatResponse1 = model.chat(userMessage1);
 
         // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage.thinking()).containsIgnoringCase("Berlin");
-        String signature = (String) aiMessage.metadata().get("thinking_signature");
-        assertThat(signature).isNotBlank();
+        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).containsIgnoringCase("Berlin");
+        String signature1 = (String) aiMessage1.metadata().get("thinking_signature");
+        assertThat(signature1).isNotBlank();
 
         // given
         UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
 
         // when
-        ChatResponse chatResponse2 = model.chat(userMessage, aiMessage, userMessage2);
+        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, userMessage2);
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
@@ -148,9 +148,9 @@ class AnthropicChatModelThinkingIT {
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
         assertThat(httpRequests.get(1).body())
-                .contains(jsonify(aiMessage.text()))
-                .doesNotContain(jsonify(aiMessage.thinking()))
-                .doesNotContain(jsonify(signature));
+                .contains(jsonify(aiMessage1.text()))
+                .doesNotContain(jsonify(aiMessage1.thinking()))
+                .doesNotContain(jsonify(signature1));
     }
 
     @ParameterizedTest

@@ -9,6 +9,7 @@ import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnth
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -21,6 +22,7 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicCreateMessageOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -89,7 +91,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
                 .maxOutputTokens(getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
-                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(commonParameters.toolChoice())
                 .build();
 
@@ -119,6 +121,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Integer topK;
         private Integer maxTokens;
         private List<String> stopSequences;
+        private List<ToolSpecification> toolSpecifications;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
@@ -188,6 +191,15 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         public AnthropicStreamingChatModelBuilder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.toolSpecifications = toolSpecifications;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder toolSpecifications(ToolSpecification... toolSpecifications) {
+            return toolSpecifications(asList(toolSpecifications));
         }
 
         public AnthropicStreamingChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
@@ -265,7 +277,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 true);
-        client.createMessage(anthropicRequest, handler);
+        client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);
     }
 
     @Override
